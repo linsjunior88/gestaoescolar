@@ -1,0 +1,33 @@
+services:
+  - type: web
+    name: gestao-escolar-api
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn -b 0.0.0.0:$PORT backend.simplified_api:app
+    envVars:
+      - key: PRODUCTION
+        value: True
+      - key: DB_NAME
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        value: 5432
+        
+  - type: web
+    name: gestao-escolar-frontend
+    env: static
+    buildCommand: echo "No build required for static files"
+    staticPublishPath: ./
+    routes:
+      - type: rewrite
+        source: /api/*
+        destination: https://gestao-escolar-api.onrender.com/api/:splat
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: no-cache 
