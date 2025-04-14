@@ -1,0 +1,441 @@
+/* Estilos específicos para o dashboard administrativo */
+
+/* Barra lateral (sidebar) */
+.sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 100;
+    padding: 48px 0 0;
+    box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+    transition: width 0.3s ease;
+    overflow-y: auto;
+    height: 100vh;
+    width: 250px;
+    background-color: #0d6efd; /* Cor azul do Bootstrap (bg-primary) */
+    color: white;
+}
+
+@media (max-width: 767.98px) {
+    .sidebar {
+        top: 5rem;
+        height: calc(100vh - 5rem);
+    }
+}
+
+.sidebar-sticky {
+    position: relative;
+    top: 0;
+    height: calc(100vh - 48px);
+    padding-top: .5rem;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+.sidebar .nav-link {
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.9); /* Texto mais branco para melhor visibilidade */
+    padding: .75rem 1rem;
+    border-radius: 0.25rem;
+    margin-bottom: 0.25rem;
+}
+
+.sidebar .nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+    color: #fff;
+}
+
+.sidebar .nav-link.active {
+    color: #fff;
+    background-color: rgba(255, 255, 255, 0.3);
+    font-weight: 600;
+}
+
+.sidebar .nav-link:hover .feather,
+.sidebar .nav-link.active .feather {
+    color: inherit;
+}
+
+.sidebar-heading {
+    font-size: .75rem;
+    text-transform: uppercase;
+}
+
+/* Estilo para botões dentro do sidebar */
+.sidebar .btn-link {
+    color: white;
+}
+
+/* Conteúdo principal */
+main {
+    padding-top: 0;
+}
+
+/* Navbar ajustes para ocupar toda a largura */
+.navbar {
+    width: 100% !important;
+    z-index: 1030 !important;
+}
+
+/* Cards de informações */
+.border-left-primary {
+    border-left: 0.25rem solid #4e73df !important;
+}
+
+.border-left-success {
+    border-left: 0.25rem solid #1cc88a !important;
+}
+
+.border-left-info {
+    border-left: 0.25rem solid #36b9cc !important;
+}
+
+.border-left-warning {
+    border-left: 0.25rem solid #f6c23e !important;
+}
+
+.text-gray-300 {
+    color: #dddfeb !important;
+}
+
+.text-gray-800 {
+    color: #5a5c69 !important;
+}
+
+.font-weight-bold {
+    font-weight: 700 !important;
+}
+
+.text-xs {
+    font-size: .7rem;
+}
+
+/* Gráficos */
+.chart-area {
+    position: relative;
+    height: 20rem;
+    width: 100%;
+}
+
+.chart-pie {
+    position: relative;
+    height: 15rem;
+    width: 100%;
+}
+
+/* Área de conteúdo dinâmico */
+.conteudo-secao {
+    display: none;
+}
+
+.conteudo-secao.active {
+    display: block;
+    animation: fadeIn 0.5s ease forwards;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Cards de gestão */
+.card-header h6 {
+    font-weight: 700;
+    color: #4e73df;
+}
+
+.card {
+    margin-bottom: 1.5rem;
+    box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15) !important;
+    border: none;
+}
+
+.card-header {
+    background-color: #f8f9fc;
+    border-bottom: 1px solid #e3e6f0;
+}
+
+/* Botões personalizados */
+.btn-primary {
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    border: none;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #2a5298 0%, #1e3c72 100%);
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .chart-area, .chart-pie {
+        height: 12rem;
+    }
+    
+    main {
+        padding-top: 16px;
+    }
+}
+
+/* Menu recolhido */
+.sidebar.collapsed {
+    width: 4.5rem !important;
+    transition: width 0.3s ease;
+}
+
+/* Ajuste para o texto do menu quando recolhido */
+.sidebar.collapsed .menu-text {
+    display: none !important;
+    opacity: 0;
+    visibility: hidden;
+}
+
+.sidebar.collapsed .nav-link {
+    text-align: center;
+    padding: 0.75rem 0;
+}
+
+/* Ajuste para os ícones quando o menu está recolhido */
+.sidebar.collapsed i.fas, 
+.sidebar.collapsed i.fa {
+    font-size: 1.25rem;
+    margin-right: 0 !important;
+}
+
+/* Ajuste para o conteúdo principal quando o menu está recolhido */
+.sidebar.collapsed + #mainContent,
+#mainContent.expanded {
+    margin-left: 4.5rem !important;
+    transition: margin-left 0.3s ease;
+}
+
+/* Estilos para ícones no sidebar */
+.sidebar .nav-link i {
+    margin-right: 10px;
+    width: 20px;
+    text-align: center;
+}
+
+/* Estilo para o footer do sidebar */
+.sidebar-footer {
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    margin-top: 20px;
+}
+
+.sidebar-footer .btn-outline-light {
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+.sidebar-footer .btn-outline-light:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+    border-color: white;
+}
+
+/* Efeito de hover nos itens do menu */
+.sidebar .nav-item:hover .nav-link:not(.active) {
+    transform: translateX(5px);
+    transition: transform 0.2s ease;
+}
+
+/* Estilo para o conteúdo principal */
+#mainContent {
+    transition: margin-left 0.3s ease;
+    margin-left: 250px;
+    position: relative;
+    z-index: 5;
+}
+
+/* Para dispositivos móveis */
+@media (max-width: 767.98px) {
+    #mainContent {
+        margin-left: 0;
+        padding-left: 0;
+        padding-right: 0;
+    }
+    
+    /* Quando o sidebar está oculto no mobile */
+    .sidebar:not(.show-mobile) {
+        transform: translateX(-100%);
+    }
+    
+    /* Quando o sidebar está visível no mobile */
+    .sidebar.show-mobile {
+        transform: translateX(0);
+        width: 250px !important;
+        z-index: 1030;
+    }
+}
+
+/* Estilos para as seções de conteúdo */
+.conteudo-secao {
+    display: none;
+}
+
+.conteudo-secao.active {
+    display: block;
+}
+
+/* Estilos para os cards */
+.card {
+    margin-bottom: 1.5rem;
+}
+
+.card-header {
+    background-color: #f8f9fc;
+    border-bottom: 1px solid #e3e6f0;
+}
+
+/* Estilos para as tabelas */
+.table th {
+    font-weight: 600;
+}
+
+/* Estilos para as cores de status das notas */
+.status-aprovado {
+    background-color: rgba(28, 200, 138, 0.15) !important;
+}
+
+.status-recuperacao {
+    background-color: rgba(246, 194, 62, 0.15) !important;
+}
+
+.status-reprovado {
+    background-color: rgba(231, 74, 59, 0.15) !important;
+}
+
+/* Ajustes para formulários no dashboard do professor */
+.form-control, .form-select {
+    z-index: 1;
+    position: relative;
+}
+
+/* Ajustes para a logo no navbar */
+.navbar-brand {
+    position: relative;
+    z-index: 1;
+}
+
+/* Ajustes para o dropdown do perfil */
+.dropdown-menu {
+    z-index: 1050;
+}
+
+/* Para todas as seções de conteúdo */
+.conteudo-secao {
+    position: relative;
+    z-index: 10;
+}
+
+/* Garantindo que o conteúdo não fique coberto pelo sidebar */
+.container-fluid {
+    position: relative;
+    z-index: 10;
+}
+
+/* Estilos para modais e dropdowns */
+.modal, .dropdown-menu {
+    z-index: 1050;
+}
+
+/* Ajuste para o sidebar ficar atrás do conteúdo nos formulários */
+@media (min-width: 768px) {
+    .sidebar {
+        z-index: 5;
+    }
+    
+    #mainContent {
+        z-index: 10;
+    }
+}
+
+/* Correções para o dropdown menu */
+.dropdown-menu {
+    z-index: 10001 !important;
+    position: absolute !important;
+}
+
+.dropdown-item {
+    z-index: 10001 !important;
+    position: relative !important;
+    pointer-events: auto !important;
+}
+
+/* Garantir que a barra de navegação tenha um z-index apropriado */
+.navbar {
+    z-index: 1030 !important;
+}
+
+/* Certifique-se de que o dropdown esteja totalmente clicável */
+.dropdown {
+    position: relative;
+    z-index: 10001;
+}
+
+.dropdown-toggle {
+    position: relative;
+    z-index: 10001;
+}
+
+/* Aumentando a especificidade para sobrescrever qualquer outro estilo */
+.navbar .dropdown-menu.show {
+    display: block !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+}
+
+/* Fix crítico para elementos de UI sobrepostos */
+.dropdown-menu.show .dropdown-item {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+}
+
+/* Certifique-se de que não existam elementos bloqueando o dropdown */
+body::after {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: -1;
+    pointer-events: none;
+}
+
+/* Ajuste para garantir que o navbar dropdown fique acima de tudo */
+.navbar .dropdown-menu.show {
+    transform: none !important;
+    top: 100% !important;
+    display: block !important;
+}
+
+/* Ajuste para o botão de toggle do sidebar */
+#toggleSidebarDesktop {
+    cursor: pointer !important;
+    color: rgba(255, 255, 255, 0.8);
+    padding: 5px 10px;
+    border-radius: 5px;
+    transition: background-color 0.3s ease;
+}
+
+#toggleSidebarDesktop:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+    color: white;
+}
+
+/* Garante que o ícone do sidebar toggle seja visível e clicável */
+#sidebarIcon {
+    display: inline-block;
+    font-size: 16px;
+    transition: transform 0.3s ease;
+}
+
+.sidebar.collapsed #sidebarIcon {
+    transform: rotate(180deg);
+} 

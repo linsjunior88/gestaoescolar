@@ -1,0 +1,4197 @@
+// Variáveis globais
+let links = {};
+let conteudos = {};
+// Variáveis globais para o módulo de notas
+let formNota, formModoNota, notaIndex, anoNota, bimestreSelect, turmaNota, disciplinaNota, 
+    alunoNota, notaMensal, notaBimestral, notaRecuperacao, mediaFinal, btnSalvarNota, 
+    btnNovoLancamento, btnCancelarNota, notasLista, filtroTurma, filtroDisciplina, 
+    filtroAluno, filtroBimestre, filtroAno, btnFiltrar, btnCalcularMedias;
+// Variável global para armazenar as notas filtradas
+let notasFiltradas = [];
+// Inicialização quando o DOM estiver pronto
+document.addEventListener('DOMContentLoaded', function() {
+    console.log("Inicializando dashboard administrativo");
+    
+    // Verificar se o usuário está autenticado como administrador
+    const userProfile = sessionStorage.getItem('userProfile');
+    if (userProfile !== 'admin') {
+        // Redirecionar para a página de login se não estiver autenticado como administrador
+        alert('Você precisa fazer login como administrador para acessar esta página.');
+        window.location.href = 'index.html';
+        return;
+    }
+    
+    // Inicializar componentes do dashboard
+    initSidebar();
+    initLinks();
+    initCharts();
+    
+    // Inicializar módulos de gestão
+    initTurmas();
+    initDisciplinas();
+    initProfessores();
+    initAlunos();
+    initNotas();
+    
+    // Inicializar botão para reiniciar dados
+    document.getElementById('btn-reset-dados').addEventListener('click', function() {
+        if (confirm('Tem certeza que deseja reiniciar todos os dados? Isso irá limpar todas as informações e reiniciar com dados de exemplo.')) {
+            localStorage.clear();
+            alert('Dados reiniciados com sucesso! A página será recarregada.');
+            window.location.reload();
+        }
+    });
+    
+    // Configurar função de logout global se ainda não existir
+    if (typeof window.fazerLogout !== 'function') {
+        window.fazerLogout = function() {
+            console.log("Logout global acionado via window.fazerLogout (dashboard.js)");
+            // Limpar sessão
+            sessionStorage.clear();
+            localStorage.removeItem('currentUser');
+            // Redirecionar para a página inicial com parâmetro para evitar cache
+            window.location.href = 'index.html?logout=' + new Date().getTime();
+        };
+    }
+    
+    // Configurar todos os botões de logout na página
+    function configurarLogout() {
+        // Botões de logout específicos
+        const botoes = document.querySelectorAll('#btn-logout, #sidebar-logout');
+        
+        botoes.forEach(btn => {
+            if (btn) {
+                // Remover todos os eventos existentes
+                const clonedBtn = btn.cloneNode(true);
+                if (btn.parentNode) {
+                    btn.parentNode.replaceChild(clonedBtn, btn);
+                }
+                
+                // Adicionar novo evento de logout
+                clonedBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log(`Clique em botão de logout (${btn.id}) capturado por dashboard.js`);
+                    window.fazerLogout();
+                    return false;
+                });
+            }
+        });
+        
+        // Event delegation para capturar cliques em qualquer botão de logout
+        document.addEventListener('click', function(e) {
+            const target = e.target;
+            if (target.id === 'btn-logout' || target.closest('#btn-logout') || 
+                target.id === 'sidebar-logout' || target.closest('#sidebar-logout')) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log("Clique em botão de logout capturado globalmente por dashboard.js");
+                window.fazerLogout();
+                return false;
+            }
+        }, true);
+        
+        // Atalhos de teclado
+        document.addEventListener('keydown', function(e) {
+            // Alt+Q ou Ctrl+L para logout
+            if ((e.altKey && e.key === 'q') || (e.ctrlKey && e.key === 'l')) {
+                console.log("Atalho de teclado para logout: " + e.key);
+                e.preventDefault();
+                window.fazerLogout();
+            }
+            
+            // ESC quando dropdown estiver aberto
+            if (e.key === 'Escape' && document.querySelector('.dropdown-menu.show')) {
+                console.log("ESC pressionado com dropdown aberto");
+                window.fazerLogout();
+            }
+        });
+    }
+    
+    // Chamar a configuração de logout quando o documento estiver pronto
+    configurarLogout();
+    
+    // Verificar periodicamente se novos botões de logout foram adicionados
+    setInterval(configurarLogout, 2000);
+    
+    // Ao final, após todos os módulos serem inicializados, exportar funções para o escopo global
+    window.editarTurma = editarTurma;
+    window.excluirTurma = excluirTurma;
+    window.editarDisciplina = editarDisciplina;
+    window.excluirDisciplina = excluirDisciplina;
+    window.editarProfessor = editarProfessor;
+    window.excluirProfessor = excluirProfessor;
+    window.editarAluno = editarAluno;
+    window.excluirAluno = excluirAluno;
+    window.editarNota = editarNota;
+    window.excluirNota = excluirNota;
+});
+// Função para inicializar o menu lateral retrátil
+function initSidebar() {
+    const sidebar = document.getElementById('sidebarMenu');
+    const toggleSidebar = document.getElementById('toggleSidebar');
+    const toggleSidebarDesktop = document.getElementById('toggleSidebarDesktop');
+    const sidebarIcon = document.getElementById('sidebarIcon');
+    const mainContent = document.getElementById('mainContent');
+    
+    // Função para alternar o estado do menu
+    function toggleMenu() {
+        sidebar.classList.toggle('collapsed');
+        
+        // Alterna o ícone do botão
+        if (sidebar.classList.contains('collapsed')) {
+            sidebarIcon.classList.remove('fa-angle-left');
+            sidebarIcon.classList.add('fa-angle-right');
+        } else {
+            sidebarIcon.classList.remove('fa-angle-right');
+            sidebarIcon.classList.add('fa-angle-left');
+        }
+    }
+    
+    // Evento para o botão em dispositivos móveis
+    if (toggleSidebar) {
+        toggleSidebar.addEventListener('click', function() {
+            sidebar.classList.toggle('show');
+        });
+    }
+    
+    // Evento para o botão em desktop
+    if (toggleSidebarDesktop) {
+        toggleSidebarDesktop.addEventListener('click', toggleMenu);
+    }
+    
+    // Em dispositivos móveis, esconder o menu quando clicar fora dele
+    document.addEventListener('click', function(event) {
+        const isClickInsideSidebar = sidebar.contains(event.target);
+        const isClickOnToggle = toggleSidebar && toggleSidebar.contains(event.target);
+        
+        if (window.innerWidth < 768 && !isClickInsideSidebar && !isClickOnToggle && sidebar.classList.contains('show')) {
+            sidebar.classList.remove('show');
+        }
+    });
+    
+    // Verificar estado salvo do menu (se estava recolhido ou expandido)
+    const sidebarState = localStorage.getItem('sidebarCollapsed');
+    if (sidebarState === 'true') {
+        toggleMenu();
+    }
+    
+    // Salvar o estado do menu
+    function saveSidebarState() {
+        localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
+    }
+    
+    // Adicionar evento para salvar estado
+    if (toggleSidebarDesktop) {
+        toggleSidebarDesktop.addEventListener('click', saveSidebarState);
+    }
+}
+// Função para inicializar os gráficos
+function initCharts() {
+    // Gráfico de barras - Desempenho por Turma
+    const ctxBar = document.getElementById('graficoDesempenho');
+    if (ctxBar) {
+        new Chart(ctxBar, {
+            type: 'bar',
+            data: {
+                labels: ['5º Ano A', '5º Ano B', '6º Ano A', '6º Ano B', '7º Ano A', '8º Ano A', '9º Ano A'],
+                datasets: [{
+                    label: 'Média de Desempenho',
+                    data: [7.8, 6.9, 7.2, 8.1, 6.5, 7.4, 6.8],
+                    backgroundColor: 'rgba(78, 115, 223, 0.5)',
+                    borderColor: 'rgba(78, 115, 223, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 10,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
+                }
+            }
+        });
+    }
+    // Gráfico de pizza - Distribuição por Série
+    const ctxPie = document.getElementById('graficoPizza');
+    if (ctxPie) {
+        new Chart(ctxPie, {
+            type: 'pie',
+            data: {
+                labels: ['5º Ano', '6º Ano', '7º Ano', '8º Ano', '9º Ano'],
+                datasets: [{
+                    data: [125, 110, 98, 102, 88],
+                    backgroundColor: [
+                        'rgba(78, 115, 223, 0.7)',
+                        'rgba(28, 200, 138, 0.7)',
+                        'rgba(54, 185, 204, 0.7)',
+                        'rgba(246, 194, 62, 0.7)',
+                        'rgba(231, 74, 59, 0.7)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                maintainAspectRatio: false
+            }
+        });
+    }
+}
+// Inicialização dos gráficos do dashboard
+function inicializarGraficos() {
+    console.log("Inicializando gráficos do dashboard");
+    
+    // Gráfico de desempenho
+    const ctxDesempenho = document.getElementById('graficoDesempenho');
+    if (ctxDesempenho) {
+        new Chart(ctxDesempenho, {
+            type: 'bar',
+            data: {
+                labels: ['5º Ano A', '5º Ano B', '6º Ano A', '6º Ano B', '7º Ano A', '7º Ano B'],
+                datasets: [{
+                    label: 'Média de Desempenho',
+                    data: [7.8, 6.5, 8.2, 7.4, 6.9, 7.2],
+                    backgroundColor: 'rgba(78, 115, 223, 0.8)',
+                    borderColor: 'rgba(78, 115, 223, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 10
+                    }
+                }
+            }
+        });
+    }
+    
+    // Gráfico de distribuição por série
+    const ctxPizza = document.getElementById('graficoPizza');
+    if (ctxPizza) {
+        new Chart(ctxPizza, {
+            type: 'pie',
+            data: {
+                labels: ['1º ao 5º Ano', '6º ao 9º Ano'],
+                datasets: [{
+                    data: [250, 273],
+                    backgroundColor: ['#4e73df', '#1cc88a'],
+                    hoverBackgroundColor: ['#2e59d9', '#17a673'],
+                    hoverBorderColor: "rgba(234, 236, 244, 1)",
+                }]
+            },
+            options: {
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+    }
+}
+// Inicialização geral do dashboard
+function initGeral() {
+    console.log("Inicializando área geral do dashboard");
+    // Código para inicializar o dashboard geral
+    // Este seria o código específico para o conteúdo da dashboard principal
+}
+// Inicialização do módulo de turmas
+function initTurmas() {
+    console.log("Inicializando módulo de turmas");
+    
+    // Elementos do formulário
+    const formTurma = document.getElementById('form-turma');
+    const formModo = document.getElementById('form-modo');
+    const turmaIndex = document.getElementById('turma-index');
+    const idTurmaInput = document.getElementById('id_turma_input');
+    const serie = document.getElementById('serie');
+    const turno = document.getElementById('turno');
+    const tipoTurma = document.getElementById('tipo_turma');
+    const coordenador = document.getElementById('coordenador');
+    const btnCancelarTurma = document.getElementById('btn-cancelar-turma');
+    const btnNovaTurma = document.getElementById('btn-nova-turma');
+    const turmasLista = document.getElementById('turmas-lista');
+    
+    // Carregar turmas do localStorage
+    carregarTurmas();
+    
+    // Configurar botões do formulário
+    if (btnNovaTurma) {
+        btnNovaTurma.onclick = function() {
+            resetarFormularioTurma();
+            if (formTurma) formTurma.scrollIntoView({behavior: 'smooth'});
+        };
+    }
+    
+    if (btnCancelarTurma) {
+        btnCancelarTurma.onclick = function() {
+            resetarFormularioTurma();
+        };
+    }
+    
+    // Configurar formulário
+    if (formTurma) {
+        formTurma.addEventListener('submit', function(e) {
+            e.preventDefault();
+            console.log("Formulário de turma submetido");
+            
+            // Validar campos obrigatórios
+            if (!idTurmaInput.value || !serie.value || !turno.value) {
+                alert('Por favor, preencha todos os campos obrigatórios.');
+                return;
+            }
+            
+            // Coletar dados do formulário
+            const turma = {
+                id_turma: idTurmaInput.value.trim(),
+                serie: serie.value.trim(),
+                turno: turno.value,
+                tipo_turma: tipoTurma.value.trim(),
+                coordenador: coordenador.value.trim()
+            };
+            
+            console.log("Dados da turma:", turma);
+            
+            // Verificar o modo (novo ou edição)
+            if (formModo.value === 'novo') {
+                // Criar nova turma via API
+                fetch('http://localhost:4000/api/turmas/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(turma)
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Erro ao criar turma: ' + response.statusText);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Turma cadastrada com sucesso:', data);
+                alert('Turma cadastrada com sucesso!');
+                    
+                    // Limpar formulário e recarregar lista
+                    resetarFormularioTurma();
+                    carregarTurmas();
+                })
+                .catch(error => {
+                    console.error('Erro ao cadastrar turma:', error);
+                    if (error.message.includes('400')) {
+                    alert('Já existe uma turma com este ID. Por favor, use outro ID.');
+                    } else {
+                        alert('Erro ao cadastrar turma: ' + error.message);
+                    }
+                });
+            } else {
+                // Editar turma existente via API
+                const turmaId = turma.id_turma;
+                
+                fetch(`http://localhost:4000/api/turmas/${turmaId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(turma)
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Erro ao atualizar turma: ' + response.statusText);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Turma atualizada com sucesso:', data);
+                    
+                    // Atualizar referências se o ID da turma mudou
+                    const antigoId = turmaIndex.value;
+                    if (antigoId !== turma.id_turma) {
+                atualizarReferenciasAposMudancaIdTurma(antigoId, turma.id_turma);
+            }
+            
+                    alert('Turma atualizada com sucesso!');
+            
+            // Limpar formulário e recarregar lista
+            resetarFormularioTurma();
+            carregarTurmas();
+                })
+                .catch(error => {
+                    console.error('Erro ao atualizar turma:', error);
+                    alert('Erro ao atualizar turma: ' + error.message);
+                });
+            }
+        });
+    }
+    
+    // Função para carregar turmas
+    function carregarTurmas() {
+        console.log("Carregando turmas da API");
+        
+        if (turmasLista) {
+            // Exibir indicador de carregamento
+            turmasLista.innerHTML = `
+                <tr class="text-center">
+                    <td colspan="6">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Carregando...</span>
+                        </div>
+                        <p>Carregando turmas...</p>
+                    </td>
+                </tr>
+            `;
+            
+            // Buscar turmas da API
+            fetch('http://localhost:4000/api/turmas/')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Erro ao carregar turmas: ' + response.statusText);
+                    }
+                    return response.json();
+                })
+                .then(turmas => {
+                    console.log("Turmas recuperadas da API:", turmas.length);
+                    
+            turmasLista.innerHTML = '';
+            
+            if (turmas.length === 0) {
+                turmasLista.innerHTML = `
+                    <tr class="text-center">
+                        <td colspan="6">Nenhuma turma cadastrada</td>
+                    </tr>
+                `;
+                return;
+            }
+            
+                    // Ordenar turmas por ID
+                    turmas.sort((a, b) => a.id_turma.localeCompare(b.id_turma));
+                    
+                    // Adicionar cada turma à tabela
+                    turmas.forEach(turma => {
+                        // Formatar turno para exibição
+                        const turnoTexto = turno2texto(turma.turno);
+                        
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${turma.id_turma}</td>
+                            <td>${turma.serie}</td>
+                            <td>${turnoTexto}</td>
+                            <td>${turma.tipo_turma || 'Regular'}</td>
+                            <td>${turma.coordenador || '-'}</td>
+                            <td class="text-center">
+                                <button class="btn btn-sm btn-outline-primary me-1 btn-editar-turma" data-id="${turma.id_turma}">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger btn-excluir-turma" data-id="${turma.id_turma}">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                            </td>
+                        `;
+                        
+                        turmasLista.appendChild(tr);
+                    });
+                    
+                    // Adicionar event listeners para os botões
+                    document.querySelectorAll('.btn-editar-turma').forEach(button => {
+                        button.addEventListener('click', function() {
+                            const id = this.getAttribute('data-id');
+                            editarTurma(id);
+                        });
+                    });
+                    
+                    document.querySelectorAll('.btn-excluir-turma').forEach(button => {
+                        button.addEventListener('click', function() {
+                            const id = this.getAttribute('data-id');
+                            excluirTurma(id);
+                        });
+                    });
+                    
+                    // Também salvar no localStorage para manter compatibilidade com o resto do sistema
+                    localStorage.setItem('turmas', JSON.stringify(turmas));
+                })
+                .catch(error => {
+                    console.error("Erro ao carregar turmas:", error);
+                    turmasLista.innerHTML = `
+                        <tr class="text-center">
+                            <td colspan="6" class="text-danger">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                Erro ao carregar turmas: ${error.message}
+                            </td>
+                        </tr>
+                    `;
+                    
+                    // Tentar usar dados do localStorage como fallback
+                    const turmasLocal = JSON.parse(localStorage.getItem('turmas') || '[]');
+                    if (turmasLocal.length > 0) {
+                        console.log("Usando dados de turmas do localStorage como fallback");
+                        turmasLista.innerHTML = '';
+                        
+                        // Ordenar turmas por ID
+                        turmasLocal.sort((a, b) => a.id_turma.localeCompare(b.id_turma));
+                        
+                        // Adicionar cada turma à tabela
+                        turmasLocal.forEach(turma => {
+                            // Formatar turno para exibição
+                            const turnoTexto = turno2texto(turma.turno);
+                            
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${turma.id_turma}</td>
+                    <td>${turma.serie}</td>
+                                <td>${turnoTexto}</td>
+                                <td>${turma.tipo_turma || 'Regular'}</td>
+                                <td>${turma.coordenador || '-'}</td>
+                    <td class="text-center">
+                                    <button class="btn btn-sm btn-outline-primary me-1 btn-editar-turma" data-id="${turma.id_turma}">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                                    <button class="btn btn-sm btn-outline-danger btn-excluir-turma" data-id="${turma.id_turma}">
+                                        <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </td>
+                `;
+                
+                turmasLista.appendChild(tr);
+            });
+            
+                        // Adicionar event listeners para os botões
+                        document.querySelectorAll('.btn-editar-turma').forEach(button => {
+                            button.addEventListener('click', function() {
+                                const id = this.getAttribute('data-id');
+                                editarTurma(id);
+                });
+            });
+            
+                        document.querySelectorAll('.btn-excluir-turma').forEach(button => {
+                            button.addEventListener('click', function() {
+                                const id = this.getAttribute('data-id');
+                                excluirTurma(id);
+                            });
+                        });
+                    }
+            });
+        }
+    }
+    
+    // Função auxiliar para converter valor do turno para texto
+    function turno2texto(turno) {
+        switch(turno) {
+            case 'manha': return 'Manhã';
+            case 'tarde': return 'Tarde';
+            case 'noite': return 'Noite';
+            default: return turno;
+        }
+    }
+    
+    // Função para editar uma turma
+    function editarTurma(turmaId) {
+        console.log("Editando turma:", turmaId);
+        
+        // Elementos do formulário
+        const formTurma = document.getElementById('form-turma');
+        const formModo = document.getElementById('form-modo');
+        const turmaIndex = document.getElementById('turma-index');
+        const idTurmaInput = document.getElementById('id_turma_input');
+        const serie = document.getElementById('serie');
+        const turno = document.getElementById('turno');
+        const tipoTurma = document.getElementById('tipo_turma');
+        const coordenador = document.getElementById('coordenador');
+        
+        // Verificar se todos os elementos foram encontrados
+        if (!formModo || !idTurmaInput || !serie || !turno || !tipoTurma || !coordenador || !turmaIndex) {
+            console.error("Elementos do formulário não encontrados:", {
+                formModo, idTurmaInput, serie, turno, tipoTurma, coordenador, turmaIndex
+            });
+            alert("Erro ao carregar o formulário. Por favor, recarregue a página.");
+            return;
+        }
+        
+        // Buscar dados da turma da API
+        fetch(`http://localhost:4000/api/turmas/${turmaId}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Erro ao buscar turma: ' + response.statusText);
+                }
+                return response.json();
+            })
+            .then(turma => {
+                console.log("Dados da turma recuperados:", turma);
+                
+                // Preencher o formulário com os dados da turma
+            formModo.value = 'editar';
+                idTurmaInput.value = turma.id_turma;
+            serie.value = turma.serie;
+            turno.value = turma.turno;
+                tipoTurma.value = turma.tipo_turma || '';
+                coordenador.value = turma.coordenador || '';
+                
+                // Desabilitar alteração do ID da turma
+                idTurmaInput.disabled = true;
+            
+            // Atualizar título e mostrar botão de cancelar
+                const formTurmaTitulo = document.getElementById('form-turma-titulo');
+                if (formTurmaTitulo) {
+                    formTurmaTitulo.textContent = 'Editar Turma';
+                }
+                
+                const btnCancelarTurma = document.getElementById('btn-cancelar-turma');
+                if (btnCancelarTurma) {
+            btnCancelarTurma.style.display = 'block';
+                }
+                
+                // Armazenar o ID antigo para referência
+                turmaIndex.value = turma.id_turma;
+                
+                // Rolar até o formulário
+                const turmaForm = document.getElementById('turmaForm');
+                if (turmaForm) {
+                    turmaForm.scrollIntoView({behavior: 'smooth'});
+                }
+            })
+            .catch(error => {
+                console.error("Erro ao editar turma:", error);
+                alert('Erro ao carregar dados da turma: ' + error.message);
+                
+                // Tentar buscar no localStorage como fallback
+        const turmas = JSON.parse(localStorage.getItem('turmas') || '[]');
+                const turma = turmas.find(t => t.id_turma === turmaId);
+                
+                if (turma) {
+                    console.log("Usando dados do localStorage como fallback");
+                    
+                    // Verificar novamente se os elementos existem antes de preencher
+                    if (!formModo || !idTurmaInput || !serie || !turno || !tipoTurma || !coordenador || !turmaIndex) {
+                        console.error("Elementos do formulário não encontrados no fallback");
+                        alert("Erro ao carregar o formulário. Por favor, recarregue a página.");
+            return;
+        }
+        
+                    // Preencher o formulário com os dados da turma do localStorage
+                    formModo.value = 'editar';
+                    idTurmaInput.value = turma.id_turma;
+                    serie.value = turma.serie;
+                    turno.value = turma.turno;
+                    tipoTurma.value = turma.tipo_turma || '';
+                    coordenador.value = turma.coordenador || '';
+                    
+                    // Desabilitar alteração do ID da turma
+                    idTurmaInput.disabled = true;
+                    
+                    // Atualizar título e mostrar botão de cancelar
+                    const formTurmaTitulo = document.getElementById('form-turma-titulo');
+                    if (formTurmaTitulo) {
+                        formTurmaTitulo.textContent = 'Editar Turma';
+                    }
+                    
+                    const btnCancelarTurma = document.getElementById('btn-cancelar-turma');
+                    if (btnCancelarTurma) {
+                        btnCancelarTurma.style.display = 'block';
+                    }
+                    
+                    // Armazenar o ID antigo para referência
+                    turmaIndex.value = turma.id_turma;
+                    
+                    // Rolar até o formulário
+                    const turmaForm = document.getElementById('turmaForm');
+                    if (turmaForm) {
+                        turmaForm.scrollIntoView({behavior: 'smooth'});
+                    }
+                } else {
+                    alert('Turma não encontrada no sistema.');
+                }
+            });
+    }
+    
+    // Função para excluir uma turma
+    function excluirTurma(turmaId) {
+        console.log("Excluindo turma:", turmaId);
+        
+        // Confirmar exclusão
+        if (!confirm(`Tem certeza que deseja excluir a turma ${turmaId}?`)) {
+                return;
+            }
+            
+        // Excluir turma via API
+        fetch(`http://localhost:4000/api/turmas/${turmaId}`, {
+            method: 'DELETE'
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Erro ao excluir turma: ' + response.statusText);
+            }
+            
+            console.log('Turma excluída com sucesso');
+            
+            // Também remover do localStorage para manter sincronização
+            const turmasLocal = JSON.parse(localStorage.getItem('turmas') || '[]');
+            const index = turmasLocal.findIndex(t => t.id_turma === turmaId);
+            
+            if (index !== -1) {
+                turmasLocal.splice(index, 1);
+                localStorage.setItem('turmas', JSON.stringify(turmasLocal));
+            }
+            
+            alert('Turma excluída com sucesso!');
+            
+            // Recarregar lista de turmas
+            carregarTurmas();
+        })
+        .catch(error => {
+            console.error('Erro ao excluir turma:', error);
+            alert('Erro ao excluir turma: ' + error.message);
+        });
+    }
+    
+    // Função para resetar o formulário
+    function resetarFormularioTurma() {
+        if (!formTurma) return;
+        
+        formTurma.reset();
+        formModo.value = 'novo';
+        turmaIndex.value = '';
+        document.getElementById('form-turma-titulo').textContent = 'Nova Turma';
+        btnCancelarTurma.style.display = 'none';
+        
+        // Remover readonly do ID
+        idTurmaInput.readOnly = false;
+    }
+    
+    // Função para atualizar referências após mudança de ID da turma
+    function atualizarReferenciasAposMudancaIdTurma(antigoId, novoId) {
+        if (antigoId === novoId) return;
+        
+        // Atualizar disciplinas
+        const disciplinas = JSON.parse(localStorage.getItem('disciplinas') || '[]');
+        let disciplinasModificadas = false;
+        
+        disciplinas.forEach(disciplina => {
+            if (disciplina.turmas_vinculadas && disciplina.turmas_vinculadas.includes(antigoId)) {
+                const index = disciplina.turmas_vinculadas.indexOf(antigoId);
+                disciplina.turmas_vinculadas[index] = novoId;
+                disciplinasModificadas = true;
+            }
+        });
+        
+        if (disciplinasModificadas) {
+            localStorage.setItem('disciplinas', JSON.stringify(disciplinas));
+        }
+        
+        // Atualizar alunos
+        const alunos = JSON.parse(localStorage.getItem('alunos') || '[]');
+        let alunosModificados = false;
+        
+        alunos.forEach(aluno => {
+            if (aluno.id_turma === antigoId) {
+                aluno.id_turma = novoId;
+                alunosModificados = true;
+            }
+        });
+        
+        if (alunosModificados) {
+            localStorage.setItem('alunos', JSON.stringify(alunos));
+        }
+        
+        // Atualizar notas
+        const notas = JSON.parse(localStorage.getItem('notas') || '[]');
+        let notasModificadas = false;
+        
+        notas.forEach(nota => {
+            if (nota.id_turma === antigoId) {
+                nota.id_turma = novoId;
+                // Atualizar também o nome da turma
+                const turma = JSON.parse(localStorage.getItem('turmas') || '[]')
+                    .find(t => t.id_turma === novoId);
+                if (turma) {
+                    nota.nome_turma = turma.serie + ' ' + turma.id_turma;
+                }
+                notasModificadas = true;
+            }
+        });
+        
+        if (notasModificadas) {
+            localStorage.setItem('notas', JSON.stringify(notas));
+        }
+    }
+}
+// Inicialização do módulo de disciplinas
+function initDisciplinas() {
+    console.log("Inicializando módulo de disciplinas");
+    
+    // Elementos do formulário
+    const formDisciplina = document.getElementById('form-disciplina');
+    const formModoDisciplina = document.getElementById('form-modo-disciplina');
+    const disciplinaIndex = document.getElementById('disciplina-index');
+    const idDisciplina = document.getElementById('id_disciplina');
+    const nomeDisciplina = document.getElementById('nome_disciplina');
+    const cargaHoraria = document.getElementById('carga_horaria');
+    const vinculoTurmas = document.getElementById('vinculo_turmas');
+    const btnCancelarDisciplina = document.getElementById('btn-cancelar-disciplina');
+    const btnNovaDisciplina = document.getElementById('btn-nova-disciplina');
+    const disciplinasLista = document.getElementById('disciplinas-lista');
+    
+    // Carregar disciplinas e turmas para o select
+    carregarDisciplinas();
+    carregarTurmasSelect();
+    
+    // Configurar botões do formulário
+    if (btnNovaDisciplina) {
+        btnNovaDisciplina.onclick = function() {
+            if (formDisciplina) formDisciplina.scrollIntoView({behavior: 'smooth'});
+        };
+    }
+    
+    if (btnCancelarDisciplina) {
+        btnCancelarDisciplina.onclick = function() {
+        };
+    }
+    
+    // Configurar formulário
+    if (formDisciplina) {
+        formDisciplina.addEventListener('submit', function(e) {
+            e.preventDefault(); // Impedir o envio padrão do formulário
+            console.log("Formulário de disciplina submetido");
+            
+            // Validar campos obrigatórios
+            if (!idDisciplina.value || !nomeDisciplina.value) {
+                alert('Por favor, preencha todos os campos obrigatórios.');
+                return;
+            }
+            
+            // Obter turmas selecionadas
+            const turmasVinculadas = Array.from(vinculoTurmas.selectedOptions).map(option => option.value);
+            
+            // Obter valores do formulário já referenciados anteriormente
+            const idDisciplinaValue = idDisciplina.value.trim();
+            const nomeDisciplinaValue = nomeDisciplina.value.trim();
+            const cargaHorariaValue = cargaHoraria.value;
+            const modo = formModoDisciplina.value;
+            const turmasVinculadasIds = Array.from(vinculoTurmas.selectedOptions).map(option => option.value);
+            // Montar objeto da disciplina (sem incluir turmas_vinculadas)
+            const disciplina = {
+                id_disciplina: idDisciplinaValue,
+                nome_disciplina: nomeDisciplinaValue,
+                carga_horaria: cargaHorariaValue
+            };
+            console.log("Salvando disciplina:", disciplina, "Modo:", modo);
+            console.log("Turmas vinculadas:", turmasVinculadasIds);
+            
+            // Verificar o modo (novo ou edição)
+            if (modo === 'novo') {
+                // Verificar se ID já existe
+                fetch(`http://localhost:4000/api/disciplinas/${idDisciplinaValue}`)
+                    .then(response => {
+                        if (response.ok) {
+                            // Se encontrou, já existe
+                            alert(`Já existe uma disciplina com o ID ${idDisciplinaValue}. Por favor, escolha outro ID.`);
+                            throw new Error('ID já existente');
+                        }
+                        // Se não encontrou, pode prosseguir
+                        return fetch('http://localhost:4000/api/disciplinas', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(disciplina)
+                        });
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Erro ao criar disciplina: ' + response.statusText);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        console.log("Disciplina criada com sucesso:", data);
+                        
+                        // Se tiver turmas selecionadas, criar os vínculos
+                        if (turmasVinculadasIds.length > 0) {
+                            return vincularTurmasDisciplina(idDisciplinaValue, turmasVinculadasIds);
+                        }
+                        return Promise.resolve();
+                    })
+                    .then(() => {
+                        // Mostrar mensagem de sucesso
+                        alert('Disciplina criada com sucesso!');
+                        
+                        // Limpar formulário
+                        
+                        // Recarregar lista de disciplinas
+                        carregarDisciplinas();
+                    })
+                    .catch(error => {
+                        // Ignorar o erro de ID já existente que já foi tratado
+                        if (error.message !== 'ID já existente') {
+                            console.error("Erro ao criar disciplina:", error);
+                            alert(`Erro ao criar disciplina: ${error.message}`);
+                        }
+                    });
+            } else {
+                // Modo de edição - Atualizar disciplina existente
+                fetch(`http://localhost:4000/api/disciplinas/${idDisciplinaValue}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(disciplina)
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Erro ao atualizar disciplina: ' + response.statusText);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log("Disciplina atualizada com sucesso:", data);
+                    
+                    // Atualizar vínculos com turmas
+                    // Primeiro remover todos os vínculos existentes
+                    return fetch(`http://localhost:4000/api/disciplinas/${idDisciplinaValue}/turmas`, {
+                        method: 'DELETE'
+                    });
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Erro ao remover vínculos antigos: ' + response.statusText);
+                    }
+                    
+                    // Se tiver turmas selecionadas, criar os novos vínculos
+                    if (turmasVinculadasIds.length > 0) {
+                        return vincularTurmasDisciplina(idDisciplinaValue, turmasVinculadasIds);
+                    }
+                    return Promise.resolve();
+                })
+                .then(() => {
+                    // Mostrar mensagem de sucesso
+                    alert('Disciplina atualizada com sucesso!');
+                    
+                    // Limpar formulário
+                    
+                    // Recarregar lista de disciplinas
+            carregarDisciplinas();
+                })
+                .catch(error => {
+                    console.error("Erro ao atualizar disciplina:", error);
+                    alert(`Erro ao atualizar disciplina: ${error.message}`);
+                });
+            }
+        });
+    }
+    
+    // Função para carregar as turmas no select
+    function carregarTurmasSelect() {
+        console.log("Carregando turmas para o select");
+        
+        if (!vinculoTurmas) {
+            console.error("Elemento vinculoTurmas não encontrado");
+            return;
+        }
+        
+        // Mostrar indicador de carregamento
+        vinculoTurmas.innerHTML = '<option value="">Carregando turmas...</option>';
+        
+        // Buscar turmas da API
+        fetch('http://localhost:4000/api/turmas')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Erro ao carregar turmas: ' + response.statusText);
+                }
+                return response.json();
+            })
+            .then(turmas => {
+                console.log("Turmas recuperadas da API:", turmas.length);
+                
+                // Limpar select
+            vinculoTurmas.innerHTML = '';
+            
+            if (turmas.length === 0) {
+                const option = document.createElement('option');
+                option.value = "";
+                    option.textContent = "Nenhuma turma cadastrada";
+                option.disabled = true;
+                vinculoTurmas.appendChild(option);
+                return;
+            }
+            
+            // Ordenar turmas por série e ID
+            turmas.sort((a, b) => {
+                if (a.serie !== b.serie) return a.serie.localeCompare(b.serie);
+                return a.id_turma.localeCompare(b.id_turma);
+            });
+            
+            // Adicionar cada turma ao select
+            turmas.forEach(turma => {
+                const option = document.createElement('option');
+                option.value = turma.id_turma;
+                option.textContent = `${turma.id_turma} - ${turma.serie}`;
+                vinculoTurmas.appendChild(option);
+                });
+            })
+            .catch(error => {
+                console.error("Erro ao carregar turmas:", error);
+                vinculoTurmas.innerHTML = '<option value="">Erro ao carregar turmas</option>';
+            });
+    }
+    
+    // Função para carregar disciplinas
+    function carregarDisciplinas() {
+        console.log("Carregando disciplinas da API");
+        
+        if (disciplinasLista) {
+            // Exibir indicador de carregamento
+            disciplinasLista.innerHTML = `
+                <tr class="text-center">
+                    <td colspan="5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Carregando...</span>
+                        </div>
+                        <p>Carregando disciplinas...</p>
+                    </td>
+                </tr>
+            `;
+            
+            // Buscar disciplinas da API
+            fetch('http://localhost:4000/api/disciplinas/')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Erro ao carregar disciplinas: ' + response.statusText);
+                    }
+                    return response.json();
+                })
+                .then(disciplinas => {
+                    console.log("Disciplinas recuperadas da API:", disciplinas.length);
+                    
+            disciplinasLista.innerHTML = '';
+            
+            if (disciplinas.length === 0) {
+                disciplinasLista.innerHTML = `
+                    <tr class="text-center">
+                        <td colspan="5">Nenhuma disciplina cadastrada</td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            // Ordenar disciplinas por nome
+            disciplinas.sort((a, b) => a.nome_disciplina.localeCompare(b.nome_disciplina));
+            
+                    // Obter turmas para exibir nomes das turmas vinculadas
+            const turmas = JSON.parse(localStorage.getItem('turmas') || '[]');
+            
+                    // Obter informações de turmas vinculadas do localStorage para completar os dados
+                    const disciplinasLocal = JSON.parse(localStorage.getItem('disciplinas') || '[]');
+                    
+                    // Adicionar cada disciplina à tabela
+                    disciplinas.forEach(disciplina => {
+                        // Buscar informações de turmas vinculadas no localStorage
+                        const disciplinaLocal = disciplinasLocal.find(d => d.id_disciplina === disciplina.id_disciplina);
+                        const turmasVinculadasIds = disciplinaLocal && disciplinaLocal.turmas_vinculadas 
+                            ? disciplinaLocal.turmas_vinculadas 
+                            : [];
+                        
+                        // Formatar informações de turmas vinculadas
+                        let turmasTexto = 'Nenhuma';
+                        if (turmasVinculadasIds.length > 0) {
+                            const turmasVinculadas = turmasVinculadasIds.map(idTurma => {
+                        const turma = turmas.find(t => t.id_turma === idTurma);
+                        return turma ? `${turma.id_turma} (${turma.serie})` : idTurma;
+                    });
+                            turmasTexto = turmasVinculadas.join(', ');
+                }
+                
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${disciplina.id_disciplina}</td>
+                    <td>${disciplina.nome_disciplina}</td>
+                    <td>${disciplina.carga_horaria || '-'}</td>
+                    <td>${turmasTexto}</td>
+                    <td class="text-center">
+                                <button class="btn btn-sm btn-outline-primary me-1 btn-editar-disciplina" data-id="${disciplina.id_disciplina}">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                                <button class="btn btn-sm btn-outline-danger btn-excluir-disciplina" data-id="${disciplina.id_disciplina}">
+                                    <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </td>
+                `;
+                
+                disciplinasLista.appendChild(tr);
+            });
+            
+                    // Adicionar event listeners para os botões
+                    document.querySelectorAll('.btn-editar-disciplina').forEach(button => {
+                        button.addEventListener('click', function() {
+                            const id = this.getAttribute('data-id');
+                            editarDisciplina(id);
+                });
+            });
+            
+                    document.querySelectorAll('.btn-excluir-disciplina').forEach(button => {
+                        button.addEventListener('click', function() {
+                            const id = this.getAttribute('data-id');
+                            excluirDisciplina(id);
+                });
+            });
+                    
+                    // Também salvar no localStorage para manter compatibilidade com o resto do sistema
+                    // Mas precisamos preservar as informações de turmas vinculadas
+                    const disciplinasSalvar = disciplinas.map(disciplina => {
+                        const disciplinaLocal = disciplinasLocal.find(d => d.id_disciplina === disciplina.id_disciplina);
+                        return {
+                            ...disciplina,
+                            turmas_vinculadas: disciplinaLocal ? disciplinaLocal.turmas_vinculadas : []
+                        };
+                    });
+                    
+                    localStorage.setItem('disciplinas', JSON.stringify(disciplinasSalvar));
+                })
+                .catch(error => {
+                    console.error("Erro ao carregar disciplinas:", error);
+                    disciplinasLista.innerHTML = `
+                        <tr class="text-center">
+                            <td colspan="5" class="text-danger">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                Erro ao carregar disciplinas: ${error.message}
+                            </td>
+                        </tr>
+                    `;
+                    
+                    // Tentar usar dados do localStorage como fallback
+                    const disciplinasLocal = JSON.parse(localStorage.getItem('disciplinas') || '[]');
+                    if (disciplinasLocal.length > 0) {
+                        console.log("Usando dados de disciplinas do localStorage como fallback");
+                        disciplinasLista.innerHTML = '';
+                        
+                        // Ordenar disciplinas por nome
+                        disciplinasLocal.sort((a, b) => a.nome_disciplina.localeCompare(b.nome_disciplina));
+                        
+                        // Obter turmas para exibir nomes
+                        const turmas = JSON.parse(localStorage.getItem('turmas') || '[]');
+                        
+                        // Adicionar cada disciplina à tabela
+                        disciplinasLocal.forEach(disciplina => {
+                            // Formatar informações de turmas vinculadas
+                            let turmasTexto = 'Nenhuma';
+            if (disciplina.turmas_vinculadas && disciplina.turmas_vinculadas.length > 0) {
+                                const turmasVinculadas = disciplina.turmas_vinculadas.map(idTurma => {
+                                    const turma = turmas.find(t => t.id_turma === idTurma);
+                                    return turma ? `${turma.id_turma} (${turma.serie})` : idTurma;
+                                });
+                                turmasTexto = turmasVinculadas.join(', ');
+                            }
+                            
+                            const tr = document.createElement('tr');
+                            tr.innerHTML = `
+                                <td>${disciplina.id_disciplina}</td>
+                                <td>${disciplina.nome_disciplina}</td>
+                                <td>${disciplina.carga_horaria || '-'}</td>
+                                <td>${turmasTexto}</td>
+                                <td class="text-center">
+                                    <button class="btn btn-sm btn-outline-primary me-1 btn-editar-disciplina" data-id="${disciplina.id_disciplina}">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger btn-excluir-disciplina" data-id="${disciplina.id_disciplina}">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </td>
+                            `;
+                            
+                            disciplinasLista.appendChild(tr);
+                        });
+                        
+                        // Adicionar event listeners para os botões
+                        document.querySelectorAll('.btn-editar-disciplina').forEach(button => {
+                            button.addEventListener('click', function() {
+                                const id = this.getAttribute('data-id');
+                                editarDisciplina(id);
+                            });
+                        });
+                        
+                        document.querySelectorAll('.btn-excluir-disciplina').forEach(button => {
+                            button.addEventListener('click', function() {
+                                const id = this.getAttribute('data-id');
+                                excluirDisciplina(id);
+                            });
+                        });
+                    }
+                });
+        }
+    }
+    
+    // Função para editar uma disciplina
+    function editarDisciplina(idDisciplina) {
+        console.log("Editando disciplina:", idDisciplina);
+        // Verificar se o formulário existe
+        const disciplinaForm = document.getElementById('form-disciplina');
+        if (!disciplinaForm) {
+            console.error("Formulário de disciplina não encontrado");
+            alert("Erro ao carregar o formulário. Por favor, recarregue a página.");
+            return;
+        }
+        // Buscar dados da disciplina da API
+        fetch(`http://localhost:4000/api/disciplinas/${idDisciplina}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Erro ao carregar disciplina: ' + response.statusText);
+                }
+                return response.json();
+            })
+            .then(disciplina => {
+                console.log("Disciplina recuperada da API:", disciplina);
+                
+                // Obter os elementos do formulário
+                const formModoDisciplina = document.getElementById('form-modo-disciplina');
+                const idDisciplinaInput = document.getElementById('id_disciplina');
+                const nomeDisciplina = document.getElementById('nome_disciplina');
+                const cargaHoraria = document.getElementById('carga_horaria');
+                const vinculoTurmas = document.getElementById('vinculo_turmas');
+                // Verificar se os elementos existem
+                if (!formModoDisciplina || !idDisciplinaInput || !nomeDisciplina || !cargaHoraria) {
+                    console.error("Elementos do formulário não encontrados");
+                    alert("Erro ao carregar o formulário. Por favor, recarregue a página.");
+            return;
+        }
+                // Preencher o formulário com os dados da disciplina
+                formModoDisciplina.value = 'editar';
+                idDisciplinaInput.value = disciplina.id_disciplina;
+                nomeDisciplina.value = disciplina.nome_disciplina;
+                cargaHoraria.value = disciplina.carga_horaria || '';
+                // Desabilitar o campo de ID pois estamos editando
+                idDisciplinaInput.disabled = true;
+                // Buscar turmas vinculadas do banco de dados
+                fetch(`http://localhost:4000/api/disciplinas/${idDisciplina}/turmas`)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Erro ao carregar turmas vinculadas: ' + response.statusText);
+                        }
+                        return response.json();
+                    })
+                    .then(turmasVinculadas => {
+                        console.log("Turmas vinculadas recuperadas da API:", turmasVinculadas);
+                        
+                        // Marcar as turmas vinculadas no formulário
+                        if (vinculoTurmas && turmasVinculadas && turmasVinculadas.length > 0) {
+                            // Desmarcar todas as opções primeiro
+                            for (let i = 0; i < vinculoTurmas.options.length; i++) {
+                                vinculoTurmas.options[i].selected = false;
+                            }
+                            
+                            // Marcar as turmas vinculadas
+                            turmasVinculadas.forEach(turma => {
+                                for (let i = 0; i < vinculoTurmas.options.length; i++) {
+                                    if (vinculoTurmas.options[i].value === turma.id_turma) {
+                                        vinculoTurmas.options[i].selected = true;
+                                        break;
+                                    }
+                                }
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        console.error("Erro ao carregar turmas vinculadas:", error);
+                    });
+                // Atualizar título do formulário e exibir botão cancelar
+                const formTitulo = document.getElementById('form-disciplina-titulo');
+                if (formTitulo) {
+                    formTitulo.textContent = 'Editar Disciplina';
+                }
+                const btnCancelar = document.getElementById('btn-cancelar-disciplina');
+                if (btnCancelar) {
+                    btnCancelar.style.display = 'inline-block';
+                }
+                // Rolar até o formulário
+                disciplinaForm.scrollIntoView({ behavior: 'smooth' });
+            })
+            .catch(error => {
+                console.error("Erro ao carregar disciplina:", error);
+                alert("Erro ao carregar a disciplina: " + error.message);
+                
+                // Restaurar o formulário em caso de erro
+                const cardBody = disciplinaForm.querySelector('.card-body');
+                if (cardBody) {
+                    cardBody.innerHTML = "<div class='alert alert-danger'>Erro ao carregar a disciplina. Por favor, tente novamente.</div>";
+                }
+            });
+    }
+    function excluirDisciplina(idDisciplina) {
+        if (confirm(`Tem certeza que deseja excluir a disciplina ${idDisciplina}?`)) {
+            console.log("Excluindo disciplina:", idDisciplina);
+            
+            // Enviar solicitação para excluir disciplina via API
+            fetch(`http://localhost:4000/api/disciplinas/${idDisciplina}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Erro ao excluir disciplina: ' + response.statusText);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log("Disciplina excluída com sucesso:", data);
+                
+                // Exibir mensagem de sucesso
+                alert('Disciplina excluída com sucesso!');
+                
+                // Recarregar lista de disciplinas
+                carregarDisciplinas();
+            })
+            .catch(error => {
+            console.error("Erro ao excluir disciplina:", error);
+                alert(`Erro ao excluir disciplina: ${error.message}`);
+            });
+        }
+    }
+    // Função auxiliar para restaurar o formulário de disciplina ao estado original
+    function resetarFormularioDisciplina() {
+        console.log("Resetando formulário de disciplina");
+        
+        // Elementos do formulário
+        const formModoDisciplina = document.getElementById('form-modo-disciplina');
+        const disciplinaIndex = document.getElementById('disciplina-index');
+        const idDisciplina = document.getElementById('id_disciplina');
+        const nomeDisciplina = document.getElementById('nome_disciplina');
+        const cargaHoraria = document.getElementById('carga_horaria');
+        const vinculoTurmas = document.getElementById('vinculo_turmas');
+        const btnCancelarDisciplina = document.getElementById('btn-cancelar-disciplina');
+        const formTitulo = document.getElementById('form-disciplina-titulo');
+        
+        // Resetar valores
+        if (formModoDisciplina) formModoDisciplina.value = 'novo';
+        if (disciplinaIndex) disciplinaIndex.value = '';
+        if (idDisciplina) {
+            idDisciplina.value = '';
+            idDisciplina.disabled = false;
+        }
+        if (nomeDisciplina) nomeDisciplina.value = '';
+        if (cargaHoraria) cargaHoraria.value = '';
+        
+        // Desmarcar todas as turmas
+        if (vinculoTurmas) {
+            for (let i = 0; i < vinculoTurmas.options.length; i++) {
+                vinculoTurmas.options[i].selected = false;
+            }
+        }
+        
+        // Atualizar título e esconder botão cancelar
+        if (formTitulo) formTitulo.textContent = 'Nova Disciplina';
+        if (btnCancelarDisciplina) btnCancelarDisciplina.style.display = 'none';
+    }
+    
+    // Função para vincular turmas a uma disciplina
+    function vincularTurmasDisciplina(idDisciplina, turmasIds) {
+        console.log(`Vinculando ${turmasIds.length} turmas à disciplina ${idDisciplina}`);
+        
+        // Criar um array de promessas para vincular cada turma
+        const promessas = turmasIds.map(idTurma => {
+            return fetch(`http://localhost:4000/api/disciplinas/${idDisciplina}/turmas/${idTurma}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Erro ao vincular turma ${idTurma}: ${response.statusText}`);
+                }
+                return response.json();
+            });
+        });
+        
+        // Aguardar todas as promessas serem resolvidas
+        return Promise.all(promessas)
+            .then(resultados => {
+                console.log(`${resultados.length} turmas vinculadas com sucesso`);
+                return resultados;
+            })
+            .catch(error => {
+                console.error("Erro ao vincular turmas:", error);
+                throw new Error(`Erro ao vincular turmas: ${error.message}`);
+            });
+    }
+}
+// Inicialização do módulo de professores
+function initProfessores() {
+    console.log("Inicializando módulo de professores");
+    
+    // Elementos do formulário
+    const formProfessor = document.getElementById('form-professor');
+    const formModoProfessor = document.getElementById('form-modo-professor');
+    const professorIndex = document.getElementById('professor-index');
+    const idProfessor = document.getElementById('id_professor');
+    const nomeProfessor = document.getElementById('nome_professor');
+    const emailProfessor = document.getElementById('email_professor');
+    const senhaProfessor = document.getElementById('senha_professor');
+    const vinculoDisciplinas = document.getElementById('vinculo_disciplinas');
+    const disciplinasTurmasLista = document.getElementById('disciplinas-turmas-lista');
+    const btnCancelarProfessor = document.getElementById('btn-cancelar-professor');
+    const btnNovoProfessor = document.getElementById('btn-novo-professor');
+    const professoresLista = document.getElementById('professores-lista');
+    
+    // Carregar professores e disciplinas para o select
+    carregarProfessores();
+    carregarDisciplinasSelect();
+    
+    // Configurar botões do formulário
+    if (btnNovoProfessor) {
+        btnNovoProfessor.onclick = function() {
+            resetarFormularioProfessor();
+            if (formProfessor) formProfessor.scrollIntoView({behavior: 'smooth'});
+        };
+    }
+    
+    if (btnCancelarProfessor) {
+        btnCancelarProfessor.onclick = function() {
+            resetarFormularioProfessor();
+        };
+    }
+    
+    // Event listener para atualizar a tabela de turmas quando as disciplinas são selecionadas
+    if (vinculoDisciplinas) {
+        vinculoDisciplinas.addEventListener('change', function() {
+            atualizarTabelaDisciplinasTurmas();
+        });
+    }
+    
+    // Configurar formulário
+    if (formProfessor) {
+        formProfessor.addEventListener('submit', function(e) {
+            e.preventDefault(); // Impedir o envio padrão do formulário
+            console.log("Formulário de professor submetido");
+            
+            // Validar campos obrigatórios
+            if (!idProfessor.value || !nomeProfessor.value || !emailProfessor.value || !senhaProfessor.value) {
+                alert('Por favor, preencha todos os campos obrigatórios.');
+                return;
+            }
+            
+            // Obter disciplinas selecionadas
+            const disciplinasLecionadas = Array.from(vinculoDisciplinas.selectedOptions).map(option => option.value);
+            
+            // Coletar dados do formulário
+            const professor = {
+                id_professor: idProfessor.value.trim(),
+                nome_professor: nomeProfessor.value.trim(),
+                email_professor: emailProfessor.value.trim(),
+                senha: senhaProfessor.value,
+                telefone_professor: ""
+            };
+            
+            console.log("Dados do professor:", professor);
+            
+            // Verificar o modo (novo ou edição)
+            if (formModoProfessor.value === 'novo') {
+                // Criar novo professor via API
+                fetch('http://localhost:4000/api/professores/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(professor)
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Erro ao criar professor: ' + response.statusText);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Professor cadastrado com sucesso:', data);
+                    
+                    // Salvar relação com disciplinas no localStorage
+                    if (disciplinasLecionadas.length > 0) {
+                        const professoresLocal = JSON.parse(localStorage.getItem('professores') || '[]');
+                        const professorLocal = {
+                            id_professor: professor.id_professor,
+                            nome_professor: professor.nome_professor,
+                            email_professor: professor.email_professor,
+                            senha_professor: professor.senha,
+                            disciplinas_lecionadas: disciplinasLecionadas
+                        };
+                        
+                        // Adicionar ou atualizar no array local
+                        const index = professoresLocal.findIndex(p => p.id_professor === professor.id_professor);
+                        if (index !== -1) {
+                            professoresLocal[index] = professorLocal;
+            } else {
+                            professoresLocal.push(professorLocal);
+                        }
+                        
+                        localStorage.setItem('professores', JSON.stringify(professoresLocal));
+                    }
+                    
+                    alert('Professor cadastrado com sucesso!');
+                    
+                    // Limpar formulário e recarregar lista
+                    resetarFormularioProfessor();
+                    carregarProfessores();
+                })
+                .catch(error => {
+                    console.error('Erro ao cadastrar professor:', error);
+                    if (error.message.includes('400')) {
+                    alert('Já existe um professor com este ID. Por favor, use outro ID.');
+                    } else {
+                        alert('Erro ao cadastrar professor: ' + error.message);
+                    }
+                });
+            } else {
+                // Editar professor existente via API
+                const professorId = professor.id_professor;
+                
+                fetch(`http://localhost:4000/api/professores/${professorId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(professor)
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Erro ao atualizar professor: ' + response.statusText);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Professor atualizado com sucesso:', data);
+                    
+                    // Atualizar relação com disciplinas no localStorage
+                    if (disciplinasLecionadas.length > 0) {
+                        const professoresLocal = JSON.parse(localStorage.getItem('professores') || '[]');
+                        const index = professoresLocal.findIndex(p => p.id_professor === professor.id_professor);
+                        
+                        // Objeto do professor para localStorage
+                        const professorLocal = {
+                            id_professor: professor.id_professor,
+                            nome_professor: professor.nome_professor,
+                            email_professor: professor.email_professor,
+                            senha_professor: professor.senha,
+                            disciplinas_lecionadas: disciplinasLecionadas
+                        };
+                        
+                        if (index !== -1) {
+                            professoresLocal[index] = professorLocal;
+                        } else {
+                            professoresLocal.push(professorLocal);
+                        }
+                        
+                        localStorage.setItem('professores', JSON.stringify(professoresLocal));
+                    }
+                    
+                    alert('Professor atualizado com sucesso!');
+            
+            // Limpar formulário e recarregar lista
+            resetarFormularioProfessor();
+            carregarProfessores();
+                })
+                .catch(error => {
+                    console.error('Erro ao atualizar professor:', error);
+                    alert('Erro ao atualizar professor: ' + error.message);
+                });
+            }
+        });
+    }
+    
+    // Função para carregar as disciplinas no select
+    function carregarDisciplinasSelect() {
+        console.log("Carregando disciplinas para o select");
+        
+        if (!vinculoDisciplinas) {
+            console.error("Elemento vinculoDisciplinas não encontrado");
+            return;
+        }
+        
+        // Mostrar indicador de carregamento
+        vinculoDisciplinas.innerHTML = '<option value="">Carregando disciplinas...</option>';
+        
+        // Buscar disciplinas da API
+        fetch('http://localhost:4000/api/disciplinas')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Erro ao carregar disciplinas: ' + response.statusText);
+                }
+                return response.json();
+            })
+            .then(disciplinas => {
+                console.log("Disciplinas recuperadas da API:", disciplinas.length);
+                
+                // Limpar select
+            vinculoDisciplinas.innerHTML = '';
+            
+            if (disciplinas.length === 0) {
+                const option = document.createElement('option');
+                option.value = "";
+                option.textContent = "Nenhuma disciplina cadastrada";
+                option.disabled = true;
+                vinculoDisciplinas.appendChild(option);
+                return;
+            }
+            
+            // Ordenar disciplinas por nome
+            disciplinas.sort((a, b) => a.nome_disciplina.localeCompare(b.nome_disciplina));
+            
+            // Adicionar cada disciplina ao select
+            disciplinas.forEach(disciplina => {
+                const option = document.createElement('option');
+                option.value = disciplina.id_disciplina;
+                option.textContent = disciplina.nome_disciplina;
+                vinculoDisciplinas.appendChild(option);
+            });
+                
+                // Atualizar a tabela de disciplinas-turmas
+                if (typeof atualizarTabelaDisciplinasTurmas === 'function') {
+                    atualizarTabelaDisciplinasTurmas();
+        }
+            })
+            .catch(error => {
+                console.error("Erro ao carregar disciplinas:", error);
+                vinculoDisciplinas.innerHTML = '<option value="">Erro ao carregar disciplinas</option>';
+            });
+    }
+    
+    // Função para atualizar a tabela de disciplinas e turmas
+    function atualizarTabelaDisciplinasTurmas() {
+        if (!disciplinasTurmasLista) return;
+        
+        const disciplinasSelecionadas = Array.from(vinculoDisciplinas.selectedOptions).map(option => option.value);
+        
+        if (disciplinasSelecionadas.length === 0) {
+            disciplinasTurmasLista.innerHTML = `
+                <tr class="text-center">
+                    <td colspan="2">Selecione disciplinas para ver as turmas vinculadas</td>
+                </tr>
+            `;
+            return;
+        }
+        
+        disciplinasTurmasLista.innerHTML = '';
+        
+        // Obter disciplinas e turmas
+        const disciplinas = JSON.parse(localStorage.getItem('disciplinas') || '[]');
+        const turmas = JSON.parse(localStorage.getItem('turmas') || '[]');
+        
+        // Para cada disciplina selecionada, mostrar as turmas vinculadas
+        disciplinasSelecionadas.forEach(idDisciplina => {
+            const disciplina = disciplinas.find(d => d.id_disciplina === idDisciplina);
+            
+            if (!disciplina) return;
+            
+            let turmasTexto = 'Nenhuma turma vinculada';
+            
+            if (disciplina.turmas_vinculadas && disciplina.turmas_vinculadas.length > 0) {
+                const nomesTurmas = disciplina.turmas_vinculadas.map(idTurma => {
+                    const turma = turmas.find(t => t.id_turma === idTurma);
+                    return turma ? `${turma.id_turma} (${turma.serie})` : idTurma;
+                });
+                turmasTexto = nomesTurmas.join(', ');
+            }
+            
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${disciplina.nome_disciplina}</td>
+                <td>${turmasTexto}</td>
+            `;
+            
+            disciplinasTurmasLista.appendChild(tr);
+        });
+    }
+    
+    // Função para carregar professores
+    function carregarProfessores() {
+        console.log("Carregando professores da API");
+        
+        if (professoresLista) {
+            // Exibir indicador de carregamento
+            professoresLista.innerHTML = `
+                <tr class="text-center">
+                    <td colspan="6">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Carregando...</span>
+                        </div>
+                        <p>Carregando professores...</p>
+                    </td>
+                </tr>
+            `;
+            
+            // Buscar professores da API
+            fetch('http://localhost:4000/api/professores/')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Erro ao carregar professores: ' + response.statusText);
+                    }
+                    return response.json();
+                })
+                .then(professores => {
+                    console.log("Professores recuperados da API:", professores.length);
+                    
+            professoresLista.innerHTML = '';
+            
+            if (professores.length === 0) {
+                professoresLista.innerHTML = `
+                    <tr class="text-center">
+                        <td colspan="6">Nenhum professor cadastrado</td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            // Ordenar professores por nome
+            professores.sort((a, b) => a.nome_professor.localeCompare(b.nome_professor));
+            
+                    // Obter disciplinas e turmas para complementar informações
+            const disciplinas = JSON.parse(localStorage.getItem('disciplinas') || '[]');
+            const turmas = JSON.parse(localStorage.getItem('turmas') || '[]');
+            
+                    // Buscar informações de disciplinas lecionadas do localStorage
+                    const professoresLocal = JSON.parse(localStorage.getItem('professores') || '[]');
+                    
+                    // Adicionar cada professor à tabela
+                    professores.forEach(professor => {
+                        // Buscar informações complementares no localStorage
+                        const professorLocal = professoresLocal.find(p => p.id_professor === professor.id_professor);
+                        const disciplinasLecionadasIds = professorLocal && professorLocal.disciplinas_lecionadas 
+                            ? professorLocal.disciplinas_lecionadas 
+                            : [];
+                        
+                        // Formatar informações de disciplinas e turmas
+                        let disciplinasTexto = 'Nenhuma';
+                        let turmasTexto = '';
+                        
+                        if (disciplinasLecionadasIds.length > 0) {
+                            const disciplinasLecionadas = disciplinasLecionadasIds.map(idDisciplina => {
+                        const disciplina = disciplinas.find(d => d.id_disciplina === idDisciplina);
+                        return disciplina ? disciplina.nome_disciplina : idDisciplina;
+                    });
+                            disciplinasTexto = disciplinasLecionadas.join(', ');
+                
+                            // Buscar turmas vinculadas às disciplinas
+                    const turmasVinculadas = new Set();
+                            disciplinasLecionadasIds.forEach(idDisciplina => {
+                        const disciplina = disciplinas.find(d => d.id_disciplina === idDisciplina);
+                        if (disciplina && disciplina.turmas_vinculadas) {
+                                    disciplina.turmas_vinculadas.forEach(idTurma => {
+                                        const turma = turmas.find(t => t.id_turma === idTurma);
+                                        if (turma) {
+                                            turmasVinculadas.add(`${turma.id_turma} (${turma.serie})`);
+                                        }
+                                    });
+                        }
+                    });
+                    
+                    if (turmasVinculadas.size > 0) {
+                                turmasTexto = Array.from(turmasVinculadas).join(', ');
+                    } else {
+                        turmasTexto = 'Nenhuma';
+                    }
+                } else {
+                    turmasTexto = 'Nenhuma';
+                }
+                
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${professor.id_professor}</td>
+                    <td>${professor.nome_professor}</td>
+                            <td>${professor.email_professor || '-'}</td>
+                    <td>${disciplinasTexto}</td>
+                    <td>${turmasTexto}</td>
+                    <td class="text-center">
+                                <button class="btn btn-sm btn-outline-primary me-1 btn-editar-professor" data-id="${professor.id_professor}">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                                <button class="btn btn-sm btn-outline-danger btn-excluir-professor" data-id="${professor.id_professor}">
+                                    <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </td>
+                `;
+                
+                professoresLista.appendChild(tr);
+            });
+            
+                    // Adicionar event listeners para os botões
+                    document.querySelectorAll('.btn-editar-professor').forEach(button => {
+                        button.addEventListener('click', function() {
+                            const id = this.getAttribute('data-id');
+                            editarProfessor(id);
+                });
+            });
+            
+                    document.querySelectorAll('.btn-excluir-professor').forEach(button => {
+                        button.addEventListener('click', function() {
+                            const id = this.getAttribute('data-id');
+                            excluirProfessor(id);
+                        });
+                    });
+                    
+                    // Também salvar no localStorage para manter compatibilidade com o resto do sistema
+                    // Mas precisamos preservar as informações de disciplinas lecionadas
+                    const professoresSalvar = professores.map(professor => {
+                        const professorLocal = professoresLocal.find(p => p.id_professor === professor.id_professor);
+                        return {
+                            ...professor,
+                            disciplinas_lecionadas: professorLocal ? professorLocal.disciplinas_lecionadas : []
+                        };
+                    });
+                    
+                    localStorage.setItem('professores', JSON.stringify(professoresSalvar));
+                })
+                .catch(error => {
+                    console.error("Erro ao carregar professores:", error);
+                    professoresLista.innerHTML = `
+                        <tr class="text-center">
+                            <td colspan="6" class="text-danger">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                Erro ao carregar professores: ${error.message}
+                            </td>
+                        </tr>
+                    `;
+            });
+        }
+    }
+    
+    // Função para editar um professor
+    function editarProfessor(professorId) {
+        console.log("Editando professor:", professorId);
+        
+        // Elementos do formulário
+        const formProfessor = document.getElementById('form-professor');
+        const formModoProfessor = document.getElementById('form-modo-professor');
+        const professorIndex = document.getElementById('professor-index');
+        const idProfessorInput = document.getElementById('id_professor');
+        const nomeProfessor = document.getElementById('nome_professor');
+        const emailProfessor = document.getElementById('email_professor');
+        const senhaProfessor = document.getElementById('senha_professor');
+        const vinculoDisciplinas = document.getElementById('vinculo_disciplinas');
+        
+        // Verificar se todos os elementos foram encontrados
+        if (!formProfessor || !formModoProfessor || !professorIndex || !idProfessorInput || 
+            !nomeProfessor || !emailProfessor || !senhaProfessor) {
+            console.error("Elementos do formulário de professor não encontrados");
+            alert("Erro ao carregar o formulário de professor. Por favor, recarregue a página.");
+            return;
+        }
+        
+        // Buscar dados do professor
+        fetch(`http://localhost:4000/api/professores/${professorId}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Erro ao buscar professor: ' + response.statusText);
+                }
+                return response.json();
+            })
+            .then(professor => {
+                // Buscar dados complementares do localStorage (disciplinas)
+                const professoresLocal = JSON.parse(localStorage.getItem('professores') || '[]');
+                const professorLocal = professoresLocal.find(p => p.id_professor === professor.id_professor);
+                
+                // Preencher o formulário com os dados do professor
+            formModoProfessor.value = 'editar';
+                idProfessorInput.value = professor.id_professor;
+            nomeProfessor.value = professor.nome_professor;
+            emailProfessor.value = professor.email_professor || '';
+                senhaProfessor.value = professor.senha || '';
+                
+                // Desabilitar alteração do ID do professor
+                idProfessorInput.disabled = true;
+                
+                // Atualizar título e mostrar botão de cancelar
+                const formProfessorTitulo = document.getElementById('form-professor-titulo');
+                if (formProfessorTitulo) {
+                    formProfessorTitulo.textContent = 'Editar Professor';
+                }
+                
+                const btnCancelarProfessor = document.getElementById('btn-cancelar-professor');
+                if (btnCancelarProfessor) {
+                    btnCancelarProfessor.style.display = 'block';
+                }
+                
+                // Selecionar disciplinas se houver informações no localStorage
+                if (vinculoDisciplinas && professorLocal && professorLocal.disciplinas_lecionadas) {
+                    // Desmarcar todas as opções primeiro
+                    for (let i = 0; i < vinculoDisciplinas.options.length; i++) {
+                        vinculoDisciplinas.options[i].selected = false;
+                    }
+                    
+                    // Marcar as disciplinas do professor
+                Array.from(vinculoDisciplinas.options).forEach(option => {
+                        if (professorLocal.disciplinas_lecionadas.includes(option.value)) {
+                            option.selected = true;
+                        }
+                    });
+            
+            // Atualizar tabela de disciplinas e turmas
+                    if (typeof atualizarTabelaDisciplinasTurmas === 'function') {
+            atualizarTabelaDisciplinasTurmas();
+                    }
+                }
+                
+                // Rolar até o formulário
+                const professorForm = document.getElementById('professorForm');
+                if (professorForm) {
+                    professorForm.scrollIntoView({behavior: 'smooth'});
+                }
+            })
+            .catch(error => {
+                console.error("Erro ao editar professor:", error);
+                alert('Erro ao carregar dados do professor: ' + error.message);
+                
+                // Adicionar fallback usando dados do localStorage se disponível
+                const professoresLocal = JSON.parse(localStorage.getItem('professores') || '[]');
+                const professorLocal = professoresLocal.find(p => p.id_professor === professorId);
+                
+                if (professorLocal) {
+                    console.log("Usando dados do localStorage como fallback para professor");
+                    
+                    // Preencher o formulário com os dados do professor do localStorage
+                    formModoProfessor.value = 'editar';
+                    idProfessorInput.value = professorLocal.id_professor;
+                    nomeProfessor.value = professorLocal.nome_professor;
+                    emailProfessor.value = professorLocal.email_professor || '';
+                    senhaProfessor.value = professorLocal.senha || '';
+                    
+                    // Desabilitar alteração do ID do professor
+                    idProfessorInput.disabled = true;
+            
+            // Atualizar título e mostrar botão de cancelar
+                    const formProfessorTitulo = document.getElementById('form-professor-titulo');
+                    if (formProfessorTitulo) {
+                        formProfessorTitulo.textContent = 'Editar Professor';
+                    }
+                    
+                    const btnCancelarProfessor = document.getElementById('btn-cancelar-professor');
+                    if (btnCancelarProfessor) {
+            btnCancelarProfessor.style.display = 'block';
+                    }
+                    
+                    // Selecionar disciplinas se houver informações
+                    if (vinculoDisciplinas && professorLocal.disciplinas_lecionadas) {
+                        // Desmarcar todas as opções primeiro
+                        for (let i = 0; i < vinculoDisciplinas.options.length; i++) {
+                            vinculoDisciplinas.options[i].selected = false;
+                        }
+                        
+                        // Marcar as disciplinas do professor
+                        Array.from(vinculoDisciplinas.options).forEach(option => {
+                            if (professorLocal.disciplinas_lecionadas.includes(option.value)) {
+                                option.selected = true;
+                            }
+                        });
+                        
+                        // Atualizar tabela de disciplinas e turmas
+                        if (typeof atualizarTabelaDisciplinasTurmas === 'function') {
+                            atualizarTabelaDisciplinasTurmas();
+                        }
+                    }
+                    
+                    // Rolar até o formulário
+                    const professorForm = document.getElementById('professorForm');
+                    if (professorForm) {
+                        professorForm.scrollIntoView({behavior: 'smooth'});
+                    }
+                } else {
+                    alert('Professor não encontrado no sistema.');
+                }
+            });
+    }
+    
+    // Função para excluir um professor
+    function excluirProfessor(professorId) {
+        console.log("Excluindo professor:", professorId);
+        
+        // Confirmar exclusão
+        if (!confirm(`Tem certeza que deseja excluir o professor com ID ${professorId}?`)) {
+            return;
+        }
+        
+        // Excluir professor via API
+        fetch(`http://localhost:4000/api/professores/${professorId}`, {
+            method: 'DELETE'
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Erro ao excluir professor: ' + response.statusText);
+            }
+            
+            console.log('Professor excluído com sucesso');
+            
+            // Também remover do localStorage para manter sincronização
+            const professoresLocal = JSON.parse(localStorage.getItem('professores') || '[]');
+            const index = professoresLocal.findIndex(p => p.id_professor === professorId);
+            
+            if (index !== -1) {
+                professoresLocal.splice(index, 1);
+                localStorage.setItem('professores', JSON.stringify(professoresLocal));
+            }
+            
+                alert('Professor excluído com sucesso!');
+            
+            // Recarregar lista de professores
+            carregarProfessores();
+        })
+        .catch(error => {
+            console.error('Erro ao excluir professor:', error);
+            alert('Erro ao excluir professor: ' + error.message);
+        });
+    }
+    
+    // Função para resetar o formulário
+    function resetarFormularioProfessor() {
+        if (!formProfessor) return;
+        
+        formProfessor.reset();
+        formModoProfessor.value = 'novo';
+        professorIndex.value = '';
+        document.getElementById('form-professor-titulo').textContent = 'Novo Professor';
+        btnCancelarProfessor.style.display = 'none';
+        
+        // Remover readonly do ID
+        idProfessor.readOnly = false;
+        
+        // Desmarcar todas as disciplinas
+        Array.from(vinculoDisciplinas.options).forEach(option => {
+            option.selected = false;
+        });
+        
+        // Atualizar tabela de disciplinas e turmas
+        atualizarTabelaDisciplinasTurmas();
+    }
+}
+// Inicialização do módulo de alunos
+function initAlunos() {
+    console.log("Inicializando módulo de alunos");
+    
+    // Elementos do formulário
+    const formAluno = document.getElementById('form-aluno');
+    const formModoAluno = document.getElementById('form-modo-aluno');
+    const alunoIndex = document.getElementById('aluno-index');
+    const idAluno = document.getElementById('id_aluno');
+    const nomeAluno = document.getElementById('nome_aluno');
+    const idTurma = document.getElementById('id_turma');
+    const sexo = document.getElementById('sexo');
+    const dataNasc = document.getElementById('data_nasc');
+    const mae = document.getElementById('mae');
+    const btnCancelarAluno = document.getElementById('btn-cancelar-aluno');
+    const btnNovoAluno = document.getElementById('btn-novo-aluno');
+    const alunosLista = document.getElementById('alunos-lista');
+    
+    // Carregar alunos e turmas para o select
+    carregarAlunos();
+    carregarTurmasParaAlunos();
+    
+    // Configurar botões do formulário
+    if (btnNovoAluno) {
+        btnNovoAluno.onclick = function() {
+            resetarFormularioAluno();
+            if (formAluno) formAluno.scrollIntoView({behavior: 'smooth'});
+        };
+    }
+    
+    if (btnCancelarAluno) {
+        btnCancelarAluno.onclick = function() {
+            resetarFormularioAluno();
+        };
+    }
+    
+    // Configurar formulário
+    if (formAluno) {
+        formAluno.addEventListener('submit', function(e) {
+            e.preventDefault(); // Impedir o envio padrão do formulário
+            console.log("Formulário de aluno submetido");
+            
+            // Validar campos obrigatórios
+            if (!idAluno.value || !nomeAluno.value || !idTurma.value || !sexo.value || !dataNasc.value || !mae.value) {
+                alert('Por favor, preencha todos os campos obrigatórios.');
+                return;
+            }
+            
+            // Coletar dados do formulário
+            const aluno = {
+                id_aluno: idAluno.value.trim(),
+                nome_aluno: nomeAluno.value.trim(),
+                id_turma: idTurma.value,
+                sexo: sexo.value,
+                data_nasc: dataNasc.value,
+                mae: mae.value.trim()
+            };
+            
+            console.log("Dados do aluno:", aluno);
+            
+            // Obter lista atual de alunos
+            let alunos = JSON.parse(localStorage.getItem('alunos') || '[]');
+            console.log("Alunos existentes:", alunos.length);
+            
+            // Verificar o modo (novo ou edição)
+            if (formModoAluno.value === 'novo') {
+                // Verificar se ID já existe
+                if (alunos.some(a => a.id_aluno === aluno.id_aluno)) {
+                    alert('Já existe um aluno com este ID. Por favor, use outro ID.');
+                    return;
+                }
+                
+                // Adicionar novo aluno
+                alunos.push(aluno);
+                alert('Aluno cadastrado com sucesso!');
+            } else {
+                // Editar aluno existente
+                const index = parseInt(alunoIndex.value);
+                const antigoId = alunos[index].id_aluno;
+                
+                // Se mudou o ID, verificar se o novo ID não existe
+                if (antigoId !== aluno.id_aluno && alunos.some(a => a.id_aluno === aluno.id_aluno)) {
+                    alert('Já existe um aluno com este ID. Por favor, use outro ID.');
+                    return;
+                }
+                
+                alunos[index] = aluno;
+                alert('Aluno atualizado com sucesso!');
+                
+                // Atualizar notas que referenciam este aluno
+                atualizarReferenciasAposMudancaIdAluno(antigoId, aluno.id_aluno);
+            }
+            
+            // Salvar no localStorage
+            localStorage.setItem('alunos', JSON.stringify(alunos));
+            console.log("Alunos salvos:", alunos.length);
+            
+            // Limpar formulário e recarregar lista
+            resetarFormularioAluno();
+            carregarAlunos();
+        });
+    }
+    
+    // Função para carregar as turmas no select
+    function carregarTurmasParaAlunos() {
+        console.log("Carregando turmas para o select de alunos");
+        
+        if (!idTurma) {
+            console.error("Select de turmas para alunos não encontrado!");
+            return;
+        }
+        
+        // Mostrar indicador de carregamento
+        idTurma.innerHTML = '<option value="">Carregando turmas...</option>';
+        
+        // Buscar turmas da API
+        fetch('http://localhost:4000/api/turmas')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Erro ao carregar turmas: ' + response.statusText);
+                }
+                return response.json();
+            })
+            .then(turmas => {
+                console.log("Turmas recuperadas da API:", turmas.length);
+                
+            idTurma.innerHTML = '<option value="">Selecione uma turma</option>';
+            
+            if (turmas.length === 0) {
+                const option = document.createElement('option');
+                option.value = "";
+                option.textContent = "Nenhuma turma cadastrada";
+                option.disabled = true;
+                idTurma.appendChild(option);
+                return;
+            }
+            
+            // Ordenar turmas por série e ID
+            turmas.sort((a, b) => {
+                if (a.serie !== b.serie) return a.serie.localeCompare(b.serie);
+                return a.id_turma.localeCompare(b.id_turma);
+            });
+            
+            // Adicionar cada turma ao select
+            turmas.forEach(turma => {
+                const option = document.createElement('option');
+                option.value = turma.id_turma;
+                option.textContent = `${turma.id_turma} - ${turma.serie}`;
+                idTurma.appendChild(option);
+            });
+            })
+            .catch(error => {
+                console.error("Erro ao carregar turmas para alunos:", error);
+                idTurma.innerHTML = '<option value="">Erro ao carregar turmas</option>';
+            });
+    }
+    
+    // Função para carregar alunos
+    function carregarAlunos() {
+        console.log("Carregando alunos do localStorage");
+        const alunos = JSON.parse(localStorage.getItem('alunos') || '[]');
+        console.log("Alunos recuperados:", alunos.length);
+        
+        if (alunosLista) {
+            alunosLista.innerHTML = '';
+            
+            if (alunos.length === 0) {
+                alunosLista.innerHTML = `
+                    <tr class="text-center">
+                        <td colspan="6">Nenhum aluno cadastrado</td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            // Ordenar alunos por nome
+            alunos.sort((a, b) => a.nome_aluno.localeCompare(b.nome_aluno));
+            
+            // Obter lista de turmas para exibir nomes
+            const turmas = JSON.parse(localStorage.getItem('turmas') || '[]');
+            
+            // Adicionar cada aluno à lista
+            alunos.forEach((aluno) => {
+                // Obter nome da turma
+                const turma = turmas.find(t => t.id_turma === aluno.id_turma);
+                const turmaNome = turma ? `${turma.id_turma} - ${turma.serie}` : aluno.id_turma;
+                
+                // Formatar data de nascimento
+                const dataNascFormatada = aluno.data_nasc ? new Date(aluno.data_nasc).toLocaleDateString('pt-BR') : '-';
+                
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${aluno.id_aluno}</td>
+                    <td>${aluno.nome_aluno}</td>
+                    <td>${turmaNome}</td>
+                    <td>${aluno.sexo === 'M' ? 'Masculino' : 'Feminino'}</td>
+                    <td>${dataNascFormatada}</td>
+                    <td>${aluno.mae}</td>
+                    <td class="text-center">
+                        <button class="btn btn-sm btn-primary editar-aluno me-1" data-id="${aluno.id_aluno}">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-sm btn-danger excluir-aluno" data-id="${aluno.id_aluno}">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+                
+                alunosLista.appendChild(tr);
+            });
+            
+            // Adicionar event listeners para os botões de editar e excluir
+            document.querySelectorAll('.editar-aluno').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const idAluno = this.getAttribute('data-id');
+                    editarAluno(idAluno);
+                });
+            });
+            
+            document.querySelectorAll('.excluir-aluno').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const idAluno = this.getAttribute('data-id');
+                    excluirAluno(idAluno);
+                });
+            });
+        }
+    }
+    
+    // Função para atualizar referências após mudança de ID do aluno
+    function atualizarReferenciasAposMudancaIdAluno(antigoId, novoId) {
+        if (antigoId === novoId) return;
+        
+        // Atualizar notas
+        const notas = JSON.parse(localStorage.getItem('notas') || '[]');
+        let notasModificadas = false;
+        
+        notas.forEach(nota => {
+            if (nota.id_aluno === antigoId) {
+                nota.id_aluno = novoId;
+                // Atualizar também o nome do aluno
+                const aluno = JSON.parse(localStorage.getItem('alunos') || '[]')
+                    .find(a => a.id_aluno === novoId);
+                if (aluno) {
+                    nota.nome_aluno = aluno.nome_aluno;
+                }
+                notasModificadas = true;
+            }
+        });
+        
+        if (notasModificadas) {
+            localStorage.setItem('notas', JSON.stringify(notas));
+        }
+    }
+    // Função para editar um aluno
+    function editarAluno(alunoId) {
+        console.log(`Editando aluno com ID: ${alunoId}`);
+        const alunos = JSON.parse(localStorage.getItem('alunos') || '[]');
+        
+        // Encontrar o aluno pelo ID
+        const index = alunos.findIndex(a => a.id_aluno === alunoId);
+        
+        // Verificar se o aluno foi encontrado
+        if (index === -1) {
+            console.error(`Aluno com ID ${alunoId} não encontrado`);
+            alert('Erro ao editar: aluno não encontrado.');
+            return;
+        }
+        
+        const aluno = alunos[index];
+        console.log("Dados do aluno a editar:", aluno);
+        
+        try {
+            // Preencher formulário com dados do aluno
+            formModoAluno.value = 'editar';
+            alunoIndex.value = index;
+            idAluno.value = aluno.id_aluno; // Elemento HTML idAluno
+            nomeAluno.value = aluno.nome_aluno;
+            
+            // Verificar se a turma existe antes de selecioná-la
+            const turmaExiste = Array.from(idTurma.options).some(option => option.value === aluno.id_turma);
+            if (turmaExiste) {
+                idTurma.value = aluno.id_turma;
+            } else {
+                console.warn(`Turma ${aluno.id_turma} não encontrada no select. Opções disponíveis:`, 
+                    Array.from(idTurma.options).map(o => o.value));
+                // Adicionar a turma como opção temporária se não existir
+                const option = document.createElement('option');
+                option.value = aluno.id_turma;
+                option.textContent = `${aluno.id_turma} (não encontrada)`;
+                idTurma.appendChild(option);
+                idTurma.value = aluno.id_turma;
+            }
+            
+            sexo.value = aluno.sexo;
+            dataNasc.value = aluno.data_nasc;
+            mae.value = aluno.mae;
+            
+            // Atualizar título e mostrar botão de cancelar
+            document.getElementById('form-aluno-titulo').textContent = 'Editar Aluno';
+            btnCancelarAluno.style.display = 'block';
+            
+            // Tornar o ID somente leitura na edição
+            idAluno.readOnly = true;
+            
+            // Rolar para o formulário
+            formAluno.scrollIntoView({behavior: 'smooth'});
+        } catch (error) {
+            console.error("Erro ao preencher formulário de edição:", error);
+            alert('Ocorreu um erro ao carregar os dados para edição.');
+        }
+    }
+    // Função para excluir um aluno
+    function excluirAluno(alunoId) {
+        console.log(`Excluindo aluno com ID: ${alunoId}`);
+        const alunos = JSON.parse(localStorage.getItem('alunos') || '[]');
+        
+        // Encontrar o aluno pelo ID
+        const index = alunos.findIndex(a => a.id_aluno === alunoId);
+        
+        // Verificar se o aluno foi encontrado
+        if (index === -1) {
+            console.error(`Aluno com ID ${alunoId} não encontrado`);
+            alert('Erro ao excluir: aluno não encontrado.');
+            return;
+        }
+        
+        const aluno = alunos[index];
+        
+        try {
+            // Verificar dependências
+            const notas = JSON.parse(localStorage.getItem('notas') || '[]');
+            const notasVinculadas = notas.filter(n => n.id_aluno === aluno.id_aluno);
+            
+            if (notasVinculadas.length > 0) {
+                let msg = `Este aluno não pode ser excluído pois possui ${notasVinculadas.length} lançamento(s) de notas vinculado(s).`;
+                msg += '\n\nRemova estes vínculos antes de excluir o aluno.';
+                alert(msg);
+                return;
+            }
+            
+            if (confirm(`Tem certeza que deseja excluir o aluno ${aluno.nome_aluno}?`)) {
+                alunos.splice(index, 1);
+                localStorage.setItem('alunos', JSON.stringify(alunos));
+                carregarAlunos();
+                alert('Aluno excluído com sucesso!');
+            }
+        } catch (error) {
+            console.error("Erro ao excluir aluno:", error);
+            alert('Ocorreu um erro ao tentar excluir o aluno.');
+        }
+    }
+    // Função para resetar o formulário
+    function resetarFormularioAluno() {
+        console.log("Resetando formulário de aluno");
+        
+        if (!formAluno) {
+            console.error("Formulário de aluno não encontrado!");
+            return;
+        }
+        
+        try {
+            // Resetar o formulário HTML
+            formAluno.reset();
+            
+            // Resetar valores dos campos manualmente para garantir
+            formModoAluno.value = 'novo';
+            alunoIndex.value = '';
+            
+            // Limpar campos de texto
+            if (idAluno) idAluno.value = '';
+            if (nomeAluno) nomeAluno.value = '';
+            if (mae) mae.value = '';
+            
+            // Resetar selects
+            if (idTurma) idTurma.value = '';
+            if (sexo) sexo.value = '';
+            
+            // Limpar data
+            if (dataNasc) dataNasc.value = '';
+            
+            // Atualizar título e esconder botão de cancelar
+            const tituloForm = document.getElementById('form-aluno-titulo');
+            if (tituloForm) tituloForm.textContent = 'Novo Aluno';
+            
+            if (btnCancelarAluno) btnCancelarAluno.style.display = 'none';
+            
+            // Remover readonly do ID
+            if (idAluno) idAluno.readOnly = false;
+            
+            console.log("Formulário de aluno resetado com sucesso");
+        } catch (error) {
+            console.error("Erro ao resetar formulário de aluno:", error);
+        }
+    }
+}
+// Inicialização do menu
+function initMenuLink() {
+    console.log("Inicializando links do menu");
+    
+    // Configurar links do menu lateral
+    if (links.turmas) {
+        links.turmas.addEventListener('click', function(e) {
+            e.preventDefault();
+            ativarSecao('turmas');
+        });
+    }
+    
+    if (links.disciplinas) {
+        links.disciplinas.addEventListener('click', function(e) {
+            e.preventDefault();
+            ativarSecao('disciplinas');
+        });
+    }
+    
+    if (links.professores) {
+        links.professores.addEventListener('click', function(e) {
+            e.preventDefault();
+            ativarSecao('professores');
+        });
+    }
+    
+    if (links.alunos) {
+        links.alunos.addEventListener('click', function(e) {
+            e.preventDefault();
+            ativarSecao('alunos');
+        });
+    }
+    
+    if (links.notas) {
+        links.notas.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log("Link de notas clicado");
+            ativarSecao('notas');
+        });
+    }
+    
+    if (links.dashboard) {
+        links.dashboard.addEventListener('click', function(e) {
+            e.preventDefault();
+            ativarSecao('dashboard');
+        });
+    }
+}
+// Função para verificação de autenticação
+function verificarAutenticacao() {
+    console.log("Verificando autenticação do usuário");
+    
+    // Para o protótipo, retornamos true
+    return true;
+}
+// Inicialização do módulo de relatórios
+function initRelatorios() {
+    console.log("Inicializando módulo de relatórios");
+    // Implementação futura
+}
+// Função para inicializar o módulo de gestão de notas
+function initNotas() {
+    console.log("Inicializando módulo de gestão de notas");
+    
+    // Inicializar variáveis globais para o módulo de notas com os IDs corretos do HTML
+    formNota = document.getElementById('form-nota');
+    formModoNota = document.getElementById('form-modo-nota');
+    notaIndex = document.getElementById('nota-index');
+    anoNota = document.getElementById('ano_nota');
+    bimestreSelect = document.getElementById('bimestre');
+    turmaNota = document.getElementById('turma_nota');
+    disciplinaNota = document.getElementById('disciplina_nota');
+    alunoNota = document.getElementById('aluno_nota');
+    notaMensal = document.getElementById('nota_mensal');
+    notaBimestral = document.getElementById('nota_bimestral');
+    notaRecuperacao = document.getElementById('recuperacao'); // Corrigido para 'recuperacao'
+    mediaFinal = document.getElementById('media'); // Corrigido para 'media'
+    btnSalvarNota = document.getElementById('btn-salvar-nota');
+    btnNovoLancamento = document.getElementById('btn-novo-lancamento');
+    btnCancelarNota = document.getElementById('btn-cancelar-nota');
+    notasLista = document.getElementById('notas-lista');
+    filtroTurma = document.getElementById('filtro-turma');
+    filtroDisciplina = document.getElementById('filtro-disciplina');
+    filtroAluno = document.getElementById('filtro-aluno');
+    filtroBimestre = document.getElementById('filtro-bimestre');
+    filtroAno = document.getElementById('filtro-ano');
+    btnFiltrar = document.getElementById('btn-filtrar');
+    btnCalcularMedias = document.getElementById('btn-calcular-medias');
+    
+    // Exibir valores das variáveis para debug
+    console.log('Elementos do módulo de notas:');
+    console.log('formNota:', formNota);
+    console.log('turmaNota:', turmaNota);
+    console.log('disciplinaNota:', disciplinaNota);
+    console.log('alunoNota:', alunoNota);
+    console.log('notaMensal:', notaMensal);
+    console.log('notaBimestral:', notaBimestral);
+    console.log('notaRecuperacao:', notaRecuperacao);
+    console.log('mediaFinal:', mediaFinal);
+    console.log('notasLista:', notasLista);
+    console.log('filtroTurma:', filtroTurma);
+    console.log('filtroDisciplina:', filtroDisciplina);
+    console.log('filtroAluno:', filtroAluno);
+    
+    if (!formNota) {
+        console.error("Formulário de notas não encontrado!");
+        return;
+    }
+    
+    // Inicializar combo de anos
+    if (anoNota) {
+        console.log("Inicializando combo de anos");
+        anoNota.innerHTML = '<option value="">Selecione o ano</option>';
+        const anoAtual = new Date().getFullYear();
+        for (let ano = anoAtual - 2; ano <= anoAtual + 2; ano++) {
+            const option = document.createElement('option');
+            option.value = ano;
+            option.textContent = ano;
+            if (ano === anoAtual) option.selected = true;
+            anoNota.appendChild(option);
+        }
+    } else {
+        console.warn("Elemento 'ano_nota' não encontrado");
+    }
+    
+    // Inicializar combo de bimestres
+    if (bimestreSelect) {
+        console.log("Inicializando combo de bimestres");
+        bimestreSelect.innerHTML = '<option value="">Selecione o bimestre</option>';
+        for (let bim = 1; bim <= 4; bim++) {
+            const option = document.createElement('option');
+            option.value = bim;
+            option.textContent = bim + 'º Bimestre';
+            bimestreSelect.appendChild(option);
+        }
+    } else {
+        console.warn("Elemento 'bimestre' não encontrado");
+    }
+    
+    // Inicializar filtros
+    if (filtroAno) {
+        console.log("Inicializando filtro de anos");
+        filtroAno.innerHTML = '<option value="">Todos os anos</option>';
+        const anoAtual = new Date().getFullYear();
+        for (let ano = anoAtual - 2; ano <= anoAtual + 2; ano++) {
+            const option = document.createElement('option');
+            option.value = ano;
+            option.textContent = ano;
+            filtroAno.appendChild(option);
+        }
+    } else {
+        console.warn("Elemento 'filtro-ano' não encontrado");
+    }
+    
+    if (filtroBimestre) {
+        console.log("Inicializando filtro de bimestres");
+        filtroBimestre.innerHTML = '<option value="">Todos os bimestres</option>';
+        for (let bim = 1; bim <= 4; bim++) {
+            const option = document.createElement('option');
+            option.value = bim;
+            option.textContent = bim + 'º Bimestre';
+            filtroBimestre.appendChild(option);
+        }
+    } else {
+        console.warn("Elemento 'filtro-bimestre' não encontrado");
+    }
+    
+    // Event listeners para os selects encadeados
+    if (turmaNota) {
+        console.log("Configurando event listener para turmaNota");
+        turmaNota.addEventListener('change', function() {
+            console.log("Turma alterada:", this.value);
+            carregarDisciplinasPorTurma(this.value);
+            carregarAlunosPorTurma(this.value);
+        });
+    } else {
+        console.warn("Elemento 'turma_nota' não encontrado");
+    }
+    
+    // Event listeners para o filtro
+    if (btnFiltrar) {
+        console.log("Configurando botão de filtrar");
+        btnFiltrar.addEventListener('click', function() {
+            console.log("Aplicando filtros e recarregando notas");
+            carregarNotas();
+        });
+    } else {
+        console.warn("Botão 'btn-filtrar' não encontrado");
+    }
+    // Event listener para o botão Calcular Médias Finais
+    if (btnCalcularMedias) {
+        console.log("Configurando botão de calcular médias finais");
+        btnCalcularMedias.addEventListener('click', function() {
+            console.log("Botão calcular médias clicado");
+            calcularMediasFinais();
+        });
+    } else {
+        console.warn("Botão 'btn-calcular-medias' não encontrado");
+    }
+    
+    // Configurar botões do formulário
+    if (btnNovoLancamento) {
+        console.log("Configurando botão de novo lançamento");
+        btnNovoLancamento.addEventListener('click', function() {
+            resetarFormularioNota();
+            if (formNota) {
+                formNota.scrollIntoView({behavior: 'smooth'});
+            }
+        });
+    } else {
+        console.warn("Botão 'btn-novo-lancamento' não encontrado");
+    }
+    
+    if (btnCancelarNota) {
+        console.log("Configurando botão de cancelar");
+        btnCancelarNota.addEventListener('click', function() {
+            resetarFormularioNota();
+        });
+    } else {
+        console.warn("Botão 'btn-cancelar-nota' não encontrado");
+    }
+    
+    // Event listeners para cálculo automático de médias
+    if (notaMensal && notaBimestral && notaRecuperacao && mediaFinal) {
+        console.log("Configurando cálculo automático de médias");
+        const calcularMedia = function() {
+            let nota1 = parseFloat(notaMensal.value) || 0;
+            let nota2 = parseFloat(notaBimestral.value) || 0;
+            let rec = parseFloat(notaRecuperacao.value) || 0;
+            
+            // Calcular média com base nas notas disponíveis
+            let media = 0;
+            
+            if (notaMensal.value && !notaBimestral.value) {
+                media = nota1;
+            } else if (!notaMensal.value && notaBimestral.value) {
+                media = nota2;
+            } else if (notaMensal.value && notaBimestral.value) {
+                media = (nota1 + nota2) / 2;
+                if (media < 6.0 && rec > 0) {
+                    media = (media + rec) / 2;
+                }
+            }
+            
+            // Formatar para 2 casas decimais
+            media = media.toFixed(2);
+            
+            // Atualizar campo de média
+            mediaFinal.value = media;
+        };
+        
+        notaMensal.addEventListener('input', calcularMedia);
+        notaBimestral.addEventListener('input', calcularMedia);
+        notaRecuperacao.addEventListener('input', calcularMedia);
+    } else {
+        console.warn("Elementos para cálculo automático de média não encontrados");
+    }
+    
+    // Inicializar os filtros com turmas, disciplinas e alunos
+    console.log("Carregando turmas para o módulo de notas");
+    carregarTurmasNotas();
+    
+    // Carregar lista de notas
+    console.log("Carregando lista de notas inicial");
+    carregarNotas();
+    
+    // Configurar formulário para salvar notas
+    if (formNota) {
+        console.log("Configurando event listener para submissão do formulário");
+        formNota.addEventListener('submit', function(e) {
+            e.preventDefault();
+            salvarNota();
+        });
+    } else {
+        console.error("Formulário de notas não encontrado para configurar submissão");
+    }
+}
+// Função para salvar uma nota
+function salvarNota() {
+    console.log("Processando salvamento de nota");
+    
+    // Validar campos obrigatórios
+    if (!anoNota || !bimestreSelect || !turmaNota || !disciplinaNota || !alunoNota) {
+        console.error("Elementos de formulário não encontrados");
+        alert('Erro: Alguns elementos do formulário não foram encontrados. Por favor, recarregue a página.');
+        return;
+    }
+    
+    if (!anoNota.value || !bimestreSelect.value || !turmaNota.value || 
+        !disciplinaNota.value || !alunoNota.value) {
+        alert('Por favor, preencha os campos de identificação (ano, bimestre, turma, disciplina e aluno).');
+        return;
+    }
+    
+    // Verificar se pelo menos uma nota foi informada
+    if (!notaMensal || !notaBimestral || !notaRecuperacao) {
+        console.error("Elementos de notas não encontrados");
+        alert('Erro: Os campos de notas não foram encontrados. Por favor, recarregue a página.');
+        return;
+    }
+    
+    if (!notaMensal.value && !notaBimestral.value && !notaRecuperacao.value) {
+        alert('Por favor, informe pelo menos uma nota (mensal, bimestral ou recuperação).');
+        return;
+    }
+    
+    // Validar valores das notas informadas
+    let nota1 = 0;
+    let nota2 = 0;
+    let rec = 0;
+    
+    if (notaMensal.value) {
+        nota1 = parseFloat(notaMensal.value);
+        if (isNaN(nota1) || nota1 < 0 || nota1 > 10) {
+            alert('A nota mensal deve estar entre 0 e 10.');
+            return;
+        }
+    }
+    
+    if (notaBimestral.value) {
+        nota2 = parseFloat(notaBimestral.value);
+        if (isNaN(nota2) || nota2 < 0 || nota2 > 10) {
+            alert('A nota bimestral deve estar entre 0 e 10.');
+            return;
+        }
+    }
+    
+    if (notaRecuperacao.value) {
+        rec = parseFloat(notaRecuperacao.value);
+        if (isNaN(rec) || rec < 0 || rec > 10) {
+            alert('A nota de recuperação deve estar entre 0 e 10.');
+            return;
+        }
+    }
+    
+    // Obter dados da turma, disciplina e aluno
+    const turmas = JSON.parse(localStorage.getItem('turmas') || '[]');
+    const disciplinas = JSON.parse(localStorage.getItem('disciplinas') || '[]');
+    const alunos = JSON.parse(localStorage.getItem('alunos') || '[]');
+    
+    const turmaObj = turmas.find(t => t.id_turma === turmaNota.value);
+    const disciplinaObj = disciplinas.find(d => d.id_disciplina === disciplinaNota.value);
+    const alunoObj = alunos.find(a => a.id_aluno === alunoNota.value);
+    
+    // Calcular média com base nas notas disponíveis
+    let media = 0;
+    
+    if (notaMensal.value && !notaBimestral.value) {
+        media = nota1;
+    } else if (!notaMensal.value && notaBimestral.value) {
+        media = nota2;
+    } else if (notaMensal.value && notaBimestral.value) {
+        media = (nota1 + nota2) / 2;
+        
+        if (media < 6.0 && rec > 0) {
+            media = (media + rec) / 2;
+        }
+    }
+    
+    // Formatar para 2 casas decimais
+    media = parseFloat(media.toFixed(2));
+    
+    // Verifica novamente e dá fallback para valores padrão se não encontrar
+    const turmaNome = turmaObj ? `${turmaObj.serie} ${turmaObj.id_turma}` : turmaNota.value;
+    const disciplinaNome = disciplinaObj ? disciplinaObj.nome_disciplina : disciplinaNota.value;
+    const alunoNome = alunoObj ? alunoObj.nome_aluno : alunoNota.value;
+    
+    // Coletar dados do formulário
+    const nota = {
+        ano: parseInt(anoNota.value),
+        bimestre: parseInt(bimestreSelect.value),
+        id_turma: turmaNota.value,
+        nome_turma: turmaNome,
+        id_disciplina: disciplinaNota.value,
+        nome_disciplina: disciplinaNome,
+        id_aluno: alunoNota.value,
+        nome_aluno: alunoNome,
+        nota_mensal: notaMensal.value ? nota1 : null,
+        nota_bimestral: notaBimestral.value ? nota2 : null,
+        recuperacao: notaRecuperacao.value ? rec : null,
+        media: media
+    };
+    
+    // Adicionar ou atualizar nota
+    let notas = JSON.parse(localStorage.getItem('notas') || '[]');
+    console.log("Notas atuais:", notas.length);
+    
+    if (formModoNota.value === 'editar' && notaIndex.value !== '') {
+        // Modo de edição - Atualizar nota existente
+        const index = parseInt(notaIndex.value, 10);
+        if (index >= 0 && index < notas.length) {
+            notas[index] = nota;
+            console.log(`Nota atualizada no índice ${index}`);
+        } else {
+            console.error(`Índice inválido: ${index}. Total de notas: ${notas.length}`);
+            notas.push(nota);
+            console.log("Nota adicionada como nova");
+        }
+    } else {
+        // Verificar se já existe uma nota para este aluno na mesma disciplina/bimestre/ano
+        const notaExistente = notas.findIndex(n => 
+            n.id_aluno === nota.id_aluno && 
+            n.id_disciplina === nota.id_disciplina && 
+            n.bimestre === nota.bimestre &&
+            n.ano === nota.ano
+        );
+        
+        if (notaExistente >= 0) {
+            // Atualizar nota existente
+            if (confirm('Já existe uma nota registrada para este aluno nesta disciplina, bimestre e ano. Deseja substituí-la?')) {
+                notas[notaExistente] = nota;
+                console.log(`Nota existente substituída no índice ${notaExistente}`);
+            } else {
+                console.log("Operação cancelada pelo usuário");
+                return;
+            }
+        } else {
+            // Adicionar nova nota
+            notas.push(nota);
+            console.log("Nova nota adicionada");
+        }
+    }
+    
+    // Salvar no localStorage
+    localStorage.setItem('notas', JSON.stringify(notas));
+    console.log("Notas salvas:", notas.length);
+    
+    // Limpar formulário e recarregar lista
+    resetarFormularioNota();
+    carregarNotas();
+    
+    alert('Nota salva com sucesso!');
+}
+// Função para inicializar os links do menu
+function initLinks() {
+    console.log("Inicializando links do dashboard");
+    
+    // Selecionar links e conteúdos dinamicamente
+    links = {
+        dashboard: document.getElementById('dashboard-link'),
+        turmas: document.getElementById('turmas-link'),
+        disciplinas: document.getElementById('disciplinas-link'),
+        professores: document.getElementById('professores-link'),
+        alunos: document.getElementById('alunos-link'),
+        relatorios: document.getElementById('relatorios-link'),
+        notas: document.getElementById('notas-link')
+    };
+    
+    conteudos = {
+        dashboard: document.getElementById('conteudo-dashboard'),
+        turmas: document.getElementById('conteudo-turmas'),
+        disciplinas: document.getElementById('conteudo-disciplinas'),
+        professores: document.getElementById('conteudo-professores'),
+        alunos: document.getElementById('conteudo-alunos'),
+        relatorios: document.getElementById('conteudo-relatorios'),
+        notas: document.getElementById('conteudo-notas')
+    };
+    
+    // Associar eventos de clique
+    for (const key in links) {
+        if (links[key]) {
+            links[key].addEventListener('click', function(e) {
+                e.preventDefault();
+                ativarSecao(key);
+            });
+        }
+    }
+    
+    // Configurar o botão de logout no menu do administrador
+    const btnLogout = document.getElementById('btn-logout');
+    if (btnLogout) {
+        btnLogout.addEventListener('click', function(e) {
+            e.preventDefault();
+            logout();
+        });
+    }
+}
+// Função para realizar o logout
+function logout() {
+    console.log("Realizando logout...");
+    
+    // Limpar todas as informações de sessão
+    sessionStorage.clear();
+    
+    // Redirecionar para a página de login
+    window.location.href = 'index.html';
+}
+// Funções internas para o módulo de notas
+function carregarTurmasNotas() {
+    console.log("Carregando turmas para o módulo de notas");
+    
+    // Verificar novamente se os elementos existem
+    if (!turmaNota) turmaNota = document.getElementById('turma_nota');
+    if (!filtroTurma) filtroTurma = document.getElementById('filtro-turma');
+    if (!filtroDisciplina) filtroDisciplina = document.getElementById('filtro-disciplina');
+    if (!filtroAluno) filtroAluno = document.getElementById('filtro-aluno');
+    
+    console.log("Elementos de seleção verificados:");
+    console.log("turmaNota:", turmaNota);
+    console.log("filtroTurma:", filtroTurma);
+    console.log("filtroDisciplina:", filtroDisciplina);
+    console.log("filtroAluno:", filtroAluno);
+    
+    // Preencher dropdown de turmas no formulário
+    if (turmaNota) {
+        try {
+            console.log("Preenchendo o dropdown de turmas no formulário (turma_nota)");
+            turmaNota.innerHTML = '<option value="">Carregando turmas...</option>';
+
+            // Buscar turmas da API
+            fetch('http://localhost:4000/api/turmas')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Erro ao carregar turmas: ' + response.statusText);
+                    }
+                    return response.json();
+                })
+                .then(turmas => {
+                    console.log("Turmas recuperadas da API:", turmas.length);
+                    
+            turmaNota.innerHTML = '<option value="">Selecione uma turma</option>';
+            
+            if (turmas.length === 0) {
+                console.warn("Nenhuma turma encontrada");
+                const option = document.createElement('option');
+                option.value = "";
+                option.textContent = "Nenhuma turma cadastrada";
+                option.disabled = true;
+                turmaNota.appendChild(option);
+            } else {
+                // Ordenar turmas por série e ID
+                turmas.sort((a, b) => {
+                    if (a.serie !== b.serie) return a.serie.localeCompare(b.serie);
+                    return a.id_turma.localeCompare(b.id_turma);
+                });
+                
+                // Adicionar cada turma ao select
+                turmas.forEach(turma => {
+                    const option = document.createElement('option');
+                    option.value = turma.id_turma;
+                    option.textContent = `${turma.id_turma} - ${turma.serie}`;
+                    turmaNota.appendChild(option);
+                });
+                console.log(`Adicionadas ${turmas.length} turmas ao dropdown turmaNota`);
+            }
+                })
+                .catch(error => {
+                    console.error("Erro ao carregar turmas para o módulo de notas:", error);
+                    turmaNota.innerHTML = '<option value="">Erro ao carregar turmas</option>';
+                });
+        } catch (error) {
+            console.error("Erro ao preencher dropdown de turmas no formulário:", error);
+        }
+    } else {
+        console.warn("Elemento de seleção de turma (turma_nota) não encontrado");
+    }
+    
+    // Preencher dropdown de turmas no filtro
+    if (filtroTurma) {
+        try {
+            console.log("Preenchendo o dropdown de turmas no filtro (filtro-turma)");
+            filtroTurma.innerHTML = '<option value="">Carregando turmas...</option>';
+
+            // Buscar turmas da API
+            fetch('http://localhost:4000/api/turmas')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Erro ao carregar turmas: ' + response.statusText);
+                    }
+                    return response.json();
+                })
+                .then(turmas => {
+                    console.log("Turmas recuperadas da API para filtro:", turmas.length);
+                    
+            filtroTurma.innerHTML = '<option value="">Todas as turmas</option>';
+            
+                    if (turmas.length === 0) {
+                        console.warn("Nenhuma turma encontrada");
+                        return;
+                    }
+                    
+                // Ordenar turmas por série e ID
+                turmas.sort((a, b) => {
+                    if (a.serie !== b.serie) return a.serie.localeCompare(b.serie);
+                    return a.id_turma.localeCompare(b.id_turma);
+                });
+                
+                    // Adicionar cada turma ao select
+                turmas.forEach(turma => {
+                    const option = document.createElement('option');
+                    option.value = turma.id_turma;
+                    option.textContent = `${turma.id_turma} - ${turma.serie}`;
+                    filtroTurma.appendChild(option);
+                });
+                console.log(`Adicionadas ${turmas.length} turmas ao dropdown filtroTurma`);
+                })
+                .catch(error => {
+                    console.error("Erro ao carregar turmas para o filtro:", error);
+                    filtroTurma.innerHTML = '<option value="">Erro ao carregar turmas</option>';
+                });
+        } catch (error) {
+            console.error("Erro ao preencher dropdown de turmas no filtro:", error);
+        }
+    } else {
+        console.warn("Elemento de filtro de turma (filtro-turma) não encontrado");
+    }
+}
+function carregarDisciplinasPorTurma(idTurma) {
+    console.log(`Carregando disciplinas para turma: ${idTurma}`);
+    if (!disciplinaNota) {
+        console.error("ERRO: Elemento select de disciplinas não encontrado");
+        return;
+    }
+    
+    disciplinaNota.innerHTML = '<option value="">Selecione uma disciplina</option>';
+    
+    if (!idTurma) {
+        console.log("Turma não selecionada, select de disciplinas limpo");
+        return;
+    }
+    
+    const disciplinas = JSON.parse(localStorage.getItem('disciplinas') || '[]');
+    console.log(`Total de disciplinas: ${disciplinas.length}`);
+    
+    try {
+        // Filtrar disciplinas vinculadas à turma
+        const disciplinasFiltradas = disciplinas.filter(d => 
+            d.turmas_vinculadas && d.turmas_vinculadas.includes(idTurma)
+        );
+        console.log(`Disciplinas vinculadas à turma ${idTurma}: ${disciplinasFiltradas.length}`);
+        
+        if (disciplinasFiltradas.length === 0) {
+            const option = document.createElement('option');
+            option.value = "";
+            option.textContent = "Nenhuma disciplina vinculada a esta turma";
+            option.disabled = true;
+            disciplinaNota.appendChild(option);
+        } else {
+            // Ordenar disciplinas pelo nome
+            disciplinasFiltradas.sort((a, b) => a.nome_disciplina.localeCompare(b.nome_disciplina));
+            
+            // Adicionar cada disciplina ao select
+            disciplinasFiltradas.forEach(disciplina => {
+                const option = document.createElement('option');
+                option.value = disciplina.id_disciplina;
+                option.textContent = `${disciplina.nome_disciplina}`;
+                disciplinaNota.appendChild(option);
+            });
+            
+            // Se houver apenas uma disciplina, selecioná-la automaticamente
+            if (disciplinasFiltradas.length === 1) {
+                disciplinaNota.value = disciplinasFiltradas[0].id_disciplina;
+                // Disparar evento change para que qualquer outro componente que dependa deste valor seja atualizado
+                const event = new Event('change');
+                disciplinaNota.dispatchEvent(event);
+            }
+        }
+    } catch (error) {
+        console.error("Erro ao carregar disciplinas por turma:", error);
+        const option = document.createElement('option');
+        option.value = "";
+        option.textContent = "Erro ao carregar disciplinas";
+        option.disabled = true;
+        disciplinaNota.appendChild(option);
+    }
+}
+function carregarAlunosPorTurma(idTurma) {
+    console.log(`Carregando alunos para turma: ${idTurma}`);
+    if (!alunoNota) {
+        console.error("ERRO: Elemento select de alunos não encontrado");
+        return;
+    }
+    
+    alunoNota.innerHTML = '<option value="">Selecione um aluno</option>';
+    
+    if (!idTurma) {
+        console.log("Turma não selecionada, select de alunos limpo");
+        return;
+    }
+    
+    const alunos = JSON.parse(localStorage.getItem('alunos') || '[]');
+    console.log(`Total de alunos: ${alunos.length}`);
+    
+    try {
+        // Filtrar alunos da turma
+        const alunosFiltrados = alunos.filter(a => a.id_turma === idTurma);
+        console.log(`Alunos da turma ${idTurma}: ${alunosFiltrados.length}`);
+        
+        if (alunosFiltrados.length === 0) {
+            const option = document.createElement('option');
+            option.value = "";
+            option.textContent = "Nenhum aluno encontrado nesta turma";
+            option.disabled = true;
+            alunoNota.appendChild(option);
+        } else {
+            // Ordenar alunos pelo nome
+            alunosFiltrados.sort((a, b) => a.nome_aluno.localeCompare(b.nome_aluno));
+            
+            // Adicionar cada aluno ao select
+            alunosFiltrados.forEach(aluno => {
+                const option = document.createElement('option');
+                option.value = aluno.id_aluno;
+                option.textContent = `${aluno.nome_aluno}`;
+                alunoNota.appendChild(option);
+            });
+            
+            // Se houver apenas um aluno, selecioná-lo automaticamente
+            if (alunosFiltrados.length === 1) {
+                alunoNota.value = alunosFiltrados[0].id_aluno;
+                // Disparar evento change para que qualquer outro componente que dependa deste valor seja atualizado
+                const event = new Event('change');
+                alunoNota.dispatchEvent(event);
+            }
+        }
+    } catch (error) {
+        console.error("Erro ao carregar alunos por turma:", error);
+        const option = document.createElement('option');
+        option.value = "";
+        option.textContent = "Erro ao carregar alunos";
+        option.disabled = true;
+        alunoNota.appendChild(option);
+    }
+}
+// Função para validar e corrigir registros de notas
+function validarECorrigirNotas() {
+    console.log("Validando notas no localStorage");
+    let notas = JSON.parse(localStorage.getItem('notas') || '[]');
+    
+    if (notas.length === 0) {
+        console.log("Não há notas para validar");
+        return notas;
+    }
+    
+    // Propriedades que cada nota deve ter
+    const propriedadesObrigatorias = [
+        'ano', 'bimestre', 'id_turma', 'nome_turma', 'id_disciplina', 
+        'nome_disciplina', 'id_aluno', 'nome_aluno', 'media'
+    ];
+    
+    // Propriedades opcionais (podem ser null, mas devem existir)
+    const propriedadesOpcionais = ['nota_mensal', 'nota_bimestral', 'recuperacao'];
+    
+    // Flag para indicar se foi feita alguma correção
+    let correcoes = false;
+    
+    // Verificar e corrigir cada nota
+    notas = notas.map((nota) => {
+        let notaCorrigida = { ...nota };
+        let necessitaCorrecao = false;
+        
+        // Verificar propriedades obrigatórias
+        propriedadesObrigatorias.forEach(prop => {
+            if (notaCorrigida[prop] === undefined) {
+                necessitaCorrecao = true;
+                console.warn(`Nota sem propriedade obrigatória: ${prop}. Adicionando valor padrão.`);
+                
+                // Adicionar valor padrão adequado para cada tipo de propriedade
+                switch (prop) {
+                    case 'ano':
+                        notaCorrigida[prop] = new Date().getFullYear();
+                        break;
+                    case 'bimestre':
+                        notaCorrigida[prop] = 1;
+                        break;
+                    case 'id_turma':
+                    case 'id_disciplina':
+                    case 'id_aluno':
+                        notaCorrigida[prop] = 'DESCONHECIDO';
+                        break;
+                    case 'nome_turma':
+                    case 'nome_disciplina':
+                    case 'nome_aluno':
+                        notaCorrigida[prop] = 'Não especificado';
+                        break;
+                    case 'media':
+                        // Calcular a média se existirem notas
+                        let media = 0;
+                        let count = 0;
+                        
+                        if (notaCorrigida.nota_mensal !== undefined && notaCorrigida.nota_mensal !== null) {
+                            media += parseFloat(notaCorrigida.nota_mensal);
+                            count++;
+                        }
+                        
+                        if (notaCorrigida.nota_bimestral !== undefined && notaCorrigida.nota_bimestral !== null) {
+                            media += parseFloat(notaCorrigida.nota_bimestral);
+                            count++;
+                        }
+                        
+                        if (count > 0) {
+                            media = media / count;
+                        }
+                        
+                        notaCorrigida[prop] = media;
+                        break;
+                }
+            }
+        });
+        
+        // Verificar propriedades opcionais
+        propriedadesOpcionais.forEach(prop => {
+            if (notaCorrigida[prop] === undefined) {
+                necessitaCorrecao = true;
+                console.warn(`Nota sem propriedade opcional: ${prop}. Definindo como null.`);
+                notaCorrigida[prop] = null;
+            }
+        });
+        
+        if (necessitaCorrecao) {
+            correcoes = true;
+        }
+        
+        return notaCorrigida;
+    });
+    
+    // Remover notas inválidas que não puderam ser corrigidas
+    const notasOriginais = notas.length;
+    notas = notas.filter(nota => {
+        return nota.id_aluno && nota.id_disciplina && nota.id_turma && 
+               typeof nota.media === 'number' && !isNaN(nota.media);
+    });
+    
+    if (notasOriginais !== notas.length) {
+        console.warn(`Removidas ${notasOriginais - notas.length} notas inválidas que não puderam ser corrigidas`);
+        correcoes = true;
+    }
+    
+    // Se foram feitas correções, salvar as notas corrigidas no localStorage
+    if (correcoes) {
+        console.log("Salvando notas corrigidas no localStorage");
+        localStorage.setItem('notas', JSON.stringify(notas));
+    } else {
+        console.log("Todas as notas estão válidas, nenhuma correção necessária");
+    }
+    
+    return notas;
+}
+function carregarNotas() {
+    console.log("Carregando notas...");
+    
+    // Validar e corrigir notas antes de carregá-las
+    let notas = validarECorrigirNotas();
+    console.log("Notas recuperadas e validadas do localStorage:", notas.length, notas);
+    
+    // Se não existirem notas, criar exemplos
+    if (notas.length === 0) {
+        console.log("Não foram encontradas notas, criando nota de exemplo");
+        // Verificar se existem alunos e disciplinas para criar exemplos
+        const alunos = JSON.parse(localStorage.getItem('alunos') || '[]');
+        const disciplinas = JSON.parse(localStorage.getItem('disciplinas') || '[]');
+        const turmas = JSON.parse(localStorage.getItem('turmas') || '[]');
+        
+        if (alunos.length > 0 && disciplinas.length > 0 && turmas.length > 0) {
+            const alunoExemplo = alunos[0];
+            const disciplinaExemplo = disciplinas[0];
+            const turmaExemplo = turmas.find(t => t.id_turma === alunoExemplo.id_turma) || turmas[0];
+            
+            // Criar um exemplo de nota para o primeiro bimestre
+            const notaExemplo = {
+                ano: new Date().getFullYear(),
+                bimestre: 1,
+                id_turma: turmaExemplo.id_turma,
+                nome_turma: turmaExemplo.serie + ' ' + turmaExemplo.id_turma,
+                id_disciplina: disciplinaExemplo.id_disciplina,
+                nome_disciplina: disciplinaExemplo.nome_disciplina,
+                id_aluno: alunoExemplo.id_aluno,
+                nome_aluno: alunoExemplo.nome_aluno,
+                nota_mensal: 7.5,
+                nota_bimestral: 8.0,
+                recuperacao: 0,
+                media: 7.75
+            };
+            
+            notas = [notaExemplo];
+            
+            localStorage.setItem('notas', JSON.stringify(notas));
+            console.log("Nota de exemplo criada e salva no localStorage");
+        } else {
+            console.warn("Não é possível criar notas de exemplo. Verifique se existem alunos, disciplinas e turmas.");
+        }
+    }
+    
+    // Aplicar filtros
+    console.log("Aplicando filtros às notas");
+    let notasFiltradas = [...notas]; // Cria uma cópia para não afetar o array original
+    
+    if (filtroTurma && filtroTurma.value) {
+        console.log(`Filtrando por turma: ${filtroTurma.value}`);
+        notasFiltradas = notasFiltradas.filter(n => n.id_turma === filtroTurma.value);
+    }
+    
+    if (filtroDisciplina && filtroDisciplina.value) {
+        console.log(`Filtrando por disciplina: ${filtroDisciplina.value}`);
+        notasFiltradas = notasFiltradas.filter(n => n.id_disciplina === filtroDisciplina.value);
+    }
+    
+    if (filtroAluno && filtroAluno.value) {
+        console.log(`Filtrando por aluno: ${filtroAluno.value}`);
+        notasFiltradas = notasFiltradas.filter(n => n.id_aluno === filtroAluno.value);
+    }
+    
+    if (filtroBimestre && filtroBimestre.value) {
+        console.log(`Filtrando por bimestre: ${filtroBimestre.value}`);
+        notasFiltradas = notasFiltradas.filter(n => n.bimestre === parseInt(filtroBimestre.value));
+    }
+    
+    if (filtroAno && filtroAno.value) {
+        console.log(`Filtrando por ano: ${filtroAno.value}`);
+        notasFiltradas = notasFiltradas.filter(n => n.ano === parseInt(filtroAno.value));
+    }
+    
+    console.log("Notas após aplicar filtros:", notasFiltradas.length, notasFiltradas);
+    
+    // Armazenamos o array filtrado na variável global para uso posterior
+    window.notasFiltradas = notasFiltradas;
+    
+    // Limpar a lista atual
+    if (notasLista) {
+        notasLista.innerHTML = '';
+        
+        // Se não houver notas, mostrar mensagem
+        if (notasFiltradas.length === 0) {
+            notasLista.innerHTML = `
+                <tr class="text-center">
+                    <td colspan="10">Nenhuma nota cadastrada</td>
+                </tr>
+            `;
+            return;
+        }
+        
+        // Ordenar notas por aluno, disciplina, ano e bimestre
+        notasFiltradas.sort((a, b) => {
+            // Verificar se as propriedades existem para evitar erro
+            const nomeAlunoA = a.nome_aluno || '';
+            const nomeAlunoB = b.nome_aluno || '';
+            const nomeDisciplinaA = a.nome_disciplina || '';
+            const nomeDisciplinaB = b.nome_disciplina || '';
+            const anoA = a.ano || 0;
+            const anoB = b.ano || 0;
+            const bimestreA = a.bimestre || 0;
+            const bimestreB = b.bimestre || 0;
+            
+            // Usar os valores verificados para comparação
+            if (nomeAlunoA !== nomeAlunoB) return nomeAlunoA.localeCompare(nomeAlunoB);
+            if (nomeDisciplinaA !== nomeDisciplinaB) return nomeDisciplinaA.localeCompare(nomeDisciplinaB);
+            if (anoA !== anoB) return anoA - anoB;
+            return bimestreA - bimestreB;
+        });
+        
+        // Adicionar cada nota à lista
+        notasFiltradas.forEach((nota, index) => {
+            // Verificar e fornecer valores default para propriedades que podem estar faltando
+            const ano = nota.ano || '';
+            const bimestre = nota.bimestre || '';
+            const nome_turma = nota.nome_turma || '';
+            const nome_disciplina = nota.nome_disciplina || '';
+            const nome_aluno = nota.nome_aluno || '';
+            const media = typeof nota.media === 'number' ? nota.media : 0;
+            
+            // Determinar classe de fundo com base na média
+            let bgClass = '';
+            if (media >= 6.0) {
+                bgClass = 'table-success';
+            } else if (media >= 4.0) {
+                bgClass = 'table-warning';
+            } else {
+                bgClass = 'table-danger';
+            }
+            
+            // Para notas que ainda não têm todas as avaliações, usar classe neutra
+            if ((nota.nota_mensal === null || nota.nota_mensal === undefined || 
+                 nota.nota_bimestral === null || nota.nota_bimestral === undefined) && 
+                (nota.recuperacao === null || nota.recuperacao === undefined)) {
+                bgClass = 'table-light';
+            }
+            
+            const tr = document.createElement('tr');
+            tr.className = bgClass;
+            
+            // Criar identificador único para a nota
+            const notaId = `${nota.id_aluno}_${nota.id_disciplina}_${nota.bimestre}_${nota.ano}`;
+            
+            tr.innerHTML = `
+                <td>${ano}</td>
+                <td>${bimestre}º</td>
+                <td>${nome_turma}</td>
+                <td>${nome_disciplina}</td>
+                <td>${nome_aluno}</td>
+                <td>${(nota.nota_mensal !== null && nota.nota_mensal !== undefined) ? nota.nota_mensal.toFixed(2) : '-'}</td>
+                <td>${(nota.nota_bimestral !== null && nota.nota_bimestral !== undefined) ? nota.nota_bimestral.toFixed(2) : '-'}</td>
+                <td>${(nota.recuperacao !== null && nota.recuperacao !== undefined) ? nota.recuperacao.toFixed(2) : '-'}</td>
+                <td>${media.toFixed(2)}</td>
+                <td class="text-center">
+                    <button class="btn btn-sm btn-primary editar-nota me-1" data-index="${index}">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn btn-sm btn-danger excluir-nota" data-index="${index}">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            `;
+            
+            notasLista.appendChild(tr);
+        });
+        
+        // Adicionar event listeners para os botões de editar e excluir
+        document.querySelectorAll('.editar-nota').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const index = parseInt(this.getAttribute('data-index'), 10);
+                editarNota(index);
+            });
+        });
+        
+        document.querySelectorAll('.excluir-nota').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const index = parseInt(this.getAttribute('data-index'), 10);
+                excluirNota(index);
+            });
+        });
+    } else {
+        console.error("Elemento 'notasLista' não encontrado no DOM");
+    }
+}
+function editarNota(index) {
+    console.log("Iniciando edição da nota com índice:", index);
+    
+    // Usar a variável global notasFiltradas em vez de buscar diretamente do localStorage
+    if (!window.notasFiltradas || !Array.isArray(window.notasFiltradas)) {
+        console.error("Array de notas filtradas não disponível");
+        return;
+    }
+    
+    // Obter a nota do array filtrado usando o índice
+    const nota = window.notasFiltradas[index];
+    
+    if (!nota) {
+        console.error("Nota não encontrada no índice:", index);
+        return;
+    }
+    
+    console.log("Nota a ser editada:", nota);
+    
+    if (!formModoNota || !notaIndex || !anoNota || !bimestreSelect || !turmaNota || 
+        !disciplinaNota || !alunoNota || !notaMensal || !notaBimestral || 
+        !notaRecuperacao || !mediaFinal || !btnCancelarNota || !formNota) {
+        console.error("Elementos do formulário não encontrados");
+        alert("Erro ao carregar formulário. Recarregue a página.");
+        return;
+    }
+    
+    // Procurar o índice real da nota no localStorage
+    const todasNotas = JSON.parse(localStorage.getItem('notas') || '[]');
+    const indiceGlobal = todasNotas.findIndex(n => 
+        n.id_aluno === nota.id_aluno && 
+        n.id_disciplina === nota.id_disciplina && 
+        n.bimestre === nota.bimestre && 
+        n.ano === nota.ano
+    );
+    
+    if (indiceGlobal === -1) {
+        console.error("Nota não encontrada no localStorage");
+        alert("Erro ao editar nota. A nota não foi encontrada no armazenamento.");
+        return;
+    }
+    
+    console.log("Índice da nota no localStorage:", indiceGlobal);
+    
+    // Configurar o formulário para edição
+    formModoNota.value = 'editar';
+    notaIndex.value = indiceGlobal; // Usar o índice global, não o filtrado
+    
+    // Preencher campos do formulário
+    anoNota.value = nota.ano;
+    bimestreSelect.value = nota.bimestre;
+    
+    // Preencher turma e carregar disciplinas e alunos relacionados
+    turmaNota.value = nota.id_turma;
+    carregarDisciplinasPorTurma(nota.id_turma);
+    carregarAlunosPorTurma(nota.id_turma);
+    
+    // Após carregar as opções, selecionar os valores
+    setTimeout(() => {
+        disciplinaNota.value = nota.id_disciplina;
+        alunoNota.value = nota.id_aluno;
+    }, 100);
+    
+    // Preencher notas, tratando valores null
+    notaMensal.value = nota.nota_mensal !== null ? nota.nota_mensal : '';
+    notaBimestral.value = nota.nota_bimestral !== null ? nota.nota_bimestral : '';
+    notaRecuperacao.value = nota.recuperacao !== null ? nota.recuperacao : '';
+    mediaFinal.value = nota.media;
+    
+    // Atualizar título para indicar atualização de notas
+    let statusNotas = '';
+    if (nota.nota_mensal !== null && nota.nota_bimestral !== null) {
+        statusNotas = ' (Notas completas)';
+    } else if (nota.nota_mensal !== null) {
+        statusNotas = ' (Falta nota bimestral)';
+    } else if (nota.nota_bimestral !== null) {
+        statusNotas = ' (Falta nota mensal)';
+    }
+    
+    document.getElementById('form-nota-titulo').textContent = 'Editar Notas' + statusNotas;
+    btnCancelarNota.style.display = 'block';
+    
+    // Rolar para o formulário
+    formNota.scrollIntoView({behavior: 'smooth'});
+}
+function excluirNota(index) {
+    console.log("Iniciando exclusão da nota com índice:", index);
+    
+    // Usar a variável global notasFiltradas em vez de buscar diretamente do localStorage
+    if (!window.notasFiltradas || !Array.isArray(window.notasFiltradas)) {
+        console.error("Array de notas filtradas não disponível");
+        return;
+    }
+    
+    // Obter a nota do array filtrado usando o índice
+    const nota = window.notasFiltradas[index];
+    
+    if (!nota) {
+        console.error("Nota não encontrada no índice:", index);
+        return;
+    }
+    
+    console.log("Nota a ser excluída:", nota);
+    
+    if (confirm(`Tem certeza que deseja excluir o lançamento de notas de ${nota.nome_aluno} em ${nota.nome_disciplina}?`)) {
+        // Procurar o índice real da nota no localStorage
+        const todasNotas = JSON.parse(localStorage.getItem('notas') || '[]');
+        const indiceGlobal = todasNotas.findIndex(n => 
+            n.id_aluno === nota.id_aluno && 
+            n.id_disciplina === nota.id_disciplina && 
+            n.bimestre === nota.bimestre && 
+            n.ano === nota.ano
+        );
+        
+        if (indiceGlobal === -1) {
+            console.error("Nota não encontrada no localStorage");
+            alert("Erro ao excluir nota. A nota não foi encontrada no armazenamento.");
+            return;
+        }
+        
+        console.log("Índice da nota no localStorage:", indiceGlobal);
+        
+        // Remover a nota usando o índice global
+        todasNotas.splice(indiceGlobal, 1);
+        localStorage.setItem('notas', JSON.stringify(todasNotas));
+        
+        // Recarregar a lista
+        carregarNotas();
+        alert('Lançamento excluído com sucesso!');
+    }
+}
+function resetarFormularioNota() {
+    console.log("Resetando formulário de nota");
+    
+    if (!formNota) {
+        console.error("Formulário de nota não encontrado!");
+        return;
+    }
+    
+    try {
+        // Resetar o formulário HTML
+        formNota.reset();
+        
+        // Resetar valores dos campos manualmente
+        formModoNota.value = 'novo';
+        notaIndex.value = '';
+        
+        // Não limpar o combobox de turmas, apenas selecionar a primeira opção
+        if (turmaNota && turmaNota.options.length > 0) {
+            turmaNota.selectedIndex = 0;
+        }
+        
+        // Limpar as disciplinas e alunos
+        if (disciplinaNota) disciplinaNota.innerHTML = '<option value="">Selecione uma disciplina</option>';
+        if (alunoNota) alunoNota.innerHTML = '<option value="">Selecione um aluno</option>';
+        
+        // Atualizar título e esconder botão de cancelar
+        document.getElementById('form-nota-titulo').textContent = 'Novo Lançamento de Notas';
+        btnCancelarNota.style.display = 'none';
+        
+        console.log("Formulário de nota resetado com sucesso");
+    } catch (error) {
+        console.error("Erro ao resetar formulário de nota:", error);
+    }
+}
+function calcularMediasFinais() {
+    console.log("Iniciando cálculo de médias finais");
+    
+    // Usar as notas filtradas em vez de todas as notas
+    let notas;
+    
+    // Verificar se há filtros aplicados pelo usuário
+    if (window.notasFiltradas && window.notasFiltradas.length > 0) {
+        console.log("Usando notas filtradas:", window.notasFiltradas.length);
+        notas = window.notasFiltradas;
+    } else {
+        notas = JSON.parse(localStorage.getItem('notas') || '[]');
+        console.log("Usando todas as notas:", notas.length);
+    }
+    
+    if (notas.length === 0) {
+        alert('Não há notas cadastradas para calcular médias finais.');
+        return;
+    }
+    
+    // Agrupar notas por aluno e disciplina
+    const alunosDisciplinas = {};
+    
+    notas.forEach(nota => {
+        const chave = `${nota.id_aluno}_${nota.id_disciplina}_${nota.ano}`;
+        
+        if (!alunosDisciplinas[chave]) {
+            alunosDisciplinas[chave] = {
+                id_aluno: nota.id_aluno,
+                nome_aluno: nota.nome_aluno,
+                id_disciplina: nota.id_disciplina,
+                nome_disciplina: nota.nome_disciplina,
+                id_turma: nota.id_turma,
+                nome_turma: nota.nome_turma,
+                ano: nota.ano,
+                bimestres: {}
+            };
+        }
+        
+        alunosDisciplinas[chave].bimestres[nota.bimestre] = nota.media;
+    });
+    
+    // Calcular médias finais
+    const relatorio = [];
+    
+    for (const chave in alunosDisciplinas) {
+        const alunoDisciplina = alunosDisciplinas[chave];
+        const bimestres = alunoDisciplina.bimestres;
+        
+        // Verificar se tem os 4 bimestres
+        const bimestresDisponiveis = Object.keys(bimestres).length;
+        const temTodosBimestres = bimestresDisponiveis === 4;
+        
+        let mediaFinal = null;
+        let situacao = 'Incompleto';
+        
+        if (temTodosBimestres) {
+            // Calcular média final apenas se tiver os 4 bimestres
+            mediaFinal = (bimestres[1] + bimestres[2] + bimestres[3] + bimestres[4]) / 4;
+            
+            // Determinar situação
+            if (mediaFinal >= 6.0) {
+                situacao = 'Aprovado por média';
+            } else {
+                // Para simulação, gerar uma nota de recuperação final aleatória
+                const recuperacaoFinal = Math.min(10, Math.max(0, Math.random() * 10)).toFixed(2);
+                const mediaRecuperacao = (mediaFinal + parseFloat(recuperacaoFinal)) / 2;
+                
+                if (mediaRecuperacao >= 6.0) {
+                    situacao = `Aprovado após recuperação (${recuperacaoFinal})`;
+                } else {
+                    situacao = `Reprovado (Rec: ${recuperacaoFinal})`;
+                }
+            }
+        } else {
+            situacao = `Incompleto (${bimestresDisponiveis}/4 bimestres)`;
+        }
+        
+        relatorio.push({
+            ...alunoDisciplina,
+            media_final: mediaFinal !== null ? mediaFinal.toFixed(2) : null,
+            situacao,
+            bimestresDisponiveis
+        });
+    }
+    
+    // Ordenar por aluno e disciplina
+    relatorio.sort((a, b) => {
+        if (a.nome_aluno !== b.nome_aluno) return a.nome_aluno.localeCompare(b.nome_aluno);
+        return a.nome_disciplina.localeCompare(b.nome_disciplina);
+    });
+    
+    // ===== NOVA ABORDAGEM: ABRIR DIRETAMENTE EM UMA NOVA JANELA =====
+    // Em vez de tentar usar um modal Bootstrap que está causando problemas,
+    // vamos abrir uma janela dedicada para o relatório
+    
+    console.log("Abrindo relatório em nova janela");
+    
+    // Construir o conteúdo HTML da tabela
+    let tabelaConteudo = '';
+    
+    if (relatorio.length === 0) {
+        tabelaConteudo = `
+            <tr>
+                <td colspan="10" class="text-center">Nenhum registro encontrado com os filtros aplicados</td>
+            </tr>
+        `;
+    } else {
+        relatorio.forEach(item => {
+            let rowClass = '';
+            if (item.situacao.includes('Aprovado por média')) {
+                rowClass = 'table-success';
+            } else if (item.situacao.includes('Aprovado após')) {
+                rowClass = 'table-warning';
+            } else if (item.situacao.includes('Reprovado')) {
+                rowClass = 'table-danger';
+            }
+            
+            const bimestres = item.bimestres || {};
+            
+            tabelaConteudo += `
+                <tr class="${rowClass}">
+                    <td>${item.nome_aluno}</td>
+                    <td>${item.nome_turma}</td>
+                    <td>${item.nome_disciplina}</td>
+                    <td>${item.ano}</td>
+                    <td>${bimestres[1] !== undefined ? bimestres[1].toFixed(2) : '-'}</td>
+                    <td>${bimestres[2] !== undefined ? bimestres[2].toFixed(2) : '-'}</td>
+                    <td>${bimestres[3] !== undefined ? bimestres[3].toFixed(2) : '-'}</td>
+                    <td>${bimestres[4] !== undefined ? bimestres[4].toFixed(2) : '-'}</td>
+                    <td>${item.media_final || 'Incompleto'}</td>
+                    <td>${item.situacao}</td>
+                </tr>
+            `;
+        });
+    }
+    
+    // Criar uma nova janela com o relatório
+    const janelaRelatorio = window.open('', '_blank', 'width=1000,height=700');
+    
+    janelaRelatorio.document.write(`
+        <!DOCTYPE html>
+        <html lang="pt-BR">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Relatório de Médias Finais</title>
+            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css">
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+            <style>
+                body {
+                    padding: 20px;
+                    font-family: Arial, sans-serif;
+                }
+                .container {
+                    max-width: 1200px;
+                    margin: 0 auto;
+                }
+                .header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 20px;
+                    padding-bottom: 10px;
+                    border-bottom: 1px solid #dee2e6;
+                }
+                .title {
+                    margin: 0;
+                    color: #0d6efd;
+                }
+                .btn-action {
+                    margin-left: 10px;
+                }
+                .info-box {
+                    background-color: #e7f5ff;
+                    border-left: 4px solid #0d6efd;
+                    padding: 15px;
+                    border-radius: 4px;
+                    margin-bottom: 20px;
+                }
+                .table-container {
+                    overflow-x: auto;
+                    margin-bottom: 20px;
+                }
+                .footer {
+                    margin-top: 20px;
+                    text-align: right;
+                }
+                @media print {
+                    .no-print {
+                        display: none !important;
+                    }
+                    .header {
+                        border-bottom: 2px solid #000;
+                    }
+                    .table th {
+                        background-color: #f2f2f2 !important;
+                        color: #000 !important;
+                        -webkit-print-color-adjust: exact;
+                        print-color-adjust: exact;
+                    }
+                    .table-success {
+                        background-color: #d4edda !important;
+                        -webkit-print-color-adjust: exact;
+                        print-color-adjust: exact;
+                    }
+                    .table-warning {
+                        background-color: #fff3cd !important;
+                        -webkit-print-color-adjust: exact;
+                        print-color-adjust: exact;
+                    }
+                    .table-danger {
+                        background-color: #f8d7da !important;
+                        -webkit-print-color-adjust: exact;
+                        print-color-adjust: exact;
+                    }
+                    .info-box {
+                        border: 1px solid #dee2e6;
+                        border-left: 4px solid #0d6efd;
+                    }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h2 class="title"><i class="fas fa-chart-line me-2"></i>Relatório de Médias Finais</h2>
+                    <div class="no-print">
+                        <button class="btn btn-primary btn-action" onclick="window.print()">
+                            <i class="fas fa-print me-1"></i> Imprimir
+                        </button>
+                        <button class="btn btn-secondary btn-action" onclick="window.close()">
+                            <i class="fas fa-times me-1"></i> Fechar
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="info-box">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Exibindo relatório ${window.notasFiltradas ? 'com filtros aplicados' : 'de todos os alunos'} 
+                    (${relatorio.length} registros)
+                </div>
+                
+                <div class="table-container">
+                    <table class="table table-bordered table-striped">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Aluno</th>
+                                <th>Turma</th>
+                                <th>Disciplina</th>
+                                <th>Ano</th>
+                                <th>1º Bim</th>
+                                <th>2º Bim</th>
+                                <th>3º Bim</th>
+                                <th>4º Bim</th>
+                                <th>Média Final</th>
+                                <th>Situação</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${tabelaConteudo}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="footer no-print">
+                    <div class="alert alert-info">
+                        <small><i class="fas fa-lightbulb me-1"></i> Dica: Use o botão "Imprimir" para salvar como PDF ou imprimir o relatório.</small>
+                    </div>
+                </div>
+            </div>
+        </body>
+        </html>
+    `);
+    
+    janelaRelatorio.document.close();
+}
+// Remover as funções que não usamos mais, para evitar conflitos
+function limparModaisExistentes() {
+    console.log("Esta função não é mais necessária");
+}
+function imprimirRelatorio(conteudo) {
+    console.log("Esta função não é mais necessária");
+} 
+// Função para carregar turmas disponíveis para vincular no formulário de disciplinas
+function carregarTurmasDisponiveis() {
+    const turmasContainer = document.getElementById('turmas_disciplina');
+    
+    if (!turmasContainer) {
+        console.error("Container de turmas não encontrado");
+        return;
+    }
+    
+    // Manter apenas a instrução
+    const instrucao = turmasContainer.querySelector('.form-text');
+    turmasContainer.innerHTML = '';
+    if (instrucao) {
+        turmasContainer.appendChild(instrucao);
+    }
+    
+    // Carregar turmas atuais do localStorage ou API
+    fetch('http://localhost:4000/api/turmas/')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Erro ao carregar turmas: ' + response.statusText);
+            }
+            return response.json();
+        })
+        .then(turmas => {
+            console.log("Turmas recuperadas para vincular:", turmas.length);
+            
+            if (turmas.length === 0) {
+                turmasContainer.innerHTML += '<div class="text-muted">Nenhuma turma disponível para vincular.</div>';
+                return;
+            }
+            
+            // Ordenar turmas por série e ID
+            turmas.sort((a, b) => {
+                if (a.serie === b.serie) {
+                    return a.id_turma.localeCompare(b.id_turma);
+                }
+                return a.serie.localeCompare(b.serie);
+            });
+            
+            // Criar checkboxes para cada turma
+            turmas.forEach(turma => {
+                const div = document.createElement('div');
+                div.className = 'form-check';
+                
+                const input = document.createElement('input');
+                input.className = 'form-check-input';
+                input.type = 'checkbox';
+                input.id = `turma_${turma.id_turma}`;
+                input.value = turma.id_turma;
+                
+                const label = document.createElement('label');
+                label.className = 'form-check-label';
+                label.htmlFor = `turma_${turma.id_turma}`;
+                label.textContent = `${turma.id_turma} - ${turma.serie} (${turma.turno})`;
+                
+                div.appendChild(input);
+                div.appendChild(label);
+                turmasContainer.appendChild(div);
+            });
+        })
+        .catch(error => {
+            console.error("Erro ao carregar turmas para vincular:", error);
+            turmasContainer.innerHTML += `
+                <div class="alert alert-warning mt-2">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Erro ao carregar turmas: ${error.message}
+                </div>
+            `;
+            
+            // Tentar carregar do localStorage como fallback
+            const turmasLocal = JSON.parse(localStorage.getItem('turmas') || '[]');
+            
+            if (turmasLocal.length > 0) {
+                console.log("Usando turmas do localStorage como fallback");
+                
+                // Ordenar turmas por série e ID
+                turmasLocal.sort((a, b) => {
+                    if (a.serie === b.serie) {
+                        return a.id_turma.localeCompare(b.id_turma);
+                    }
+                    return a.serie.localeCompare(b.serie);
+                });
+                
+                // Criar checkboxes para cada turma
+                turmasLocal.forEach(turma => {
+                    const div = document.createElement('div');
+                    div.className = 'form-check';
+                    
+                    const input = document.createElement('input');
+                    input.className = 'form-check-input';
+                    input.type = 'checkbox';
+                    input.id = `turma_${turma.id_turma}`;
+                    input.value = turma.id_turma;
+                    
+                    const label = document.createElement('label');
+                    label.className = 'form-check-label';
+                    label.htmlFor = `turma_${turma.id_turma}`;
+                    label.textContent = `${turma.id_turma} - ${turma.serie} (${turma.turno})`;
+                    
+                    div.appendChild(input);
+                    div.appendChild(label);
+                    turmasContainer.appendChild(div);
+                });
+            } else {
+                turmasContainer.innerHTML += '<div class="text-muted">Nenhuma turma disponível para vincular.</div>';
+            }
+        });
+}
+// Configurar o formulário de disciplina quando o DOM estiver pronto
+document.addEventListener('DOMContentLoaded', function() {
+    
+        // Inicializar o formulário
+        
+        // Adicionar event listener para o formulário
+            // Impedir envio padrão do formulário
+            
+            const formElement = document.getElementById('formDisciplina');
+            if (!formElement) return;
+            
+            // Obter valores do formulário
+            const idDisciplina = document.getElementById('id_disciplina').value.trim();
+            const nomeDisciplina = document.getElementById('nome_disciplina').value.trim();
+            const cargaHoraria = document.getElementById('carga_horaria').value;
+            
+            // Validar campos obrigatórios
+            if (!idDisciplina || !nomeDisciplina) {
+                alert('Por favor, preencha todos os campos obrigatórios (ID e Nome da Disciplina).');
+                return;
+            }
+            
+            // Obter turmas selecionadas
+            const turmasSelecionadas = [];
+            document.querySelectorAll('#turmas_disciplina input[type="checkbox"]:checked').forEach(checkbox => {
+                turmasSelecionadas.push(checkbox.value);
+            });
+            
+            // Criar objeto com dados da disciplina
+            const disciplina = {
+                id_disciplina: idDisciplina,
+                nome_disciplina: nomeDisciplina,
+                carga_horaria: cargaHoraria !== '' ? Number(cargaHoraria) : null
+            };
+            
+            console.log("Salvando disciplina:", disciplina);
+            
+            // Verificar se é edição (ID desabilitado) ou cadastro novo
+            const isEditMode = document.getElementById('id_disciplina').disabled;
+            
+            if (isEditMode) {
+                // Modo Edição - atualizar via API
+                fetch(`http://localhost:4000/api/disciplinas/${idDisciplina}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(disciplina)
+                })
+                .then(response => {
+                    if (response.status === 404) {
+                        throw new Error('Disciplina não encontrada para atualização');
+                    }
+                    if (!response.ok) {
+                        throw new Error('Erro ao atualizar disciplina: ' + response.statusText);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log("Disciplina atualizada com sucesso:", data);
+                    
+                    // Também atualizar no localStorage para manter as turmas vinculadas
+                    const disciplinasLocal = JSON.parse(localStorage.getItem('disciplinas') || '[]');
+                    const index = disciplinasLocal.findIndex(d => d.id_disciplina === idDisciplina);
+                    
+                    if (index !== -1) {
+                        // Preservar a lista de turmas vinculadas na atualização
+                        disciplinasLocal[index] = {
+                            ...disciplina,
+                            turmas_vinculadas: turmasSelecionadas
+                        };
+                    } else {
+                        // Adicionar ao localStorage se não existir
+                        disciplinasLocal.push({
+                            ...disciplina,
+                            turmas_vinculadas: turmasSelecionadas
+                        });
+                    }
+                    
+                    localStorage.setItem('disciplinas', JSON.stringify(disciplinasLocal));
+                    
+                    // Exibir mensagem de sucesso
+                    alert('Disciplina atualizada com sucesso!');
+                    
+                    // Resetar o formulário e recarregar lista
+                    document.getElementById('id_disciplina').disabled = false;
+                    document.getElementById('formDisciplina').reset();
+                    document.getElementById('cancelarEdicaoDisciplina').style.display = 'none';
+                    document.querySelector('#disciplinaForm .card-title').textContent = 'Adicionar Disciplina';
+                    
+                    carregarDisciplinas();
+                })
+                .catch(error => {
+                    console.error("Erro ao atualizar disciplina:", error);
+                    alert(`Erro ao atualizar disciplina: ${error.message}`);
+                });
+            } else {
+                // Modo Criação - salvar via API
+                fetch('http://localhost:4000/api/disciplinas/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(disciplina)
+                })
+                .then(response => {
+                    if (response.status === 409) {
+                        throw new Error('Uma disciplina com este ID já existe');
+                    }
+                    if (!response.ok) {
+                        throw new Error('Erro ao criar disciplina: ' + response.statusText);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log("Disciplina criada com sucesso:", data);
+                    
+                    // Também salvar no localStorage para manter as turmas vinculadas
+                    const disciplinasLocal = JSON.parse(localStorage.getItem('disciplinas') || '[]');
+                    
+                    // Verificar se já existe no localStorage
+                    const existingIndex = disciplinasLocal.findIndex(d => d.id_disciplina === idDisciplina);
+                    
+                    if (existingIndex !== -1) {
+                        // Atualizar se já existir
+                        disciplinasLocal[existingIndex] = {
+                            ...disciplina,
+                            turmas_vinculadas: turmasSelecionadas
+                        };
+                    } else {
+                        // Adicionar nova disciplina
+                        disciplinasLocal.push({
+                            ...disciplina,
+                            turmas_vinculadas: turmasSelecionadas
+                        });
+                    }
+                    
+                    localStorage.setItem('disciplinas', JSON.stringify(disciplinasLocal));
+                    
+                    // Exibir mensagem de sucesso
+                    alert('Disciplina criada com sucesso!');
+                    
+                    // Resetar o formulário e recarregar lista
+                    document.getElementById('formDisciplina').reset();
+                    carregarDisciplinas();
+                })
+                .catch(error => {
+                    console.error("Erro ao criar disciplina:", error);
+                    alert(`Erro ao criar disciplina: ${error.message}`);
+                });
+            }
+        });
+    }
+}); 

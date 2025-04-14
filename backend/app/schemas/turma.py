@@ -1,0 +1,54 @@
+from typing import Optional, List
+from pydantic import BaseModel
+
+
+# Propriedades compartilhadas
+class TurmaBase(BaseModel):
+    id_turma: str
+    serie: str
+    turno: str
+    tipo_turma: Optional[str] = None
+    coordenador: Optional[str] = None
+
+
+class TurmaCreate(TurmaBase):
+    """Schema para criação de turma"""
+    pass
+
+
+class TurmaUpdate(BaseModel):
+    """Schema para atualização de turma"""
+    id_turma: Optional[str] = None
+    serie: Optional[str] = None
+    turno: Optional[str] = None
+    tipo_turma: Optional[str] = None
+    coordenador: Optional[str] = None
+
+
+class TurmaInDB(TurmaBase):
+    """Schema para turma como armazenada no banco de dados"""
+    id: int
+
+    model_config = {
+"from_attributes": True
+}
+class Turma(TurmaInDB):
+    """Schema para resposta de turma"""
+    pass
+
+
+class TurmaResponse(TurmaInDB):
+    """Schema para resposta de turma (compatibilidade com os endpoints)"""
+    pass
+
+
+class TurmaWithRelationships(TurmaInDB):
+    """Schema para turma com relacionamentos"""
+    alunos: List = []
+
+    model_config = {
+"from_attributes": True
+}
+# Evitar referência circular
+from app.schemas.aluno import Aluno
+TurmaWithRelationships.update_forward_refs() 
