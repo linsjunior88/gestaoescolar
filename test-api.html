@@ -52,6 +52,7 @@
             background-color: #45a049;
         }
     </style>
+    <script src="js/config.js"></script>
 </head>
 <body>
     <h1>Teste da API de Notas</h1>
@@ -104,7 +105,7 @@
         // Testar o endpoint de notas completas filtrado por professor
         async function testNotasCompletoProfessor() {
             const professorId = 'PROF002';
-            const url = `http://localhost:4000/api/notas/completo/?professor_id=${professorId}`;
+            const url = CONFIG.getApiUrl(`/notas/completo/?professor_id=${professorId}`);
             
             log(`\n=== TESTANDO NOTAS COMPLETAS DO PROFESSOR ${professorId} ===`, 'info');
             const notas = await fetchAPI(url);
@@ -132,7 +133,7 @@
         
         // Testar criação de uma nota
         async function testCriarNota() {
-            const url = 'http://localhost:4000/api/notas/';
+            const url = CONFIG.getApiUrl('/notas/');
             const notaData = {
                 id_aluno: 'ALU001',
                 id_disciplina: 'MAT',
@@ -190,6 +191,10 @@
         
         // Mensagem inicial
         log('Teste da API de Notas inicializado. Clique em um dos botões acima para iniciar os testes.', 'info');
+        
+        // Exibir a configuração atual da API
+        log(`Configuração da API: ${CONFIG.isProd ? 'Produção' : 'Desenvolvimento'}`, 'info');
+        log(`URL da API: ${CONFIG.apiUrl()}`, 'info');
     </script>
 </body>
 </html> 

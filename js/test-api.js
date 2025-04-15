@@ -22,7 +22,7 @@ async function fetchAPI(url) {
 // Testar o endpoint de notas completas filtrado por professor
 async function testNotasCompletoProfessor() {
     const professorId = 'PROF002';
-    const url = `http://localhost:4000/api/notas/completo/?professor_id=${professorId}`;
+    const url = CONFIG.getApiUrl(`/notas/completo/?professor_id=${professorId}`);
     
     console.log(`\n=== TESTANDO NOTAS COMPLETAS DO PROFESSOR ${professorId} ===`);
     const notas = await fetchAPI(url);
@@ -50,7 +50,7 @@ async function testNotasCompletoProfessor() {
 
 // Testar criação de uma nota
 async function testCriarNota() {
-    const url = 'http://localhost:4000/api/notas/';
+    const url = CONFIG.getApiUrl('/notas/');
     const notaData = {
         id_aluno: 'ALU001',
         id_disciplina: 'MAT',

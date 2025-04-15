@@ -219,7 +219,7 @@ function initDashboard() {
     }
     
     // Buscar estatísticas do professor
-    fetch(`http://localhost:4000/api/professores/${professorId}/estatisticas`)
+    fetch(CONFIG.getApiUrl(`/professores/${professorId}/estatisticas`))
         .then(response => {
             if (!response.ok) {
                 throw new Error(`Erro na requisição: ${response.status}`);
@@ -284,7 +284,7 @@ function initDashboard() {
         }
         
         // Buscar turmas do professor
-        fetch(`http://localhost:4000/api/professores/${professorId}/turmas`)
+        fetch(CONFIG.getApiUrl(`/professores/${professorId}/turmas`))
             .then(response => {
                 if (!response.ok) {
                     throw new Error(`Erro na requisição: ${response.status}`);
@@ -301,7 +301,7 @@ function initDashboard() {
                         
                         // Processar cada turma
                         const promessas = turmas.map(turma => {
-                            return fetch(`http://localhost:4000/api/professores/${professorId}/turmas/${turma.id_turma}/disciplinas`)
+                            return fetch(CONFIG.getApiUrl(`/professores/${professorId}/turmas/${turma.id_turma}/disciplinas`))
                                 .then(response => {
                                     if (!response.ok) {
                                         throw new Error(`Erro ao carregar disciplinas da turma ${turma.id_turma}`);
@@ -438,7 +438,7 @@ function initDashboard() {
         if (perfilNomeEl) perfilNomeEl.textContent = professorNome || '-';
         
         // Buscar detalhes do professor
-        fetch(`http://localhost:4000/api/professores/${professorId}`)
+        fetch(CONFIG.getApiUrl(`/professores/${professorId}`))
             .then(response => {
                 if (!response.ok) {
                     throw new Error(`Erro na requisição: ${response.status}`);
@@ -454,7 +454,7 @@ function initDashboard() {
                 if (perfilEmailEl) perfilEmailEl.textContent = professor.email_professor || '-';
                 
                 // Buscar disciplinas para exibir no perfil
-                fetch(`http://localhost:4000/api/professores/${professorId}/disciplinas`)
+                fetch(CONFIG.getApiUrl(`/professores/${professorId}/disciplinas`))
                     .then(response => {
                         if (!response.ok) {
                             throw new Error(`Erro na requisição: ${response.status}`);
@@ -501,7 +501,7 @@ function initDashboard() {
         `;
         
         // Buscar disciplinas do professor
-        fetch(`http://localhost:4000/api/professores/${professorId}/disciplinas`)
+        fetch(CONFIG.getApiUrl(`/professores/${professorId}/disciplinas`))
             .then(response => {
                 if (!response.ok) {
                     throw new Error(`Erro na requisição: ${response.status}`);
@@ -527,7 +527,7 @@ function initDashboard() {
                 // Para cada disciplina, buscar as turmas e alunos
                 let html = '';
                 const promessas = disciplinas.map(disciplina => {
-                    return fetch(`http://localhost:4000/api/disciplinas/${disciplina.id_disciplina}/turmas`)
+                    return fetch(CONFIG.getApiUrl(`/disciplinas/${disciplina.id_disciplina}/turmas`))
                         .then(response => {
                             if (!response.ok) {
                                 throw new Error(`Erro ao carregar turmas da disciplina ${disciplina.id_disciplina}`);
@@ -537,7 +537,7 @@ function initDashboard() {
                         .then(turmas => {
                             // Filtrar apenas as turmas do professor
                             return Promise.all(turmas.map(turma => {
-                                return fetch(`http://localhost:4000/api/turmas/${turma.id_turma}/alunos`)
+                                return fetch(CONFIG.getApiUrl(`/turmas/${turma.id_turma}/alunos`))
                                     .then(response => {
                                         if (!response.ok) {
                                             throw new Error(`Erro ao carregar alunos da turma ${turma.id_turma}`);
@@ -636,7 +636,7 @@ function initDashboard() {
             `;
             
             // Buscar as últimas notas do professor (limitando a 5)
-            fetch(`http://localhost:4000/api/professores/${professorId}/notas?limit=5`)
+            fetch(CONFIG.getApiUrl(`/notas/por_professor/${professorId}?limit=5`))
                 .then(response => {
                     if (!response.ok) {
                         throw new Error(`Erro na requisição: ${response.status}`);
@@ -756,12 +756,12 @@ function carregarLogsAtividades() {
     `;
     
     // Buscar logs de atividades via API (últimos 10 registros do professor)
-    fetch(`http://localhost:4000/api/logs?limit=10&usuario=${encodeURIComponent(professorNome)}`)
+    fetch(CONFIG.getApiUrl('/logs?limit=10&usuario=' + encodeURIComponent(professorNome)))
         .then(response => {
             if (!response.ok) {
                 if (response.status === 404) {
                     // A tabela de logs ainda não existe, vamos criar
-                    return fetch('http://localhost:4000/api/logs/criar-tabela', {
+                    return fetch(CONFIG.getApiUrl('/logs/criar-tabela'), {
                         method: 'POST'
                     }).then(createResponse => {
                         if (createResponse.ok) {
@@ -949,7 +949,7 @@ function registrarAtividade(acao, entidade, entidadeId, detalhe = null, status =
     };
     
     // Enviar para a API
-    fetch('http://localhost:4000/api/logs', {
+    fetch(CONFIG.getApiUrl('/logs'), {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -1008,7 +1008,7 @@ function initAlunos() {
     }
     
     // Carregar turmas do professor (para o filtro)
-    fetch(`http://localhost:4000/api/professores/${professorId}/turmas`)
+    fetch(CONFIG.getApiUrl(`/professores/${professorId}/turmas`))
         .then(response => {
             if (!response.ok) {
                 throw new Error(`Erro na requisição: ${response.status}`);
@@ -1041,44 +1041,21 @@ function initAlunos() {
     
     // Função para carregar disciplinas
     function carregarDisciplinas(idTurma = null) {
-        if (!filtroDisciplina) return;
+        console.log('Carregando disciplinas para o professor... Turma:', idTurma);
         
-        filtroDisciplina.innerHTML = '<option value="">Carregando disciplinas...</option>';
-        
-        // URL para obter disciplinas
-        let url = `http://localhost:4000/api/professores/${professorId}/disciplinas`;
-        if (idTurma) {
-            url = `http://localhost:4000/api/professores/${professorId}/turmas/${idTurma}/disciplinas`;
+        let url;
+        if (!idTurma) {
+            url = CONFIG.getApiUrl(`/professores/${professorId}/disciplinas`);
+        } else {
+            url = CONFIG.getApiUrl(`/professores/${professorId}/turmas/${idTurma}/disciplinas`);
         }
         
-        fetch(url)
+        return fetch(url)
             .then(response => {
                 if (!response.ok) {
                     throw new Error(`Erro na requisição: ${response.status}`);
                 }
                 return response.json();
-            })
-            .then(disciplinas => {
-                console.log("Disciplinas carregadas:", disciplinas);
-                
-                filtroDisciplina.innerHTML = '<option value="">Todas as disciplinas</option>';
-                
-                disciplinas.forEach(disciplina => {
-                    const option = document.createElement('option');
-                    option.value = disciplina.id_disciplina;
-                    option.textContent = disciplina.nome_disciplina;
-                    filtroDisciplina.appendChild(option);
-                });
-            })
-            .catch(error => {
-                console.error("Erro ao carregar disciplinas:", error);
-                console.error(`Erro ao carregar disciplinas da turma ${idTurma}:`, error);
-                
-                // Resetar o select com mensagem de erro
-                if (disciplinaSelect) {
-                    disciplinaSelect.innerHTML = '<option value="">Erro ao carregar disciplinas</option>';
-                    disciplinaSelect.disabled = true;
-                }
             });
     }
     
@@ -1114,7 +1091,7 @@ function initAlunos() {
         `;
         
         // Buscar todos os alunos do professor
-        fetch(`http://localhost:4000/api/professores/${professorId}/alunos`)
+        fetch(CONFIG.getApiUrl(`/professores/${professorId}/alunos`))
             .then(response => {
                 if (!response.ok) {
                     throw new Error(`Erro na requisição: ${response.status}`);
@@ -1185,134 +1162,19 @@ function initAlunos() {
     
     // Função para carregar alunos filtrados
     function carregarAlunosFiltrados(idTurma, idDisciplina) {
-        console.log(`Carregando alunos filtrados - Turma: ${idTurma}, Disciplina: ${idDisciplina}`);
+        console.log(`Carregando alunos filtrados. Turma: ${idTurma}, Disciplina: ${idDisciplina}`);
         
-        // Mostrar indicador de carregamento no select de alunos
-        if (alunoSelect) {
-            alunoSelect.innerHTML = '<option value="">Carregando alunos...</option>';
-            alunoSelect.disabled = true;
+        let url = CONFIG.getApiUrl(`/professores/${professorId}/alunos`);
+        if (idTurma) {
+            url += `?turma_id=${encodeURIComponent(idTurma)}`;
         }
         
-        // Verificar o container de resultados
-        if (!resultadosContainer) {
-            console.error("Container de resultados não encontrado!");
-            return;
-        }
-        
-        // Encontrar o corpo da tabela (tbody) ou usar o próprio container
-        let tableBody = resultadosContainer.tagName === 'TABLE' 
-            ? resultadosContainer.querySelector('tbody') || resultadosContainer 
-            : resultadosContainer;
-        
-        // Mostrar indicador de carregamento no container de resultados
-        tableBody.innerHTML = `
-            <tr class="text-center">
-                <td colspan="4">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Carregando alunos...</span>
-                    </div>
-                    <p class="mt-2">Carregando alunos...</p>
-                </td>
-            </tr>
-        `;
-        
-        // Construir a URL de acordo com os filtros
-        let url = `http://localhost:4000/api/professores/${professorId}/alunos`;
-        
-        // Adicionar parâmetros de filtro se necessário
-        const params = new URLSearchParams();
-        if (idTurma) params.append('id_turma', idTurma);
-        if (idDisciplina) params.append('id_disciplina', idDisciplina);
-        
-        if (params.toString()) {
-            url += `?${params.toString()}`;
-        }
-        
-        console.log("URL de requisição:", url);
-        
-        // Buscar alunos com os filtros especificados
-        fetch(url)
+        return fetch(url)
             .then(response => {
                 if (!response.ok) {
                     throw new Error(`Erro na requisição: ${response.status}`);
                 }
                 return response.json();
-            })
-            .then(alunos => {
-                console.log('Alunos retornados pela API:', alunos);
-                
-                // FILTRO ADICIONAL NO LADO DO CLIENTE
-                // Caso a API não filtre corretamente, aplicamos o filtro aqui também
-                let alunosFiltrados = alunos;
-                
-                if (idTurma) {
-                    console.log(`Aplicando filtro adicional por turma: ${idTurma}`);
-                    alunosFiltrados = alunos.filter(aluno => aluno.id_turma === idTurma);
-                    console.log('Alunos após filtro adicional por turma:', alunosFiltrados);
-                }
-                
-                if (idDisciplina) {
-                    console.log(`Aplicando filtro adicional por disciplina: ${idDisciplina}`);
-                    // O filtro por disciplina pode exigir uma lógica mais complexa dependendo da estrutura dos dados
-                    // Por enquanto, manter apenas o filtro por turma
-                }
-                
-                // Preencher o select de alunos
-                if (alunoSelect) {
-                    // Resetar o select com a opção "Todos os alunos"
-                    alunoSelect.innerHTML = '<option value="">Todos os alunos</option>';
-                    
-                    // Adicionar os alunos
-                    if (alunosFiltrados.length > 0) {
-                        // Ordenar alunos por nome
-                        alunosFiltrados.sort((a, b) => {
-                            const nomeA = a.nome_aluno || '';
-                            const nomeB = b.nome_aluno || '';
-                            return nomeA.localeCompare(nomeB);
-                        });
-                        
-                        alunosFiltrados.forEach(aluno => {
-                            const option = document.createElement('option');
-                            option.value = aluno.id_aluno;
-                            option.textContent = aluno.nome_aluno || `Aluno ID: ${aluno.id_aluno}`;
-                            alunoSelect.appendChild(option);
-                        });
-                    }
-                    
-                    // Habilitar o select
-                    alunoSelect.disabled = false;
-                }
-                
-                // Exibir resultados na tabela
-                exibirResultados(alunosFiltrados);
-            })
-            .catch(error => {
-                console.error('Erro ao carregar alunos filtrados:', error);
-                
-                // Resetar o select com mensagem de erro
-                if (alunoSelect) {
-                    alunoSelect.innerHTML = '<option value="">Erro ao carregar alunos</option>';
-                    alunoSelect.disabled = true;
-                }
-                
-                // Encontrar o corpo da tabela (tbody) ou usar o próprio container
-                let tableBody = resultadosContainer.tagName === 'TABLE' 
-                    ? resultadosContainer.querySelector('tbody') || resultadosContainer 
-                    : resultadosContainer;
-                
-                // Mostrar mensagem de erro no container de resultados
-                tableBody.innerHTML = `
-                    <tr class="text-center">
-                        <td colspan="4">
-                            <div class="alert alert-danger" role="alert">
-                                <h4 class="alert-heading">Erro ao aplicar filtros!</h4>
-                                <p>Não foi possível carregar os alunos com os filtros selecionados.</p>
-                                <hr>
-                                <p class="mb-0">Detalhes: ${error.message}</p>
-                            </div>
-                        </td>
-                    </tr>
-                `;
             });
     }
     
@@ -1659,7 +1521,7 @@ function initNotas() {
         turmaNota.innerHTML = '<option value="">Selecione...</option>';
         
         // Buscar turmas do professor
-        fetch(`http://localhost:4000/api/professores/${professorId}/turmas`)
+        fetch(CONFIG.getApiUrl(`/professores/${professorId}/turmas`))
             .then(response => {
                 if (!response.ok) {
                     throw new Error(`Erro na requisição: ${response.status}`);
@@ -1711,7 +1573,7 @@ function initNotas() {
         disciplinaNota.innerHTML = '<option value="">Carregando...</option>';
         disciplinaNota.disabled = true;
         
-        fetch(`http://localhost:4000/api/professores/${professorId}/turmas/${idTurma}/disciplinas`)
+        fetch(CONFIG.getApiUrl(`/professores/${professorId}/turmas/${idTurma}/disciplinas`))
             .then(response => {
                 if (!response.ok) {
                     throw new Error(`Erro na requisição: ${response.status}`);
@@ -1766,7 +1628,7 @@ function initNotas() {
         alunoNota.innerHTML = '<option value="">Carregando...</option>';
         alunoNota.disabled = true;
         
-        fetch(`http://localhost:4000/api/turmas/${idTurma}/alunos`)
+        fetch(CONFIG.getApiUrl(`/turmas/${idTurma}/alunos`))
             .then(response => {
                 if (!response.ok) {
                     throw new Error(`Erro na requisição: ${response.status}`);
@@ -1832,7 +1694,7 @@ function carregarTurmasParaFiltro() {
     filtroTurma.innerHTML = '<option value="">Carregando turmas...</option>';
     
     // Buscar turmas do professor
-    fetch(`http://localhost:4000/api/professores/${professorId}/turmas`)
+    fetch(CONFIG.getApiUrl(`/professores/${professorId}/turmas`))
         .then(response => {
             if (!response.ok) {
                 throw new Error(`Erro na requisição: ${response.status}`);
@@ -1869,16 +1731,25 @@ function carregarTurmasParaFiltro() {
 
 // Função para carregar disciplinas para o filtro
 function carregarDisciplinasParaFiltro(idTurma = null) {
-    if (!filtroDisciplina) return;
+    console.log('Carregando disciplinas para filtro. Turma:', idTurma);
     
-    filtroDisciplina.innerHTML = '<option value="">Carregando disciplinas...</option>';
+    const disciplinaFiltroEl = document.getElementById('disciplina-filtro');
+    if (!disciplinaFiltroEl) return;
     
-    // URL para obter disciplinas
-    let url = `http://localhost:4000/api/professores/${professorId}/disciplinas`;
-    if (idTurma) {
-        url = `http://localhost:4000/api/professores/${professorId}/turmas/${idTurma}/disciplinas`;
+    // Armazenar a seleção atual
+    const disciplinaSelecionada = disciplinaFiltroEl.value;
+    
+    // Desabilitar o select enquanto carrega
+    disciplinaFiltroEl.disabled = true;
+    
+    let url;
+    if (!idTurma) {
+        url = CONFIG.getApiUrl(`/professores/${professorId}/disciplinas`);
+    } else {
+        url = CONFIG.getApiUrl(`/professores/${professorId}/turmas/${idTurma}/disciplinas`);
     }
     
+    // Buscar disciplinas
     fetch(url)
         .then(response => {
             if (!response.ok) {
@@ -1907,28 +1778,38 @@ function carregarDisciplinasParaFiltro(idTurma = null) {
             
             // Carregar alunos iniciais
             carregarAlunosParaFiltro(filtroTurma.value, filtroDisciplina.value);
+            
+            // Reativar o select
+            disciplinaFiltroEl.disabled = false;
         })
         .catch(error => {
             console.error('Erro ao carregar disciplinas para filtro:', error);
             filtroDisciplina.innerHTML = '<option value="">Erro ao carregar disciplinas</option>';
+            disciplinaFiltroEl.disabled = false;
         });
 }
 
 // Função para carregar alunos para o filtro
 function carregarAlunosParaFiltro(idTurma = null, idDisciplina = null) {
-    if (!filtroAluno) return;
+    console.log('Carregando alunos para filtro. Turma:', idTurma, 'Disciplina:', idDisciplina);
     
-    filtroAluno.innerHTML = '<option value="">Carregando alunos...</option>';
+    const alunoFiltroEl = document.getElementById('aluno-filtro');
+    if (!alunoFiltroEl) return;
     
-    // Construir URL com parâmetros de filtro
-    let url = `http://localhost:4000/api/professores/${professorId}/alunos`;
-    const params = new URLSearchParams();
-    if (idTurma) params.append('turma', idTurma);
-    if (idDisciplina) params.append('disciplina', idDisciplina);
-    if (params.toString()) {
-        url += `?${params.toString()}`;
+    // Armazenar a seleção atual
+    const alunoSelecionado = alunoFiltroEl.value;
+    
+    // Desabilitar o select enquanto carrega
+    alunoFiltroEl.disabled = true;
+    
+    let url = CONFIG.getApiUrl(`/professores/${professorId}/alunos`);
+    
+    // Adicionar parâmetros de filtro
+    if (idTurma) {
+        url += `?turma_id=${encodeURIComponent(idTurma)}`;
     }
     
+    // Buscar alunos
     fetch(url)
         .then(response => {
             if (!response.ok) {
@@ -1956,68 +1837,56 @@ function carregarAlunosParaFiltro(idTurma = null, idDisciplina = null) {
                     filtroAluno.appendChild(option);
                 });
             }
+            
+            // Reativar o select
+            alunoFiltroEl.disabled = false;
         })
         .catch(error => {
             console.error('Erro ao carregar alunos para filtro:', error);
             filtroAluno.innerHTML = '<option value="">Erro ao carregar alunos</option>';
+            alunoFiltroEl.disabled = false;
         });
 }
 
 // Função para carregar notas com base nos filtros selecionados
 function carregarNotas() {
-    console.log('Iniciando carregamento de notas...');
+    console.log('Carregando notas com filtros:', {
+        turma: turmaFiltro,
+        disciplina: disciplinaFiltro,
+        aluno: alunoFiltro,
+        ano: anoFiltro,
+        bimestre: bimestreFiltro
+    });
     
-    if (!notasTabela) {
-        console.error('Elemento da tabela de notas não encontrado (ID: notas-lista)');
+    // Verificar se o elemento de resultados existe
+    if (!areaResultadoNotasEl) {
+        console.error('Elemento de área de resultado não encontrado!');
         return;
     }
     
+    // Montar a URL com base nos filtros
+    let url = CONFIG.getApiUrl(`/notas/por_professor/${professorId}`);
+    
+    // Adicionar filtros adicionais
+    if (turmaFiltro) url += `&id_turma=${encodeURIComponent(turmaFiltro)}`;
+    if (disciplinaFiltro) url += `&id_disciplina=${encodeURIComponent(disciplinaFiltro)}`;
+    if (alunoFiltro) url += `&id_aluno=${encodeURIComponent(alunoFiltro)}`;
+    if (anoFiltro) url += `&ano=${anoFiltro}`;
+    if (bimestreFiltro) url += `&bimestre=${bimestreFiltro}`;
+    
     // Mostrar indicador de carregamento
-    notasTabela.innerHTML = `
-        <tr class="text-center">
-            <td colspan="9">
-                <div class="spinner-border text-primary" role="status">
-                    <span class="visually-hidden">Carregando notas...</span>
-                </div>
-                <p class="mt-2">Carregando notas...</p>
-            </td>
-        </tr>
+    areaResultadoNotasEl.innerHTML = `
+        <div class="d-flex justify-content-center align-items-center" style="height: 100px;">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Carregando notas...</span>
+            </div>
+            <span class="ms-2">Carregando notas...</span>
+        </div>
     `;
     
-    // Obter valores dos filtros
-    const ano = filtroAno ? filtroAno.value : '';
-    const bimestre = filtroBimestre ? filtroBimestre.value : '';
-    const idTurma = filtroTurma ? filtroTurma.value : '';
-    const idDisciplina = filtroDisciplina ? filtroDisciplina.value : '';
-    const idAluno = filtroAluno ? filtroAluno.value : '';
-    
-    // Log para depuração
-    console.log('Filtros aplicados:', {
-        ano,
-        bimestre,
-        idTurma,
-        idDisciplina,
-        idAluno,
-        professorId
-    });
-    
-    // Construir URL com parâmetros de filtro
-    let url = `http://localhost:4000/api/notas/por_professor/${professorId}`;
-    const params = new URLSearchParams();
-    if (ano) params.append('ano', ano);
-    if (bimestre) params.append('bimestre', bimestre);
-    if (idTurma) params.append('id_turma', idTurma);
-    if (idDisciplina) params.append('id_disciplina', idDisciplina);
-    if (idAluno) params.append('id_aluno', idAluno);
-    if (params.toString()) {
-        url += `?${params.toString()}`;
-    }
-    
-    console.log('URL da requisição:', url);
-    
+    // Buscar notas com os filtros aplicados
     fetch(url)
         .then(response => {
-            console.log('Status da resposta:', response.status);
             if (!response.ok) {
                 throw new Error(`Erro na requisição: ${response.status}`);
             }
@@ -2227,7 +2096,7 @@ function editarNota(notaId) {
     );
     
     // Carregar os dados da nota
-    fetch(`http://localhost:4000/api/notas/${notaId}`)
+    fetch(CONFIG.getApiUrl(`/notas/${notaId}`))
         .then(response => {
             if (!response.ok) {
                 throw new Error(`Erro ao carregar dados da nota: ${response.status}`);
@@ -2270,7 +2139,7 @@ function editarNota(notaId) {
                     disciplinaSelect.innerHTML = '<option value="">Carregando disciplinas...</option>';
                     disciplinaSelect.disabled = true;
                     
-                    fetch(`http://localhost:4000/api/professores/${professorId}/turmas/${nota.id_turma}/disciplinas`)
+                    fetch(CONFIG.getApiUrl(`/professores/${professorId}/turmas/${nota.id_turma}/disciplinas`))
                         .then(response => {
                             if (!response.ok) {
                                 throw new Error(`Erro ao carregar disciplinas: ${response.status}`);
@@ -2316,7 +2185,7 @@ function editarNota(notaId) {
                     alunoSelect.innerHTML = '<option value="">Carregando alunos...</option>';
                     alunoSelect.disabled = true;
                     
-                    fetch(`http://localhost:4000/api/turmas/${nota.id_turma}/alunos`)
+                    fetch(CONFIG.getApiUrl(`/professores/${professorId}/turmas/${nota.id_turma}/alunos`))
                         .then(response => {
                             if (!response.ok) {
                                 throw new Error(`Erro ao carregar alunos: ${response.status}`);
@@ -2668,4 +2537,58 @@ function handleFormSubmit(event) {
             saveButton.innerHTML = '<i class="fas fa-save"></i> Salvar Notas';
         }
     });
+}
+
+function exibirFichaAluno(idAluno) {
+    console.log('Exibindo ficha do aluno:', idAluno);
+    
+    // Limpar o conteúdo atual do modal
+    const modalBody = document.getElementById('alunoDetalhesModalBody');
+    if (!modalBody) return;
+    
+    // Mostrar indicador de carregamento
+    modalBody.innerHTML = `
+        <div class="d-flex justify-content-center my-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Carregando informações do aluno...</span>
+            </div>
+            <span class="ms-2">Carregando informações do aluno...</span>
+        </div>
+    `;
+    
+    // Abrir o modal enquanto carrega
+    const modal = new bootstrap.Modal(document.getElementById('alunoDetalhesModal'));
+    modal.show();
+    
+    // Buscar detalhes do aluno
+    fetch(CONFIG.getApiUrl(`/alunos/${idAluno}`))
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Erro na requisição: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(aluno => {
+            // Atualizar o conteúdo do modal com os dados do aluno
+            modalBody.innerHTML = `
+                <div class="text-center">
+                    <h5>${aluno.nome_aluno}</h5>
+                    <p><strong>Turma:</strong> ${aluno.serie_turma} ${aluno.turno_turma}</p>
+                    <p><strong>Disciplina:</strong> ${aluno.nome_disciplina}</p>
+                    <p><strong>Nota Mensal:</strong> ${aluno.nota_mensal}</p>
+                    <p><strong>Nota Bimestral:</strong> ${aluno.nota_bimestral}</p>
+                    <p><strong>Recuperação:</strong> ${aluno.recuperacao}</p>
+                    <p><strong>Média:</strong> ${aluno.media}</p>
+                </div>
+            `;
+        })
+        .catch(error => {
+            console.error('Erro ao carregar detalhes do aluno:', error);
+            modalBody.innerHTML = `
+                <div class="alert alert-danger" role="alert">
+                    <i class="fas fa-exclamation-circle"></i> 
+                    Não foi possível carregar as informações do aluno.
+                </div>
+            `;
+        });
 }

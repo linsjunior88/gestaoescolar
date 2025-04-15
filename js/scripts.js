@@ -127,7 +127,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 };
                 
                 // Usar o novo endpoint de login de professor
-                fetch('http://localhost:4000/api/professores/login', {
+                fetch(CONFIG.getApiUrl('/professores/login'), {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'

@@ -270,8 +270,8 @@ function loadProfessorDisciplinas() {
     
     console.log(`Iniciando carregamento das disciplinas do professor ${professorId}`);
     
-    // Primeiro tentamos obter o professor
-    fetch(`http://localhost:4000/api/professores/${professorId}`)
+    // Buscar dados do professor na API
+    fetch(CONFIG.getApiUrl(`/professores/${professorId}`))
         .then(response => {
             console.log('Status da resposta (dados professor):', response.status);
             if (!response.ok) {
@@ -282,8 +282,8 @@ function loadProfessorDisciplinas() {
         .then(professor => {
             console.log('Professor encontrado:', professor);
             
-            // Em seguida, buscamos as disciplinas
-            return fetch('http://localhost:4000/api/disciplinas/')
+            // Buscar disciplinas
+            return fetch(CONFIG.getApiUrl('/disciplinas/'))
                 .then(response => {
                     console.log('Status da resposta (disciplinas):', response.status);
                     if (!response.ok) {
@@ -306,7 +306,7 @@ function loadProfessorDisciplinas() {
                     console.log(`Disciplinas filtradas: ${disciplinasProfessor.length}`);
                     
                     // Buscar turmas
-                    return fetch('http://localhost:4000/api/turmas/')
+                    return fetch(CONFIG.getApiUrl('/turmas/'))
                         .then(response => {
                             console.log('Status da resposta (turmas):', response.status);
                             if (!response.ok) {
@@ -461,7 +461,7 @@ function carregarTurmasFiltro() {
     const professorDisciplinasIds = JSON.parse(sessionStorage.getItem('professorDisciplinas') || '[]');
     
     // Buscar turmas
-    fetch('http://localhost:4000/api/turmas/')
+    fetch(CONFIG.getApiUrl('/turmas/'))
         .then(response => {
             if (!response.ok) {
                 throw new Error('Erro ao buscar turmas: ' + response.statusText);
@@ -519,7 +519,7 @@ function carregarDisciplinasFiltro() {
     
     // Se temos IDs de disciplinas, vamos buscar suas informações
     if (professorDisciplinasIds.length > 0) {
-        fetch('http://localhost:4000/api/disciplinas/')
+        fetch(CONFIG.getApiUrl('/disciplinas/'))
             .then(response => {
                 if (!response.ok) {
                     throw new Error('Erro ao buscar disciplinas: ' + response.statusText);
@@ -568,7 +568,7 @@ function carregarDisciplinasFiltro() {
             });
     } else {
         // Se não temos IDs específicos, buscamos todas as disciplinas
-        fetch('http://localhost:4000/api/disciplinas/')
+        fetch(CONFIG.getApiUrl('/disciplinas/'))
             .then(response => {
                 if (!response.ok) {
                     throw new Error('Erro ao buscar disciplinas: ' + response.statusText);
