@@ -359,7 +359,7 @@ function ativarSecao(linkId) {
                 const notasLista = document.getElementById('notas-lista');
                 if (notasLista) {
                     // Mostrar indicador de carregamento
-                    notasLista.innerHTML = '<tr><td colspan="6" class="text-center"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Carregando...</span></div></td></tr>';
+                    notasLista.innerHTML = '<tr><td colspan="10" class="text-center"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Carregando...</span></div></td></tr>';
                     
                     // Tentar usar a função de carregamento do módulo de notas se disponível
                     // Isso permitirá reutilizar toda a lógica de normalização e exibição
@@ -374,18 +374,20 @@ function ativarSecao(linkId) {
                     Promise.all([
                         fetch(CONFIG.getApiUrl('/alunos')).then(r => r.ok ? r.json() : []),
                         fetch(CONFIG.getApiUrl('/disciplinas')).then(r => r.ok ? r.json() : []),
+                        fetch(CONFIG.getApiUrl('/turmas')).then(r => r.ok ? r.json() : []),
                         fetch(CONFIG.getApiUrl('/notas')).then(r => r.ok ? r.json() : [])
                     ])
-                    .then(([alunos, disciplinas, notas]) => {
+                    .then(([alunos, disciplinas, turmas, notas]) => {
                         console.log("Dados carregados para notas:", {
                             alunos: alunos.length,
                             disciplinas: disciplinas.length,
+                            turmas: turmas.length,
                             notas: notas ? notas.length || "objeto não iterável" : "sem dados"
                         });
                         
                         // Verificar estrutura dos dados de notas
                         if (!notas || notas.length === 0) {
-                            notasLista.innerHTML = '<tr><td colspan="6" class="text-center">Nenhuma nota encontrada.</td></tr>';
+                            notasLista.innerHTML = '<tr><td colspan="10" class="text-center">Nenhuma nota encontrada.</td></tr>';
                             return;
                         }
 
@@ -407,7 +409,7 @@ function ativarSecao(linkId) {
                         // Verificar se conseguimos obter um array de notas
                         if (!Array.isArray(notasData) || notasData.length === 0) {
                             console.warn("Formato de dados de notas não reconhecido:", notas);
-                            notasLista.innerHTML = '<tr><td colspan="6" class="text-center">Formato de dados de notas não reconhecido.</td></tr>';
+                            notasLista.innerHTML = '<tr><td colspan="10" class="text-center">Formato de dados de notas não reconhecido.</td></tr>';
                             return;
                         }
                         
@@ -426,6 +428,39 @@ function ativarSecao(linkId) {
                             return disciplina ? disciplina.nome_disciplina : `Disciplina ${id}`;
                         };
                         
+                        // Função para encontrar turma pelo ID
+                        const getTurma = (id) => {
+                            const turma = turmas.find(t => t.id_turma === id);
+                            return turma ? `${turma.id_turma} - ${turma.serie || 'Série não informada'}` : `Turma ${id}`;
+                        };
+                        
+                        // Função para extrair o ano da série
+                        const getAno = (turmaId) => {
+                            const turma = turmas.find(t => t.id_turma === turmaId);
+                            if (turma && turma.serie) {
+                                const match = turma.serie.match(/^(\d+)º/);
+                                return match ? match[1] : '-';
+                            }
+                            return '-';
+                        };
+                        
+                        // Ordenar notas por aluno e bimestre
+                        notasData.sort((a, b) => {
+                            const alunoA = alunos.find(al => al.id_aluno === (a.id_aluno || a.aluno_id));
+                            const alunoB = alunos.find(al => al.id_aluno === (b.id_aluno || b.aluno_id));
+                            
+                            if (alunoA && alunoB) {
+                                if (alunoA.nome_aluno !== alunoB.nome_aluno) {
+                                    return alunoA.nome_aluno.localeCompare(alunoB.nome_aluno);
+                                }
+                                // Se for o mesmo aluno, ordenar por bimestre
+                                const bimestreA = parseInt(a.bimestre || 0);
+                                const bimestreB = parseInt(b.bimestre || 0);
+                                return bimestreA - bimestreB;
+                            }
+                            return 0;
+                        });
+                        
                         notasData.forEach(nota => {
                             // Verificar se é um objeto válido
                             if (!nota || typeof nota !== 'object') {
@@ -433,22 +468,70 @@ function ativarSecao(linkId) {
                                 return;
                             }
                             
+                            const alunoId = nota.id_aluno || nota.aluno_id;
+                            const disciplinaId = nota.id_disciplina || nota.disciplina_id;
+                            const turmaId = nota.id_turma || nota.turma_id;
+                            const notaId = nota.id || nota.nota_id || `${alunoId}-${disciplinaId}-${nota.bimestre}`;
+                            
+                            const nomeAluno = getNomeAluno(alunoId);
+                            const nomeDisciplina = getNomeDisciplina(disciplinaId);
+                            const turmaInfo = getTurma(turmaId);
+                            const ano = getAno(turmaId);
+                            
+                            // Extrair valores específicos ou usar valores padrão
+                            const bimestre = nota.bimestre || '-';
+                            const notaMensal = nota.nota_mensal || nota.mensal || '-';
+                            const notaBimestral = nota.nota_bimestral || nota.bimestral || '-';
+                            const recuperacao = nota.recuperacao || '-';
+                            
+                            // Calcular média ou usar a média já fornecida
+                            let media;
+                            if (nota.media) {
+                                media = nota.media;
+                            } else if (notaMensal !== '-' && notaBimestral !== '-') {
+                                // Calcular média ponderada (40% mensal + 60% bimestral)
+                                const nMensal = parseFloat(notaMensal);
+                                const nBimestral = parseFloat(notaBimestral);
+                                if (!isNaN(nMensal) && !isNaN(nBimestral)) {
+                                    media = ((nMensal * 0.4) + (nBimestral * 0.6)).toFixed(1);
+                                } else {
+                                    media = '-';
+                                }
+                            } else {
+                                media = nota.valor || '-';
+                            }
+                            
                             const row = document.createElement('tr');
-                            const notaId = nota.id || nota.nota_id || `${nota.aluno_id}-${nota.disciplina_id}-${nota.bimestre}`;
-                            const nomeAluno = getNomeAluno(nota.aluno_id);
-                            const nomeDisciplina = getNomeDisciplina(nota.disciplina_id);
+                            
+                            // Adicionar classes para colorir baseado na média
+                            if (media !== '-') {
+                                const mediaNum = parseFloat(media);
+                                if (!isNaN(mediaNum)) {
+                                    if (mediaNum >= 6.0) {
+                                        row.classList.add('table-success');
+                                    } else if (mediaNum >= 4.0) {
+                                        row.classList.add('table-warning');
+                                    } else {
+                                        row.classList.add('table-danger');
+                                    }
+                                }
+                            }
                             
                             row.innerHTML = `
-                                <td>${nomeAluno}</td>
+                                <td>${ano}</td>
+                                <td>${bimestre}</td>
+                                <td>${turmaInfo}</td>
                                 <td>${nomeDisciplina}</td>
-                                <td>${nota.valor || '-'}</td>
-                                <td>${nota.bimestre || '-'}</td>
-                                <td>${nota.data_lancamento || '-'}</td>
+                                <td>${nomeAluno}</td>
+                                <td>${notaMensal}</td>
+                                <td>${notaBimestral}</td>
+                                <td>${recuperacao}</td>
+                                <td>${media}</td>
                                 <td class="text-center">
-                                    <button class="btn btn-sm btn-outline-primary edit-nota" data-id="${notaId}" data-aluno="${nota.aluno_id}" data-disciplina="${nota.disciplina_id}" data-bimestre="${nota.bimestre}">
+                                    <button class="btn btn-sm btn-outline-primary edit-nota" data-id="${notaId}" data-aluno="${alunoId}" data-disciplina="${disciplinaId}" data-bimestre="${bimestre}" data-turma="${turmaId}">
                                         <i class="fas fa-edit"></i>
                                     </button>
-                                    <button class="btn btn-sm btn-outline-danger delete-nota" data-id="${notaId}" data-aluno="${nota.aluno_id}" data-disciplina="${nota.disciplina_id}" data-bimestre="${nota.bimestre}">
+                                    <button class="btn btn-sm btn-outline-danger delete-nota" data-id="${notaId}" data-aluno="${alunoId}" data-disciplina="${disciplinaId}" data-bimestre="${bimestre}" data-turma="${turmaId}">
                                         <i class="fas fa-trash"></i>
                                     </button>
                                 </td>
@@ -460,8 +543,13 @@ function ativarSecao(linkId) {
                         document.querySelectorAll('.edit-nota').forEach(btn => {
                             btn.addEventListener('click', function() {
                                 const id = this.getAttribute('data-id');
+                                const idAluno = this.getAttribute('data-aluno');
+                                const idDisciplina = this.getAttribute('data-disciplina');
+                                const bimestre = this.getAttribute('data-bimestre');
+                                const idTurma = this.getAttribute('data-turma');
+                                
                                 if (typeof editarNota === 'function') {
-                                    editarNota(id);
+                                    editarNota(id, idAluno, idDisciplina, bimestre, idTurma);
                                 } else {
                                     console.warn("Função editarNota não encontrada");
                                 }
@@ -471,8 +559,13 @@ function ativarSecao(linkId) {
                         document.querySelectorAll('.delete-nota').forEach(btn => {
                             btn.addEventListener('click', function() {
                                 const id = this.getAttribute('data-id');
+                                const idAluno = this.getAttribute('data-aluno');
+                                const idDisciplina = this.getAttribute('data-disciplina');
+                                const bimestre = this.getAttribute('data-bimestre');
+                                const idTurma = this.getAttribute('data-turma');
+                                
                                 if (typeof excluirNota === 'function') {
-                                    excluirNota(id);
+                                    excluirNota(id, idAluno, idDisciplina, bimestre, idTurma);
                                 } else {
                                     console.warn("Função excluirNota não encontrada");
                                 }
@@ -481,7 +574,7 @@ function ativarSecao(linkId) {
                     })
                     .catch(error => {
                         console.error("Erro ao carregar notas:", error);
-                        notasLista.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Erro ao carregar notas: ' + error.message + '</td></tr>';
+                        notasLista.innerHTML = '<tr><td colspan="10" class="text-center text-danger">Erro ao carregar notas: ' + error.message + '</td></tr>';
                     });
                 }
             } catch (e) {
@@ -3471,7 +3564,7 @@ function initNotas() {
         // Mostrar indicador de carregamento
         tabelaAtual.innerHTML = `
             <tr>
-                <td colspan="7" class="text-center">
+                <td colspan="10" class="text-center">
                     <div class="spinner-border text-primary" role="status">
                         <span class="visually-hidden">Carregando...</span>
                     </div>
@@ -3506,7 +3599,7 @@ function initNotas() {
                 if (notasArray.length === 0) {
                     tabelaAtual.innerHTML = `
                         <tr class="text-center">
-                            <td colspan="7">Nenhuma nota cadastrada</td>
+                            <td colspan="10">Nenhuma nota cadastrada</td>
                         </tr>
                     `;
                     return;
@@ -3522,13 +3615,19 @@ function initNotas() {
                     // Limpar a tabela
                     tabelaAtual.innerHTML = '';
                     
-                    // Ordenar notas por ID do aluno
+                    // Ordenar notas por ID do aluno e bimestre
                     notasArray.sort((a, b) => {
-                        const alunoA = alunos.find(al => al.id_aluno === a.id_aluno || al.id_aluno === a.aluno_id);
-                        const alunoB = alunos.find(al => al.id_aluno === b.id_aluno || al.id_aluno === b.aluno_id);
+                        const alunoA = alunos.find(al => al.id_aluno === (a.id_aluno || a.aluno_id));
+                        const alunoB = alunos.find(al => al.id_aluno === (b.id_aluno || b.aluno_id));
                         
                         if (alunoA && alunoB) {
-                            return alunoA.nome_aluno.localeCompare(alunoB.nome_aluno);
+                            if (alunoA.nome_aluno !== alunoB.nome_aluno) {
+                                return alunoA.nome_aluno.localeCompare(alunoB.nome_aluno);
+                            }
+                            // Se for o mesmo aluno, ordenar por bimestre
+                            const bimestreA = parseInt(a.bimestre || 0);
+                            const bimestreB = parseInt(b.bimestre || 0);
+                            return bimestreA - bimestreB;
                         }
                         return 0;
                     });
@@ -3545,21 +3644,65 @@ function initNotas() {
                         const disciplina = disciplinas.find(d => d.id_disciplina === disciplinaId) || { nome_disciplina: `Disciplina ${disciplinaId}` };
                         const turma = turmas.find(t => t.id_turma === turmaId) || { id_turma: turmaId || '-', serie: 'Desconhecida' };
                         
+                        // Extrair o ano da série da turma (se disponível)
+                        const ano = turma.serie ? turma.serie.split('º')[0] : '-';
+                        
+                        // Extrair valores específicos ou usar valores padrão
+                        const bimestre = nota.bimestre || '-';
+                        const notaMensal = nota.nota_mensal || nota.mensal || '-';
+                        const notaBimestral = nota.nota_bimestral || nota.bimestral || '-';
+                        const recuperacao = nota.recuperacao || '-';
+                        
+                        // Calcular média ou usar a média já fornecida
+                        let media;
+                        if (nota.media) {
+                            media = nota.media;
+                        } else if (notaMensal !== '-' && notaBimestral !== '-') {
+                            // Calcular média ponderada (40% mensal + 60% bimestral)
+                            const nMensal = parseFloat(notaMensal);
+                            const nBimestral = parseFloat(notaBimestral);
+                            if (!isNaN(nMensal) && !isNaN(nBimestral)) {
+                                media = ((nMensal * 0.4) + (nBimestral * 0.6)).toFixed(1);
+                            } else {
+                                media = '-';
+                            }
+                        } else {
+                            media = nota.valor || '-';
+                        }
+                        
                         const tr = document.createElement('tr');
+                        
+                        // Adicionar classes para colorir baseado na média
+                        if (media !== '-') {
+                            const mediaNum = parseFloat(media);
+                            if (!isNaN(mediaNum)) {
+                                if (mediaNum >= 6.0) {
+                                    tr.classList.add('table-success');
+                                } else if (mediaNum >= 4.0) {
+                                    tr.classList.add('table-warning');
+                                } else {
+                                    tr.classList.add('table-danger');
+                                }
+                            }
+                        }
+                        
                         tr.innerHTML = `
-                            <td>${aluno.nome_aluno}</td>
+                            <td>${ano}</td>
+                            <td>${bimestre}</td>
+                            <td>${turma.id_turma} - ${turma.serie || 'Série não informada'}</td>
                             <td>${disciplina.nome_disciplina}</td>
-                            <td>${turma.id_turma || '-'} ${turma.serie ? `- ${turma.serie}` : ''}</td>
-                            <td>${nota.valor}</td>
-                            <td>${nota.bimestre || '-'}</td>
-                            <td>${nota.data_lancamento || nota.data || '-'}</td>
+                            <td>${aluno.nome_aluno}</td>
+                            <td>${notaMensal}</td>
+                            <td>${notaBimestral}</td>
+                            <td>${recuperacao}</td>
+                            <td>${media}</td>
                             <td class="text-center">
                                 <button class="btn btn-sm btn-outline-primary edit-nota" data-id="${notaId}" 
-                                    data-aluno="${alunoId}" data-disciplina="${disciplinaId}" data-bimestre="${nota.bimestre || ''}">
+                                    data-aluno="${alunoId}" data-disciplina="${disciplinaId}" data-bimestre="${bimestre}" data-turma="${turmaId}">
                                     <i class="fas fa-edit"></i>
                                 </button>
                                 <button class="btn btn-sm btn-outline-danger delete-nota" data-id="${notaId}"
-                                    data-aluno="${alunoId}" data-disciplina="${disciplinaId}" data-bimestre="${nota.bimestre || ''}">
+                                    data-aluno="${alunoId}" data-disciplina="${disciplinaId}" data-bimestre="${bimestre}" data-turma="${turmaId}">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </td>
@@ -3575,9 +3718,10 @@ function initNotas() {
                             const idAluno = this.getAttribute('data-aluno');
                             const idDisciplina = this.getAttribute('data-disciplina');
                             const bimestre = this.getAttribute('data-bimestre');
+                            const idTurma = this.getAttribute('data-turma');
                             
                             if (typeof editarNota === 'function') {
-                                editarNota(idNota, idAluno, idDisciplina, bimestre);
+                                editarNota(idNota, idAluno, idDisciplina, bimestre, idTurma);
                             } else {
                                 console.warn("Função editarNota não encontrada");
                             }
@@ -3590,9 +3734,10 @@ function initNotas() {
                             const idAluno = this.getAttribute('data-aluno');
                             const idDisciplina = this.getAttribute('data-disciplina');
                             const bimestre = this.getAttribute('data-bimestre');
+                            const idTurma = this.getAttribute('data-turma');
                             
                             if (typeof excluirNota === 'function') {
-                                excluirNota(idNota, idAluno, idDisciplina, bimestre);
+                                excluirNota(idNota, idAluno, idDisciplina, bimestre, idTurma);
                             } else {
                                 console.warn("Função excluirNota não encontrada");
                             }
@@ -3603,7 +3748,7 @@ function initNotas() {
                     console.error("Erro ao processar dados para a tabela de notas:", error);
                     tabelaAtual.innerHTML = `
                         <tr class="text-center">
-                            <td colspan="7">Erro ao processar dados: ${error.message}</td>
+                            <td colspan="10">Erro ao processar dados: ${error.message}</td>
                         </tr>
                     `;
                 });
@@ -3612,7 +3757,7 @@ function initNotas() {
                 console.error("Erro ao carregar notas:", error);
                 tabelaAtual.innerHTML = `
                     <tr class="text-center">
-                        <td colspan="7">Erro ao carregar notas: ${error.message}</td>
+                        <td colspan="10">Erro ao carregar notas: ${error.message}</td>
                     </tr>
                 `;
             });
