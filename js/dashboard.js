@@ -1733,3 +1733,256 @@ function excluirAluno(id) {
         mostrarAlerta('Erro ao excluir aluno: ' + error.message, 'danger');
     });
 }
+
+// Inicialização do módulo de professores
+function initProfessores() {
+    console.log("Inicializando módulo de professores");
+    
+    // Elementos do formulário
+    const formProfessor = document.getElementById('form-professor');
+    const btnNovoProfessor = document.getElementById('btn-novo-professor');
+    const btnCancelarProfessor = document.getElementById('btn-cancelar-professor');
+    
+    // Carregar professores
+    carregarProfessores();
+    
+    // Configurar formulário de novo professor
+    if (formProfessor) {
+        formProfessor.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const professor = {
+                nome: formData.get('nome'),
+                email: formData.get('email')
+            };
+            
+            if (!professor.nome || !professor.email) {
+                mostrarAlerta('Preencha todos os campos obrigatórios', 'warning');
+                return;
+            }
+            
+            fetch(CONFIG.getApiUrl('/professores'), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(professor)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Erro ao criar professor: ' + response.statusText);
+                }
+                return response.json();
+            })
+            .then(data => {
+                this.reset();
+                carregarProfessores();
+                mostrarAlerta('Professor criado com sucesso!', 'success');
+            })
+            .catch(error => {
+                console.error("Erro ao criar professor:", error);
+                mostrarAlerta('Erro ao criar professor: ' + error.message, 'danger');
+            });
+        });
+    }
+    
+    // Configurar botão de novo professor
+    if (btnNovoProfessor) {
+        btnNovoProfessor.addEventListener('click', function() {
+            if (formProfessor) {
+                formProfessor.reset();
+                formProfessor.scrollIntoView({behavior: 'smooth'});
+            }
+        });
+    }
+    
+    // Configurar botão cancelar
+    if (btnCancelarProfessor) {
+        btnCancelarProfessor.addEventListener('click', function() {
+            if (formProfessor) {
+                formProfessor.reset();
+            }
+        });
+    }
+}
+
+// Inicialização do módulo de disciplinas
+function initDisciplinas() {
+    console.log("Inicializando módulo de disciplinas");
+    
+    // Elementos do formulário
+    const formDisciplina = document.getElementById('form-disciplina');
+    const btnNovaDisciplina = document.getElementById('btn-nova-disciplina');
+    const btnCancelarDisciplina = document.getElementById('btn-cancelar-disciplina');
+    
+    // Carregar disciplinas
+    carregarDisciplinas();
+    
+    // Configurar formulário de nova disciplina
+    if (formDisciplina) {
+        formDisciplina.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const nome = formData.get('nome');
+            
+            if (!nome) {
+                mostrarAlerta('Preencha o nome da disciplina', 'warning');
+                return;
+            }
+            
+            fetch(CONFIG.getApiUrl('/disciplinas'), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ nome })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Erro ao criar disciplina: ' + response.statusText);
+                }
+                return response.json();
+            })
+            .then(data => {
+                this.reset();
+                carregarDisciplinas();
+                mostrarAlerta('Disciplina criada com sucesso!', 'success');
+            })
+            .catch(error => {
+                console.error("Erro ao criar disciplina:", error);
+                mostrarAlerta('Erro ao criar disciplina: ' + error.message, 'danger');
+            });
+        });
+    }
+    
+    // Configurar botão de nova disciplina
+    if (btnNovaDisciplina) {
+        btnNovaDisciplina.addEventListener('click', function() {
+            if (formDisciplina) {
+                formDisciplina.reset();
+                formDisciplina.scrollIntoView({behavior: 'smooth'});
+            }
+        });
+    }
+    
+    // Configurar botão cancelar
+    if (btnCancelarDisciplina) {
+        btnCancelarDisciplina.addEventListener('click', function() {
+            if (formDisciplina) {
+                formDisciplina.reset();
+            }
+        });
+    }
+}
+
+// Inicialização do módulo de alunos
+function initAlunos() {
+    console.log("Inicializando módulo de alunos");
+    
+    // Elementos do formulário
+    const formAluno = document.getElementById('form-aluno');
+    const btnNovoAluno = document.getElementById('btn-novo-aluno');
+    const btnCancelarAluno = document.getElementById('btn-cancelar-aluno');
+    
+    // Carregar alunos
+    carregarAlunos();
+    
+    // Configurar formulário de novo aluno
+    if (formAluno) {
+        formAluno.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const aluno = {
+                nome: formData.get('nome'),
+                email: formData.get('email'),
+                matricula: formData.get('matricula')
+            };
+            
+            if (!aluno.nome || !aluno.email || !aluno.matricula) {
+                mostrarAlerta('Preencha todos os campos obrigatórios', 'warning');
+                return;
+            }
+            
+            fetch(CONFIG.getApiUrl('/alunos'), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(aluno)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Erro ao criar aluno: ' + response.statusText);
+                }
+                return response.json();
+            })
+            .then(data => {
+                this.reset();
+                carregarAlunos();
+                mostrarAlerta('Aluno criado com sucesso!', 'success');
+            })
+            .catch(error => {
+                console.error("Erro ao criar aluno:", error);
+                mostrarAlerta('Erro ao criar aluno: ' + error.message, 'danger');
+            });
+        });
+    }
+    
+    // Configurar botão de novo aluno
+    if (btnNovoAluno) {
+        btnNovoAluno.addEventListener('click', function() {
+            if (formAluno) {
+                formAluno.reset();
+                formAluno.scrollIntoView({behavior: 'smooth'});
+            }
+        });
+    }
+    
+    // Configurar botão cancelar
+    if (btnCancelarAluno) {
+        btnCancelarAluno.addEventListener('click', function() {
+            if (formAluno) {
+                formAluno.reset();
+            }
+        });
+    }
+}
+
+// Inicialização do módulo de notas
+function initNotas() {
+    console.log("Inicializando módulo de notas");
+    
+    // Elementos do formulário
+    const formFiltroNotas = document.getElementById('form-filtro-notas');
+    const selectTurma = document.getElementById('select-turma-notas');
+    const selectDisciplina = document.getElementById('select-disciplina-notas');
+    
+    // Carregar turmas e disciplinas nos selects
+    carregarTurmasSelect();
+    carregarDisciplinasSelect();
+    
+    // Configurar formulário de filtro
+    if (formFiltroNotas) {
+        formFiltroNotas.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const turmaId = formData.get('turma');
+            const disciplinaId = formData.get('disciplina');
+            
+            if (!turmaId || !disciplinaId) {
+                mostrarAlerta('Selecione a turma e a disciplina', 'warning');
+                return;
+            }
+            
+            // Supondo que temos um ID de professor (pode ser obtido da sessão ou de outra forma)
+            const professorId = 1; // Valor temporário
+            
+            // Carregar notas com os filtros
+            carregarNotas(professorId, disciplinaId, turmaId);
+        });
+    }
+}
