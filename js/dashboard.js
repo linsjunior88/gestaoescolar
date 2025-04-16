@@ -811,11 +811,10 @@ function initDisciplinas() {
             return;
         }
         
-        // Mostrar indicador de carregamento
-        vinculoTurmas.innerHTML = '<option value="">Carregando turmas...</option>';
+        vinculoTurmas.innerHTML = '<option value="" disabled>Carregando turmas...</option>';
         
         // Buscar turmas da API
-        fetch('http://localhost:4000/api/turmas')
+        fetch(CONFIG.getApiUrl('/turmas'))
             .then(response => {
                 if (!response.ok) {
                     throw new Error('Erro ao carregar turmas: ' + response.statusText);
@@ -1009,52 +1008,46 @@ function initDisciplinas() {
             return;
         }
         // Buscar dados da disciplina da API
-        fetch(`http://localhost:4000/api/disciplinas/${idDisciplina}`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(disciplina)
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Erro ao atualizar disciplina: ' + response.statusText);
-            }
-            return response.json();
-        })
-        .then(data => {
-            console.log("Disciplina atualizada com sucesso:", data);
-            
-            // Agora remover todos os vínculos antigos e criar os novos
-            return fetch(`http://localhost:4000/api/disciplinas/${idDisciplina}/turmas`, {
-                method: 'DELETE'
+        fetch(CONFIG.getApiUrl(`/disciplinas/${idDisciplina}`))
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Erro ao atualizar disciplina: ' + response.statusText);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log("Disciplina atualizada com sucesso:", data);
+                
+                // Agora remover todos os vínculos antigos e criar os novos
+                return fetch(CONFIG.getApiUrl(`/disciplinas/${idDisciplina}/turmas`), {
+                    method: 'DELETE'
+                });
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Erro ao remover vínculos antigos: ' + response.statusText);
+                }
+                
+                // Se tiver turmas selecionadas, criar os novos vínculos
+                if (disciplina.turmas_vinculadas && disciplina.turmas_vinculadas.length > 0) {
+                    return vincularTurmasDisciplina(idDisciplina, disciplina.turmas_vinculadas);
+                }
+                return Promise.resolve();
+            })
+            .then(() => {
+                // Mostrar mensagem de sucesso
+                alert('Disciplina atualizada com sucesso!');
+                
+                // Limpar formulário
+                resetarFormularioDisciplina();
+                
+                // Recarregar lista de disciplinas
+                carregarDisciplinas();
+            })
+            .catch(error => {
+                console.error("Erro ao atualizar disciplina:", error);
+                alert(`Erro ao atualizar disciplina: ${error.message}`);
             });
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Erro ao remover vínculos antigos: ' + response.statusText);
-            }
-            
-            // Se tiver turmas selecionadas, criar os novos vínculos
-            if (disciplina.turmas_vinculadas && disciplina.turmas_vinculadas.length > 0) {
-                return vincularTurmasDisciplina(idDisciplina, disciplina.turmas_vinculadas);
-            }
-            return Promise.resolve();
-        })
-        .then(() => {
-            // Mostrar mensagem de sucesso
-            alert('Disciplina atualizada com sucesso!');
-            
-            // Limpar formulário
-            resetarFormularioDisciplina();
-            
-            // Recarregar lista de disciplinas
-            carregarDisciplinas();
-        })
-        .catch(error => {
-            console.error("Erro ao atualizar disciplina:", error);
-            alert(`Erro ao atualizar disciplina: ${error.message}`);
-        });
     }
     function excluirDisciplina(idDisciplina) {
         if (confirm(`Tem certeza que deseja excluir a disciplina ${idDisciplina}?`)) {
@@ -1283,7 +1276,7 @@ function initProfessores() {
             
             if (modo === 'editar') {
                 // Atualizar via API
-                fetch(`http://localhost:4000/api/professores/${idProfessor}`, {
+                fetch(CONFIG.getApiUrl(`/professores/${idProfessor}`), {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json'
@@ -1301,7 +1294,7 @@ function initProfessores() {
                     
                     // Agora vamos atualizar os vínculos com disciplinas
                     // Primeiro, remover todos os vínculos existentes
-                    return fetch(`http://localhost:4000/api/professores/${idProfessor}/disciplinas`, {
+                    return fetch(CONFIG.getApiUrl(`/professores/${idProfessor}/disciplinas`), {
                         method: 'DELETE'
                     })
                     .then(response => {
@@ -1840,8 +1833,8 @@ function initProfessores() {
         
         // Carregamento paralelo de professores e disciplinas
         Promise.all([
-            fetch('http://localhost:4000/api/professores').then(response => response.ok ? response.json() : []),
-            fetch('http://localhost:4000/api/disciplinas').then(response => response.ok ? response.json() : [])
+            fetch(CONFIG.getApiUrl('/professores')).then(response => response.ok ? response.json() : []),
+            fetch(CONFIG.getApiUrl('/disciplinas')).then(response => response.ok ? response.json() : [])
         ])
             .then(([professores, disciplinas]) => {
                 console.log("Professores carregados:", professores.length);
@@ -1874,7 +1867,7 @@ function initProfessores() {
                             const disciplinaNome = disciplina ? disciplina.nome_disciplina : disciplinaId;
                             
                             // Criar uma promessa para buscar as turmas vinculadas a esta disciplina
-                            const promessaTurmas = fetch(`http://localhost:4000/api/disciplinas/${disciplinaId}/turmas`)
+                            const promessaTurmas = fetch(CONFIG.getApiUrl(`/disciplinas/${disciplinaId}/turmas`))
                                 .then(response => response.ok ? response.json() : [])
                                 .then(turmasVinculadas => {
                                     // Adicionar uma linha para cada vínculo
@@ -1905,130 +1898,68 @@ function initProfessores() {
                                         <td>${disciplinaNome}</td>
                                         <td class="text-danger">Erro ao buscar turmas vinculadas</td>
                                         <td class="text-center">
-        .then(([professores, disciplinas]) => {
-            console.log("Professores carregados:", professores.length);
-            console.log("Disciplinas carregadas:", disciplinas.length);
-            
-            if (professores.length === 0) {
-                tabelaVinculos.innerHTML = `
-                    <tr class="text-center">
-                        <td colspan="4">Nenhum professor cadastrado</td>
-                    </tr>
-                `;
-                return;
-            }
-            
-            // Limpar a tabela existente
-            tabelaVinculos.innerHTML = '';
-            
-            // Inicialmente vazio, para ser preenchido com vínculos
-            let temVinculos = false;
-            let vinculosPromessas = [];
-            
-            // Para cada professor
-            professores.forEach(professor => {
-                // Verificar se o professor tem disciplinas
-                if (professor.disciplinas && professor.disciplinas.length > 0) {
-                    // Para cada disciplina do professor
-                    professor.disciplinas.forEach(disciplinaId => {
-                        // Encontrar os detalhes da disciplina
-                        const disciplina = disciplinas.find(d => d.id_disciplina === disciplinaId);
-                        const disciplinaNome = disciplina ? disciplina.nome_disciplina : disciplinaId;
+                                            <button class="btn btn-sm btn-danger remover-vinculo" 
+                                                data-professor="${professor.id_professor}" 
+                                                data-disciplina="${disciplinaId}">
+                                                <i class="fas fa-unlink"></i>
+                                            </button>
+                                        </td>
+                                    `;
+                                    return tr;
+                                });
+                            
+                            vinculosPromessas.push(promessaTurmas);
+                            temVinculos = true;
+                        });
+                    } else {
+                        // Professor sem disciplinas - criar uma linha simples
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${professor.nome_professor}</td>
+                            <td colspan="3" class="text-center">Nenhuma disciplina vinculada</td>
+                        `;
                         
-                        // Criar uma promessa para buscar as turmas vinculadas a esta disciplina
-                        const promessaTurmas = fetch(`http://localhost:4000/api/disciplinas/${disciplinaId}/turmas`)
-                            .then(response => response.ok ? response.json() : [])
-                            .then(turmasVinculadas => {
-                                // Adicionar uma linha para cada vínculo
-                                const tr = document.createElement('tr');
-                                tr.innerHTML = `
-                                    <td>${professor.nome_professor}</td>
-                                    <td>${disciplinaNome}</td>
-                                    <td>${turmasVinculadas.length > 0 
-                                        ? turmasVinculadas.map(t => `${t.id_turma} (${t.serie || 'Série não informada'})`).join(', ') 
-                                        : '<span class="text-warning">Nenhuma turma vinculada</span>'}
-                                    </td>
-                                    <td class="text-center">
-                                        <button class="btn btn-sm btn-danger remover-vinculo" 
-                                            data-professor="${professor.id_professor}" 
-                                            data-disciplina="${disciplinaId}">
-                                            <i class="fas fa-unlink"></i>
-                                        </button>
-                                    </td>
-                                `;
-                                
-                                return tr;
-                            })
-                            .catch(error => {
-                                console.error(`Erro ao buscar turmas da disciplina ${disciplinaId}:`, error);
-                                const tr = document.createElement('tr');
-                                tr.innerHTML = `
-                                    <td>${professor.nome_professor}</td>
-                                    <td>${disciplinaNome}</td>
-                                    <td class="text-danger">Erro ao buscar turmas vinculadas</td>
-                                    <td class="text-center">
-                                        <button class="btn btn-sm btn-danger remover-vinculo" 
-                                            data-professor="${professor.id_professor}" 
-                                            data-disciplina="${disciplinaId}">
-                                            <i class="fas fa-unlink"></i>
-                                        </button>
-                                    </td>
-                                `;
-                                return tr;
-                            });
-                        
-                        vinculosPromessas.push(promessaTurmas);
-                        temVinculos = true;
-                    });
-                } else {
-                    // Professor sem disciplinas - criar uma linha simples
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                        <td>${professor.nome_professor}</td>
-                        <td colspan="3" class="text-center">Nenhuma disciplina vinculada</td>
+                        // Criar uma promessa já resolvida com este TR
+                        vinculosPromessas.push(Promise.resolve(tr));
+                    }
+                });
+                
+                if (!temVinculos && professores.length > 0) {
+                    // Se não temos vínculos mas temos professores
+                    tabelaVinculos.innerHTML = `
+                        <tr class="text-center">
+                            <td colspan="4">Nenhum vínculo entre professor e disciplina encontrado</td>
+                        </tr>
                     `;
-                    
-                    // Criar uma promessa já resolvida com este TR
-                    vinculosPromessas.push(Promise.resolve(tr));
+                    return;
                 }
-            });
-            
-            if (!temVinculos && professores.length > 0) {
-                // Se não temos vínculos mas temos professores
-                tabelaVinculos.innerHTML = `
-                    <tr class="text-center">
-                        <td colspan="4">Nenhum vínculo entre professor e disciplina encontrado</td>
-                    </tr>
-                `;
-                return;
-            }
-            
-            // Aguardar todas as promessas e adicionar os resultados à tabela
-            return Promise.all(vinculosPromessas)
-                .then(linhas => {
-                    // Adicionar todas as linhas à tabela
-                    linhas.forEach(linha => {
-                        tabelaVinculos.appendChild(linha);
-                    });
-                    
-                    // Adicionar event listeners aos botões de remover vínculo
-                    document.querySelectorAll('.remover-vinculo').forEach(btn => {
-                        btn.addEventListener('click', function() {
-                            const professorId = this.getAttribute('data-professor');
-                            const disciplinaId = this.getAttribute('data-disciplina');
-                            removerVinculoProfessorDisciplina(professorId, disciplinaId);
+                
+                // Aguardar todas as promessas e adicionar os resultados à tabela
+                return Promise.all(vinculosPromessas)
+                    .then(linhas => {
+                        // Adicionar todas as linhas à tabela
+                        linhas.forEach(linha => {
+                            tabelaVinculos.appendChild(linha);
+                        });
+                        
+                        // Adicionar event listeners aos botões de remover vínculo
+                        document.querySelectorAll('.remover-vinculo').forEach(btn => {
+                            btn.addEventListener('click', function() {
+                                const professorId = this.getAttribute('data-professor');
+                                const disciplinaId = this.getAttribute('data-disciplina');
+                                removerVinculoProfessorDisciplina(professorId, disciplinaId);
+                            });
                         });
                     });
-                });
-        })
-        .catch(error => {
-            console.error("Erro ao carregar vínculos:", error);
-            tabelaVinculos.innerHTML = `
-                <tr class="text-center">
-                    <td colspan="4">Erro ao carregar vínculos: ${error.message}</td>
-                </tr>
-            `;
-        });
+            })
+            .catch(error => {
+                console.error("Erro ao carregar vínculos:", error);
+                tabelaVinculos.innerHTML = `
+                    <tr class="text-center">
+                        <td colspan="4">Erro ao carregar vínculos: ${error.message}</td>
+                    </tr>
+                `;
+            });
     }
     
     // Função para carregar disciplinas no select
@@ -2040,10 +1971,11 @@ function initProfessores() {
         
         vinculoDisciplinas.innerHTML = '<option value="" disabled>Carregando disciplinas...</option>';
         
-        fetch('http://localhost:4000/api/disciplinas')
+        // Buscar disciplinas da API
+        fetch(CONFIG.getApiUrl('/disciplinas'))
             .then(response => {
                 if (!response.ok) {
-                    throw new Error('Erro ao carregar disciplinas: ' + response.statusText);
+                    throw new Error(`Erro ao carregar disciplinas: ${response.statusText}`);
                 }
                 return response.json();
             })
@@ -2101,7 +2033,7 @@ function initProfessores() {
         `;
         
         // Buscar apenas as disciplinas selecionadas
-        fetch('http://localhost:4000/api/disciplinas')
+        fetch(CONFIG.getApiUrl('/disciplinas'))
             .then(response => response.ok ? response.json() : [])
             .then(disciplinas => {
                 console.log("Disciplinas carregadas:", disciplinas.length);
@@ -2125,7 +2057,7 @@ function initProfessores() {
                 
                 // Para cada disciplina selecionada, buscar as turmas diretamente do endpoint específico
                 const promessas = disciplinasFiltradas.map(disciplina => {
-                    return fetch(`http://localhost:4000/api/disciplinas/${disciplina.id_disciplina}/turmas`)
+                    return fetch(CONFIG.getApiUrl(`/disciplinas/${disciplina.id_disciplina}/turmas`))
                         .then(response => response.ok ? response.json() : [])
                         .then(turmas => {
                             console.log(`Turmas vinculadas à disciplina ${disciplina.id_disciplina}:`, turmas);
@@ -2134,7 +2066,7 @@ function initProfessores() {
                             if (turmas.length > 0) {
                                 // Para cada turma, buscar seus detalhes completos
                                 const turmasPromises = turmas.map(turma => {
-                                    return fetch(`http://localhost:4000/api/turmas/${turma.id_turma}`)
+                                    return fetch(CONFIG.getApiUrl(`/turmas/${turma.id_turma}`))
                                         .then(response => response.ok ? response.json() : null)
                                         .then(detalhes => {
                                             console.log(`Detalhes da turma ${turma.id_turma}:`, detalhes);
@@ -2326,7 +2258,7 @@ function initProfessores() {
         
         if (confirm(`Deseja remover o vínculo entre o professor e a disciplina ${disciplinaId}?`)) {
             // Remover vínculo via API
-            fetch(`http://localhost:4000/api/professores/${professorId}/disciplinas/${disciplinaId}`, {
+            fetch(CONFIG.getApiUrl(`/professores/${professorId}/disciplinas/${disciplinaId}`), {
                 method: 'DELETE'
             })
             .then(response => {
@@ -3397,7 +3329,7 @@ function carregarDisciplinasSelect() {
     fetch(CONFIG.getApiUrl('/disciplinas'))
         .then(response => {
             if (!response.ok) {
-                throw new Error(`Erro ao carregar disciplinas: ${response.status}`);
+                throw new Error(`Erro ao carregar disciplinas: ${response.statusText}`);
             }
             return response.json();
         })
