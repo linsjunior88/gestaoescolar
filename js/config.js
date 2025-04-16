@@ -6,7 +6,7 @@
 
 const CONFIG = {
     // Detectar ambiente de produção
-    isProd: window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1',
+    isProd: true, // Forçar produção para testes
     
     // Flag para usar dados mockados quando a API não está disponível
     useMockData: false,
