@@ -184,38 +184,120 @@ function ativarSecao(linkId) {
                     // Mostrar indicador de carregamento
                     professoresLista.innerHTML = '<tr><td colspan="5" class="text-center"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Carregando...</span></div></td></tr>';
                     
-                    // Fazer requisição à API
-                    fetch(CONFIG.getApiUrl('/professores'))
+                    // Primeiro, buscar disciplinas para ter informações corretas
+                    fetch(CONFIG.getApiUrl('/disciplinas'))
                         .then(response => response.ok ? response.json() : [])
-                        .then(data => {
-                            if (!data || data.length === 0) {
-                                professoresLista.innerHTML = '<tr><td colspan="5" class="text-center">Nenhum professor encontrado.</td></tr>';
-                                return;
-                            }
-                            
-                            // Limpar e preencher a tabela
-                            professoresLista.innerHTML = '';
-                            data.forEach(professor => {
-                                const row = document.createElement('tr');
-                                row.innerHTML = `
-                                    <td>${professor.id_professor}</td>
-                                    <td>${professor.nome_professor}</td>
-                                    <td>${professor.email_professor || '-'}</td>
-                                    <td class="text-center">
-                                        <button class="btn btn-sm btn-outline-primary edit-professor" data-id="${professor.id_professor}">
-                                            <i class="fas fa-edit"></i>
-                                        </button>
-                                        <button class="btn btn-sm btn-outline-danger delete-professor" data-id="${professor.id_professor}">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </td>
-                                `;
-                                professoresLista.appendChild(row);
-                            });
+                        .then(disciplinasData => {
+                            // Agora buscar professores
+                            return fetch(CONFIG.getApiUrl('/professores'))
+                                .then(response => response.ok ? response.json() : [])
+                                .then(data => {
+                                    if (!data || data.length === 0) {
+                                        professoresLista.innerHTML = '<tr><td colspan="5" class="text-center">Nenhum professor encontrado.</td></tr>';
+                                        return;
+                                    }
+                                    
+                                    // Limpar e preencher a tabela
+                                    professoresLista.innerHTML = '';
+                                    
+                                    // Processar cada professor e suas disciplinas/turmas
+                                    const processarProfessores = async () => {
+                                        for (const professor of data) {
+                                            // Encontrar nomes das disciplinas
+                                            let disciplinasNomes = '-';
+                                            if (professor.disciplinas && professor.disciplinas.length > 0) {
+                                                const nomesDisciplinas = professor.disciplinas.map(idDisc => {
+                                                    const disc = disciplinasData.find(d => d.id_disciplina === idDisc);
+                                                    return disc ? `${disc.id_disciplina} - ${disc.nome_disciplina}` : idDisc;
+                                                });
+                                                disciplinasNomes = nomesDisciplinas.join('<br>');
+                                            }
+                                            
+                                            // Buscar turmas para cada disciplina
+                                            let turmasHTML = '-';
+                                            if (professor.disciplinas && professor.disciplinas.length > 0) {
+                                                const turmasPromises = professor.disciplinas.map(disciplinaId => 
+                                                    fetch(CONFIG.getApiUrl(`/disciplinas/${disciplinaId}/turmas`))
+                                                        .then(response => response.ok ? response.json() : [])
+                                                );
+                                                
+                                                const turmasResults = await Promise.all(turmasPromises);
+                                                
+                                                const turmasPorDisciplina = [];
+                                                for (let i = 0; i < professor.disciplinas.length; i++) {
+                                                    const disciplinaId = professor.disciplinas[i];
+                                                    const turmas = turmasResults[i];
+                                                    const disciplina = disciplinasData.find(d => d.id_disciplina === disciplinaId);
+                                                    const nomeDisciplina = disciplina ? disciplina.id_disciplina : disciplinaId;
+                                                    
+                                                    if (turmas.length > 0) {
+                                                        const turmasTexto = turmas.map(t => 
+                                                            `${t.id_turma} (${t.serie || 'Série não informada'})`
+                                                        ).join(', ');
+                                                        turmasPorDisciplina.push(`<strong>${nomeDisciplina}</strong>: ${turmasTexto}`);
+                                                    } else {
+                                                        turmasPorDisciplina.push(`<strong>${nomeDisciplina}</strong>: <span class="text-warning">Nenhuma turma</span>`);
+                                                    }
+                                                }
+                                                
+                                                if (turmasPorDisciplina.length > 0) {
+                                                    turmasHTML = turmasPorDisciplina.join('<br>');
+                                                }
+                                            }
+                                            
+                                            // Criar a linha da tabela
+                                            const row = document.createElement('tr');
+                                            row.innerHTML = `
+                                                <td>${professor.id_professor}</td>
+                                                <td>${professor.nome_professor}</td>
+                                                <td>${professor.email_professor || '-'}</td>
+                                                <td>${disciplinasNomes}</td>
+                                                <td>${turmasHTML}</td>
+                                                <td class="text-center">
+                                                    <button class="btn btn-sm btn-outline-primary edit-professor" data-id="${professor.id_professor}">
+                                                        <i class="fas fa-edit"></i>
+                                                    </button>
+                                                    <button class="btn btn-sm btn-outline-danger delete-professor" data-id="${professor.id_professor}">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </td>
+                                            `;
+                                            professoresLista.appendChild(row);
+                                        }
+                                        
+                                        // Adicionar eventos aos botões
+                                        document.querySelectorAll('.edit-professor').forEach(btn => {
+                                            btn.addEventListener('click', function() {
+                                                const idProfessor = this.getAttribute('data-id');
+                                                if (typeof editarProfessor === 'function') {
+                                                    editarProfessor(idProfessor);
+                                                } else {
+                                                    console.warn("Função editarProfessor não encontrada");
+                                                }
+                                            });
+                                        });
+                                        
+                                        document.querySelectorAll('.delete-professor').forEach(btn => {
+                                            btn.addEventListener('click', function() {
+                                                const idProfessor = this.getAttribute('data-id');
+                                                if (typeof excluirProfessor === 'function') {
+                                                    excluirProfessor(idProfessor);
+                                                } else {
+                                                    console.warn("Função excluirProfessor não encontrada");
+                                                }
+                                            });
+                                        });
+                                    };
+                                    
+                                    processarProfessores().catch(error => {
+                                        console.error("Erro ao processar professores:", error);
+                                        professoresLista.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Erro ao processar dados dos professores.</td></tr>';
+                                    });
+                                });
                         })
                         .catch(error => {
                             console.error("Erro ao carregar professores:", error);
-                            professoresLista.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Erro ao carregar professores.</td></tr>';
+                            professoresLista.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Erro ao carregar professores.</td></tr>';
                         });
                 }
             } catch (e) {
@@ -279,41 +361,119 @@ function ativarSecao(linkId) {
                     // Mostrar indicador de carregamento
                     notasLista.innerHTML = '<tr><td colspan="6" class="text-center"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Carregando...</span></div></td></tr>';
                     
-                    // Fazer requisição à API
-                    fetch(CONFIG.getApiUrl('/notas'))
-                        .then(response => response.ok ? response.json() : [])
-                        .then(data => {
-                            if (!data || data.length === 0) {
-                                notasLista.innerHTML = '<tr><td colspan="6" class="text-center">Nenhuma nota encontrada.</td></tr>';
+                    // Precisamos de alunos e disciplinas para mostrar os nomes em vez de apenas IDs
+                    Promise.all([
+                        fetch(CONFIG.getApiUrl('/alunos')).then(r => r.ok ? r.json() : []),
+                        fetch(CONFIG.getApiUrl('/disciplinas')).then(r => r.ok ? r.json() : []),
+                        fetch(CONFIG.getApiUrl('/notas')).then(r => r.ok ? r.json() : [])
+                    ])
+                    .then(([alunos, disciplinas, notas]) => {
+                        console.log("Dados carregados para notas:", {
+                            alunos: alunos.length,
+                            disciplinas: disciplinas.length,
+                            notas: notas ? notas.length || "objeto não iterável" : "sem dados"
+                        });
+                        
+                        // Verificar estrutura dos dados de notas
+                        if (!notas || notas.length === 0) {
+                            notasLista.innerHTML = '<tr><td colspan="6" class="text-center">Nenhuma nota encontrada.</td></tr>';
+                            return;
+                        }
+
+                        // Tentar obter dados de notas de diferentes formatos possíveis
+                        let notasData = notas;
+                        if (typeof notas === 'object' && !Array.isArray(notas)) {
+                            // Se for um objeto, pode ser que as notas estejam em uma propriedade
+                            if (notas.notas && Array.isArray(notas.notas)) {
+                                notasData = notas.notas;
+                            } else {
+                                // Tenta converter o objeto em array
+                                const possibleArray = Object.values(notas);
+                                if (possibleArray.length > 0 && typeof possibleArray[0] === 'object') {
+                                    notasData = possibleArray;
+                                }
+                            }
+                        }
+                        
+                        // Verificar se conseguimos obter um array de notas
+                        if (!Array.isArray(notasData) || notasData.length === 0) {
+                            console.warn("Formato de dados de notas não reconhecido:", notas);
+                            notasLista.innerHTML = '<tr><td colspan="6" class="text-center">Formato de dados de notas não reconhecido.</td></tr>';
+                            return;
+                        }
+                        
+                        // Limpar e preencher a tabela
+                        notasLista.innerHTML = '';
+                        
+                        // Função para encontrar nome do aluno pelo ID
+                        const getNomeAluno = (id) => {
+                            const aluno = alunos.find(a => a.id_aluno === id);
+                            return aluno ? aluno.nome_aluno : `Aluno ${id}`;
+                        };
+                        
+                        // Função para encontrar nome da disciplina pelo ID
+                        const getNomeDisciplina = (id) => {
+                            const disciplina = disciplinas.find(d => d.id_disciplina === id);
+                            return disciplina ? disciplina.nome_disciplina : `Disciplina ${id}`;
+                        };
+                        
+                        notasData.forEach(nota => {
+                            // Verificar se é um objeto válido
+                            if (!nota || typeof nota !== 'object') {
+                                console.warn("Nota inválida:", nota);
                                 return;
                             }
                             
-                            // Limpar e preencher a tabela
-                            notasLista.innerHTML = '';
-                            data.forEach(nota => {
-                                const row = document.createElement('tr');
-                                row.innerHTML = `
-                                    <td>${nota.aluno_id}</td>
-                                    <td>${nota.disciplina_id}</td>
-                                    <td>${nota.valor || '-'}</td>
-                                    <td>${nota.data_lancamento || '-'}</td>
-                                    <td>${nota.bimestre || '-'}</td>
-                                    <td class="text-center">
-                                        <button class="btn btn-sm btn-outline-primary edit-nota" data-id="${nota.id}">
-                                            <i class="fas fa-edit"></i>
-                                        </button>
-                                        <button class="btn btn-sm btn-outline-danger delete-nota" data-id="${nota.id}">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </td>
-                                `;
-                                notasLista.appendChild(row);
-                            });
-                        })
-                        .catch(error => {
-                            console.error("Erro ao carregar notas:", error);
-                            notasLista.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Erro ao carregar notas.</td></tr>';
+                            const row = document.createElement('tr');
+                            const notaId = nota.id || nota.nota_id || `${nota.aluno_id}-${nota.disciplina_id}-${nota.bimestre}`;
+                            const nomeAluno = getNomeAluno(nota.aluno_id);
+                            const nomeDisciplina = getNomeDisciplina(nota.disciplina_id);
+                            
+                            row.innerHTML = `
+                                <td>${nomeAluno}</td>
+                                <td>${nomeDisciplina}</td>
+                                <td>${nota.valor || '-'}</td>
+                                <td>${nota.bimestre || '-'}</td>
+                                <td>${nota.data_lancamento || '-'}</td>
+                                <td class="text-center">
+                                    <button class="btn btn-sm btn-outline-primary edit-nota" data-id="${notaId}" data-aluno="${nota.aluno_id}" data-disciplina="${nota.disciplina_id}" data-bimestre="${nota.bimestre}">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger delete-nota" data-id="${notaId}" data-aluno="${nota.aluno_id}" data-disciplina="${nota.disciplina_id}" data-bimestre="${nota.bimestre}">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                            `;
+                            notasLista.appendChild(row);
                         });
+                        
+                        // Adicionar eventos aos botões
+                        document.querySelectorAll('.edit-nota').forEach(btn => {
+                            btn.addEventListener('click', function() {
+                                const id = this.getAttribute('data-id');
+                                if (typeof editarNota === 'function') {
+                                    editarNota(id);
+                                } else {
+                                    console.warn("Função editarNota não encontrada");
+                                }
+                            });
+                        });
+                        
+                        document.querySelectorAll('.delete-nota').forEach(btn => {
+                            btn.addEventListener('click', function() {
+                                const id = this.getAttribute('data-id');
+                                if (typeof excluirNota === 'function') {
+                                    excluirNota(id);
+                                } else {
+                                    console.warn("Função excluirNota não encontrada");
+                                }
+                            });
+                        });
+                    })
+                    .catch(error => {
+                        console.error("Erro ao carregar notas:", error);
+                        notasLista.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Erro ao carregar notas: ' + error.message + '</td></tr>';
+                    });
                 }
             } catch (e) {
                 console.error("Erro ao atualizar notas:", e);
@@ -1941,11 +2101,12 @@ function initProfessores() {
                                             <td>${professor.nome_professor}</td>
                                             <td>${professor.email_professor || '-'}</td>
                                             <td>${disciplinasNomes}</td>
+                                            <td>${turmasHTML}</td>
                                             <td class="text-center">
-                                                <button class="btn btn-sm btn-primary editar-professor me-1" data-id="${professor.id_professor}">
+                                                <button class="btn btn-sm btn-outline-primary edit-professor" data-id="${professor.id_professor}">
                                                     <i class="fas fa-edit"></i>
                                                 </button>
-                                                <button class="btn btn-sm btn-danger excluir-professor" data-id="${professor.id_professor}">
+                                                <button class="btn btn-sm btn-outline-danger delete-professor" data-id="${professor.id_professor}">
                                                     <i class="fas fa-trash"></i>
                                                 </button>
                                             </td>
