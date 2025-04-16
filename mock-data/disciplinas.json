@@ -1,0 +1,44 @@
+[
+  {
+    "id": 1,
+    "nome": "Matemática (Mock)",
+    "carga_horaria": 40,
+    "turmas": ["5º Ano A", "5º Ano B", "6º Ano A", "6º Ano B"]
+  },
+  {
+    "id": 2,
+    "nome": "Português (Mock)",
+    "carga_horaria": 40,
+    "turmas": ["5º Ano A", "5º Ano B", "6º Ano A", "6º Ano B"]
+  },
+  {
+    "id": 3,
+    "nome": "Ciências (Mock)",
+    "carga_horaria": 30,
+    "turmas": ["5º Ano A", "5º Ano B", "6º Ano A", "6º Ano B"]
+  },
+  {
+    "id": 4,
+    "nome": "História (Mock)",
+    "carga_horaria": 30,
+    "turmas": ["5º Ano A", "5º Ano B", "6º Ano A", "6º Ano B"]
+  },
+  {
+    "id": 5,
+    "nome": "Geografia (Mock)",
+    "carga_horaria": 30,
+    "turmas": ["5º Ano A", "5º Ano B", "6º Ano A", "6º Ano B"]
+  },
+  {
+    "id": 6,
+    "nome": "Educação Física (Mock)",
+    "carga_horaria": 20,
+    "turmas": ["5º Ano A", "5º Ano B", "6º Ano A", "6º Ano B"]
+  },
+  {
+    "id": 7,
+    "nome": "Artes (Mock)",
+    "carga_horaria": 20,
+    "turmas": ["5º Ano A", "5º Ano B", "6º Ano A", "6º Ano B"]
+  }
+] 

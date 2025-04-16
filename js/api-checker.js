@@ -90,28 +90,45 @@ document.addEventListener('DOMContentLoaded', function() {
         // Inserir no início do conteúdo principal
         const mainContent = document.getElementById('mainContent');
         if (mainContent) {
-            mainContent.insertBefore(container, mainContent.firstChild);
+            // Método mais seguro para inserir no início do elemento
+            if (mainContent.firstChild) {
+                mainContent.insertBefore(container, mainContent.firstChild);
+            } else {
+                mainContent.appendChild(container);
+            }
         } else {
-            // Alternativa se mainContent não existir
-            document.body.insertBefore(container, document.body.firstChild);
+            // Alternativa - adicionar no body do documento
+            document.body.appendChild(container);
         }
     }
     
     // Verificar status da API
-    checkApiStatus();
+    setTimeout(checkApiStatus, 500); // Um pequeno atraso para garantir que tudo esteja carregado
     
     // Adicionar botão de diagnóstico no menu dropdown
     const dropdown = document.querySelector('.dropdown-menu');
     if (dropdown) {
         const li = document.createElement('li');
         li.innerHTML = `<a class="dropdown-item" href="#" id="btn-check-api"><i class="fas fa-heartbeat"></i> Verificar API</a>`;
-        dropdown.insertBefore(li, dropdown.querySelector('hr'));
         
-        // Adicionar evento de clique
-        document.getElementById('btn-check-api').addEventListener('click', function(e) {
-            e.preventDefault();
-            checkApiStatus();
-        });
+        // Método mais seguro para inserir antes do hr
+        const hr = dropdown.querySelector('hr');
+        if (hr) {
+            dropdown.insertBefore(li, hr);
+        } else {
+            dropdown.appendChild(li);
+        }
+        
+        // Adicionar evento de clique depois que o elemento está no DOM
+        setTimeout(() => {
+            const btnCheckApi = document.getElementById('btn-check-api');
+            if (btnCheckApi) {
+                btnCheckApi.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    checkApiStatus();
+                });
+            }
+        }, 100);
     }
 });
 

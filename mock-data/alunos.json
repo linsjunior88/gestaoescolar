@@ -1,0 +1,66 @@
+[
+  {
+    "id": 1,
+    "nome": "Pedro Alves (Mock)",
+    "email": "pedro@exemplo.com",
+    "matricula": "2023001",
+    "turma": "5º Ano A",
+    "data_nascimento": "2013-05-15"
+  },
+  {
+    "id": 2,
+    "nome": "Ana Costa (Mock)",
+    "email": "ana@exemplo.com",
+    "matricula": "2023002",
+    "turma": "5º Ano A",
+    "data_nascimento": "2013-02-10"
+  },
+  {
+    "id": 3,
+    "nome": "Gabriel Santos (Mock)",
+    "email": "gabriel@exemplo.com",
+    "matricula": "2023003",
+    "turma": "5º Ano B",
+    "data_nascimento": "2013-09-22"
+  },
+  {
+    "id": 4,
+    "nome": "Sofia Oliveira (Mock)",
+    "email": "sofia@exemplo.com",
+    "matricula": "2023004",
+    "turma": "5º Ano B",
+    "data_nascimento": "2013-11-05"
+  },
+  {
+    "id": 5,
+    "nome": "Lucas Pereira (Mock)",
+    "email": "lucas@exemplo.com",
+    "matricula": "2023005",
+    "turma": "6º Ano A",
+    "data_nascimento": "2012-07-18"
+  },
+  {
+    "id": 6,
+    "nome": "Mariana Lima (Mock)",
+    "email": "mariana@exemplo.com",
+    "matricula": "2023006",
+    "turma": "6º Ano A",
+    "data_nascimento": "2012-03-30"
+  },
+  {
+    "id": 7,
+    "nome": "João Ferreira (Mock)",
+    "email": "joao@exemplo.com",
+    "matricula": "2023007",
+    "turma": "6º Ano B",
+    "data_nascimento": "2012-01-25"
+  },
+  {
+    "id": 8,
+    "nome": "Clara Rodrigues (Mock)",
+    "email": "clara@exemplo.com",
+    "matricula": "2023008",
+    "turma": "6º Ano B",
+    "data_nascimento": "2012-08-12"
+  }
+] 
