@@ -15,7 +15,7 @@ const CONFIG = {
     apiUrl: function() {
         // Para ambiente de produção no Render
         if (this.isProd) {
-            return 'https://gestao-escolar-api.onrender.com/api';
+            return 'https://gestao-escolar-api.onrender.com';
         }
         // Para desenvolvimento local
         return 'http://localhost:4000/api';
