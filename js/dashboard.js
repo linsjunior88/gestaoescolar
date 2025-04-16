@@ -361,6 +361,15 @@ function ativarSecao(linkId) {
                     // Mostrar indicador de carregamento
                     notasLista.innerHTML = '<tr><td colspan="6" class="text-center"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Carregando...</span></div></td></tr>';
                     
+                    // Tentar usar a função de carregamento do módulo de notas se disponível
+                    // Isso permitirá reutilizar toda a lógica de normalização e exibição
+                    if (typeof carregarNotas === 'function') {
+                        console.log("Usando função carregarNotas() do módulo");
+                        carregarNotas();
+                        return;
+                    }
+                    
+                    // Se a função não estiver disponível, continuar com a implementação atual
                     // Precisamos de alunos e disciplinas para mostrar os nomes em vez de apenas IDs
                     Promise.all([
                         fetch(CONFIG.getApiUrl('/alunos')).then(r => r.ok ? r.json() : []),
@@ -666,6 +675,13 @@ document.addEventListener('DOMContentLoaded', function() {
     window.excluirAluno = excluirAluno;
     window.editarNota = editarNota;
     window.excluirNota = excluirNota;
+    
+    // Exportar funções auxiliares que podem ser necessárias para o funcionamento dinâmico
+    if (typeof carregarTurmas === 'function') window.carregarTurmas = carregarTurmas;
+    if (typeof carregarDisciplinas === 'function') window.carregarDisciplinas = carregarDisciplinas;
+    if (typeof carregarProfessores === 'function') window.carregarProfessores = carregarProfessores;
+    if (typeof carregarAlunos === 'function') window.carregarAlunos = carregarAlunos;
+    if (typeof carregarNotas === 'function') window.carregarNotas = carregarNotas;
 });
 
 // Função para inicializar os gráficos
@@ -3392,24 +3408,33 @@ function initNotas() {
     const btnCancelarNota = document.getElementById('btn_cancelar_nota');
     const notasTableBody = document.getElementById('notas-lista');
     
-    // Verificar se estamos na página correta
-    if (!tabelaNotas) {
-        console.log("Módulo de notas não inicializado (página diferente)");
-        return;
+    // Verificação menos restritiva - permite inicialização parcial
+    const isFormDisponivel = formNota && selectTurmaNota && selectDisciplinaNota && selectAlunoNota;
+    const isListaDisponivel = notasTableBody || tabelaNotas;
+    
+    if (!isListaDisponivel && !isFormDisponivel) {
+        console.log("Módulo de notas não inicializado completamente (alguns elementos não encontrados)");
+        // Continuamos a inicialização mesmo com elementos faltando
+    } else {
+        console.log("Módulo de notas inicializado com sucesso");
     }
     
-    console.log("Módulo de notas inicializado com sucesso");
-    
-    // Inicializar componentes e carregar dados
-    carregarTurmasNotas();
-    carregarNotas();
-    
-    // Adicionar eventos para formulários e botões
-    if (formNota) {
+    // Se o formulário estiver disponível, inicializar componentes relacionados
+    if (isFormDisponivel) {
+        // Carregar turmas no select
+        carregarTurmasNotas();
+        
+        // Adicionar eventos para formulários e botões
         formNota.addEventListener('submit', function(e) {
             e.preventDefault();
             salvarNota();
         });
+    }
+    
+    // Se a tabela estiver disponível (seja na visualização completa ou na seção dinâmica)
+    if (isListaDisponivel) {
+        // Carregar notas na tabela
+        carregarNotas();
     }
     
     // Carregar turmas no select
@@ -3435,13 +3460,16 @@ function initNotas() {
     
     // Carregar todas as notas
     function carregarNotas() {
-        if (!notasTableBody) {
+        // Verificar novamente qual tabela está disponível (pode ter mudado se o usuário navegou)
+        const tabelaAtual = document.getElementById('notas-lista') || document.querySelector('.notas-table tbody');
+        
+        if (!tabelaAtual) {
             console.error("Tabela de notas não encontrada!");
             return;
         }
         
         // Mostrar indicador de carregamento
-        notasTableBody.innerHTML = `
+        tabelaAtual.innerHTML = `
             <tr>
                 <td colspan="7" class="text-center">
                     <div class="spinner-border text-primary" role="status">
@@ -3460,10 +3488,23 @@ function initNotas() {
                 return response.json();
             })
             .then(notas => {
-                console.log("Notas recuperadas da API:", notas.length);
+                console.log("Notas recuperadas da API:", notas ? (Array.isArray(notas) ? notas.length : "objeto") : "nenhuma");
                 
-                if (notas.length === 0) {
-                    notasTableBody.innerHTML = `
+                // Normalizar notas para garantir que seja um array
+                let notasArray = [];
+                if (Array.isArray(notas)) {
+                    notasArray = notas;
+                } else if (notas && typeof notas === 'object') {
+                    // Tentar extrair notas de diferentes estruturas possíveis
+                    if (notas.notas && Array.isArray(notas.notas)) {
+                        notasArray = notas.notas;
+                    } else {
+                        notasArray = Object.values(notas).filter(item => item && typeof item === 'object');
+                    }
+                }
+                
+                if (notasArray.length === 0) {
+                    tabelaAtual.innerHTML = `
                         <tr class="text-center">
                             <td colspan="7">Nenhuma nota cadastrada</td>
                         </tr>
@@ -3479,12 +3520,12 @@ function initNotas() {
                 ])
                 .then(([alunos, disciplinas, turmas]) => {
                     // Limpar a tabela
-                    notasTableBody.innerHTML = '';
+                    tabelaAtual.innerHTML = '';
                     
                     // Ordenar notas por ID do aluno
-                    notas.sort((a, b) => {
-                        const alunoA = alunos.find(al => al.id_aluno === a.id_aluno);
-                        const alunoB = alunos.find(al => al.id_aluno === b.id_aluno);
+                    notasArray.sort((a, b) => {
+                        const alunoA = alunos.find(al => al.id_aluno === a.id_aluno || al.id_aluno === a.aluno_id);
+                        const alunoB = alunos.find(al => al.id_aluno === b.id_aluno || al.id_aluno === b.aluno_id);
                         
                         if (alunoA && alunoB) {
                             return alunoA.nome_aluno.localeCompare(alunoB.nome_aluno);
@@ -3493,50 +3534,83 @@ function initNotas() {
                     });
                     
                     // Adicionar cada nota à tabela
-                    notas.forEach(nota => {
-                        const aluno = alunos.find(a => a.id_aluno === nota.id_aluno) || { nome_aluno: 'Desconhecido' };
-                        const disciplina = disciplinas.find(d => d.id_disciplina === nota.id_disciplina) || { nome_disciplina: 'Desconhecida' };
-                        const turma = turmas.find(t => t.id_turma === nota.id_turma) || { serie: 'Desconhecida' };
+                    notasArray.forEach(nota => {
+                        // Normalizar IDs para lidar com diferentes estruturas possíveis
+                        const alunoId = nota.id_aluno || nota.aluno_id;
+                        const disciplinaId = nota.id_disciplina || nota.disciplina_id;
+                        const turmaId = nota.id_turma || nota.turma_id;
+                        const notaId = nota.id_nota || nota.id || `${alunoId}-${disciplinaId}-${nota.bimestre}`;
+                        
+                        const aluno = alunos.find(a => a.id_aluno === alunoId) || { nome_aluno: `Aluno ${alunoId}` };
+                        const disciplina = disciplinas.find(d => d.id_disciplina === disciplinaId) || { nome_disciplina: `Disciplina ${disciplinaId}` };
+                        const turma = turmas.find(t => t.id_turma === turmaId) || { id_turma: turmaId || '-', serie: 'Desconhecida' };
                         
                         const tr = document.createElement('tr');
                         tr.innerHTML = `
                             <td>${aluno.nome_aluno}</td>
                             <td>${disciplina.nome_disciplina}</td>
-                            <td>${turma.id_turma} - ${turma.serie}</td>
+                            <td>${turma.id_turma || '-'} ${turma.serie ? `- ${turma.serie}` : ''}</td>
                             <td>${nota.valor}</td>
-                            <td>${nota.descricao || '-'}</td>
+                            <td>${nota.bimestre || '-'}</td>
+                            <td>${nota.data_lancamento || nota.data || '-'}</td>
                             <td class="text-center">
-                                <button class="btn btn-sm btn-primary editar-nota me-1" data-id="${nota.id_nota || nota.id}">
+                                <button class="btn btn-sm btn-outline-primary edit-nota" data-id="${notaId}" 
+                                    data-aluno="${alunoId}" data-disciplina="${disciplinaId}" data-bimestre="${nota.bimestre || ''}">
                                     <i class="fas fa-edit"></i>
                                 </button>
-                                <button class="btn btn-sm btn-danger excluir-nota" data-id="${nota.id_nota || nota.id}">
+                                <button class="btn btn-sm btn-outline-danger delete-nota" data-id="${notaId}"
+                                    data-aluno="${alunoId}" data-disciplina="${disciplinaId}" data-bimestre="${nota.bimestre || ''}">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </td>
                         `;
                         
-                        notasTableBody.appendChild(tr);
+                        tabelaAtual.appendChild(tr);
                     });
                     
                     // Adicionar eventos para botões
-                    document.querySelectorAll('.editar-nota').forEach(btn => {
+                    document.querySelectorAll('.edit-nota').forEach(btn => {
                         btn.addEventListener('click', function() {
                             const idNota = this.getAttribute('data-id');
-                            editarNota(idNota);
+                            const idAluno = this.getAttribute('data-aluno');
+                            const idDisciplina = this.getAttribute('data-disciplina');
+                            const bimestre = this.getAttribute('data-bimestre');
+                            
+                            if (typeof editarNota === 'function') {
+                                editarNota(idNota, idAluno, idDisciplina, bimestre);
+                            } else {
+                                console.warn("Função editarNota não encontrada");
+                            }
                         });
                     });
                     
-                    document.querySelectorAll('.excluir-nota').forEach(btn => {
+                    document.querySelectorAll('.delete-nota').forEach(btn => {
                         btn.addEventListener('click', function() {
                             const idNota = this.getAttribute('data-id');
-                            excluirNota(idNota);
+                            const idAluno = this.getAttribute('data-aluno');
+                            const idDisciplina = this.getAttribute('data-disciplina');
+                            const bimestre = this.getAttribute('data-bimestre');
+                            
+                            if (typeof excluirNota === 'function') {
+                                excluirNota(idNota, idAluno, idDisciplina, bimestre);
+                            } else {
+                                console.warn("Função excluirNota não encontrada");
+                            }
                         });
                     });
+                })
+                .catch(error => {
+                    console.error("Erro ao processar dados para a tabela de notas:", error);
+                    tabelaAtual.innerHTML = `
+                        <tr class="text-center">
+                            <td colspan="7">Erro ao processar dados: ${error.message}</td>
+                        </tr>
+                    `;
                 });
             })
             .catch(error => {
                 console.error("Erro ao carregar notas:", error);
-                notasTableBody.innerHTML = `
+                tabelaAtual.innerHTML = `
                     <tr class="text-center">
                         <td colspan="7">Erro ao carregar notas: ${error.message}</td>
                     </tr>
@@ -3764,6 +3838,9 @@ function initNotas() {
             resetarFormularioNota();
         });
     }
+    
+    // Exportar funções para o escopo global
+    window.carregarNotas = carregarNotas;
 }
 
 // Função para criar disciplina
