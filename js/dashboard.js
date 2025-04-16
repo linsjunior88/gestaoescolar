@@ -9,6 +9,10 @@ let formNota, formModoNota, notaIndex, anoNota, bimestreSelect, turmaNota, disci
 // Variável global para armazenar as notas filtradas
 let notasFiltradas = [];
 
+// Variáveis globais para armazenar as instâncias de gráficos
+let chartDesempenho = null;
+let chartPizza = null;
+
 // Função para inicializar os links do menu
 function initLinks() {
     // Mapear os links do menu para seus respectivos conteúdos
@@ -69,9 +73,252 @@ function ativarSecao(linkId) {
         conteudos[linkId].classList.add('active');
     }
     
-    // Se a seção ativada for o dashboard, atualizar os cards e gráficos
-    if (linkId === 'dashboard-link') {
-        initGeral();
+    // Atualizar dados específicos com base na seção ativa
+    switch(linkId) {
+        case 'dashboard-link':
+            console.log("Atualizando dashboard");
+            initGeral();
+            break;
+        case 'turmas-link':
+            console.log("Atualizando turmas");
+            // Verificar se a função está definida no escopo
+            if (typeof carregarTurmas === 'function') {
+                carregarTurmas();
+            } else {
+                // Função provavelmente está dentro de initTurmas, então precisamos verificar
+                const turmasTableBody = document.getElementById('turmas-lista');
+                if (turmasTableBody) {
+                    // Neste caso, executamos uma nova consulta
+                    console.log("Recarregando turmas...");
+                    fetch(CONFIG.getApiUrl('/turmas'))
+                        .then(response => response.ok ? response.json() : [])
+                        .then(data => {
+                            if (!data || data.length === 0) {
+                                turmasTableBody.innerHTML = '<tr><td colspan="6" class="text-center">Nenhuma turma encontrada.</td></tr>';
+                                return;
+                            }
+                            
+                            // Atualizar a tabela...
+                            turmasTableBody.innerHTML = '';
+                            data.forEach(turma => {
+                                const row = document.createElement('tr');
+                                row.innerHTML = `
+                                    <td>${turma.id_turma}</td>
+                                    <td>${turma.serie || '-'}</td>
+                                    <td>${turma.turno ? (typeof turno2texto === 'function' ? turno2texto(turma.turno) : turma.turno) : '-'}</td>
+                                    <td>${turma.tipo_turma || 'Regular'}</td>
+                                    <td>${turma.coordenador || '-'}</td>
+                                    <td class="text-center">
+                                        <button class="btn btn-sm btn-outline-primary edit-turma" data-id="${turma.id_turma}">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger delete-turma" data-id="${turma.id_turma}">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                `;
+                                turmasTableBody.appendChild(row);
+                            });
+                        })
+                        .catch(error => {
+                            console.error("Erro ao carregar turmas:", error);
+                            turmasTableBody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Erro ao carregar turmas.</td></tr>';
+                        });
+                }
+            }
+            break;
+        case 'disciplinas-link':
+            console.log("Atualizando disciplinas");
+            try {
+                // Verificar se o elemento existe
+                const disciplinasLista = document.getElementById('disciplinas-lista');
+                if (disciplinasLista) {
+                    // Mostrar indicador de carregamento
+                    disciplinasLista.innerHTML = '<tr><td colspan="5" class="text-center"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Carregando...</span></div></td></tr>';
+                    
+                    // Fazer requisição à API
+                    fetch(CONFIG.getApiUrl('/disciplinas'))
+                        .then(response => response.ok ? response.json() : [])
+                        .then(data => {
+                            if (!data || data.length === 0) {
+                                disciplinasLista.innerHTML = '<tr><td colspan="5" class="text-center">Nenhuma disciplina encontrada.</td></tr>';
+                                return;
+                            }
+                            
+                            // Limpar e preencher a tabela
+                            disciplinasLista.innerHTML = '';
+                            data.forEach(disciplina => {
+                                const row = document.createElement('tr');
+                                row.innerHTML = `
+                                    <td>${disciplina.id_disciplina}</td>
+                                    <td>${disciplina.nome_disciplina}</td>
+                                    <td>${disciplina.carga_horaria || '-'}</td>
+                                    <td>${disciplina.descricao || '-'}</td>
+                                    <td class="text-center">
+                                        <button class="btn btn-sm btn-outline-primary edit-disciplina" data-id="${disciplina.id_disciplina}">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger delete-disciplina" data-id="${disciplina.id_disciplina}">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                `;
+                                disciplinasLista.appendChild(row);
+                            });
+                        })
+                        .catch(error => {
+                            console.error("Erro ao carregar disciplinas:", error);
+                            disciplinasLista.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Erro ao carregar disciplinas.</td></tr>';
+                        });
+                }
+            } catch (e) {
+                console.error("Erro ao atualizar disciplinas:", e);
+            }
+            break;
+        case 'professores-link':
+            console.log("Atualizando professores");
+            try {
+                // Verificar se o elemento existe
+                const professoresLista = document.getElementById('professores-lista');
+                if (professoresLista) {
+                    // Mostrar indicador de carregamento
+                    professoresLista.innerHTML = '<tr><td colspan="5" class="text-center"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Carregando...</span></div></td></tr>';
+                    
+                    // Fazer requisição à API
+                    fetch(CONFIG.getApiUrl('/professores'))
+                        .then(response => response.ok ? response.json() : [])
+                        .then(data => {
+                            if (!data || data.length === 0) {
+                                professoresLista.innerHTML = '<tr><td colspan="5" class="text-center">Nenhum professor encontrado.</td></tr>';
+                                return;
+                            }
+                            
+                            // Limpar e preencher a tabela
+                            professoresLista.innerHTML = '';
+                            data.forEach(professor => {
+                                const row = document.createElement('tr');
+                                row.innerHTML = `
+                                    <td>${professor.id_professor}</td>
+                                    <td>${professor.nome_professor}</td>
+                                    <td>${professor.email_professor || '-'}</td>
+                                    <td class="text-center">
+                                        <button class="btn btn-sm btn-outline-primary edit-professor" data-id="${professor.id_professor}">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger delete-professor" data-id="${professor.id_professor}">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                `;
+                                professoresLista.appendChild(row);
+                            });
+                        })
+                        .catch(error => {
+                            console.error("Erro ao carregar professores:", error);
+                            professoresLista.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Erro ao carregar professores.</td></tr>';
+                        });
+                }
+            } catch (e) {
+                console.error("Erro ao atualizar professores:", e);
+            }
+            break;
+        case 'alunos-link':
+            console.log("Atualizando alunos");
+            try {
+                // Verificar se o elemento existe
+                const alunosLista = document.getElementById('alunos-lista');
+                if (alunosLista) {
+                    // Mostrar indicador de carregamento
+                    alunosLista.innerHTML = '<tr><td colspan="5" class="text-center"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Carregando...</span></div></td></tr>';
+                    
+                    // Fazer requisição à API
+                    fetch(CONFIG.getApiUrl('/alunos'))
+                        .then(response => response.ok ? response.json() : [])
+                        .then(data => {
+                            if (!data || data.length === 0) {
+                                alunosLista.innerHTML = '<tr><td colspan="5" class="text-center">Nenhum aluno encontrado.</td></tr>';
+                                return;
+                            }
+                            
+                            // Limpar e preencher a tabela
+                            alunosLista.innerHTML = '';
+                            data.forEach(aluno => {
+                                const row = document.createElement('tr');
+                                row.innerHTML = `
+                                    <td>${aluno.id_aluno}</td>
+                                    <td>${aluno.nome_aluno}</td>
+                                    <td>${aluno.turma_id || '-'}</td>
+                                    <td>${aluno.data_nascimento || '-'}</td>
+                                    <td class="text-center">
+                                        <button class="btn btn-sm btn-outline-primary edit-aluno" data-id="${aluno.id_aluno}">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger delete-aluno" data-id="${aluno.id_aluno}">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                `;
+                                alunosLista.appendChild(row);
+                            });
+                        })
+                        .catch(error => {
+                            console.error("Erro ao carregar alunos:", error);
+                            alunosLista.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Erro ao carregar alunos.</td></tr>';
+                        });
+                }
+            } catch (e) {
+                console.error("Erro ao atualizar alunos:", e);
+            }
+            break;
+        case 'notas-link':
+            console.log("Atualizando notas");
+            try {
+                // Verificar se o elemento existe
+                const notasLista = document.getElementById('notas-lista');
+                if (notasLista) {
+                    // Mostrar indicador de carregamento
+                    notasLista.innerHTML = '<tr><td colspan="6" class="text-center"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Carregando...</span></div></td></tr>';
+                    
+                    // Fazer requisição à API
+                    fetch(CONFIG.getApiUrl('/notas'))
+                        .then(response => response.ok ? response.json() : [])
+                        .then(data => {
+                            if (!data || data.length === 0) {
+                                notasLista.innerHTML = '<tr><td colspan="6" class="text-center">Nenhuma nota encontrada.</td></tr>';
+                                return;
+                            }
+                            
+                            // Limpar e preencher a tabela
+                            notasLista.innerHTML = '';
+                            data.forEach(nota => {
+                                const row = document.createElement('tr');
+                                row.innerHTML = `
+                                    <td>${nota.aluno_id}</td>
+                                    <td>${nota.disciplina_id}</td>
+                                    <td>${nota.valor || '-'}</td>
+                                    <td>${nota.data_lancamento || '-'}</td>
+                                    <td>${nota.bimestre || '-'}</td>
+                                    <td class="text-center">
+                                        <button class="btn btn-sm btn-outline-primary edit-nota" data-id="${nota.id}">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger delete-nota" data-id="${nota.id}">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                `;
+                                notasLista.appendChild(row);
+                            });
+                        })
+                        .catch(error => {
+                            console.error("Erro ao carregar notas:", error);
+                            notasLista.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Erro ao carregar notas.</td></tr>';
+                        });
+                }
+            } catch (e) {
+                console.error("Erro ao atualizar notas:", e);
+            }
+            break;
     }
 }
 
@@ -263,10 +510,23 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Função para inicializar os gráficos
 function initCharts() {
+    console.log("Inicializando gráficos do dashboard");
+    
+    // Destruir gráficos existentes para evitar erro de "Canvas is already in use"
+    if (chartDesempenho) {
+        chartDesempenho.destroy();
+        chartDesempenho = null;
+    }
+    
+    if (chartPizza) {
+        chartPizza.destroy();
+        chartPizza = null;
+    }
+    
     // Gráfico de barras - Desempenho por Turma
     const ctxBar = document.getElementById('graficoDesempenho');
     if (ctxBar) {
-        new Chart(ctxBar, {
+        chartDesempenho = new Chart(ctxBar, {
             type: 'bar',
             data: {
                 labels: ['5º Ano A', '5º Ano B', '6º Ano A', '6º Ano B', '7º Ano A', '8º Ano A', '9º Ano A'],
@@ -295,7 +555,7 @@ function initCharts() {
     // Gráfico de pizza - Distribuição por Série
     const ctxPie = document.getElementById('graficoPizza');
     if (ctxPie) {
-        new Chart(ctxPie, {
+        chartPizza = new Chart(ctxPie, {
             type: 'pie',
             data: {
                 labels: ['5º Ano', '6º Ano', '7º Ano', '8º Ano', '9º Ano'],
@@ -318,69 +578,14 @@ function initCharts() {
     }
 }
 
-// Inicialização dos gráficos do dashboard
-function inicializarGraficos() {
-    console.log("Inicializando gráficos do dashboard");
-    
-    // Gráfico de desempenho
-    const ctxDesempenho = document.getElementById('graficoDesempenho');
-    if (ctxDesempenho) {
-        new Chart(ctxDesempenho, {
-            type: 'bar',
-            data: {
-                labels: ['5º Ano A', '5º Ano B', '6º Ano A', '6º Ano B', '7º Ano A', '7º Ano B'],
-                datasets: [{
-                    label: 'Média de Desempenho',
-                    data: [7.8, 6.5, 8.2, 7.4, 6.9, 7.2],
-                    backgroundColor: 'rgba(78, 115, 223, 0.8)',
-                    borderColor: 'rgba(78, 115, 223, 1)',
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                maintainAspectRatio: false,
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        max: 10
-                    }
-                }
-            }
-        });
-    }
-    
-    // Gráfico de distribuição por série
-    const ctxPizza = document.getElementById('graficoPizza');
-    if (ctxPizza) {
-        new Chart(ctxPizza, {
-            type: 'pie',
-            data: {
-                labels: ['1º ao 5º Ano', '6º ao 9º Ano'],
-                datasets: [{
-                    data: [250, 273],
-                    backgroundColor: ['#4e73df', '#1cc88a'],
-                    hoverBackgroundColor: ['#2e59d9', '#17a673'],
-                    hoverBorderColor: "rgba(234, 236, 244, 1)",
-                }]
-            },
-            options: {
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'bottom'
-                    }
-                }
-            }
-        });
-    }
-}
-
 // Inicialização geral do dashboard
 function initGeral() {
     console.log("Inicializando dashboard geral");
     
-    // Inicializar os contadores e gráficos
+    // Atualizar os cards do dashboard
     atualizarCardsDashboard();
+    
+    // Inicializar ou atualizar os gráficos
     initCharts();
 }
 

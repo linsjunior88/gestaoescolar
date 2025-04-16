@@ -113,7 +113,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Método mais seguro para inserir antes do hr
         const hr = dropdown.querySelector('hr');
-        if (hr) {
+        if (hr && hr.parentNode === dropdown) {
             dropdown.insertBefore(li, hr);
         } else {
             dropdown.appendChild(li);
