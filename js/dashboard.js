@@ -435,7 +435,12 @@ function ativarSecao(linkId) {
                         };
                         
                         // Função para extrair o ano da série
-                        const getAno = (turmaId) => {
+                        const getAno = (turmaId, notaObj) => {
+                            // Priorizar o campo ano diretamente da nota, se disponível
+                            if (notaObj && notaObj.ano) {
+                                return notaObj.ano;
+                            }
+                            
                             const turma = turmas.find(t => t.id_turma === turmaId);
                             if (turma && turma.serie) {
                                 const match = turma.serie.match(/^(\d+)º/);
@@ -476,7 +481,7 @@ function ativarSecao(linkId) {
                             const nomeAluno = getNomeAluno(alunoId);
                             const nomeDisciplina = getNomeDisciplina(disciplinaId);
                             const turmaInfo = getTurma(turmaId);
-                            const ano = getAno(turmaId);
+                            const ano = getAno(turmaId, nota);
                             
                             // Extrair valores específicos ou usar valores padrão
                             const bimestre = nota.bimestre || '-';
@@ -3644,8 +3649,8 @@ function initNotas() {
                         const disciplina = disciplinas.find(d => d.id_disciplina === disciplinaId) || { nome_disciplina: `Disciplina ${disciplinaId}` };
                         const turma = turmas.find(t => t.id_turma === turmaId) || { id_turma: turmaId || '-', serie: 'Desconhecida' };
                         
-                        // Extrair o ano da série da turma (se disponível)
-                        const ano = turma.serie ? turma.serie.split('º')[0] : '-';
+                        // Usar o campo ano diretamente da nota, se disponível
+                        const ano = nota.ano || (turma.serie ? turma.serie.split('º')[0] : '-');
                         
                         // Extrair valores específicos ou usar valores padrão
                         const bimestre = nota.bimestre || '-';
