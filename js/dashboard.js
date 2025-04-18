@@ -1388,6 +1388,8 @@ function initDisciplinas() {
     const formDisciplina = document.getElementById('formDisciplina');
     const btnNovaDisciplina = document.getElementById('btn-nova-disciplina');
     const disciplinasLista = document.getElementById('disciplinas-lista');
+    const turmasDisciplinaSelect = document.getElementById('turmasDisciplina');
+    const turmasVinculadasArea = document.getElementById('turmas-vinculadas-preview');
     
     // Carregar disciplinas
     carregarDisciplinas();
@@ -1416,9 +1418,21 @@ function initDisciplinas() {
             // Carregar turmas no select
             carregarTurmasSelect();
             
+            // Limpar a área de visualização de turmas vinculadas, se existir
+            if (turmasVinculadasArea) {
+                turmasVinculadasArea.innerHTML = '<p class="text-muted">Selecione turmas para vincular à disciplina</p>';
+            }
+            
             // Abrir o modal
             const modalDisciplina = new bootstrap.Modal(document.getElementById('modalDisciplina'));
             modalDisciplina.show();
+        });
+    }
+    
+    // Adicionar event listener para o select de turmas
+    if (turmasDisciplinaSelect) {
+        turmasDisciplinaSelect.addEventListener('change', function() {
+            atualizarPreviewTurmasVinculadas();
         });
     }
     
@@ -1442,8 +1456,29 @@ function initDisciplinas() {
         });
     }
     
-    // Resto do código existente
-    // ... existing code ...
+    // Função para atualizar a visualização das turmas vinculadas
+    function atualizarPreviewTurmasVinculadas() {
+        if (!turmasVinculadasArea || !turmasDisciplinaSelect) return;
+        
+        const turmasSelecionadas = Array.from(turmasDisciplinaSelect.selectedOptions);
+        
+        if (turmasSelecionadas.length === 0) {
+            turmasVinculadasArea.innerHTML = '<p class="text-muted">Nenhuma turma selecionada</p>';
+            return;
+        }
+        
+        // Mostrar as turmas selecionadas
+        let html = '<div class="mt-3">';
+        html += '<h6>Turmas que serão vinculadas:</h6>';
+        html += '<ul class="list-group">';
+        
+        turmasSelecionadas.forEach(option => {
+            html += `<li class="list-group-item">${option.text}</li>`;
+        });
+        
+        html += '</ul></div>';
+        turmasVinculadasArea.innerHTML = html;
+    }
 }
 
 // Inicialização do módulo de professores
