@@ -1204,6 +1204,46 @@
                 window.excluirProfessor = window.excluirProfessor || function(id) { console.log("Função excluirProfessor acionada para:", id); };
             }
         };
-        </script>
+    </script>
+
+    <!-- Modal para Disciplinas -->
+    <div class="modal fade" id="modalDisciplina" tabindex="-1" aria-labelledby="modalDisciplinaLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalDisciplinaLabel">Nova Disciplina</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formDisciplina">
+                        <div class="mb-3">
+                            <label for="idDisciplina" class="form-label">ID da Disciplina</label>
+                            <input type="text" class="form-control" id="idDisciplina" placeholder="Ex: MAT, PORT" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="nomeDisciplina" class="form-label">Nome da Disciplina</label>
+                            <input type="text" class="form-control" id="nomeDisciplina" placeholder="Ex: Matemática, Português" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="descricaoDisciplina" class="form-label">Carga Horária</label>
+                            <input type="text" class="form-control" id="descricaoDisciplina" placeholder="Ex: 60, 90">
+                        </div>
+                        <div class="mb-3">
+                            <label for="turmasDisciplina" class="form-label">Turmas Vinculadas</label>
+                            <select class="form-select" id="turmasDisciplina" multiple>
+                                <!-- Turmas serão carregadas via JavaScript -->
+                            </select>
+                            <small class="form-text text-muted">Segure CTRL para selecionar múltiplas turmas</small>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-secondary" id="cancelarEdicaoDisciplina" style="display: none;">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" form="formDisciplina">Salvar</button>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html> 

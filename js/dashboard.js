@@ -506,23 +506,23 @@ function ativarSecao(linkId) {
                                 media = nota.valor || '-';
                             }
                             
-                            const row = document.createElement('tr');
+                            const tr = document.createElement('tr');
                             
                             // Adicionar classes para colorir baseado na média
                             if (media !== '-') {
                                 const mediaNum = parseFloat(media);
                                 if (!isNaN(mediaNum)) {
                                     if (mediaNum >= 6.0) {
-                                        row.classList.add('table-success');
+                                        tr.classList.add('table-success');
                                     } else if (mediaNum >= 4.0) {
-                                        row.classList.add('table-warning');
+                                        tr.classList.add('table-warning');
                                     } else {
-                                        row.classList.add('table-danger');
+                                        tr.classList.add('table-danger');
                                     }
                                 }
                             }
                             
-                            row.innerHTML = `
+                            tr.innerHTML = `
                                 <td>${ano}</td>
                                 <td>${bimestre}</td>
                                 <td>${turmaInfo}</td>
@@ -533,28 +533,31 @@ function ativarSecao(linkId) {
                                 <td>${recuperacao}</td>
                                 <td>${media}</td>
                                 <td class="text-center">
-                                    <button class="btn btn-sm btn-outline-primary edit-nota" data-id="${notaId}" data-aluno="${alunoId}" data-disciplina="${disciplinaId}" data-bimestre="${bimestre}" data-turma="${turmaId}">
+                                    <button class="btn btn-sm btn-outline-primary edit-nota" data-id="${notaId}" 
+                                        data-aluno="${alunoId}" data-disciplina="${disciplinaId}" data-bimestre="${bimestre}" data-turma="${turmaId}">
                                         <i class="fas fa-edit"></i>
                                     </button>
-                                    <button class="btn btn-sm btn-outline-danger delete-nota" data-id="${notaId}" data-aluno="${alunoId}" data-disciplina="${disciplinaId}" data-bimestre="${bimestre}" data-turma="${turmaId}">
+                                    <button class="btn btn-sm btn-outline-danger delete-nota" data-id="${notaId}"
+                                        data-aluno="${alunoId}" data-disciplina="${disciplinaId}" data-bimestre="${bimestre}" data-turma="${turmaId}">
                                         <i class="fas fa-trash"></i>
                                     </button>
                                 </td>
                             `;
-                            notasLista.appendChild(row);
+                            
+                            notasLista.appendChild(tr);
                         });
                         
-                        // Adicionar eventos aos botões
+                        // Adicionar eventos para botões
                         document.querySelectorAll('.edit-nota').forEach(btn => {
                             btn.addEventListener('click', function() {
-                                const id = this.getAttribute('data-id');
+                                const idNota = this.getAttribute('data-id');
                                 const idAluno = this.getAttribute('data-aluno');
                                 const idDisciplina = this.getAttribute('data-disciplina');
                                 const bimestre = this.getAttribute('data-bimestre');
                                 const idTurma = this.getAttribute('data-turma');
                                 
                                 if (typeof editarNota === 'function') {
-                                    editarNota(id, idAluno, idDisciplina, bimestre, idTurma);
+                                    editarNota(idNota, idAluno, idDisciplina, bimestre, idTurma);
                                 } else {
                                     console.warn("Função editarNota não encontrada");
                                 }
@@ -563,14 +566,14 @@ function ativarSecao(linkId) {
                         
                         document.querySelectorAll('.delete-nota').forEach(btn => {
                             btn.addEventListener('click', function() {
-                                const id = this.getAttribute('data-id');
+                                const idNota = this.getAttribute('data-id');
                                 const idAluno = this.getAttribute('data-aluno');
                                 const idDisciplina = this.getAttribute('data-disciplina');
                                 const bimestre = this.getAttribute('data-bimestre');
                                 const idTurma = this.getAttribute('data-turma');
                                 
                                 if (typeof excluirNota === 'function') {
-                                    excluirNota(id, idAluno, idDisciplina, bimestre, idTurma);
+                                    excluirNota(idNota, idAluno, idDisciplina, bimestre, idTurma);
                                 } else {
                                     console.warn("Função excluirNota não encontrada");
                                 }
@@ -1382,470 +1385,90 @@ function initDisciplinas() {
     console.log("Inicializando módulo de disciplinas");
     
     // Elementos do formulário
-    const formDisciplina = document.getElementById('form-disciplina');
-    const formModoDisciplina = document.getElementById('form-modo-disciplina');
-    const disciplinaIndex = document.getElementById('disciplina-index');
-    const idDisciplina = document.getElementById('id_disciplina');
-    const nomeDisciplina = document.getElementById('nome_disciplina');
-    const cargaHoraria = document.getElementById('carga_horaria');
-    const vinculoTurmas = document.getElementById('vinculo_turmas');
-    const btnCancelarDisciplina = document.getElementById('btn-cancelar-disciplina');
+    const formDisciplina = document.getElementById('formDisciplina');
     const btnNovaDisciplina = document.getElementById('btn-nova-disciplina');
     const disciplinasLista = document.getElementById('disciplinas-lista');
     
-    // Carregar disciplinas e turmas para o select
+    // Carregar disciplinas
     carregarDisciplinas();
-    carregarTurmasSelect();
     
-    // Configurar botões do formulário
+    // Configurar botão Nova Disciplina
     if (btnNovaDisciplina) {
-        btnNovaDisciplina.onclick = function() {
-            if (formDisciplina) formDisciplina.scrollIntoView({behavior: 'smooth'});
-        };
-    }
-    
-    if (btnCancelarDisciplina) {
-        btnCancelarDisciplina.onclick = function() {
-        };
+        btnNovaDisciplina.addEventListener('click', function() {
+            // Resetar formulário
+            if (formDisciplina) formDisciplina.reset();
+            
+            // Configurar para nova disciplina
+            const modalTitle = document.querySelector('#modalDisciplina .modal-title');
+            if (modalTitle) modalTitle.textContent = 'Nova Disciplina';
+            
+            // Habilitar campo ID
+            const idDisciplina = document.getElementById('idDisciplina');
+            if (idDisciplina) idDisciplina.readOnly = false;
+            
+            // Configurar modo
+            formDisciplina.dataset.modo = 'novo';
+            
+            // Esconder botão cancelar edição
+            const cancelBtn = document.getElementById('cancelarEdicaoDisciplina');
+            if (cancelBtn) cancelBtn.style.display = 'none';
+            
+            // Carregar turmas no select
+            const turmasDisciplinaSelect = document.getElementById('turmasDisciplina');
+            if (turmasDisciplinaSelect) {
+                fetch(CONFIG.getApiUrl('/turmas'))
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Erro ao carregar turmas');
+                        }
+                        return response.json();
+                    })
+                    .then(turmas => {
+                        // Limpar o select
+                        turmasDisciplinaSelect.innerHTML = '';
+                        
+                        // Adicionar as opções de turmas
+                        turmas.forEach(turma => {
+                            const option = document.createElement('option');
+                            option.value = turma.id_turma;
+                            option.textContent = `${turma.id_turma} - ${turma.serie || 'Sem série'}`;
+                            turmasDisciplinaSelect.appendChild(option);
+                        });
+                    })
+                    .catch(error => {
+                        console.error('Erro ao carregar turmas:', error);
+                        turmasDisciplinaSelect.innerHTML = '<option value="" disabled>Erro ao carregar turmas</option>';
+                    });
+            }
+            
+            // Abrir o modal
+            const modalDisciplina = new bootstrap.Modal(document.getElementById('modalDisciplina'));
+            modalDisciplina.show();
+        });
     }
     
     // Configurar formulário
     if (formDisciplina) {
         formDisciplina.addEventListener('submit', function(e) {
-            e.preventDefault(); // Impedir o envio padrão do formulário
-            console.log("Formulário de disciplina submetido");
-            
-            // Validar campos obrigatórios
-            if (!idDisciplina.value || !nomeDisciplina.value) {
-                alert('Por favor, preencha todos os campos obrigatórios.');
-                return;
-            }
-            
-            // Obter turmas selecionadas
-            const turmasVinculadas = Array.from(vinculoTurmas.selectedOptions).map(option => option.value);
-            
-            // Obter valores do formulário já referenciados anteriormente
-            const idDisciplinaValue = idDisciplina.value.trim();
-            const nomeDisciplinaValue = nomeDisciplina.value.trim();
-            const cargaHorariaValue = cargaHoraria.value;
-            const modo = formModoDisciplina.value;
-            const turmasVinculadasIds = Array.from(vinculoTurmas.selectedOptions).map(option => option.value);
-            
-            // Montar objeto da disciplina (sem incluir turmas_vinculadas)
-            const disciplina = {
-                id_disciplina: idDisciplinaValue,
-                nome_disciplina: nomeDisciplinaValue,
-                carga_horaria: cargaHorariaValue
-            };
-            console.log("Salvando disciplina:", disciplina, "Modo:", modo);
-            console.log("Turmas vinculadas:", turmasVinculadasIds);
-            
-            // Verificar se já existe uma disciplina com este ID (exceto no modo de edição)
-            if (modo === 'novo') {
-                // Verificar se já existe uma disciplina com este ID
-                fetch(`http://localhost:4000/api/disciplinas/${idDisciplinaValue}`)
-                    .then(response => {
-                        if (response.ok) {
-                            return response.json().then(data => {
-                                throw new Error(`Já existe uma disciplina com o código ${idDisciplinaValue}`);
-                            });
-                        }
-                        
-                        // Se chegarmos aqui, a disciplina não existe e podemos criar
-                        return fetch('http://localhost:4000/api/disciplinas/', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify(disciplina)
-                        });
-                    })
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error('Erro ao criar disciplina: ' + response.statusText);
-                        }
-                        return response.json();
-                    })
-                    .then(data => {
-                        console.log("Disciplina criada com sucesso:", data);
-                        
-                        // Se tiver turmas selecionadas, vincular as turmas
-                        if (turmasVinculadasIds.length > 0) {
-                            return vincularTurmasDisciplina(idDisciplinaValue, turmasVinculadasIds);
-                        }
-                        return Promise.resolve();
-                    })
-                    .then(() => {
-                        // Mostrar mensagem de sucesso
-                        alert('Disciplina criada com sucesso!');
-                        
-                        // Limpar formulário
-                        resetarFormularioDisciplina();
-                        
-                        // Recarregar lista de disciplinas
-                        carregarDisciplinas();
-                    })
-                    .catch(error => {
-                        console.error("Erro ao criar disciplina:", error);
-                        alert(`Erro ao criar disciplina: ${error.message}`);
-                    });
-            } else {
-                // Modo de edição - Atualizar disciplina existente
-                editarDisciplina(idDisciplinaValue, disciplina);
-            }
+            salvarDisciplina(e);
         });
     }
     
-    // Função para carregar as turmas no select
-    function carregarTurmasSelect() {
-        console.log("Carregando turmas para o select");
-        
-        if (!vinculoTurmas) {
-            console.error("Elemento vinculoTurmas não encontrado");
-            return;
-        }
-        
-        vinculoTurmas.innerHTML = '<option value="" disabled>Carregando turmas...</option>';
-        
-        // Buscar turmas da API
-        fetch(CONFIG.getApiUrl('/turmas'))
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Erro ao carregar turmas: ' + response.statusText);
-                }
-                return response.json();
-            })
-            .then(turmas => {
-                console.log("Turmas recuperadas da API:", turmas.length);
-                
-                // Limpar select
-            vinculoTurmas.innerHTML = '';
+    // Configurar botão cancelar edição
+    const cancelBtn = document.getElementById('cancelarEdicaoDisciplina');
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', function() {
+            // Resetar formulário
+            if (formDisciplina) formDisciplina.reset();
             
-            if (turmas.length === 0) {
-                const option = document.createElement('option');
-                option.value = "";
-                    option.textContent = "Nenhuma turma cadastrada";
-                option.disabled = true;
-                vinculoTurmas.appendChild(option);
-                return;
-            }
-            
-            // Ordenar turmas por série e ID
-            turmas.sort((a, b) => {
-                if (a.serie !== b.serie) return a.serie.localeCompare(b.serie);
-                return a.id_turma.localeCompare(b.id_turma);
-            });
-            
-            // Adicionar cada turma ao select
-            turmas.forEach(turma => {
-                const option = document.createElement('option');
-                option.value = turma.id_turma;
-                option.textContent = `${turma.id_turma} - ${turma.serie}`;
-                vinculoTurmas.appendChild(option);
-                });
-            })
-            .catch(error => {
-                console.error("Erro ao carregar turmas:", error);
-                vinculoTurmas.innerHTML = '<option value="" disabled>Erro ao carregar turmas</option>';
-            });
-    }
-    
-    // Função para carregar disciplinas
-    function carregarDisciplinas() {
-        const disciplinasTableBody = document.getElementById('disciplinas-lista');
-        
-        if (!disciplinasTableBody) {
-            console.error('Elemento disciplinas-lista não encontrado!');
-            return;
-        }
-
-        // Exibir mensagem de carregamento
-        disciplinasTableBody.innerHTML = '<tr><td colspan="4" class="text-center">Carregando disciplinas...</td></tr>';
-        
-        // Fazer requisição para a API
-        fetch(CONFIG.getApiUrl('/disciplinas'))
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`Erro ao carregar disciplinas: ${response.statusText}`);
-                }
-                return response.json();
-            })
-            .then(disciplinas => {
-                if (disciplinas.length === 0) {
-                    disciplinasTableBody.innerHTML = '<tr><td colspan="4" class="text-center">Nenhuma disciplina encontrada</td></tr>';
-                    return;
-                }
-                
-                // Limpar tabela
-                disciplinasTableBody.innerHTML = '';
-                
-                // Adicionar cada disciplina à tabela
-                disciplinas.forEach(disciplina => {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${disciplina.id}</td>
-                        <td>${disciplina.nome}</td>
-                        <td>${disciplina.descricao || '-'}</td>
-                        <td>
-                            <button class="btn btn-sm btn-primary btn-editar-disciplina" data-id="${disciplina.id}">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button class="btn btn-sm btn-danger btn-excluir-disciplina" data-id="${disciplina.id}" data-nome="${disciplina.nome}">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </td>
-                    `;
-                    disciplinasTableBody.appendChild(row);
-                });
-                
-                // Adicionar event listeners para os botões de editar
-                document.querySelectorAll('.btn-editar-disciplina').forEach(button => {
-                    button.addEventListener('click', () => {
-                        const disciplinaId = button.dataset.id;
-                        abrirModalEditarDisciplina(disciplinaId);
-                    });
-                });
-                
-                // Adicionar event listeners para os botões de excluir
-                document.querySelectorAll('.btn-excluir-disciplina').forEach(button => {
-                    button.addEventListener('click', () => {
-                        const disciplinaId = button.dataset.id;
-                        const disciplinaNome = button.dataset.nome;
-                        excluirDisciplina(disciplinaId, disciplinaNome);
-                    });
-                });
-            })
-            .catch(error => {
-                console.error('Erro ao carregar disciplinas:', error);
-                disciplinasTableBody.innerHTML = `<tr><td colspan="4" class="text-center text-danger">Erro ao carregar disciplinas: ${error.message}</td></tr>`;
-                
-                // Tentar carregar disciplinas do localStorage como fallback
-                try {
-                    const disciplinasLocal = JSON.parse(localStorage.getItem('disciplinas') || '[]');
-                    if (disciplinasLocal.length > 0) {
-                        disciplinasTableBody.innerHTML = '';
-                        disciplinasLocal.forEach(disciplina => {
-                            const row = document.createElement('tr');
-                            row.innerHTML = `
-                                <td>${disciplina.id}</td>
-                                <td>${disciplina.nome}</td>
-                                <td>${disciplina.descricao || '-'}</td>
-                                <td>
-                                    <button class="btn btn-sm btn-primary btn-editar-disciplina" data-id="${disciplina.id}">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    <button class="btn btn-sm btn-danger btn-excluir-disciplina" data-id="${disciplina.id}" data-nome="${disciplina.nome}">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </td>
-                            `;
-                            disciplinasTableBody.appendChild(row);
-                        });
-                        
-                        // Adicionar event listeners para os botões
-                        document.querySelectorAll('.btn-editar-disciplina').forEach(button => {
-                            button.addEventListener('click', () => {
-                                const disciplinaId = button.dataset.id;
-                                abrirModalEditarDisciplina(disciplinaId);
-                            });
-                        });
-                        
-                        document.querySelectorAll('.btn-excluir-disciplina').forEach(button => {
-                            button.addEventListener('click', () => {
-                                const disciplinaId = button.dataset.id;
-                                const disciplinaNome = button.dataset.nome;
-                                excluirDisciplina(disciplinaId, disciplinaNome);
-                            });
-                        });
-                        
-                        disciplinasTableBody.insertAdjacentHTML('beforebegin', 
-                            '<div class="alert alert-warning" role="alert">Usando dados locais. A conexão com a API falhou.</div>');
-                    }
-                } catch (e) {
-                    console.error('Erro ao carregar disciplinas do localStorage:', e);
-                }
-            });
-    }
-    
-    // Função para configurar os botões de ação das disciplinas
-    function configurarBotoesDisciplina() {
-        // Configurar botões de edição
-        document.querySelectorAll('.editar-disciplina').forEach(button => {
-            button.addEventListener('click', function() {
-                const id = this.getAttribute('data-id');
-                editarDisciplina(id);
-            });
-        });
-        
-        // Configurar botões de exclusão
-        document.querySelectorAll('.excluir-disciplina').forEach(button => {
-            button.addEventListener('click', function() {
-                const id = this.getAttribute('data-id');
-                excluirDisciplina(id);
-            });
+            // Fechar modal
+            const modalDisciplina = bootstrap.Modal.getInstance(document.getElementById('modalDisciplina'));
+            if (modalDisciplina) modalDisciplina.hide();
         });
     }
     
-    // Função para editar disciplina
-    function editarDisciplina(idDisciplina, disciplina) {
-        console.log("Editando disciplina:", idDisciplina);
-        // Verificar se o formulário existe
-        const disciplinaForm = document.getElementById('form-disciplina');
-        if (!disciplinaForm) {
-            console.error("Formulário de disciplina não encontrado");
-            alert("Erro ao carregar o formulário. Por favor, recarregue a página.");
-            return;
-        }
-        // Buscar dados da disciplina da API
-        fetch(CONFIG.getApiUrl(`/disciplinas/${idDisciplina}`))
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Erro ao atualizar disciplina: ' + response.statusText);
-                }
-                return response.json();
-            })
-            .then(data => {
-                console.log("Disciplina atualizada com sucesso:", data);
-                
-                // Agora remover todos os vínculos antigos e criar os novos
-                return fetch(CONFIG.getApiUrl(`/disciplinas/${idDisciplina}/turmas`), {
-                    method: 'DELETE'
-                });
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Erro ao remover vínculos antigos: ' + response.statusText);
-                }
-                
-                // Se tiver turmas selecionadas, criar os novos vínculos
-                if (disciplina.turmas_vinculadas && disciplina.turmas_vinculadas.length > 0) {
-                    return vincularTurmasDisciplina(idDisciplina, disciplina.turmas_vinculadas);
-                }
-                return Promise.resolve();
-            })
-            .then(() => {
-                // Mostrar mensagem de sucesso
-                alert('Disciplina atualizada com sucesso!');
-                
-                // Limpar formulário
-                resetarFormularioDisciplina();
-                
-                // Recarregar lista de disciplinas
-                carregarDisciplinas();
-            })
-            .catch(error => {
-                console.error("Erro ao atualizar disciplina:", error);
-                alert(`Erro ao atualizar disciplina: ${error.message}`);
-            });
-    }
-    // Função para excluir uma disciplina
-    function excluirDisciplina(idDisciplina, nomeDisciplina) {
-        // Confirmar exclusão
-        if (!confirm(`Tem certeza que deseja excluir a disciplina ${nomeDisciplina || idDisciplina}?`)) {
-            return;
-        }
-
-        // Exibir mensagem de carregamento
-        const disciplinasTableBody = document.getElementById('disciplinas-lista');
-        if (disciplinasTableBody) {
-            disciplinasTableBody.innerHTML = '<tr><td colspan="4" class="text-center">Excluindo disciplina...</td></tr>';
-        }
-
-        // Excluir disciplina na API
-        fetch(CONFIG.getApiUrl(`/disciplinas/${idDisciplina}`), {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`Erro ao excluir disciplina: ${response.statusText}`);
-            }
-            return response.json();
-        })
-        .then(() => {
-            // Mostrar alerta de sucesso
-            alert('Disciplina excluída com sucesso!');
-            
-            // Recarregar lista de disciplinas
-            carregarDisciplinas();
-        })
-        .catch(error => {
-            console.error("Erro ao excluir disciplina:", error);
-            alert(`Erro ao excluir disciplina: ${error.message}`);
-            
-            // Recarregar lista de disciplinas
-            carregarDisciplinas();
-        });
-    }
-    // Função auxiliar para restaurar o formulário de disciplina ao estado original
-    function resetarFormularioDisciplina() {
-        console.log("Resetando formulário de disciplina");
-        
-        // Elementos do formulário
-        const formModoDisciplina = document.getElementById('form-modo-disciplina');
-        const disciplinaIndex = document.getElementById('disciplina-index');
-        const idDisciplina = document.getElementById('id_disciplina');
-        const nomeDisciplina = document.getElementById('nome_disciplina');
-        const cargaHoraria = document.getElementById('carga_horaria');
-        const vinculoTurmas = document.getElementById('vinculo_turmas');
-        const btnCancelarDisciplina = document.getElementById('btn-cancelar-disciplina');
-        const formTitulo = document.getElementById('form-disciplina-titulo');
-        
-        // Resetar valores
-        if (formModoDisciplina) formModoDisciplina.value = 'novo';
-        if (disciplinaIndex) disciplinaIndex.value = '';
-        if (idDisciplina) {
-            idDisciplina.value = '';
-            idDisciplina.disabled = false;
-        }
-        if (nomeDisciplina) nomeDisciplina.value = '';
-        if (cargaHoraria) cargaHoraria.value = '';
-        
-        // Desmarcar todas as turmas
-        if (vinculoTurmas) {
-            for (let i = 0; i < vinculoTurmas.options.length; i++) {
-                vinculoTurmas.options[i].selected = false;
-            }
-        }
-        
-        // Atualizar título e esconder botão cancelar
-        if (formTitulo) formTitulo.textContent = 'Nova Disciplina';
-        if (btnCancelarDisciplina) btnCancelarDisciplina.style.display = 'none';
-    }
-    
-    // Função para vincular turmas a uma disciplina
-    function vincularTurmasDisciplina(idDisciplina, turmasIds) {
-        console.log(`Vinculando ${turmasIds.length} turmas à disciplina ${idDisciplina}`);
-        
-        // Criar um array de promessas para vincular cada turma
-        const promessas = turmasIds.map(idTurma => {
-            return fetch(CONFIG.getApiUrl(`/disciplinas/${idDisciplina}/turmas/${idTurma}`), {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`Erro ao vincular turma ${idTurma}: ${response.statusText}`);
-                }
-                return response.json();
-            });
-        });
-        
-        // Aguardar todas as promessas serem resolvidas
-        return Promise.all(promessas)
-            .then(resultados => {
-                console.log(`${resultados.length} turmas vinculadas com sucesso`);
-                return resultados;
-            })
-            .catch(error => {
-                console.error("Erro ao vincular turmas:", error);
-                throw new Error(`Erro ao vincular turmas: ${error.message}`);
-            });
-    }
+    // Resto do código existente
+    // ... existing code ...
 }
 
 // Inicialização do módulo de professores
@@ -4095,7 +3718,7 @@ function salvarDisciplina(event) {
   // Obter dados do formulário
   const idDisciplina = document.getElementById('idDisciplina').value.trim().toUpperCase();
   const nomeDisciplina = document.getElementById('nomeDisciplina').value.trim();
-  const descricaoDisciplina = document.getElementById('descricaoDisciplina').value.trim();
+  const cargaHoraria = document.getElementById('descricaoDisciplina').value.trim();
   
   // Validar campos
   if (!idDisciplina || !nomeDisciplina) {
@@ -4105,14 +3728,14 @@ function salvarDisciplina(event) {
   
   // Criar objeto disciplina
   const disciplina = {
-    id: idDisciplina,
-    nome: nomeDisciplina,
-    descricao: descricaoDisciplina
+    id_disciplina: idDisciplina,
+    nome_disciplina: nomeDisciplina,
+    carga_horaria: cargaHoraria
   };
   
   // Obter turmas selecionadas
   const turmasSelecionadas = Array.from(document.getElementById('turmasDisciplina').selectedOptions).map(option => option.value);
-  disciplina.turmas = turmasSelecionadas;
+  disciplina.turmas_vinculadas = turmasSelecionadas;
   
   // Definir método HTTP
   const metodo = document.getElementById('formDisciplina').dataset.modo === 'edicao' ? 'PUT' : 'POST';
@@ -4126,6 +3749,8 @@ function salvarDisciplina(event) {
   if (disciplinasLista) {
     disciplinasLista.innerHTML = '<tr><td colspan="4" class="text-center">Salvando disciplina...</td></tr>';
   }
+  
+  console.log('Enviando disciplina para API:', disciplina, 'Método:', metodo, 'URL:', urlEndpoint);
   
   // Enviar requisição para a API
   fetch(urlEndpoint, {
@@ -4202,12 +3827,14 @@ function abrirModalEditarDisciplina(disciplinaId) {
       return response.json();
     })
     .then(disciplina => {
+      console.log('Disciplina recebida para edição:', disciplina);
+      
       // Preencher o formulário com os dados da disciplina
-      idDisciplinaInput.value = disciplina.id;
-      nomeDisciplinaInput.value = disciplina.nome;
+      idDisciplinaInput.value = disciplina.id_disciplina;
+      nomeDisciplinaInput.value = disciplina.nome_disciplina;
       
       if (descricaoDisciplinaInput) {
-        descricaoDisciplinaInput.value = disciplina.descricao || '';
+        descricaoDisciplinaInput.value = disciplina.carga_horaria || '';
       }
       
       // Carregar as turmas vinculadas a esta disciplina
@@ -4227,11 +3854,11 @@ function abrirModalEditarDisciplina(disciplinaId) {
             // Adicionar as opções de turmas
             turmas.forEach(turma => {
               const option = document.createElement('option');
-              option.value = turma.id;
-              option.textContent = `${turma.nome} (${turma.ano})`;
+              option.value = turma.id_turma;
+              option.textContent = `${turma.id_turma} - ${turma.serie || 'Sem série'}`;
               
               // Verificar se esta turma está associada à disciplina
-              if (disciplina.turmas && disciplina.turmas.some(t => t.id === turma.id)) {
+              if (disciplina.turmas_vinculadas && disciplina.turmas_vinculadas.some(t => t === turma.id_turma)) {
                 option.selected = true;
               }
               
@@ -4239,11 +3866,13 @@ function abrirModalEditarDisciplina(disciplinaId) {
             });
             
             // Inicializar ou atualizar o select2
-            $(turmasDisciplinaSelect).select2({
-              placeholder: 'Selecione as turmas',
-              allowClear: true,
-              width: '100%'
-            });
+            if (typeof $ !== 'undefined' && $.fn.select2) {
+              $(turmasDisciplinaSelect).select2({
+                placeholder: 'Selecione as turmas',
+                allowClear: true,
+                width: '100%'
+              });
+            }
           })
           .catch(error => {
             console.error('Erro ao carregar turmas:', error);
@@ -4256,11 +3885,11 @@ function abrirModalEditarDisciplina(disciplinaId) {
                 
                 turmasLocal.forEach(turma => {
                   const option = document.createElement('option');
-                  option.value = turma.id;
-                  option.textContent = `${turma.nome} (${turma.ano})`;
+                  option.value = turma.id_turma;
+                  option.textContent = `${turma.id_turma} - ${turma.serie || 'Sem série'}`;
                   
                   // Verificar se esta turma está associada à disciplina
-                  if (disciplina.turmas && disciplina.turmas.some(t => t.id === turma.id)) {
+                  if (disciplina.turmas_vinculadas && disciplina.turmas_vinculadas.some(t => t === turma.id_turma)) {
                     option.selected = true;
                   }
                   
@@ -4268,11 +3897,13 @@ function abrirModalEditarDisciplina(disciplinaId) {
                 });
                 
                 // Inicializar ou atualizar o select2
-                $(turmasDisciplinaSelect).select2({
-                  placeholder: 'Selecione as turmas',
-                  allowClear: true,
-                  width: '100%'
-                });
+                if (typeof $ !== 'undefined' && $.fn.select2) {
+                  $(turmasDisciplinaSelect).select2({
+                    placeholder: 'Selecione as turmas',
+                    allowClear: true,
+                    width: '100%'
+                  });
+                }
               }
             } catch (e) {
               console.error('Erro ao carregar turmas do localStorage:', e);
@@ -4291,14 +3922,14 @@ function abrirModalEditarDisciplina(disciplinaId) {
       // Tentar carregar do localStorage como fallback
       try {
         const disciplinasLocal = JSON.parse(localStorage.getItem('disciplinas') || '[]');
-        const disciplina = disciplinasLocal.find(d => d.id === disciplinaId);
+        const disciplina = disciplinasLocal.find(d => d.id_disciplina === disciplinaId);
         
         if (disciplina) {
-          idDisciplinaInput.value = disciplina.id;
-          nomeDisciplinaInput.value = disciplina.nome;
+          idDisciplinaInput.value = disciplina.id_disciplina;
+          nomeDisciplinaInput.value = disciplina.nome_disciplina;
           
           if (descricaoDisciplinaInput) {
-            descricaoDisciplinaInput.value = disciplina.descricao || '';
+            descricaoDisciplinaInput.value = disciplina.carga_horaria || '';
           }
           
           // Abrir o modal
@@ -4311,4 +3942,177 @@ function abrirModalEditarDisciplina(disciplinaId) {
         console.error('Erro ao carregar disciplina do localStorage:', e);
       }
     });
+}
+
+function carregarDisciplinas() {
+  const disciplinasTableBody = document.getElementById('disciplinas-lista');
+  
+  if (!disciplinasTableBody) {
+    console.error('Elemento disciplinas-lista não encontrado!');
+    return;
+  }
+
+  // Exibir mensagem de carregamento
+  disciplinasTableBody.innerHTML = '<tr><td colspan="5" class="text-center">Carregando disciplinas...</td></tr>';
+  
+  // Fazer requisição para a API
+  fetch(CONFIG.getApiUrl('/disciplinas'))
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`Erro ao carregar disciplinas: ${response.statusText}`);
+      }
+      return response.json();
+    })
+    .then(disciplinas => {
+      console.log('Disciplinas retornadas pela API:', disciplinas);
+      
+      if (disciplinas.length === 0) {
+        disciplinasTableBody.innerHTML = '<tr><td colspan="5" class="text-center">Nenhuma disciplina encontrada</td></tr>';
+        return;
+      }
+      
+      // Limpar tabela
+      disciplinasTableBody.innerHTML = '';
+      
+      // Adicionar cada disciplina à tabela
+      disciplinas.forEach(disciplina => {
+        // Obter turmas vinculadas à disciplina se disponível
+        let turmasTexto = '-';
+        if (disciplina.turmas_vinculadas && disciplina.turmas_vinculadas.length > 0) {
+          turmasTexto = disciplina.turmas_vinculadas.join(', ');
+        }
+        
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${disciplina.id_disciplina}</td>
+          <td>${disciplina.nome_disciplina}</td>
+          <td>${disciplina.carga_horaria || '-'}</td>
+          <td>${turmasTexto}</td>
+          <td>
+            <button class="btn btn-sm btn-primary btn-editar-disciplina" data-id="${disciplina.id_disciplina}">
+              <i class="fas fa-edit"></i>
+            </button>
+            <button class="btn btn-sm btn-danger btn-excluir-disciplina" data-id="${disciplina.id_disciplina}" data-nome="${disciplina.nome_disciplina}">
+              <i class="fas fa-trash"></i>
+            </button>
+          </td>
+        `;
+        disciplinasTableBody.appendChild(row);
+      });
+      
+      // Adicionar event listeners para os botões de editar
+      document.querySelectorAll('.btn-editar-disciplina').forEach(button => {
+        button.addEventListener('click', () => {
+          const disciplinaId = button.dataset.id;
+          abrirModalEditarDisciplina(disciplinaId);
+        });
+      });
+      
+      // Adicionar event listeners para os botões de excluir
+      document.querySelectorAll('.btn-excluir-disciplina').forEach(button => {
+        button.addEventListener('click', () => {
+          const disciplinaId = button.dataset.id;
+          const disciplinaNome = button.dataset.nome;
+          excluirDisciplina(disciplinaId, disciplinaNome);
+        });
+      });
+    })
+    .catch(error => {
+      console.error('Erro ao carregar disciplinas:', error);
+      disciplinasTableBody.innerHTML = `<tr><td colspan="5" class="text-center text-danger">Erro ao carregar disciplinas: ${error.message}</td></tr>`;
+      
+      // Tentar carregar disciplinas do localStorage como fallback
+      try {
+        const disciplinasLocal = JSON.parse(localStorage.getItem('disciplinas') || '[]');
+        if (disciplinasLocal.length > 0) {
+          disciplinasTableBody.innerHTML = '';
+          disciplinasLocal.forEach(disciplina => {
+            // Obter turmas vinculadas à disciplina se disponível
+            let turmasTexto = '-';
+            if (disciplina.turmas_vinculadas && disciplina.turmas_vinculadas.length > 0) {
+              turmasTexto = disciplina.turmas_vinculadas.join(', ');
+            }
+            
+            const row = document.createElement('tr');
+            row.innerHTML = `
+              <td>${disciplina.id_disciplina}</td>
+              <td>${disciplina.nome_disciplina}</td>
+              <td>${disciplina.carga_horaria || '-'}</td>
+              <td>${turmasTexto}</td>
+              <td>
+                <button class="btn btn-sm btn-primary btn-editar-disciplina" data-id="${disciplina.id_disciplina}">
+                  <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn btn-sm btn-danger btn-excluir-disciplina" data-id="${disciplina.id_disciplina}" data-nome="${disciplina.nome_disciplina}">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </td>
+            `;
+            disciplinasTableBody.appendChild(row);
+          });
+          
+          // Adicionar event listeners para os botões
+          document.querySelectorAll('.btn-editar-disciplina').forEach(button => {
+            button.addEventListener('click', () => {
+              const disciplinaId = button.dataset.id;
+              abrirModalEditarDisciplina(disciplinaId);
+            });
+          });
+          
+          document.querySelectorAll('.btn-excluir-disciplina').forEach(button => {
+            button.addEventListener('click', () => {
+              const disciplinaId = button.dataset.id;
+              const disciplinaNome = button.dataset.nome;
+              excluirDisciplina(disciplinaId, disciplinaNome);
+            });
+          });
+          
+          disciplinasTableBody.insertAdjacentHTML('beforebegin', 
+            '<div class="alert alert-warning" role="alert">Usando dados locais. A conexão com a API falhou.</div>');
+        }
+      } catch (e) {
+        console.error('Erro ao carregar disciplinas do localStorage:', e);
+      }
+    });
+}
+
+function excluirDisciplina(idDisciplina, nomeDisciplina) {
+  // Confirmar exclusão
+  if (!confirm(`Tem certeza que deseja excluir a disciplina ${nomeDisciplina || idDisciplina}?`)) {
+    return;
+  }
+
+  // Exibir mensagem de carregamento
+  const disciplinasTableBody = document.getElementById('disciplinas-lista');
+  if (disciplinasTableBody) {
+    disciplinasTableBody.innerHTML = '<tr><td colspan="5" class="text-center">Excluindo disciplina...</td></tr>';
+  }
+
+  // Excluir disciplina na API
+  fetch(CONFIG.getApiUrl(`/disciplinas/${idDisciplina}`), {
+    method: 'DELETE',
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  })
+  .then(response => {
+    if (!response.ok) {
+      throw new Error(`Erro ao excluir disciplina: ${response.statusText}`);
+    }
+    return response.json();
+  })
+  .then(() => {
+    // Mostrar alerta de sucesso
+    alert('Disciplina excluída com sucesso!');
+    
+    // Recarregar lista de disciplinas
+    carregarDisciplinas();
+  })
+  .catch(error => {
+    console.error("Erro ao excluir disciplina:", error);
+    alert(`Erro ao excluir disciplina: ${error.message}`);
+    
+    // Recarregar lista de disciplinas
+    carregarDisciplinas();
+  });
 }
