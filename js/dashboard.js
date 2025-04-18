@@ -3775,8 +3775,8 @@ function salvarDisciplina(event) {
   };
   
   // Definir método HTTP
-  const metodo = document.getElementById('formDisciplina').dataset.modo === 'edicao' ? 'PUT' : 'POST';
-  const idOriginal = document.getElementById('formDisciplina').dataset.idOriginal || idDisciplina;
+  const metodo = document.getElementById('formDisciplina').dataset.mode === 'editar' ? 'PUT' : 'POST';
+  const idOriginal = document.getElementById('formDisciplina').dataset.id || idDisciplina;
   const urlEndpoint = metodo === 'PUT' 
     ? CONFIG.getApiUrl(`/disciplinas/${idOriginal}`) 
     : CONFIG.getApiUrl('/disciplinas');
@@ -3950,6 +3950,44 @@ function abrirModalEditarDisciplina(disciplinaId) {
             }
         }, 600);
     }
+}
+
+// Função para resetar o formulário de disciplina
+function resetarFormularioDisciplina() {
+    console.log("Resetando formulário de disciplina");
+    const formDisciplina = document.getElementById('formDisciplina');
+    if (!formDisciplina) {
+        console.error("Formulário de disciplina não encontrado para reset");
+        return;
+    }
+    
+    // Limpar campos
+    formDisciplina.reset();
+    
+    // Resetar atributos data
+    formDisciplina.removeAttribute('data-id');
+    formDisciplina.setAttribute('data-mode', 'novo');
+    
+    // Limpar select de turmas se existir
+    const turmasSelect = document.getElementById('turmasDisciplina');
+    if (turmasSelect) {
+        // Desmarcar todas as opções
+        Array.from(turmasSelect.options).forEach(option => {
+            option.selected = false;
+        });
+        
+        // Disparar evento change
+        const changeEvent = new Event('change');
+        turmasSelect.dispatchEvent(changeEvent);
+    }
+    
+    // Limpar preview de turmas vinculadas
+    const previewArea = document.getElementById('turmas-vinculadas-preview');
+    if (previewArea) {
+        previewArea.innerHTML = '';
+    }
+    
+    console.log("Formulário de disciplina resetado com sucesso");
 }
 
 function carregarDisciplinas() {
@@ -4234,164 +4272,203 @@ function carregarTurmasSelect(turmasVinculadas = []) {
     
     console.log('IDs das turmas vinculadas normalizados:', turmasIds);
     
-    // Buscar o elemento select no modal atual
-    const turmasDisciplinaSelect = document.querySelector('#modalDisciplina #turmasDisciplina');
-    
-    // Verificar se o elemento existe
-    if (!turmasDisciplinaSelect) {
-        console.error('Elemento select de turmas não encontrado no modal');
+    // Função para encontrar e verificar se o elemento select existe
+    const encontrarSelect = () => {
+        // Tentar diferentes seletores para maior robustez
+        let select = document.querySelector('#modalDisciplina #turmasDisciplina');
+        if (!select) select = document.getElementById('turmasDisciplina');
         
-        // Tentar novamente após um pequeno delay (o modal pode não estar totalmente renderizado)
-        setTimeout(() => {
-            const selectRetry = document.querySelector('#modalDisciplina #turmasDisciplina');
-            if (selectRetry) {
-                console.log('Elemento select encontrado após retry');
-                carregarTurmasSelect(turmasVinculadas); // Chamar recursivamente com os mesmos parâmetros
-            } else {
-                console.error('Elemento select não encontrado mesmo após retry');
-            }
-        }, 500);
+        console.log('Select encontrado:', !!select, select);
+        return select;
+    };
+    
+    // Função para carregar as turmas quando o select estiver disponível
+    const carregarTurmas = (select) => {
+        // Mostrar mensagem de carregamento
+        select.innerHTML = '<option value="">Carregando turmas...</option>';
+        select.disabled = true;
         
-        return;
-    }
-    
-    // Mostrar mensagem de carregamento
-    turmasDisciplinaSelect.innerHTML = '<option value="">Carregando turmas...</option>';
-    turmasDisciplinaSelect.disabled = true;
-    
-    // Buscar turmas da API
-    fetch(CONFIG.getApiUrl('/turmas'))
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`Erro ao buscar turmas: ${response.status} ${response.statusText}`);
-            }
-            return response.json();
-        })
-        .then(turmas => {
-            console.log('Turmas recebidas da API:', turmas);
-            
-            // Verificar se o elemento ainda existe (pode ter sido removido se o modal foi fechado)
-            if (!document.body.contains(turmasDisciplinaSelect)) {
-                console.warn('Elemento select não está mais no DOM. Modal pode ter sido fechado.');
-                return;
-            }
-            
-            // Armazenar no localStorage para fallback
-            localStorage.setItem('turmas', JSON.stringify(turmas));
-            
-            // Limpar o select
-            turmasDisciplinaSelect.innerHTML = '';
-            turmasDisciplinaSelect.disabled = false;
-            
-            // Adicionar as opções
-            if (turmas.length === 0) {
-                turmasDisciplinaSelect.innerHTML = '<option value="">Nenhuma turma disponível</option>';
-            } else {
-                // Adicionar opção padrão
-                const defaultOption = document.createElement('option');
-                defaultOption.value = "";
-                defaultOption.textContent = "Selecione as turmas";
-                turmasDisciplinaSelect.appendChild(defaultOption);
-                
-                // Adicionar cada turma como opção
-                turmas.forEach(turma => {
-                    const option = document.createElement('option');
-                    option.value = turma.id_turma;
-                    option.textContent = turma.nome_turma;
-                    
-                    // Verificar se a turma está vinculada
-                    if (turmasIds.includes(turma.id_turma) || 
-                        turmasIds.includes(Number(turma.id_turma)) || 
-                        turmasIds.includes(String(turma.id_turma))) {
-                        option.selected = true;
-                    }
-                    
-                    turmasDisciplinaSelect.appendChild(option);
-                });
-            }
-            
-            console.log(`Select de turmas populado com ${turmas.length} turmas`);
-            
-            // Forçar atualização visual do select
-            turmasDisciplinaSelect.style.display = 'none';
-            setTimeout(() => {
-                turmasDisciplinaSelect.style.display = '';
-                
-                // Disparar evento change para atualizar quaisquer handlers dependentes
-                const changeEvent = new Event('change');
-                turmasDisciplinaSelect.dispatchEvent(changeEvent);
-                
-                // Atualizar o preview de turmas vinculadas, se existir
-                if (typeof atualizarPreviewTurmasVinculadas === 'function') {
-                    atualizarPreviewTurmasVinculadas();
+        // Buscar turmas da API
+        fetch(CONFIG.getApiUrl('/turmas'))
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Erro ao buscar turmas: ${response.status} ${response.statusText}`);
                 }
-            }, 50);
-        })
-        .catch(error => {
-            console.error('Erro ao carregar turmas da API:', error);
-            
-            // Tentar carregar do localStorage como fallback
-            try {
-                const turmasLocal = JSON.parse(localStorage.getItem('turmas') || '[]');
-                console.log('Carregando turmas do localStorage como fallback:', turmasLocal);
+                return response.json();
+            })
+            .then(turmas => {
+                console.log('Turmas recebidas da API:', turmas);
                 
-                // Verificar se o elemento ainda existe
-                if (!document.body.contains(turmasDisciplinaSelect)) {
+                // Verificar se o elemento ainda existe (pode ter sido removido se o modal foi fechado)
+                if (!document.body.contains(select)) {
                     console.warn('Elemento select não está mais no DOM. Modal pode ter sido fechado.');
                     return;
                 }
                 
+                // Armazenar no localStorage para fallback
+                localStorage.setItem('turmas', JSON.stringify(turmas));
+                
                 // Limpar o select
-                turmasDisciplinaSelect.innerHTML = '';
-                turmasDisciplinaSelect.disabled = false;
+                select.innerHTML = '';
+                select.disabled = false;
                 
                 // Adicionar as opções
-                if (turmasLocal.length === 0) {
-                    turmasDisciplinaSelect.innerHTML = '<option value="">Nenhuma turma disponível</option>';
+                if (turmas.length === 0) {
+                    select.innerHTML = '<option value="">Nenhuma turma disponível</option>';
                 } else {
                     // Adicionar opção padrão
                     const defaultOption = document.createElement('option');
                     defaultOption.value = "";
                     defaultOption.textContent = "Selecione as turmas";
-                    turmasDisciplinaSelect.appendChild(defaultOption);
+                    select.appendChild(defaultOption);
                     
                     // Adicionar cada turma como opção
-                    turmasLocal.forEach(turma => {
+                    turmas.forEach(turma => {
                         const option = document.createElement('option');
-                        option.value = turma.id_turma;
-                        option.textContent = turma.nome_turma;
+                        option.value = turma.id_turma || turma.id;
+                        option.textContent = `${turma.id_turma || turma.id} - ${turma.serie || turma.nome_turma || 'Sem nome'}`;
                         
                         // Verificar se a turma está vinculada
                         if (turmasIds.includes(turma.id_turma) || 
+                            turmasIds.includes(turma.id) ||
                             turmasIds.includes(Number(turma.id_turma)) || 
                             turmasIds.includes(String(turma.id_turma))) {
                             option.selected = true;
+                            console.log(`Turma ${option.value} selecionada`);
                         }
                         
-                        turmasDisciplinaSelect.appendChild(option);
+                        select.appendChild(option);
                     });
                 }
                 
-                console.log(`Select de turmas populado com ${turmasLocal.length} turmas do localStorage`);
+                console.log(`Select de turmas populado com ${turmas.length} turmas`);
                 
                 // Forçar atualização visual do select
-                turmasDisciplinaSelect.style.display = 'none';
+                select.style.display = 'none';
                 setTimeout(() => {
-                    turmasDisciplinaSelect.style.display = '';
+                    select.style.display = '';
                     
                     // Disparar evento change para atualizar quaisquer handlers dependentes
                     const changeEvent = new Event('change');
-                    turmasDisciplinaSelect.dispatchEvent(changeEvent);
+                    select.dispatchEvent(changeEvent);
                     
                     // Atualizar o preview de turmas vinculadas, se existir
                     if (typeof atualizarPreviewTurmasVinculadas === 'function') {
                         atualizarPreviewTurmasVinculadas();
+                    } else {
+                        console.error("Função atualizarPreviewTurmasVinculadas não encontrada");
                     }
                 }, 50);
-            } catch (e) {
-                console.error('Erro ao carregar turmas do localStorage:', e);
-                turmasDisciplinaSelect.innerHTML = '<option value="">Erro ao carregar turmas</option>';
-                turmasDisciplinaSelect.disabled = true;
+            })
+            .catch(error => {
+                console.error('Erro ao carregar turmas da API:', error);
+                
+                // Tentar carregar do localStorage como fallback
+                try {
+                    const turmasLocal = JSON.parse(localStorage.getItem('turmas') || '[]');
+                    console.log('Carregando turmas do localStorage como fallback:', turmasLocal);
+                    
+                    // Verificar se o elemento ainda existe
+                    if (!document.body.contains(select)) {
+                        console.warn('Elemento select não está mais no DOM. Modal pode ter sido fechado.');
+                        return;
+                    }
+                    
+                    // Limpar o select
+                    select.innerHTML = '';
+                    select.disabled = false;
+                    
+                    // Adicionar as opções
+                    if (turmasLocal.length === 0) {
+                        select.innerHTML = '<option value="">Nenhuma turma disponível</option>';
+                    } else {
+                        // Adicionar opção padrão
+                        const defaultOption = document.createElement('option');
+                        defaultOption.value = "";
+                        defaultOption.textContent = "Selecione as turmas";
+                        select.appendChild(defaultOption);
+                        
+                        // Adicionar cada turma como opção
+                        turmasLocal.forEach(turma => {
+                            const option = document.createElement('option');
+                            option.value = turma.id_turma || turma.id;
+                            option.textContent = `${turma.id_turma || turma.id} - ${turma.serie || turma.nome_turma || 'Sem nome'}`;
+                            
+                            // Verificar se a turma está vinculada
+                            if (turmasIds.includes(turma.id_turma) || 
+                                turmasIds.includes(turma.id) ||
+                                turmasIds.includes(Number(turma.id_turma)) || 
+                                turmasIds.includes(String(turma.id_turma))) {
+                                option.selected = true;
+                                console.log(`Turma ${option.value} selecionada do localStorage`);
+                            }
+                            
+                            select.appendChild(option);
+                        });
+                    }
+                    
+                    console.log(`Select de turmas populado com ${turmasLocal.length} turmas do localStorage`);
+                    
+                    // Forçar atualização visual do select
+                    select.style.display = 'none';
+                    setTimeout(() => {
+                        select.style.display = '';
+                        
+                        // Disparar evento change para atualizar quaisquer handlers dependentes
+                        const changeEvent = new Event('change');
+                        select.dispatchEvent(changeEvent);
+                        
+                        // Atualizar o preview de turmas vinculadas, se existir
+                        if (typeof atualizarPreviewTurmasVinculadas === 'function') {
+                            atualizarPreviewTurmasVinculadas();
+                        } else {
+                            console.error("Função atualizarPreviewTurmasVinculadas não encontrada");
+                        }
+                    }, 50);
+                } catch (e) {
+                    console.error('Erro ao carregar turmas do localStorage:', e);
+                    select.innerHTML = '<option value="">Erro ao carregar turmas</option>';
+                    select.disabled = true;
+                }
+            });
+    };
+    
+    // Verificar se o select existe
+    const select = encontrarSelect();
+    
+    if (select) {
+        console.log('Elemento select encontrado, carregando turmas...');
+        carregarTurmas(select);
+    } else {
+        console.warn('Elemento select não encontrado, tentando novamente em 100ms...');
+        
+        // Tentar novamente após um pequeno delay (o modal pode não estar totalmente renderizado)
+        let tentativas = 0;
+        const maxTentativas = 10;
+        
+        const tentarNovamente = () => {
+            const selectRetry = encontrarSelect();
+            if (selectRetry) {
+                console.log('Elemento select encontrado após retry');
+                carregarTurmas(selectRetry);
+            } else {
+                tentativas++;
+                if (tentativas < maxTentativas) {
+                    console.warn(`Tentativa ${tentativas}/${maxTentativas}: Elemento select não encontrado, tentando novamente em 100ms...`);
+                    setTimeout(tentarNovamente, 100);
+                } else {
+                    console.error(`Desistindo após ${maxTentativas} tentativas. Select não encontrado.`);
+                    alert('Erro ao carregar turmas: elemento select não encontrado.');
+                }
             }
-        });
+        };
+        
+        setTimeout(tentarNovamente, 100);
+    }
+}
+
+// Função de alias para manter compatibilidade
+function editarDisciplina(disciplinaId) {
+    console.log("Redirecionando para abrirModalEditarDisciplina", disciplinaId);
+    abrirModalEditarDisciplina(disciplinaId);
 }
