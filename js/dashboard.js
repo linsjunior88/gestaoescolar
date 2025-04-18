@@ -3722,7 +3722,7 @@ function salvarDisciplina(event) {
   // Exibir mensagem de carregamento
   const disciplinasLista = document.getElementById('disciplinas-lista');
   if (disciplinasLista) {
-    disciplinasLista.innerHTML = '<tr><td colspan="4" class="text-center">Salvando disciplina...</td></tr>';
+    disciplinasLista.innerHTML = '<tr><td colspan="5" class="text-center">Salvando disciplina...</td></tr>';
   }
   
   console.log('Enviando disciplina para API:', disciplina, 'Método:', metodo, 'URL:', urlEndpoint);
@@ -3887,7 +3887,7 @@ function carregarDisciplinas() {
   if (!disciplinasLista) return;
 
   // Exibir mensagem de carregamento
-  disciplinasLista.innerHTML = '<tr><td colspan="4" class="text-center">Carregando disciplinas...</td></tr>';
+  disciplinasLista.innerHTML = '<tr><td colspan="5" class="text-center">Carregando disciplinas...</td></tr>';
 
   // Fazer requisição para a API
   fetch(CONFIG.getApiUrl('/disciplinas'))
@@ -3901,7 +3901,7 @@ function carregarDisciplinas() {
       console.log('Disciplinas carregadas:', disciplinas);
       
       if (disciplinas.length === 0) {
-        disciplinasLista.innerHTML = '<tr><td colspan="4" class="text-center">Nenhuma disciplina encontrada</td></tr>';
+        disciplinasLista.innerHTML = '<tr><td colspan="5" class="text-center">Nenhuma disciplina encontrada</td></tr>';
         return;
       }
 
@@ -3932,6 +3932,7 @@ function carregarDisciplinas() {
         row.innerHTML = `
           <td>${disciplina.id_disciplina}</td>
           <td>${disciplina.nome_disciplina}</td>
+          <td>${disciplina.carga_horaria || '-'}</td>
           <td>${turmasTexto}</td>
           <td>
             <button class="btn btn-sm btn-primary btn-editar-disciplina" data-id="${disciplina.id_disciplina}">
@@ -3967,7 +3968,7 @@ function carregarDisciplinas() {
     })
     .catch(error => {
       console.error('Erro ao carregar disciplinas:', error);
-      disciplinasLista.innerHTML = '<tr><td colspan="4" class="text-center">Erro ao carregar disciplinas</td></tr>';
+      disciplinasLista.innerHTML = '<tr><td colspan="5" class="text-center">Erro ao carregar disciplinas</td></tr>';
       
       // Tentar carregar do localStorage como fallback
       try {
@@ -3996,6 +3997,7 @@ function carregarDisciplinas() {
             row.innerHTML = `
               <td>${disciplina.id_disciplina}</td>
               <td>${disciplina.nome_disciplina}</td>
+              <td>${disciplina.carga_horaria || '-'}</td>
               <td>${turmasTexto}</td>
               <td>
                 <button class="btn btn-sm btn-primary btn-editar-disciplina" data-id="${disciplina.id_disciplina}">
