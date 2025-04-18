@@ -1291,7 +1291,7 @@ function initAlunos() {
             
             if (idAluno) {
                 // Se um aluno específico for selecionado, buscar apenas este aluno
-                fetch(`http://localhost:4000/api/alunos/${idAluno}`)
+                fetch(CONFIG.getApiUrl(`/alunos/${idAluno}`))
                     .then(response => {
                         if (!response.ok) {
                             throw new Error(`Erro na requisição: ${response.status}`);
@@ -2395,11 +2395,11 @@ function handleFormSubmit(event) {
     }
     
     // Construir URL adequada
-    let url = 'http://localhost:4000/api/notas';
+    let url = CONFIG.getApiUrl('/notas');
     let method = 'POST';
     
     if (isEditMode && notaId) {
-        url = `http://localhost:4000/api/notas/${notaId}`;
+        url = CONFIG.getApiUrl(`/notas/${notaId}`);
         method = 'PUT';
         console.log(`Editando nota ID: ${notaId}`);
         
