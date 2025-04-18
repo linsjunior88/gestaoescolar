@@ -3701,16 +3701,21 @@ function salvarDisciplina(event) {
     return;
   }
   
+  // Obter turmas selecionadas
+  const turmasDisciplinaSelect = document.getElementById('turmasDisciplina');
+  const turmasSelecionadas = turmasDisciplinaSelect ? 
+    Array.from(turmasDisciplinaSelect.selectedOptions).map(option => option.value) : [];
+  
+  console.log("Turmas selecionadas para salvar:", turmasSelecionadas);
+  
   // Criar objeto disciplina
   const disciplina = {
     id_disciplina: idDisciplina,
     nome_disciplina: nomeDisciplina,
-    carga_horaria: cargaHoraria
+    carga_horaria: cargaHoraria,
+    turmas_vinculadas: turmasSelecionadas,
+    turmas: turmasSelecionadas // incluindo em ambos formatos para compatibilidade
   };
-  
-  // Obter turmas selecionadas
-  const turmasSelecionadas = Array.from(document.getElementById('turmasDisciplina').selectedOptions).map(option => option.value);
-  disciplina.turmas_vinculadas = turmasSelecionadas;
   
   // Definir método HTTP
   const metodo = document.getElementById('formDisciplina').dataset.modo === 'edicao' ? 'PUT' : 'POST';
@@ -3742,6 +3747,27 @@ function salvarDisciplina(event) {
     return response.json();
   })
   .then(data => {
+    console.log("Resposta da API após salvar disciplina:", data);
+    
+    // Armazenar também no localStorage para fallback
+    try {
+      const disciplinasLocal = JSON.parse(localStorage.getItem('disciplinas') || '[]');
+      const index = disciplinasLocal.findIndex(d => d.id_disciplina === idDisciplina);
+      
+      if (index >= 0) {
+        // Atualizar existente
+        disciplinasLocal[index] = disciplina;
+      } else {
+        // Adicionar nova
+        disciplinasLocal.push(disciplina);
+      }
+      
+      localStorage.setItem('disciplinas', JSON.stringify(disciplinasLocal));
+      console.log("Disciplina também salva no localStorage");
+    } catch (e) {
+      console.error("Erro ao salvar disciplina no localStorage:", e);
+    }
+    
     // Mostrar alerta de sucesso
     alert(`Disciplina ${metodo === 'PUT' ? 'atualizada' : 'adicionada'} com sucesso!`);
     
@@ -3886,12 +3912,14 @@ function carregarDisciplinas() {
   const disciplinasLista = document.getElementById('disciplinas-lista');
   if (!disciplinasLista) return;
 
+  console.log("Iniciando carregamento de disciplinas");
   // Exibir mensagem de carregamento
   disciplinasLista.innerHTML = '<tr><td colspan="5" class="text-center">Carregando disciplinas...</td></tr>';
 
   // Fazer requisição para a API
   fetch(CONFIG.getApiUrl('/disciplinas'))
     .then(response => {
+      console.log("Resposta da API de disciplinas:", response);
       if (!response.ok) {
         throw new Error(`Erro ao carregar disciplinas: ${response.statusText}`);
       }
@@ -3900,9 +3928,24 @@ function carregarDisciplinas() {
     .then(disciplinas => {
       console.log('Disciplinas carregadas:', disciplinas);
       
+      // Atualizar localStorage
+      localStorage.setItem('disciplinas', JSON.stringify(disciplinas));
+      
       if (disciplinas.length === 0) {
         disciplinasLista.innerHTML = '<tr><td colspan="5" class="text-center">Nenhuma disciplina encontrada</td></tr>';
         return;
+      }
+
+      // Carregar turmas para ter referência ao exibir na tabela
+      let turmasMap = {};
+      try {
+        const turmas = JSON.parse(localStorage.getItem('turmas') || '[]');
+        turmas.forEach(turma => {
+          turmasMap[turma.id_turma || turma.id] = turma;
+        });
+        console.log("Mapa de turmas carregado:", turmasMap);
+      } catch (e) {
+        console.error("Erro ao carregar mapa de turmas:", e);
       }
 
       // Limpar a tabela
@@ -3910,23 +3953,39 @@ function carregarDisciplinas() {
 
       // Preencher a tabela com as disciplinas
       disciplinas.forEach(disciplina => {
+        console.log("Processando disciplina:", disciplina);
         const row = document.createElement('tr');
         
         // Formatar as turmas vinculadas
         let turmasTexto = '-';
+        let turmasVinculadas = [];
         
         // Verificar diferentes possibilidades de como as turmas podem estar estruturadas nos dados
-        if (disciplina.turmas_vinculadas && disciplina.turmas_vinculadas.length > 0) {
-          // Se tiver array de turmas_vinculadas
-          turmasTexto = disciplina.turmas_vinculadas
-            .map(turma => typeof turma === 'object' ? (turma.id_turma || turma.id || turma) : turma)
-            .join(', ');
-        } else if (disciplina.turmas && disciplina.turmas.length > 0) {
-          // Se tiver array de turmas
-          turmasTexto = disciplina.turmas
-            .map(turma => typeof turma === 'object' ? (turma.id_turma || turma.id || turma) : turma)
-            .join(', ');
+        if (disciplina.turmas_vinculadas && Array.isArray(disciplina.turmas_vinculadas) && disciplina.turmas_vinculadas.length > 0) {
+          console.log(`Disciplina ${disciplina.id_disciplina} tem turmas_vinculadas:`, disciplina.turmas_vinculadas);
+          turmasVinculadas = disciplina.turmas_vinculadas;
+        } else if (disciplina.turmas && Array.isArray(disciplina.turmas) && disciplina.turmas.length > 0) {
+          console.log(`Disciplina ${disciplina.id_disciplina} tem turmas:`, disciplina.turmas);
+          turmasVinculadas = disciplina.turmas;
         }
+        
+        if (turmasVinculadas.length > 0) {
+          // Mapear IDs para nomes mais amigáveis se possível
+          const turmasFormatadas = turmasVinculadas.map(turmaId => {
+            // Se for um objeto, extrair o ID
+            const id = typeof turmaId === 'object' ? (turmaId.id_turma || turmaId.id || turmaId) : turmaId;
+            // Tentar obter o nome da turma do nosso mapa
+            const turma = turmasMap[id];
+            if (turma) {
+              return `${id} - ${turma.serie || turma.nome || 'Sem nome'}`;
+            }
+            return id; // Fallback para apenas o ID
+          });
+          
+          turmasTexto = turmasFormatadas.join(', ');
+        }
+        
+        console.log(`Disciplina ${disciplina.id_disciplina} - turmasTexto final:`, turmasTexto);
         
         // Criar as células da tabela
         row.innerHTML = `
@@ -3973,26 +4032,56 @@ function carregarDisciplinas() {
       // Tentar carregar do localStorage como fallback
       try {
         const disciplinasLocal = JSON.parse(localStorage.getItem('disciplinas') || '[]');
+        console.log("Tentando carregar disciplinas do localStorage:", disciplinasLocal);
+        
         if (disciplinasLocal.length > 0) {
           disciplinasLista.innerHTML = '';
           
+          // Carregar turmas para ter referência ao exibir na tabela
+          let turmasMap = {};
+          try {
+            const turmas = JSON.parse(localStorage.getItem('turmas') || '[]');
+            turmas.forEach(turma => {
+              turmasMap[turma.id_turma || turma.id] = turma;
+            });
+            console.log("Mapa de turmas do localStorage carregado:", turmasMap);
+          } catch (e) {
+            console.error("Erro ao carregar mapa de turmas do localStorage:", e);
+          }
+          
           disciplinasLocal.forEach(disciplina => {
-            // Similar ao código acima
             const row = document.createElement('tr');
             
             // Formatar as turmas vinculadas
             let turmasTexto = '-';
+            let turmasVinculadas = [];
             
             // Verificar diferentes possibilidades de como as turmas podem estar estruturadas nos dados
-            if (disciplina.turmas_vinculadas && disciplina.turmas_vinculadas.length > 0) {
-              turmasTexto = disciplina.turmas_vinculadas
-                .map(turma => typeof turma === 'object' ? (turma.id_turma || turma.id || turma) : turma)
-                .join(', ');
-            } else if (disciplina.turmas && disciplina.turmas.length > 0) {
-              turmasTexto = disciplina.turmas
-                .map(turma => typeof turma === 'object' ? (turma.id_turma || turma.id || turma) : turma)
-                .join(', ');
+            if (disciplina.turmas_vinculadas && Array.isArray(disciplina.turmas_vinculadas) && disciplina.turmas_vinculadas.length > 0) {
+              console.log(`Disciplina local ${disciplina.id_disciplina} tem turmas_vinculadas:`, disciplina.turmas_vinculadas);
+              turmasVinculadas = disciplina.turmas_vinculadas;
+            } else if (disciplina.turmas && Array.isArray(disciplina.turmas) && disciplina.turmas.length > 0) {
+              console.log(`Disciplina local ${disciplina.id_disciplina} tem turmas:`, disciplina.turmas);
+              turmasVinculadas = disciplina.turmas;
             }
+            
+            if (turmasVinculadas.length > 0) {
+              // Mapear IDs para nomes mais amigáveis se possível
+              const turmasFormatadas = turmasVinculadas.map(turmaId => {
+                // Se for um objeto, extrair o ID
+                const id = typeof turmaId === 'object' ? (turmaId.id_turma || turmaId.id || turmaId) : turmaId;
+                // Tentar obter o nome da turma do nosso mapa
+                const turma = turmasMap[id];
+                if (turma) {
+                  return `${id} - ${turma.serie || turma.nome || 'Sem nome'}`;
+                }
+                return id; // Fallback para apenas o ID
+              });
+              
+              turmasTexto = turmasFormatadas.join(', ');
+            }
+            
+            console.log(`Disciplina local ${disciplina.id_disciplina} - turmasTexto final:`, turmasTexto);
             
             row.innerHTML = `
               <td>${disciplina.id_disciplina}</td>
@@ -4080,6 +4169,7 @@ function excluirDisciplina(idDisciplina, nomeDisciplina) {
 
 // Função para carregar as turmas no select do modal
 function carregarTurmasSelect(selectedTurmas = []) {
+  console.log("carregarTurmasSelect chamado com selectedTurmas:", selectedTurmas);
   const turmasDisciplinaSelect = document.getElementById('turmasDisciplina');
   if (!turmasDisciplinaSelect) {
     console.error('Elemento turmasDisciplina não encontrado');
@@ -4089,43 +4179,84 @@ function carregarTurmasSelect(selectedTurmas = []) {
   // Exibir mensagem de carregamento
   turmasDisciplinaSelect.innerHTML = '<option value="" disabled>Carregando turmas...</option>';
   
-  // Fazer requisição para a API
-  fetch(CONFIG.getApiUrl('/turmas'))
-    .then(response => {
-      if (!response.ok) {
-        throw new Error(`Erro ao carregar turmas: ${response.statusText}`);
-      }
-      return response.json();
-    })
-    .then(turmas => {
-      console.log('Turmas carregadas para select:', turmas);
-      
+  // Primeiro tentar carregar turmas do localStorage para garantir que o dropdown seja preenchido rapidamente
+  try {
+    const turmasLocal = JSON.parse(localStorage.getItem('turmas') || '[]');
+    console.log("Turmas do localStorage:", turmasLocal);
+    
+    if (turmasLocal.length > 0) {
       // Limpar o select
       turmasDisciplinaSelect.innerHTML = '';
       
-      if (turmas.length === 0) {
+      turmasLocal.forEach(turma => {
         const option = document.createElement('option');
-        option.value = "";
-        option.textContent = "Nenhuma turma cadastrada";
-        option.disabled = true;
-        turmasDisciplinaSelect.appendChild(option);
-        return;
-      }
-      
-      // Adicionar as opções de turmas
-      turmas.forEach(turma => {
-        const option = document.createElement('option');
-        // Lidar com diferentes formatos de dados
         option.value = turma.id_turma || turma.id;
         option.textContent = `${turma.id_turma || turma.id} - ${turma.serie || turma.nome || 'Sem nome'}`;
         
         // Verificar se esta turma deve estar selecionada
         if (selectedTurmas.some(id => id === (turma.id_turma || turma.id))) {
           option.selected = true;
+          console.log("Turma do localStorage selecionada:", turma.id_turma || turma.id);
         }
         
         turmasDisciplinaSelect.appendChild(option);
       });
+      
+      console.log("Select de turmas atualizado do localStorage com", turmasLocal.length, "turmas");
+    }
+  } catch (e) {
+    console.error('Erro ao carregar turmas do localStorage:', e);
+  }
+  
+  console.log("Buscando turmas da API:", CONFIG.getApiUrl('/turmas'));
+  // Agora tentar carregar da API para manter os dados atualizados
+  fetch(CONFIG.getApiUrl('/turmas'))
+    .then(response => {
+      console.log("Resposta da API de turmas:", response);
+      if (!response.ok) {
+        throw new Error(`Erro ao carregar turmas: ${response.statusText}`);
+      }
+      return response.json();
+    })
+    .then(turmas => {
+      console.log('Turmas recebidas da API:', turmas);
+      
+      // Atualizar localStorage com os dados mais recentes
+      localStorage.setItem('turmas', JSON.stringify(turmas));
+      
+      // Se não tivemos turmas do localStorage, precisamos preencher o select agora
+      if (turmasDisciplinaSelect.options.length <= 1) {
+        // Limpar o select
+        turmasDisciplinaSelect.innerHTML = '';
+        
+        if (turmas.length === 0) {
+          const option = document.createElement('option');
+          option.value = "";
+          option.textContent = "Nenhuma turma cadastrada";
+          option.disabled = true;
+          turmasDisciplinaSelect.appendChild(option);
+          return;
+        }
+        
+        // Adicionar as opções de turmas
+        turmas.forEach(turma => {
+          console.log("Processando turma:", turma);
+          const option = document.createElement('option');
+          // Lidar com diferentes formatos de dados
+          option.value = turma.id_turma || turma.id;
+          option.textContent = `${turma.id_turma || turma.id} - ${turma.serie || turma.nome || 'Sem nome'}`;
+          
+          // Verificar se esta turma deve estar selecionada
+          if (selectedTurmas.some(id => id === (turma.id_turma || turma.id))) {
+            option.selected = true;
+            console.log("Turma selecionada:", turma.id_turma || turma.id);
+          }
+          
+          turmasDisciplinaSelect.appendChild(option);
+        });
+        
+        console.log("Select de turmas atualizado com", turmas.length, "turmas");
+      }
       
       // Inicializar ou atualizar o select2 se disponível
       if (typeof $ !== 'undefined' && $.fn.select2) {
@@ -4134,42 +4265,17 @@ function carregarTurmasSelect(selectedTurmas = []) {
           allowClear: true,
           width: '100%'
         });
+        console.log("Select2 inicializado para o select de turmas");
+      } else {
+        console.log("Select2 não disponível, usando select padrão");
       }
     })
     .catch(error => {
-      console.error('Erro ao carregar turmas:', error);
-      turmasDisciplinaSelect.innerHTML = '<option value="" disabled>Erro ao carregar turmas</option>';
+      console.error('Erro ao carregar turmas da API:', error);
       
-      // Tentar carregar do localStorage como fallback
-      try {
-        const turmasLocal = JSON.parse(localStorage.getItem('turmas') || '[]');
-        if (turmasLocal.length > 0) {
-          turmasDisciplinaSelect.innerHTML = '';
-          
-          turmasLocal.forEach(turma => {
-            const option = document.createElement('option');
-            option.value = turma.id_turma || turma.id;
-            option.textContent = `${turma.id_turma || turma.id} - ${turma.serie || turma.nome || 'Sem nome'}`;
-            
-            // Verificar se esta turma deve estar selecionada
-            if (selectedTurmas.some(id => id === (turma.id_turma || turma.id))) {
-              option.selected = true;
-            }
-            
-            turmasDisciplinaSelect.appendChild(option);
-          });
-          
-          // Inicializar ou atualizar o select2 se disponível
-          if (typeof $ !== 'undefined' && $.fn.select2) {
-            $(turmasDisciplinaSelect).select2({
-              placeholder: 'Selecione as turmas',
-              allowClear: true,
-              width: '100%'
-            });
-          }
-        }
-      } catch (e) {
-        console.error('Erro ao carregar turmas do localStorage:', e);
+      // Se já temos turmas do localStorage exibidas, não precisamos fazer nada aqui
+      if (turmasDisciplinaSelect.options.length <= 1) {
+        turmasDisciplinaSelect.innerHTML = '<option value="" disabled>Erro ao carregar turmas</option>';
       }
     });
 }
