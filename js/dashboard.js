@@ -1391,12 +1391,22 @@ function initDisciplinas() {
     const turmasDisciplinaSelect = document.getElementById('turmasDisciplina');
     const turmasVinculadasArea = document.getElementById('turmas-vinculadas-preview');
     
+    console.log("Elementos do módulo de disciplinas:", {
+        formDisciplina,
+        btnNovaDisciplina,
+        disciplinasLista,
+        turmasDisciplinaSelect,
+        turmasVinculadasArea
+    });
+    
     // Carregar disciplinas
     carregarDisciplinas();
     
     // Configurar botão Nova Disciplina
     if (btnNovaDisciplina) {
         btnNovaDisciplina.addEventListener('click', function() {
+            console.log("Botão Nova Disciplina clicado");
+            
             // Resetar formulário
             if (formDisciplina) formDisciplina.reset();
             
@@ -1404,43 +1414,67 @@ function initDisciplinas() {
             const modalTitle = document.querySelector('#modalDisciplina .modal-title');
             if (modalTitle) modalTitle.textContent = 'Nova Disciplina';
             
+            // Configurar o botão de submit
+            const submitBtn = formDisciplina ? formDisciplina.querySelector('button[type="submit"]') : null;
+            if (submitBtn) submitBtn.textContent = 'Salvar';
+            
             // Habilitar campo ID
             const idDisciplina = document.getElementById('idDisciplina');
             if (idDisciplina) idDisciplina.readOnly = false;
             
             // Configurar modo
             formDisciplina.dataset.modo = 'novo';
+            delete formDisciplina.dataset.idOriginal;
             
             // Esconder botão cancelar edição
             const cancelBtn = document.getElementById('cancelarEdicaoDisciplina');
             if (cancelBtn) cancelBtn.style.display = 'none';
-            
-            // Carregar turmas no select
-            carregarTurmasSelect();
             
             // Limpar a área de visualização de turmas vinculadas, se existir
             if (turmasVinculadasArea) {
                 turmasVinculadasArea.innerHTML = '<p class="text-muted">Selecione turmas para vincular à disciplina</p>';
             }
             
+            // Verificar se o modal já existe
+            let modalDisciplina = document.getElementById('modalDisciplina');
+            if (!modalDisciplina) {
+                console.error("Modal de disciplina não encontrado!");
+                return;
+            }
+            
             // Abrir o modal
-            const modalDisciplina = new bootstrap.Modal(document.getElementById('modalDisciplina'));
-            modalDisciplina.show();
+            const modalInstance = new bootstrap.Modal(modalDisciplina);
+            modalInstance.show();
+            
+            // Carregar turmas no select (deve ser feito após abrir o modal)
+            setTimeout(() => {
+                console.log("Carregando turmas para o select...");
+                if (document.getElementById('turmasDisciplina')) {
+                    carregarTurmasSelect([]);
+                } else {
+                    console.error("Elemento turmasDisciplina não encontrado após abrir o modal");
+                }
+            }, 300);
         });
+    } else {
+        console.error("Botão Nova Disciplina não encontrado!");
     }
     
     // Adicionar event listener para o select de turmas
-    if (turmasDisciplinaSelect) {
-        turmasDisciplinaSelect.addEventListener('change', function() {
+    document.addEventListener('change', function(e) {
+        if (e.target && e.target.id === 'turmasDisciplina') {
+            console.log("Mudança detectada no select de turmas");
             atualizarPreviewTurmasVinculadas();
-        });
-    }
+        }
+    });
     
     // Configurar formulário
     if (formDisciplina) {
         formDisciplina.addEventListener('submit', function(e) {
             salvarDisciplina(e);
         });
+    } else {
+        console.error("Formulário de disciplina não encontrado!");
     }
     
     // Configurar botão cancelar edição
@@ -1458,7 +1492,18 @@ function initDisciplinas() {
     
     // Função para atualizar a visualização das turmas vinculadas
     function atualizarPreviewTurmasVinculadas() {
-        if (!turmasVinculadasArea || !turmasDisciplinaSelect) return;
+        const turmasDisciplinaSelect = document.getElementById('turmasDisciplina');
+        const turmasVinculadasArea = document.getElementById('turmas-vinculadas-preview');
+        
+        if (!turmasVinculadasArea || !turmasDisciplinaSelect) {
+            console.error("Elementos para preview de turmas vinculadas não encontrados:", {
+                turmasDisciplinaSelect,
+                turmasVinculadasArea
+            });
+            return;
+        }
+        
+        console.log("Atualizando preview de turmas vinculadas");
         
         const turmasSelecionadas = Array.from(turmasDisciplinaSelect.selectedOptions);
         
@@ -1478,6 +1523,13 @@ function initDisciplinas() {
         
         html += '</ul></div>';
         turmasVinculadasArea.innerHTML = html;
+        console.log(`Preview atualizado com ${turmasSelecionadas.length} turmas selecionadas`);
+    }
+    
+    // Carregar as turmas para o select no carregamento inicial da página
+    if (turmasDisciplinaSelect) {
+        console.log("Carregando turmas para o select no carregamento inicial");
+        carregarTurmasSelect([]);
     }
 }
 
@@ -3833,7 +3885,7 @@ function abrirModalEditarDisciplina(disciplinaId) {
   const descricaoDisciplinaInput = document.getElementById('descricaoDisciplina');
   const turmasDisciplinaSelect = document.getElementById('turmasDisciplina');
   const modalTitle = modalDisciplina.querySelector('.modal-title');
-  const submitBtn = formDisciplina.querySelector('button[type="submit"]');
+  const submitBtn = formDisciplina ? formDisciplina.querySelector('button[type="submit"]') : null;
   const cancelBtn = document.getElementById('cancelarEdicaoDisciplina');
   
   // Mostrar o botão de cancelar quando estiver editando
@@ -3842,8 +3894,16 @@ function abrirModalEditarDisciplina(disciplinaId) {
   }
   
   // Configurar modal para edição
-  modalTitle.textContent = 'Editar Disciplina';
-  submitBtn.textContent = 'Atualizar';
+  if (modalTitle) {
+    modalTitle.textContent = 'Editar Disciplina';
+  }
+  
+  // Configurar o botão de submit, se encontrado
+  if (submitBtn) {
+    submitBtn.textContent = 'Atualizar';
+  } else {
+    console.warn('Botão submit não encontrado no formulário de disciplina');
+  }
   
   // Desabilitar campo de ID durante edição
   if (idDisciplinaInput) {
@@ -3851,8 +3911,10 @@ function abrirModalEditarDisciplina(disciplinaId) {
   }
   
   // Definir o modo como 'editar'
-  formDisciplina.dataset.modo = 'edicao';
-  formDisciplina.dataset.idOriginal = disciplinaId;
+  if (formDisciplina) {
+    formDisciplina.dataset.modo = 'edicao';
+    formDisciplina.dataset.idOriginal = disciplinaId;
+  }
   
   // Buscar dados da disciplina
   fetch(CONFIG.getApiUrl(`/disciplinas/${disciplinaId}`))
@@ -3866,8 +3928,8 @@ function abrirModalEditarDisciplina(disciplinaId) {
       console.log('Disciplina recebida para edição:', disciplina);
       
       // Preencher o formulário com os dados da disciplina
-      idDisciplinaInput.value = disciplina.id_disciplina;
-      nomeDisciplinaInput.value = disciplina.nome_disciplina;
+      if (idDisciplinaInput) idDisciplinaInput.value = disciplina.id_disciplina;
+      if (nomeDisciplinaInput) nomeDisciplinaInput.value = disciplina.nome_disciplina;
       
       if (descricaoDisciplinaInput) {
         descricaoDisciplinaInput.value = disciplina.carga_horaria || '';
@@ -3901,6 +3963,8 @@ function abrirModalEditarDisciplina(disciplinaId) {
                 atualizarPreviewTurmasVinculadas();
               }, 500);
             }
+          } else {
+            console.error("Elemento turmasDisciplinaSelect não encontrado para mostrar turmas vinculadas");
           }
           
           // Abrir o modal
@@ -3933,8 +3997,8 @@ function abrirModalEditarDisciplina(disciplinaId) {
           console.log('Disciplina encontrada no localStorage:', disciplina);
           
           // Preencher o formulário com os dados do localStorage
-          idDisciplinaInput.value = disciplina.id_disciplina;
-          nomeDisciplinaInput.value = disciplina.nome_disciplina;
+          if (idDisciplinaInput) idDisciplinaInput.value = disciplina.id_disciplina;
+          if (nomeDisciplinaInput) nomeDisciplinaInput.value = disciplina.nome_disciplina;
           
           if (descricaoDisciplinaInput) {
             descricaoDisciplinaInput.value = disciplina.carga_horaria || '';
@@ -4257,7 +4321,7 @@ function carregarTurmasSelect(selectedTurmas = []) {
       return response.json();
     })
     .then(turmas => {
-      console.log('Turmas recebidas da API:', turmas);
+      console.log('Turmas recebidas da API para select:', turmas);
       
       // Atualizar localStorage
       localStorage.setItem('turmas', JSON.stringify(turmas));
@@ -4266,6 +4330,7 @@ function carregarTurmasSelect(selectedTurmas = []) {
       turmasDisciplinaSelect.innerHTML = '';
       
       if (!turmas || turmas.length === 0) {
+        console.warn("Nenhuma turma retornada pela API");
         const option = document.createElement('option');
         option.value = "";
         option.textContent = "Nenhuma turma cadastrada";
@@ -4290,6 +4355,17 @@ function carregarTurmasSelect(selectedTurmas = []) {
       });
       
       console.log(`Select de turmas populado com ${turmas.length} turmas`);
+      
+      // Disparar evento de change para atualizar qualquer lógica dependente
+      const event = new Event('change');
+      turmasDisciplinaSelect.dispatchEvent(event);
+      
+      // Atualizar a visualização das turmas vinculadas, se a função existir
+      if (typeof atualizarPreviewTurmasVinculadas === 'function') {
+        setTimeout(() => {
+          atualizarPreviewTurmasVinculadas();
+        }, 100);
+      }
     })
     .catch(error => {
       console.error('Erro ao carregar turmas da API:', error);
@@ -4303,6 +4379,7 @@ function carregarTurmasSelect(selectedTurmas = []) {
         turmasDisciplinaSelect.innerHTML = '';
         
         if (turmasLocal.length === 0) {
+          console.warn("Nenhuma turma encontrada no localStorage");
           const option = document.createElement('option');
           option.value = "";
           option.textContent = "Erro ao carregar turmas";
@@ -4320,13 +4397,24 @@ function carregarTurmasSelect(selectedTurmas = []) {
           // Verificar se esta turma deve estar selecionada
           if (selectedTurmas && selectedTurmas.some(id => String(id) === String(turma.id_turma || turma.id))) {
             option.selected = true;
-            console.log(`Turma selecionada: ${option.value} - ${option.textContent}`);
+            console.log(`Turma selecionada do localStorage: ${option.value} - ${option.textContent}`);
           }
           
           turmasDisciplinaSelect.appendChild(option);
         });
         
         console.log(`Select de turmas populado do localStorage com ${turmasLocal.length} turmas`);
+        
+        // Disparar evento de change para atualizar qualquer lógica dependente
+        const event = new Event('change');
+        turmasDisciplinaSelect.dispatchEvent(event);
+        
+        // Atualizar a visualização das turmas vinculadas, se a função existir
+        if (typeof atualizarPreviewTurmasVinculadas === 'function') {
+          setTimeout(() => {
+            atualizarPreviewTurmasVinculadas();
+          }, 100);
+        }
       } catch (e) {
         console.error('Erro ao carregar turmas do localStorage:', e);
         turmasDisciplinaSelect.innerHTML = '<option value="" disabled>Erro ao carregar turmas</option>';
