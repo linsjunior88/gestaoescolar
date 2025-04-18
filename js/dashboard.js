@@ -979,6 +979,11 @@ function initTurmas() {
     // Carregar turmas do localStorage
     carregarTurmas();
     
+    // Mostrar o botão de cancelar sempre
+    if (btnCancelarTurma) {
+        btnCancelarTurma.style.display = 'inline-block';
+    }
+    
     // Configurar botões do formulário
     if (btnNovaTurma) {
         btnNovaTurma.onclick = function() {
@@ -1112,6 +1117,38 @@ function initTurmas() {
         }
     }
     
+    // Função para criar uma nova turma
+    function criarTurma(turma) {
+        console.log("Criando nova turma:", turma);
+        
+        // Fazer requisição à API
+        fetch(CONFIG.getApiUrl('/turmas/'), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(turma)
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Erro ao criar turma: ' + response.statusText);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Turma criada com sucesso:', data);
+            alert('Turma criada com sucesso!');
+            
+            // Limpar formulário e recarregar lista
+            resetarFormularioTurma();
+            carregarTurmas();
+        })
+        .catch(error => {
+            console.error('Erro ao criar turma:', error);
+            alert('Erro ao criar turma: ' + error.message);
+        });
+    }
+    
     // Função para editar uma turma
     function editarTurma(turmaId, dadosTurma) {
         console.log("Editando turma ID:", turmaId);
@@ -1135,8 +1172,8 @@ function initTurmas() {
             
             // Atualizar referências se o ID da turma mudou
             const antigoId = turmaIndex.value;
-            if (antigoId !== turma.id_turma) {
-                atualizarReferenciasAposMudancaIdTurma(antigoId, turma.id_turma);
+            if (antigoId !== dadosTurma.id_turma) {
+                atualizarReferenciasAposMudancaIdTurma(antigoId, dadosTurma.id_turma);
             }
             
             alert('Turma atualizada com sucesso!');
@@ -1207,7 +1244,9 @@ function initTurmas() {
         formModo.value = 'novo';
         turmaIndex.value = '';
         document.getElementById('form-turma-titulo').textContent = 'Nova Turma';
-        btnCancelarTurma.style.display = 'none';
+        
+        // Não escondemos mais o botão de cancelar para que ele esteja sempre disponível
+        // btnCancelarTurma.style.display = 'none';
         
         // Remover readonly do ID
         idTurmaInput.readOnly = false;
