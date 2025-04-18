@@ -1552,10 +1552,10 @@ function initDisciplinas() {
     
     // Função para carregar disciplinas
     function carregarDisciplinas() {
-        const disciplinasTableBody = document.getElementById('disciplinasTableBody');
+        const disciplinasTableBody = document.getElementById('disciplinas-lista');
         
         if (!disciplinasTableBody) {
-            console.error('Elemento disciplinasTableBody não encontrado!');
+            console.error('Elemento disciplinas-lista não encontrado!');
             return;
         }
 
@@ -1739,14 +1739,14 @@ function initDisciplinas() {
             });
     }
     // Função para excluir uma disciplina
-    function excluirDisciplina(idDisciplina) {
+    function excluirDisciplina(idDisciplina, nomeDisciplina) {
         // Confirmar exclusão
-        if (!confirm(`Tem certeza que deseja excluir a disciplina ${idDisciplina}?`)) {
+        if (!confirm(`Tem certeza que deseja excluir a disciplina ${nomeDisciplina || idDisciplina}?`)) {
             return;
         }
 
         // Exibir mensagem de carregamento
-        const disciplinasTableBody = document.getElementById('disciplinasTableBody');
+        const disciplinasTableBody = document.getElementById('disciplinas-lista');
         if (disciplinasTableBody) {
             disciplinasTableBody.innerHTML = '<tr><td colspan="4" class="text-center">Excluindo disciplina...</td></tr>';
         }
@@ -4122,7 +4122,10 @@ function salvarDisciplina(event) {
     : CONFIG.getApiUrl('/disciplinas');
   
   // Exibir mensagem de carregamento
-  document.getElementById('disciplinasTableBody').innerHTML = '<tr><td colspan="4" class="text-center">Salvando disciplina...</td></tr>';
+  const disciplinasLista = document.getElementById('disciplinas-lista');
+  if (disciplinasLista) {
+    disciplinasLista.innerHTML = '<tr><td colspan="4" class="text-center">Salvando disciplina...</td></tr>';
+  }
   
   // Enviar requisição para a API
   fetch(urlEndpoint, {
