@@ -3700,10 +3700,37 @@ function salvarDisciplina(event) {
     return;
   }
   
-  // Obter turmas selecionadas
+  // Obter turmas selecionadas - método robusto que tenta várias abordagens
+  let turmasSelecionadas = [];
   const turmasDisciplinaSelect = document.getElementById('turmasDisciplina');
-  const turmasSelecionadas = turmasDisciplinaSelect ? 
-    Array.from(turmasDisciplinaSelect.selectedOptions).map(option => option.value) : [];
+  
+  if (turmasDisciplinaSelect) {
+    // Tentar obter via selectedOptions (forma padrão)
+    try {
+      turmasSelecionadas = Array.from(turmasDisciplinaSelect.selectedOptions || []).map(option => option.value);
+    } catch (e) {
+      console.warn("Erro ao obter selectedOptions:", e);
+    }
+    
+    // Se não funcionou, tentar verificar manualmente quais opções estão selecionadas
+    if (turmasSelecionadas.length === 0) {
+      turmasSelecionadas = Array.from(turmasDisciplinaSelect.options || [])
+        .filter(option => option.selected)
+        .map(option => option.value);
+    }
+    
+    // Se ainda não funcionou, tentar via jQuery
+    if (turmasSelecionadas.length === 0 && typeof $ === 'function') {
+      try {
+        const jqSelected = $(turmasDisciplinaSelect).val();
+        if (Array.isArray(jqSelected)) {
+          turmasSelecionadas = jqSelected;
+        }
+      } catch (e) {
+        console.warn("Erro ao obter seleção via jQuery:", e);
+      }
+    }
+  }
   
   console.log("Turmas selecionadas para salvar:", turmasSelecionadas);
   
@@ -3836,12 +3863,53 @@ function abrirModalEditarDisciplina(disciplinaId) {
                 formDisciplina.setAttribute('data-mode', 'editar');
                 formDisciplina.setAttribute('data-id', disciplinaId);
                 
-                // Armazenar os IDs das turmas vinculadas
-                const turmasVinculadas = disciplina.turmas_vinculadas || [];
-                console.log("Turmas vinculadas à disciplina:", turmasVinculadas);
+                // Normalizar turmas vinculadas para garantir que sejam compatíveis com o select
+                let turmasVinculadas = disciplina.turmas_vinculadas || [];
+                
+                // Normalizar cada item para garantir que tenha id_turma
+                turmasVinculadas = turmasVinculadas.map(turma => {
+                    if (typeof turma === 'string') {
+                        return { id_turma: turma };
+                    } else if (typeof turma === 'object' && turma !== null) {
+                        // Se o objeto não tiver id_turma, mas tiver id, usar o id como id_turma
+                        if (!turma.id_turma && turma.id) {
+                            return { ...turma, id_turma: turma.id };
+                        }
+                        return turma;
+                    }
+                    return { id_turma: String(turma) };
+                });
+                
+                console.log("Turmas vinculadas normalizadas:", turmasVinculadas);
                 
                 // Carregar as turmas no select
                 console.log("Carregando turmas para select...");
+                
+                // Técnica 1: Primeiro definir as opções selecionadas diretamente
+                const turmasDisciplinaSelect = document.getElementById('turmasDisciplina');
+                if (turmasDisciplinaSelect) {
+                    // Limpar seleções existentes
+                    Array.from(turmasDisciplinaSelect.options).forEach(option => {
+                        option.selected = false;
+                    });
+                    
+                    // Obter IDs das turmas vinculadas
+                    const turmasIds = turmasVinculadas.map(turma => 
+                        typeof turma === 'object' ? (turma.id_turma || turma.id) : turma
+                    );
+                    
+                    // Selecionar as opções correspondentes
+                    turmasIds.forEach(id => {
+                        Array.from(turmasDisciplinaSelect.options).forEach(option => {
+                            if (option.value === id) {
+                                option.selected = true;
+                                console.log(`Pré-selecionando turma ${id}`);
+                            }
+                        });
+                    });
+                }
+                
+                // Técnica 2: Carregar turmas com a lista de vinculadas
                 carregarTurmasSelect(turmasVinculadas);
                 
                 // Garantir que a área de preview de turmas vinculadas esteja atualizada
@@ -4303,10 +4371,35 @@ function carregarTurmasSelect(turmasVinculadas = []) {
                     console.log(`Select de turmas populado com ${turmas.length} turmas`);
                     
                     // Forçar atualização visual do select
-                    select.style.display = 'none';
                     setTimeout(() => {
                         if (select && document.body.contains(select)) {
-                            select.style.display = '';
+                            // Forçar atualização visual - abordagem 1
+                            try {
+                                // Se estiver usando bootstrap-select
+                                if (typeof $(select).selectpicker === 'function') {
+                                    console.log("Atualizando selectpicker");
+                                    $(select).selectpicker('refresh');
+                                }
+                            } catch (e) {
+                                console.log("selectpicker não disponível:", e);
+                            }
+                            
+                            // Forçar atualização visual - abordagem 2
+                            try {
+                                // Forçar uma re-renderização
+                                const selectedOptions = Array.from(select.selectedOptions).map(opt => opt.value);
+                                const currentHTML = select.innerHTML;
+                                select.innerHTML = currentHTML;
+                                
+                                // Restaurar as seleções
+                                Array.from(select.options).forEach(option => {
+                                    if (selectedOptions.includes(option.value)) {
+                                        option.selected = true;
+                                    }
+                                });
+                            } catch (e) {
+                                console.log("Erro ao forçar re-renderização:", e);
+                            }
                             
                             // Disparar evento change para atualizar quaisquer handlers dependentes
                             const changeEvent = new Event('change');
@@ -4319,7 +4412,7 @@ function carregarTurmasSelect(turmasVinculadas = []) {
                                 console.error("Função atualizarPreviewTurmasVinculadas não encontrada");
                             }
                         }
-                    }, 50);
+                    }, 100);
                 } catch (error) {
                     console.error("Erro ao processar turmas:", error);
                     if (select && document.body.contains(select)) {
@@ -4458,11 +4551,46 @@ function atualizarPreviewTurmasVinculadas() {
         return;
     }
     
-    // Obter turmas selecionadas
-    const turmasSelecionadas = Array.from(turmasSelect.selectedOptions).map(option => ({
-        id: option.value,
-        nome: option.textContent
-    }));
+    // Obter turmas selecionadas - primeiro vamos tentar via selectedOptions
+    let turmasSelecionadas = [];
+    
+    try {
+        // Método 1: Usando selectedOptions
+        turmasSelecionadas = Array.from(turmasSelect.selectedOptions || []).map(option => ({
+            id: option.value,
+            nome: option.textContent
+        }));
+    } catch (e) {
+        console.warn("Erro ao usar selectedOptions, tentando alternativa:", e);
+        
+        // Método 2: Verificando cada opção manualmente
+        turmasSelecionadas = Array.from(turmasSelect.options || [])
+            .filter(option => option.selected)
+            .map(option => ({
+                id: option.value,
+                nome: option.textContent
+            }));
+    }
+    
+    // Método 3: Se ainda não tiver nada, tentar obter via jQuery
+    if (turmasSelecionadas.length === 0 && typeof $ === 'function') {
+        try {
+            const selectedValues = $(turmasSelect).val();
+            if (Array.isArray(selectedValues) && selectedValues.length > 0) {
+                console.log("Obtendo seleção via jQuery:", selectedValues);
+                
+                turmasSelecionadas = selectedValues.map(value => {
+                    const option = Array.from(turmasSelect.options).find(opt => opt.value === value);
+                    return {
+                        id: value,
+                        nome: option ? option.textContent : value
+                    };
+                });
+            }
+        } catch (e) {
+            console.warn("Erro ao tentar obter seleção via jQuery:", e);
+        }
+    }
     
     console.log("Turmas selecionadas para preview:", turmasSelecionadas);
     
@@ -4483,9 +4611,11 @@ function atualizarPreviewTurmasVinculadas() {
     }
     
     // Criar badges para cada turma selecionada
-    const badgesHtml = turmasSelecionadas.map(turma => 
-        `<span class="badge bg-primary me-1 mb-1">${turma.nome}</span>`
-    ).join('');
+    const badgesHtml = turmasSelecionadas
+        .filter(turma => turma && turma.nome) // Garantir que só turmas válidas sejam incluídas
+        .map(turma => 
+            `<span class="badge bg-primary me-1 mb-1">${turma.nome}</span>`
+        ).join('');
     
     // Adicionar título e badges à área de preview
     previewArea.innerHTML = `
