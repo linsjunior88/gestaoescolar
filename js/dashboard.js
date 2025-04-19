@@ -1392,24 +1392,35 @@ function initTurmas() {
 function initDisciplinas() {
     console.log("Inicializando módulo de disciplinas");
     
-    // Obter elementos do DOM
-    const formDisciplina = document.getElementById('formDisciplina');
+    // Obter elementos do DOM com os IDs corretos
+    const formDisciplina = document.getElementById('form-disciplina');
     const btnNovaDisciplina = document.getElementById('btn-nova-disciplina');
     const disciplinasLista = document.getElementById('disciplinas-lista');
-    const turmasDisciplinaSelect = document.getElementById('turmasDisciplina');
+    const vinculoTurmasSelect = document.getElementById('vinculo_turmas');
     const turmasVinculadasArea = document.getElementById('turmas-vinculadas-preview');
     
     console.log("Elementos do módulo de disciplinas:", {
         formDisciplina,
         btnNovaDisciplina,
         disciplinasLista,
-        turmasDisciplinaSelect,
+        vinculoTurmasSelect,
         turmasVinculadasArea
     });
     
     if (!formDisciplina || !btnNovaDisciplina || !disciplinasLista) {
         console.warn("Elementos essenciais do módulo de disciplinas não encontrados");
         return;
+    }
+    
+    // Adicionar botão de diagnóstico de API na parte superior do formulário
+    const diagBtn = document.createElement('button');
+    diagBtn.type = 'button';
+    diagBtn.className = 'btn btn-sm btn-info mb-3';
+    diagBtn.innerHTML = '<i class="fas fa-sync"></i> Testar API de Turmas';
+    diagBtn.onclick = diagnosticarApiTurmas;
+    
+    if (formDisciplina.querySelector('.card-body')) {
+        formDisciplina.querySelector('.card-body').prepend(diagBtn);
     }
     
     // Adicionar event listener ao botão para nova disciplina
@@ -1420,6 +1431,9 @@ function initDisciplinas() {
         // Chamar a função para configurar o formulário para nova disciplina
         prepararFormularioDisciplina(); // Sem ID = nova disciplina
         
+        // Carregar turmas para o select
+        carregarTurmasSelect([]);
+        
         // Rolar até o formulário
         formDisciplina.scrollIntoView({ behavior: 'smooth' });
     });
@@ -1428,8 +1442,8 @@ function initDisciplinas() {
     formDisciplina.addEventListener('submit', salvarDisciplina);
     
     // Adicionar event listener ao select de turmas para atualizar o preview
-    if (turmasDisciplinaSelect) {
-        turmasDisciplinaSelect.addEventListener('change', function() {
+    if (vinculoTurmasSelect) {
+        vinculoTurmasSelect.addEventListener('change', function() {
             console.log("Seleção de turmas alterada, atualizando preview");
             try {
                 if (typeof atualizarPreviewTurmasVinculadas === 'function') {
@@ -1441,12 +1455,112 @@ function initDisciplinas() {
         });
     }
     
-    // Inicialização do formulário - não carregar turmas automaticamente
-    // Apenas resetar o formulário para um estado inicial limpo
-    resetarFormularioDisciplina();
+    // Inicialização do formulário - carregar turmas para o select
+    carregarTurmasSelect([]);
     
     // Carregar lista de disciplinas
     carregarDisciplinas();
+}
+
+// Função para diagnosticar problemas com a API de turmas
+function diagnosticarApiTurmas() {
+    console.log("Iniciando diagnóstico de API de turmas");
+    
+    // Criar container de diagnóstico
+    const diagContainer = document.createElement('div');
+    diagContainer.className = 'alert alert-info';
+    diagContainer.innerHTML = '<p><strong>Diagnóstico da API de Turmas</strong></p><div id="diag-result">Testando conexão...</div>';
+    
+    // Adicionar ao formulário
+    const formBody = document.querySelector('#form-disciplina .card-body');
+    if (formBody) {
+        // Remover diagnóstico anterior se existir
+        const oldDiag = formBody.querySelector('#api-diag-container');
+        if (oldDiag) oldDiag.remove();
+        
+        // Adicionar novo container de diagnóstico
+        diagContainer.id = 'api-diag-container';
+        formBody.insertBefore(diagContainer, formBody.firstChild.nextSibling);
+    }
+    
+    const resultDiv = diagContainer.querySelector('#diag-result');
+    
+    // Testar conexão com várias URLs da API
+    const urls = [
+        { url: CONFIG.getApiUrl('/turmas'), name: 'API configurada' },
+        { url: 'http://localhost:4000/api/turmas', name: 'API local' },
+        { url: '/api/turmas', name: 'API relativa' }
+    ];
+    
+    // Adicionar loading para cada url
+    urls.forEach(endpoint => {
+        resultDiv.innerHTML += `<p data-url="${endpoint.url}"><strong>${endpoint.name}:</strong> <span class="loading">Testando...</span></p>`;
+    });
+    
+    // Testar cada URL
+    urls.forEach(endpoint => {
+        const statusSpan = resultDiv.querySelector(`p[data-url="${endpoint.url}"] span`);
+        
+        fetch(endpoint.url)
+            .then(response => {
+                statusSpan.className = response.ok ? 'text-success' : 'text-warning';
+                statusSpan.textContent = `Status: ${response.status} ${response.statusText}`;
+                
+                if (response.ok) {
+                    return response.json().then(data => {
+                        if (data && Array.isArray(data)) {
+                            statusSpan.textContent += ` (${data.length} turmas encontradas)`;
+                            
+                            // Se for a primeira URL bem-sucedida, recarregar o select
+                            const select = document.getElementById('vinculo_turmas');
+                            if (select) {
+                                select.innerHTML = '<option value="">Carregando turmas...</option>';
+                                
+                                // Recarregar turmas usando esta URL
+                                fetch(endpoint.url)
+                                    .then(r => r.json())
+                                    .then(turmas => {
+                                        // Processar turmas e preencher o select
+                                        select.innerHTML = '';
+                                        
+                                        if (turmas && turmas.length > 0) {
+                                            turmas.forEach(turma => {
+                                                const option = document.createElement('option');
+                                                option.value = turma.id_turma;
+                                                option.textContent = `${turma.id_turma} - ${turma.serie || turma.nome_turma || 'Sem nome'}`;
+                                                select.appendChild(option);
+                                            });
+                                            
+                                            statusSpan.textContent += ' ✓ Turmas carregadas!';
+                                        } else {
+                                            select.innerHTML = '<option value="">Nenhuma turma disponível</option>';
+                                        }
+                                    });
+                            }
+                        } else {
+                            statusSpan.textContent += ' (resposta válida, mas formato inesperado)';
+                        }
+                    });
+                }
+            })
+            .catch(error => {
+                statusSpan.className = 'text-danger';
+                statusSpan.textContent = `Erro: ${error.message}`;
+            });
+    });
+    
+    // Adicionar botão para forçar tentativa de carregamento
+    const reloadBtn = document.createElement('button');
+    reloadBtn.type = 'button';
+    reloadBtn.className = 'btn btn-sm btn-warning mt-2';
+    reloadBtn.textContent = 'Forçar carregamento de turmas';
+    reloadBtn.onclick = () => {
+        document.getElementById('vinculo_turmas').innerHTML = '<option value="">Carregando turmas...</option>';
+        carregarTurmasSelect([]);
+    };
+    
+    resultDiv.appendChild(document.createElement('hr'));
+    resultDiv.appendChild(reloadBtn);
 }
 
 // Inicialização do módulo de professores
@@ -4817,7 +4931,7 @@ function editarDisciplina(disciplinaId) {
 function atualizarPreviewTurmasVinculadas() {
     console.log('Iniciando atualização do preview das turmas vinculadas');
     
-    const select = document.getElementById('turmasDisciplina');
+    const select = document.getElementById('vinculo_turmas');
     const previewArea = document.getElementById('turmas-vinculadas-preview');
     
     if (!select) {
