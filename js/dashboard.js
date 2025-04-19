@@ -3817,24 +3817,20 @@ function salvarDisciplina(event) {
 }
 
 function abrirModalEditarDisciplina(disciplinaId) {
-    console.log(`Carregando disciplina para edição: ${disciplinaId}`);
+    console.log(`Abrindo modal para editar disciplina: ${disciplinaId}`);
     
+    const modalDisciplina = document.getElementById('modalDisciplina');
     const formDisciplina = document.getElementById('formDisciplina');
-    if (!formDisciplina) {
-        console.error("Formulário de disciplina não encontrado");
+    const tituloForm = document.getElementById('modalDisciplinaLabel');
+    const submitBtn = document.getElementById('submitFormDisciplina');
+    
+    if (!modalDisciplina || !formDisciplina) {
+        console.error("Modal ou formulário de disciplina não encontrado");
         return;
     }
     
+    // Resetar o formulário antes de preencher com novos dados
     resetarFormularioDisciplina();
-    
-    // Obter elementos do formulário
-    const tituloForm = document.querySelector('#formDisciplina .card-title') || 
-                       document.querySelector('h5.card-title') || 
-                       document.querySelector('h5');
-    const submitBtn = formDisciplina.querySelector('button[type="submit"]');
-    
-    // Rolar para o formulário para garantir visibilidade
-    formDisciplina.scrollIntoView({ behavior: 'smooth' });
     
     if (disciplinaId) {
         // Modo Editar
@@ -3872,15 +3868,15 @@ function abrirModalEditarDisciplina(disciplinaId) {
             // Normalizar para obter apenas os IDs
             const turmasIds = turmasVinculadas.map(turma => {
                 if (typeof turma === 'object' && turma !== null) {
-                    return turma.id_turma || turma.id;
+                    return String(turma.id_turma || turma.id || '');
                 } else {
-                    return turma;
+                    return String(turma);
                 }
             });
             
             console.log("Turmas vinculadas à disciplina:", turmasIds);
             
-            // ABORDAGEM RADICAL: Recriar completamente o elemento select
+            // NOVA ABORDAGEM: Substituir o select por checkboxes
             const selectContainer = document.querySelector('#turmasDisciplina').parentElement;
             if (!selectContainer) {
                 console.error("Container do select não encontrado");
@@ -3890,93 +3886,74 @@ function abrirModalEditarDisciplina(disciplinaId) {
             // Guardar o rótulo e outros elementos antes de manipular o DOM
             const selectLabel = selectContainer.querySelector('label');
             const labelText = selectLabel ? selectLabel.textContent : 'Vincular Turmas';
-            const helpText = 'Segure a tecla CTRL para selecionar múltiplas turmas';
             
             // Remover o select original
             selectContainer.innerHTML = '';
             
             // Recriar o rótulo
             const newLabel = document.createElement('label');
-            newLabel.setAttribute('for', 'turmasDisciplina');
+            newLabel.setAttribute('for', 'turmas-checkboxes');
             newLabel.textContent = labelText;
             selectContainer.appendChild(newLabel);
             
-            // Criar novo select
-            const newSelect = document.createElement('select');
-            newSelect.id = 'turmasDisciplina';
-            newSelect.className = 'form-select';
-            newSelect.setAttribute('multiple', '');
-            selectContainer.appendChild(newSelect);
+            // Criar container para os checkboxes
+            const checkboxContainer = document.createElement('div');
+            checkboxContainer.id = 'turmas-checkboxes';
+            checkboxContainer.className = 'checkbox-group border rounded p-2';
+            checkboxContainer.style.maxHeight = '200px';
+            checkboxContainer.style.overflowY = 'auto';
+            selectContainer.appendChild(checkboxContainer);
             
-            // Adicionar texto de ajuda
-            const helpTextElement = document.createElement('small');
-            helpTextElement.className = 'form-text text-muted';
-            helpTextElement.textContent = helpText;
-            selectContainer.appendChild(helpTextElement);
-            
-            // Adicionar as opções ao novo select
-            turmas.forEach(turma => {
-                const option = document.createElement('option');
-                const turmaId = String(turma.id_turma || turma.id || '');
-                option.value = turmaId;
-                option.textContent = `${turmaId} - ${turma.serie || turma.nome_turma || 'Sem nome'}`;
-                
-                // Verificar se a turma está vinculada
-                if (turmasIds.includes(turmaId)) {
-                    option.selected = true;
-                    option.style.backgroundColor = "#e6f7ff";
-                    option.style.fontWeight = "bold";
-                    console.log(`Marcando turma ${turmaId} como selecionada`);
-                }
-                
-                newSelect.appendChild(option);
-            });
-            
-            // Adicionar event listener para o preview
-            newSelect.addEventListener('change', function() {
-                if (typeof atualizarPreviewTurmasVinculadas === 'function') {
-                    atualizarPreviewTurmasVinculadas();
-                }
-            });
-            
-            // Atualizar o preview
-            setTimeout(() => {
-                if (typeof atualizarPreviewTurmasVinculadas === 'function') {
-                    atualizarPreviewTurmasVinculadas();
+            // Adicionar checkboxes para cada turma
+            if (turmas.length === 0) {
+                checkboxContainer.innerHTML = '<p class="text-muted">Nenhuma turma disponível</p>';
+            } else {
+                turmas.forEach(turma => {
+                    const turmaId = String(turma.id_turma || turma.id || '');
+                    const isChecked = turmasIds.includes(turmaId);
                     
-                    // Verificar se o preview foi atualizado com turmas
-                    setTimeout(() => {
-                        const previewArea = document.getElementById('turmas-vinculadas-preview');
-                        if (previewArea && previewArea.innerHTML.includes('Nenhuma turma selecionada') && turmasIds.length > 0) {
-                            // Adicionar um aviso visual se a seleção falhou
-                            const aviso = document.createElement('div');
-                            aviso.className = 'alert alert-warning mt-2';
-                            aviso.innerHTML = `<strong>Atenção:</strong> Esta disciplina está vinculada às turmas: ${turmasIds.join(', ')}.<br>
-                                              Por favor, selecione manualmente as turmas acima.`;
-                            selectContainer.appendChild(aviso);
-                        }
-                    }, 200);
-                }
-            }, 100);
-            
-            // Se estamos usando alguma biblioteca UI para selects, tente atualizar
-            setTimeout(() => {
-                try {
-                    if (typeof $ === 'function') {
-                        if (typeof $(newSelect).selectpicker === 'function') {
-                            $(newSelect).selectpicker('refresh');
-                        }
-                        if (typeof $(newSelect).select2 === 'function') {
-                            $(newSelect).select2();
-                        }
-                        if (typeof $(newSelect).chosen === 'function') {
-                            $(newSelect).trigger('chosen:updated');
-                        }
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'form-check';
+                    
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.className = 'form-check-input turma-checkbox';
+                    checkbox.id = `turma-${turmaId}`;
+                    checkbox.value = turmaId;
+                    checkbox.checked = isChecked;
+                    
+                    if (isChecked) {
+                        console.log(`Marcando turma ${turmaId} como selecionada`);
+                        wrapper.style.backgroundColor = "#e6f7ff";
+                        wrapper.style.fontWeight = "bold";
                     }
-                } catch (e) {
-                    console.warn("Erro ao tentar atualizar UI do select:", e);
-                }
-            }, 300);
+                    
+                    const label = document.createElement('label');
+                    label.className = 'form-check-label';
+                    label.htmlFor = `turma-${turmaId}`;
+                    label.textContent = `${turmaId} - ${turma.serie || turma.nome_turma || 'Sem nome'}`;
+                    
+                    wrapper.appendChild(checkbox);
+                    wrapper.appendChild(label);
+                    checkboxContainer.appendChild(wrapper);
+                });
+            }
+            
+            // Adicionar área de preview
+            const previewArea = document.createElement('div');
+            previewArea.id = 'turmas-vinculadas-preview';
+            previewArea.className = 'mt-2 small';
+            selectContainer.appendChild(previewArea);
+            
+            // Adicionar event listener para atualizar o preview
+            document.querySelectorAll('.turma-checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', atualizarPreviewTurmasVinculadasCheckbox);
+            });
+            
+            // Atualizar o preview inicialmente
+            setTimeout(() => {
+                atualizarPreviewTurmasVinculadasCheckbox();
+            }, 100);
         })
         .catch(error => {
             console.error(`Erro ao buscar dados para edição: ${error}`);
@@ -3988,55 +3965,308 @@ function abrirModalEditarDisciplina(disciplinaId) {
         if (tituloForm) tituloForm.textContent = 'Nova Disciplina';
         if (submitBtn) submitBtn.textContent = 'Salvar';
         
-        // Ativar campo ID para nova disciplina
         const idDisciplinaField = document.getElementById('idDisciplina');
         if (idDisciplinaField) idDisciplinaField.readOnly = false;
         
-        // Definir o modo do formulário
         formDisciplina.setAttribute('data-mode', 'novo');
         formDisciplina.removeAttribute('data-id');
         
-        // Carregar lista de turmas vazia
-        carregarTurmasSelect([]);
+        // Carregar turmas para o modo novo
+        fetch(CONFIG.getApiUrl('/turmas'))
+            .then(res => res.ok ? res.json() : [])
+            .then(turmas => {
+                console.log("Turmas carregadas para nova disciplina:", turmas);
+                
+                // NOVA ABORDAGEM: Usar checkboxes
+                const selectContainer = document.querySelector('#turmasDisciplina').parentElement;
+                if (!selectContainer) {
+                    console.error("Container do select não encontrado");
+                    return;
+                }
+                
+                // Guardar o rótulo antes de manipular o DOM
+                const selectLabel = selectContainer.querySelector('label');
+                const labelText = selectLabel ? selectLabel.textContent : 'Vincular Turmas';
+                
+                // Remover o select original
+                selectContainer.innerHTML = '';
+                
+                // Recriar o rótulo
+                const newLabel = document.createElement('label');
+                newLabel.setAttribute('for', 'turmas-checkboxes');
+                newLabel.textContent = labelText;
+                selectContainer.appendChild(newLabel);
+                
+                // Criar container para os checkboxes
+                const checkboxContainer = document.createElement('div');
+                checkboxContainer.id = 'turmas-checkboxes';
+                checkboxContainer.className = 'checkbox-group border rounded p-2';
+                checkboxContainer.style.maxHeight = '200px';
+                checkboxContainer.style.overflowY = 'auto';
+                selectContainer.appendChild(checkboxContainer);
+                
+                // Adicionar checkboxes para cada turma
+                if (turmas.length === 0) {
+                    checkboxContainer.innerHTML = '<p class="text-muted">Nenhuma turma disponível</p>';
+                } else {
+                    turmas.forEach(turma => {
+                        const turmaId = String(turma.id_turma || turma.id || '');
+                        
+                        const wrapper = document.createElement('div');
+                        wrapper.className = 'form-check';
+                        
+                        const checkbox = document.createElement('input');
+                        checkbox.type = 'checkbox';
+                        checkbox.className = 'form-check-input turma-checkbox';
+                        checkbox.id = `turma-${turmaId}`;
+                        checkbox.value = turmaId;
+                        
+                        const label = document.createElement('label');
+                        label.className = 'form-check-label';
+                        label.htmlFor = `turma-${turmaId}`;
+                        label.textContent = `${turmaId} - ${turma.serie || turma.nome_turma || 'Sem nome'}`;
+                        
+                        wrapper.appendChild(checkbox);
+                        wrapper.appendChild(label);
+                        checkboxContainer.appendChild(wrapper);
+                    });
+                }
+                
+                // Adicionar área de preview
+                const previewArea = document.createElement('div');
+                previewArea.id = 'turmas-vinculadas-preview';
+                previewArea.className = 'mt-2 small';
+                selectContainer.appendChild(previewArea);
+                
+                // Adicionar event listener para atualizar o preview
+                document.querySelectorAll('.turma-checkbox').forEach(checkbox => {
+                    checkbox.addEventListener('change', atualizarPreviewTurmasVinculadasCheckbox);
+                });
+                
+                // Atualizar o preview inicialmente
+                setTimeout(() => {
+                    atualizarPreviewTurmasVinculadasCheckbox();
+                }, 100);
+            })
+            .catch(error => {
+                console.error(`Erro ao carregar turmas: ${error}`);
+                alert(`Erro ao carregar turmas: ${error.message}`);
+            });
+    }
+    
+    // Mostrar o modal
+    if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+        const bsModal = new bootstrap.Modal(modalDisciplina);
+        bsModal.show();
+    } else {
+        // Fallback para jQuery ou método manual
+        try {
+            if (typeof $ === 'function') {
+                $(modalDisciplina).modal('show');
+            } else {
+                modalDisciplina.style.display = 'block';
+                modalDisciplina.classList.add('show');
+            }
+        } catch (e) {
+            console.warn("Erro ao tentar mostrar modal:", e);
+            modalDisciplina.style.display = 'block';
+        }
     }
 }
 
-// Função para resetar o formulário de disciplina
-function resetarFormularioDisciplina() {
-    console.log("Resetando formulário de disciplina");
-    const formDisciplina = document.getElementById('formDisciplina');
-    if (!formDisciplina) {
-        console.error("Formulário de disciplina não encontrado para reset");
+// Nova função para atualizar o preview com checkboxes
+function atualizarPreviewTurmasVinculadasCheckbox() {
+    console.log("Atualizando preview de turmas vinculadas (checkboxes)");
+    const previewArea = document.getElementById('turmas-vinculadas-preview');
+    
+    if (!previewArea) {
+        console.error("Área de preview não encontrada");
         return;
     }
     
-    // Limpar campos
-    formDisciplina.reset();
+    // Obter todas as checkboxes marcadas
+    const turmasSelecionadas = Array.from(document.querySelectorAll('.turma-checkbox:checked'))
+        .map(checkbox => checkbox.value);
     
-    // Resetar atributos data
-    formDisciplina.removeAttribute('data-id');
-    formDisciplina.setAttribute('data-mode', 'novo');
+    console.log("Turmas selecionadas para preview:", turmasSelecionadas);
     
-    // Limpar select de turmas se existir
-    const turmasSelect = document.getElementById('turmasDisciplina');
-    if (turmasSelect) {
-        // Desmarcar todas as opções
-        Array.from(turmasSelect.options).forEach(option => {
-            option.selected = false;
+    // Atualizar a área de preview
+    if (turmasSelecionadas.length === 0) {
+        previewArea.innerHTML = '<span class="text-muted">Nenhuma turma selecionada</span>';
+    } else {
+        previewArea.innerHTML = '<strong>Turmas selecionadas:</strong> ';
+        
+        // Buscar detalhes das turmas selecionadas
+        const turmaBadges = Array.from(document.querySelectorAll('.turma-checkbox:checked')).map(checkbox => {
+            const label = document.querySelector(`label[for="${checkbox.id}"]`);
+            const turmaTexto = label ? label.textContent : checkbox.value;
+            
+            return `<span class="badge bg-primary me-1">${turmaTexto}</span>`;
         });
         
-        // Disparar evento change
-        const changeEvent = new Event('change');
-        turmasSelect.dispatchEvent(changeEvent);
+        previewArea.innerHTML += turmaBadges.join('');
+    }
+}
+
+// Modificar a função salvarDisciplina para usar checkboxes
+function salvarDisciplina(event) {
+    event.preventDefault();
+    console.log("Iniciando salvarDisciplina()");
+    
+    const formDisciplina = document.getElementById('formDisciplina');
+    const idDisciplinaField = document.getElementById('idDisciplina');
+    const nomeDisciplinaField = document.getElementById('nomeDisciplina');
+    const cargaHorariaField = document.getElementById('descricaoDisciplina');
+    
+    if (!formDisciplina || !idDisciplinaField || !nomeDisciplinaField || !cargaHorariaField) {
+        console.error("Campos do formulário não encontrados");
+        alert("Erro ao processar formulário: campos não encontrados");
+        return;
     }
     
-    // Limpar preview de turmas vinculadas
-    const previewArea = document.getElementById('turmas-vinculadas-preview');
-    if (previewArea) {
-        previewArea.innerHTML = '';
+    // Validar campos obrigatórios
+    if (!idDisciplinaField.value.trim() || !nomeDisciplinaField.value.trim() || !cargaHorariaField.value.trim()) {
+        alert("Por favor, preencha todos os campos obrigatórios");
+        return;
     }
     
-    console.log("Formulário de disciplina resetado com sucesso");
+    // Criar objeto disciplina
+    const disciplina = {
+        id_disciplina: idDisciplinaField.value.trim(),
+        nome_disciplina: nomeDisciplinaField.value.trim(),
+        carga_horaria: parseInt(cargaHorariaField.value.trim()) || 0
+    };
+    
+    // NOVA ABORDAGEM: Obter turmas selecionadas via checkboxes
+    const turmasSelecionadas = Array.from(document.querySelectorAll('.turma-checkbox:checked'))
+        .map(checkbox => checkbox.value);
+    
+    console.log("Turmas selecionadas para salvar:", turmasSelecionadas);
+    
+    // Adicionar turmas ao objeto disciplina
+    disciplina.turmas_vinculadas = turmasSelecionadas;
+    disciplina.turmas = turmasSelecionadas; // Para compatibilidade
+    
+    // Determinar se é uma nova disciplina ou uma edição
+    const isEditMode = formDisciplina.getAttribute('data-mode') === 'editar';
+    const method = isEditMode ? 'PUT' : 'POST';
+    const endpoint = isEditMode 
+        ? CONFIG.getApiUrl(`/disciplinas/${disciplina.id_disciplina}`) 
+        : CONFIG.getApiUrl('/disciplinas/');
+    
+    console.log(`Enviando dados via ${method} para ${endpoint}:`, disciplina);
+    
+    // Exibir mensagem de loading
+    const loadingMsg = document.createElement('div');
+    loadingMsg.className = 'alert alert-info mt-2';
+    loadingMsg.textContent = 'Salvando disciplina...';
+    formDisciplina.appendChild(loadingMsg);
+    
+    // Enviar os dados para a API
+    fetch(endpoint, {
+        method: method,
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(disciplina)
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`Erro HTTP ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log("Disciplina salva com sucesso:", data);
+        
+        // Atualizar a lista de disciplinas
+        carregarDisciplinas();
+        
+        // Fechar o modal
+        const modalDisciplina = document.getElementById('modalDisciplina');
+        if (modalDisciplina) {
+            if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                const bsModal = bootstrap.Modal.getInstance(modalDisciplina);
+                if (bsModal) bsModal.hide();
+            } else {
+                // Fallback para jQuery ou método manual
+                try {
+                    if (typeof $ === 'function') {
+                        $(modalDisciplina).modal('hide');
+                    } else {
+                        modalDisciplina.style.display = 'none';
+                        modalDisciplina.classList.remove('show');
+                    }
+                } catch (e) {
+                    console.warn("Erro ao tentar fechar modal:", e);
+                    modalDisciplina.style.display = 'none';
+                }
+            }
+        }
+        
+        // Mostrar mensagem de sucesso
+        alert(`Disciplina ${isEditMode ? 'atualizada' : 'criada'} com sucesso!`);
+    })
+    .catch(error => {
+        console.error(`Erro ao salvar disciplina: ${error}`);
+        
+        // Tentar salvar localmente se API falhar
+        try {
+            const disciplinasLocal = JSON.parse(localStorage.getItem('disciplinas') || '[]');
+            
+            // Se for modo edição, atualizar disciplina existente
+            if (isEditMode) {
+                const index = disciplinasLocal.findIndex(d => d.id_disciplina === disciplina.id_disciplina);
+                if (index !== -1) {
+                    disciplinasLocal[index] = disciplina;
+                } else {
+                    disciplinasLocal.push(disciplina);
+                }
+            } else {
+                // Adicionar uma nova disciplina
+                disciplina.id = disciplinasLocal.length + 1;
+                disciplinasLocal.push(disciplina);
+            }
+            
+            localStorage.setItem('disciplinas', JSON.stringify(disciplinasLocal));
+            console.log("Disciplina salva localmente:", disciplina);
+            
+            // Atualizar a lista de disciplinas
+            carregarDisciplinas();
+            
+            // Fechar o modal
+            const modalDisciplina = document.getElementById('modalDisciplina');
+            if (modalDisciplina) {
+                if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                    const bsModal = bootstrap.Modal.getInstance(modalDisciplina);
+                    if (bsModal) bsModal.hide();
+                } else {
+                    try {
+                        if (typeof $ === 'function') {
+                            $(modalDisciplina).modal('hide');
+                        } else {
+                            modalDisciplina.style.display = 'none';
+                            modalDisciplina.classList.remove('show');
+                        }
+                    } catch (e) {
+                        modalDisciplina.style.display = 'none';
+                    }
+                }
+            }
+            
+            // Mostrar mensagem de sucesso com aviso sobre armazenamento local
+            alert(`Disciplina ${isEditMode ? 'atualizada' : 'criada'} com sucesso no armazenamento local (modo offline)!`);
+        } catch (localError) {
+            console.error(`Erro ao salvar localmente: ${localError}`);
+            alert(`Erro ao salvar disciplina: ${error.message}. Não foi possível salvar no modo offline.`);
+        }
+    })
+    .finally(() => {
+        // Remover mensagem de loading
+        if (loadingMsg.parentNode) {
+            loadingMsg.parentNode.removeChild(loadingMsg);
+        }
+    });
 }
 
 function carregarDisciplinas() {
