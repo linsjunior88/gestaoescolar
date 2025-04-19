@@ -5060,11 +5060,20 @@ function processarVinculosTurmas(idDisciplina, turmasSelecionadas, turmasOrigina
     console.log("Turmas selecionadas:", turmasSelecionadas);
     console.log("Turmas originais:", turmasOriginais);
     
+    // Verificar token de autenticação
+    const token = localStorage.getItem('token');
+    const authHeader = token ? { 'Authorization': `Bearer ${token}` } : {};
+    console.log("Token de autenticação:", token ? "Presente" : "Ausente");
+    
     // Se não tiver turmas selecionadas, remover todos os vínculos existentes
     if (!turmasSelecionadas || turmasSelecionadas.length === 0) {
         // Remover todos os vínculos existentes
         return fetch(CONFIG.getApiUrl(`/disciplinas/${idDisciplina}/turmas`), {
-            method: 'DELETE'
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                ...authHeader
+            }
         })
         .then(response => {
             if (!response.ok && response.status !== 204) {
@@ -5075,66 +5084,104 @@ function processarVinculosTurmas(idDisciplina, turmasSelecionadas, turmasOrigina
     }
     
     // Primeiro, buscar as turmas atualmente vinculadas
-    return fetch(CONFIG.getApiUrl(`/disciplinas/${idDisciplina}/turmas`))
-        .then(response => {
-            if (!response.ok) {
-                // Se falhou, tentar usar as turmas originais
-                console.warn("Erro ao buscar turmas vinculadas da API, usando turmas originais");
-                return turmasOriginais;
+    return fetch(CONFIG.getApiUrl(`/disciplinas/${idDisciplina}/turmas`), {
+        headers: authHeader
+    })
+    .then(response => {
+        if (!response.ok) {
+            // Se falhou, tentar usar as turmas originais
+            console.warn("Erro ao buscar turmas vinculadas da API, usando turmas originais");
+            return turmasOriginais;
+        }
+        return response.json();
+    })
+    .then(turmasVinculadas => {
+        // Normalizar IDs das turmas vinculadas
+        const turmasVinculadasIds = turmasVinculadas.map(turma => 
+            typeof turma === 'object' ? turma.id_turma : turma
+        );
+        
+        console.log("Turmas atualmente vinculadas:", turmasVinculadasIds);
+        
+        // Primeiro remover todos os vínculos (maneira mais simples)
+        return fetch(CONFIG.getApiUrl(`/disciplinas/${idDisciplina}/turmas`), {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                ...authHeader
             }
-            return response.json();
         })
-        .then(turmasVinculadas => {
-            // Normalizar IDs das turmas vinculadas
-            const turmasVinculadasIds = turmasVinculadas.map(turma => 
-                typeof turma === 'object' ? turma.id_turma : turma
-            );
+        .then(response => {
+            if (!response.ok && response.status !== 204) {
+                throw new Error(`Erro ao remover vínculos existentes: ${response.status}`);
+            }
             
-            console.log("Turmas atualmente vinculadas:", turmasVinculadasIds);
-            
-            // Primeiro remover todos os vínculos (maneira mais simples)
-            return fetch(CONFIG.getApiUrl(`/disciplinas/${idDisciplina}/turmas`), {
-                method: 'DELETE'
-            })
-            .then(response => {
-                if (!response.ok && response.status !== 204) {
-                    throw new Error(`Erro ao remover vínculos existentes: ${response.status}`);
-                }
-                
-                // Agora criar os novos vínculos
-                const promessasVinculos = turmasSelecionadas.map(idTurma => {
-                    return fetch(CONFIG.getApiUrl(`/disciplinas/${idDisciplina}/turmas/${idTurma}`), {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        }
-                    })
-                    .then(response => {
-                        if (!response.ok) {
-                            console.warn(`Erro ao vincular turma ${idTurma}: ${response.status}`);
+            // Opção 1: Enviar uma lista de turmas de uma vez (novo endpoint)
+            if (turmasSelecionadas.length > 0) {
+                return fetch(CONFIG.getApiUrl(`/disciplinas/${idDisciplina}/turmas`), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...authHeader
+                    },
+                    body: JSON.stringify({ turmas_ids: turmasSelecionadas })
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        console.warn(`Erro ao vincular turmas: ${response.status}`);
+                        // Falhar, mas tentar o método alternativo
+                        throw new Error("Falha ao usar o método em lote");
+                    }
+                    return response.json();
+                })
+                .then(result => {
+                    console.log(`Vínculos criados com sucesso:`, result);
+                    return {
+                        message: `${result.length} vínculos criados com sucesso`
+                    };
+                })
+                .catch(error => {
+                    console.error("Erro ao vincular turmas em lote, tentando método alternativo:", error);
+                    
+                    // Opção 2: Vincular uma por uma (método antigo/alternativo)
+                    const promessasVinculos = turmasSelecionadas.map(idTurma => {
+                        return fetch(CONFIG.getApiUrl(`/disciplinas/${idDisciplina}/turmas/${idTurma}`), {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                ...authHeader
+                            }
+                        })
+                        .then(response => {
+                            if (!response.ok) {
+                                console.warn(`Erro ao vincular turma ${idTurma}: ${response.status}`);
+                                return null;
+                            }
+                            return response.json();
+                        })
+                        .catch(error => {
+                            console.error(`Erro ao vincular turma ${idTurma}:`, error);
                             return null;
-                        }
-                        return response.json();
-                    })
-                    .catch(error => {
-                        console.error(`Erro ao vincular turma ${idTurma}:`, error);
-                        return null;
+                        });
                     });
+                    
+                    // Aguardar todas as promessas serem resolvidas
+                    return Promise.all(promessasVinculos)
+                        .then(resultados => {
+                            const vinculosComSucesso = resultados.filter(r => r !== null);
+                            console.log(`${vinculosComSucesso.length} vínculos criados com sucesso (método alternativo)`);
+                            return {
+                                message: `${vinculosComSucesso.length} de ${turmasSelecionadas.length} vínculos criados com sucesso`
+                            };
+                        });
                 });
-                
-                // Aguardar todas as promessas serem resolvidas
-                return Promise.all(promessasVinculos)
-                    .then(resultados => {
-                        const vinculosComSucesso = resultados.filter(r => r !== null);
-                        console.log(`${vinculosComSucesso.length} vínculos criados com sucesso`);
-                        return {
-                            message: `${vinculosComSucesso.length} de ${turmasSelecionadas.length} vínculos criados com sucesso`
-                        };
-                    });
-            });
-        })
-        .catch(error => {
-            console.error("Erro ao processar vínculos de turmas:", error);
-            throw error;
+            } else {
+                return { message: "Nenhuma turma para vincular" };
+            }
         });
+    })
+    .catch(error => {
+        console.error("Erro ao processar vínculos de turmas:", error);
+        throw error;
+    });
 }
