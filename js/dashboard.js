@@ -3845,8 +3845,32 @@ function abrirModalEditarDisciplina(disciplinaId) {
         const idDisciplinaField = document.getElementById('idDisciplina');
         if (idDisciplinaField) idDisciplinaField.readOnly = true;
         
-        // Buscar disciplina e preencher o formulário
-        buscarDisciplina(disciplinaId)
+        // Primeiro pré-carregar as turmas disponíveis no select
+        const turmasDisciplinaSelect = document.getElementById('turmasDisciplina');
+        
+        // Primeiro carregar todas as turmas disponíveis
+        fetch(CONFIG.getApiUrl('/turmas'))
+            .then(response => response.ok ? response.json() : [])
+            .then(turmas => {
+                console.log("Turmas pré-carregadas:", turmas);
+                
+                // Preencher o select com todas as turmas (sem seleção ainda)
+                if (turmasDisciplinaSelect) {
+                    // Limpar o select
+                    turmasDisciplinaSelect.innerHTML = '';
+                    
+                    // Adicionar cada turma como opção
+                    turmas.forEach(turma => {
+                        const option = document.createElement('option');
+                        option.value = turma.id_turma || turma.id;
+                        option.textContent = `${turma.id_turma || turma.id} - ${turma.serie || turma.nome_turma || 'Sem nome'}`;
+                        turmasDisciplinaSelect.appendChild(option);
+                    });
+                }
+                
+                // Agora buscar a disciplina para edição
+                return buscarDisciplina(disciplinaId);
+            })
             .then(disciplina => {
                 console.log("Disciplina encontrada para edição:", disciplina);
                 
@@ -3863,64 +3887,90 @@ function abrirModalEditarDisciplina(disciplinaId) {
                 formDisciplina.setAttribute('data-mode', 'editar');
                 formDisciplina.setAttribute('data-id', disciplinaId);
                 
-                // Normalizar turmas vinculadas para garantir que sejam compatíveis com o select
+                // Extrair e normalizar as turmas vinculadas
                 let turmasVinculadas = disciplina.turmas_vinculadas || [];
                 
-                // Normalizar cada item para garantir que tenha id_turma
-                turmasVinculadas = turmasVinculadas.map(turma => {
-                    if (typeof turma === 'string') {
-                        return { id_turma: turma };
-                    } else if (typeof turma === 'object' && turma !== null) {
-                        // Se o objeto não tiver id_turma, mas tiver id, usar o id como id_turma
-                        if (!turma.id_turma && turma.id) {
-                            return { ...turma, id_turma: turma.id };
-                        }
+                // Normalizar para obter apenas os IDs das turmas
+                const turmasIds = turmasVinculadas.map(turma => {
+                    if (typeof turma === 'object' && turma !== null) {
+                        return turma.id_turma || turma.id;
+                    } else {
                         return turma;
                     }
-                    return { id_turma: String(turma) };
                 });
                 
-                console.log("Turmas vinculadas normalizadas:", turmasVinculadas);
+                console.log("IDs das turmas vinculadas:", turmasIds);
                 
-                // Carregar as turmas no select
-                console.log("Carregando turmas para select...");
-                
-                // Técnica 1: Primeiro definir as opções selecionadas diretamente
-                const turmasDisciplinaSelect = document.getElementById('turmasDisciplina');
+                // Selecionar diretamente no select pré-carregado
                 if (turmasDisciplinaSelect) {
-                    // Limpar seleções existentes
+                    // Usar vários métodos para garantir que a seleção funcione
+                    
+                    // Método 1: DOM nativo
                     Array.from(turmasDisciplinaSelect.options).forEach(option => {
-                        option.selected = false;
+                        option.selected = turmasIds.includes(option.value);
+                        if (option.selected) {
+                            console.log(`Marcando turma ${option.value} como selecionada`);
+                            // Destacar visualmente a opção
+                            option.style.backgroundColor = "#e6f7ff";
+                            option.style.fontWeight = "bold";
+                        }
                     });
                     
-                    // Obter IDs das turmas vinculadas
-                    const turmasIds = turmasVinculadas.map(turma => 
-                        typeof turma === 'object' ? (turma.id_turma || turma.id) : turma
-                    );
-                    
-                    // Selecionar as opções correspondentes
-                    turmasIds.forEach(id => {
-                        Array.from(turmasDisciplinaSelect.options).forEach(option => {
-                            if (option.value === id) {
-                                option.selected = true;
-                                console.log(`Pré-selecionando turma ${id}`);
+                    // Método 2: jQuery se disponível
+                    if (typeof $ === 'function') {
+                        try {
+                            $(turmasDisciplinaSelect).val(turmasIds);
+                            // Tentar atualizar bibliotecas de UI de selects
+                            if (typeof $(turmasDisciplinaSelect).selectpicker === 'function') {
+                                $(turmasDisciplinaSelect).selectpicker('refresh');
                             }
-                        });
-                    });
+                            if (typeof $(turmasDisciplinaSelect).select2 === 'function') {
+                                $(turmasDisciplinaSelect).trigger('change');
+                            }
+                            if (typeof $(turmasDisciplinaSelect).chosen === 'function') {
+                                $(turmasDisciplinaSelect).trigger('chosen:updated');
+                            }
+                        } catch (e) {
+                            console.warn("Erro ao tentar selecionar via jQuery:", e);
+                        }
+                    }
+                    
+                    // Disparar evento change
+                    try {
+                        const changeEvent = new Event('change');
+                        turmasDisciplinaSelect.dispatchEvent(changeEvent);
+                    } catch (e) {
+                        console.warn("Erro ao disparar evento change:", e);
+                    }
                 }
                 
-                // Técnica 2: Carregar turmas com a lista de vinculadas
-                carregarTurmasSelect(turmasVinculadas);
+                // Atualizar o preview das turmas vinculadas
+                if (typeof atualizarPreviewTurmasVinculadas === 'function') {
+                    setTimeout(atualizarPreviewTurmasVinculadas, 100);
+                }
                 
-                // Garantir que a área de preview de turmas vinculadas esteja atualizada
+                // Adicionar marca visual para confirmar que as turmas foram selecionadas
                 setTimeout(() => {
-                    console.log("Atualizando preview de turmas vinculadas após timeout");
-                    if (typeof atualizarPreviewTurmasVinculadas === 'function') {
-                        atualizarPreviewTurmasVinculadas();
-                    } else {
-                        console.error("Função atualizarPreviewTurmasVinculadas não encontrada");
+                    // Verificar se as turmas foram selecionadas
+                    const selecionadas = Array.from(turmasDisciplinaSelect.options)
+                        .filter(opt => opt.selected)
+                        .map(opt => opt.value);
+                    
+                    console.log("Turmas selecionadas após processamento:", selecionadas);
+                    
+                    if (selecionadas.length === 0 && turmasIds.length > 0) {
+                        console.warn("Falha ao selecionar turmas, adicionando indicador visual");
+                        
+                        // Adicionar um elemento visual próximo ao select
+                        const container = turmasDisciplinaSelect.parentElement;
+                        if (container) {
+                            const aviso = document.createElement('div');
+                            aviso.className = 'alert alert-info mt-2';
+                            aviso.innerHTML = `<strong>Turmas vinculadas:</strong> ${turmasIds.join(', ')}`;
+                            container.appendChild(aviso);
+                        }
                     }
-                }, 600);
+                }, 500);
             })
             .catch(error => {
                 console.error(`Erro ao buscar disciplina: ${error}`);
@@ -4373,46 +4423,116 @@ function carregarTurmasSelect(turmasVinculadas = []) {
                     // Forçar atualização visual do select
                     setTimeout(() => {
                         if (select && document.body.contains(select)) {
-                            // Forçar atualização visual - abordagem 1
-                            try {
-                                // Se estiver usando bootstrap-select
-                                if (typeof $(select).selectpicker === 'function') {
-                                    console.log("Atualizando selectpicker");
-                                    $(select).selectpicker('refresh');
-                                }
-                            } catch (e) {
-                                console.log("selectpicker não disponível:", e);
-                            }
+                            console.log("Forçando atualização visual do select de turmas");
                             
-                            // Forçar atualização visual - abordagem 2
+                            // Método 1: Manipulação direta do DOM
                             try {
-                                // Forçar uma re-renderização
-                                const selectedOptions = Array.from(select.selectedOptions).map(opt => opt.value);
+                                // Forçar uma re-renderização mantendo as seleções
+                                const selectedValues = Array.from(select.options)
+                                    .filter(opt => opt.selected)
+                                    .map(opt => opt.value);
+                                
+                                console.log("Valores selecionados antes da atualização:", selectedValues);
+                                
+                                // Guardar o HTML atual e reinseri-lo
                                 const currentHTML = select.innerHTML;
                                 select.innerHTML = currentHTML;
                                 
                                 // Restaurar as seleções
                                 Array.from(select.options).forEach(option => {
-                                    if (selectedOptions.includes(option.value)) {
+                                    if (selectedValues.includes(option.value)) {
                                         option.selected = true;
                                     }
                                 });
                             } catch (e) {
-                                console.log("Erro ao forçar re-renderização:", e);
+                                console.warn("Erro ao forçar atualização DOM:", e);
                             }
                             
-                            // Disparar evento change para atualizar quaisquer handlers dependentes
-                            const changeEvent = new Event('change');
-                            select.dispatchEvent(changeEvent);
+                            // Método 2: jQuery normal
+                            if (typeof $ === 'function') {
+                                try {
+                                    console.log("Tentando atualizar via jQuery padrão");
+                                    $(select).val(turmasIds);
+                                } catch (e) {
+                                    console.warn("Erro ao atualizar via jQuery:", e);
+                                }
+                            }
                             
-                            // Atualizar o preview de turmas vinculadas, se existir
+                            // Método 3: jQuery Select2
+                            if (typeof $ === 'function' && typeof $(select).select2 === 'function') {
+                                try {
+                                    console.log("Detectado Select2, atualizando...");
+                                    $(select).val(turmasIds).trigger('change');
+                                    $(select).select2('destroy');
+                                    $(select).select2();
+                                } catch (e) {
+                                    console.warn("Erro ao atualizar Select2:", e);
+                                }
+                            }
+                            
+                            // Método 4: Bootstrap-Select
+                            if (typeof $ === 'function' && typeof $(select).selectpicker === 'function') {
+                                try {
+                                    console.log("Detectado Bootstrap-Select, atualizando...");
+                                    $(select).val(turmasIds);
+                                    $(select).selectpicker('refresh');
+                                } catch (e) {
+                                    console.warn("Erro ao atualizar Bootstrap-Select:", e);
+                                }
+                            }
+                            
+                            // Método 5: Chosen
+                            if (typeof $ === 'function' && typeof $(select).chosen === 'function') {
+                                try {
+                                    console.log("Detectado Chosen, atualizando...");
+                                    $(select).val(turmasIds).trigger("chosen:updated");
+                                } catch (e) {
+                                    console.warn("Erro ao atualizar Chosen:", e);
+                                }
+                            }
+                            
+                            // Garantir que o evento change seja disparado para atualizar dependências
+                            try {
+                                const changeEvent = new Event('change');
+                                select.dispatchEvent(changeEvent);
+                                
+                                if (typeof $ === 'function') {
+                                    $(select).trigger('change');
+                                }
+                            } catch (e) {
+                                console.warn("Erro ao disparar evento change:", e);
+                            }
+                            
+                            // Atualizar o preview de turmas vinculadas
                             if (typeof atualizarPreviewTurmasVinculadas === 'function') {
-                                atualizarPreviewTurmasVinculadas();
+                                setTimeout(atualizarPreviewTurmasVinculadas, 50);
                             } else {
                                 console.error("Função atualizarPreviewTurmasVinculadas não encontrada");
                             }
+                            
+                            // Verificar após a atualização
+                            setTimeout(() => {
+                                const selectedAfter = Array.from(select.options)
+                                    .filter(opt => opt.selected)
+                                    .map(opt => opt.value);
+                                console.log("Valores selecionados após atualização:", selectedAfter);
+                                
+                                // Se ainda não conseguimos selecionar, tentar uma última vez
+                                if (selectedAfter.length === 0 && turmasIds.length > 0) {
+                                    console.warn("Seleção não aplicada, fazendo última tentativa");
+                                    
+                                    // Último recurso: Adicionar marcador visual
+                                    Array.from(select.options).forEach(option => {
+                                        if (turmasIds.includes(option.value)) {
+                                            option.selected = true;
+                                            option.style.backgroundColor = "#e6f7ff";
+                                            option.style.fontWeight = "bold";
+                                        }
+                                    });
+                                }
+                            }, 100);
                         }
-                    }, 100);
+                    }, 200);
                 } catch (error) {
                     console.error("Erro ao processar turmas:", error);
                     if (select && document.body.contains(select)) {
