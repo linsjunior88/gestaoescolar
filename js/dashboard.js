@@ -1431,17 +1431,19 @@ function initDisciplinas() {
     if (turmasDisciplinaSelect) {
         turmasDisciplinaSelect.addEventListener('change', function() {
             console.log("Seleção de turmas alterada, atualizando preview");
-            if (typeof atualizarPreviewTurmasVinculadas === 'function') {
-                atualizarPreviewTurmasVinculadas();
+            try {
+                if (typeof atualizarPreviewTurmasVinculadas === 'function') {
+                    atualizarPreviewTurmasVinculadas();
+                }
+            } catch (error) {
+                console.error("Erro ao atualizar preview:", error);
             }
         });
     }
     
-    // Carregar turmas disponíveis no select ao inicializar
-    if (turmasDisciplinaSelect) {
-        console.log("Carregando turmas para o select no carregamento inicial");
-        prepararFormularioDisciplina(); // Inicializar com formulário vazio
-    }
+    // Inicialização do formulário - não carregar turmas automaticamente
+    // Apenas resetar o formulário para um estado inicial limpo
+    resetarFormularioDisciplina();
     
     // Carregar lista de disciplinas
     carregarDisciplinas();
@@ -4474,12 +4476,22 @@ function prepararFormularioDisciplina(disciplinaId) {
             
             // Adicionar event listener para atualizar o preview
             document.querySelectorAll('.turma-checkbox').forEach(checkbox => {
-                checkbox.addEventListener('change', atualizarPreviewTurmasVinculadasCheckbox);
+                checkbox.addEventListener('change', function() {
+                    try {
+                        atualizarPreviewTurmasVinculadasCheckbox();
+                    } catch (error) {
+                        console.error("Erro ao atualizar preview de turmas:", error);
+                    }
+                });
             });
             
             // Atualizar o preview inicialmente
             setTimeout(() => {
-                atualizarPreviewTurmasVinculadasCheckbox();
+                try {
+                    atualizarPreviewTurmasVinculadasCheckbox();
+                } catch (error) {
+                    console.error("Erro ao inicializar preview de turmas:", error);
+                }
             }, 100);
         })
         .catch(error => {
@@ -4567,12 +4579,22 @@ function prepararFormularioDisciplina(disciplinaId) {
                 
                 // Adicionar event listener para atualizar o preview
                 document.querySelectorAll('.turma-checkbox').forEach(checkbox => {
-                    checkbox.addEventListener('change', atualizarPreviewTurmasVinculadasCheckbox);
+                    checkbox.addEventListener('change', function() {
+                        try {
+                            atualizarPreviewTurmasVinculadasCheckbox();
+                        } catch (error) {
+                            console.error("Erro ao atualizar preview de turmas:", error);
+                        }
+                    });
                 });
                 
                 // Atualizar o preview inicialmente
                 setTimeout(() => {
-                    atualizarPreviewTurmasVinculadasCheckbox();
+                    try {
+                        atualizarPreviewTurmasVinculadasCheckbox();
+                    } catch (error) {
+                        console.error("Erro ao inicializar preview de turmas:", error);
+                    }
                 }, 100);
             })
             .catch(error => {
@@ -4725,4 +4747,40 @@ function atualizarPreviewTurmasVinculadas() {
     `;
     
     console.log("Preview de turmas atualizado com sucesso");
+}
+
+// Função para atualizar o preview de turmas vinculadas usando checkboxes
+function atualizarPreviewTurmasVinculadasCheckbox() {
+    console.log("Atualizando preview de turmas vinculadas (checkboxes)");
+    const previewArea = document.getElementById('turmas-vinculadas-preview');
+    
+    if (!previewArea) {
+        console.error("Área de preview não encontrada");
+        return;
+    }
+    
+    // Obter todas as checkboxes marcadas
+    const turmasSelecionadas = Array.from(document.querySelectorAll('.turma-checkbox:checked'))
+        .map(checkbox => checkbox.value);
+    
+    console.log("Turmas selecionadas para preview (checkboxes):", turmasSelecionadas);
+    
+    // Atualizar a área de preview
+    if (turmasSelecionadas.length === 0) {
+        previewArea.innerHTML = '<div class="alert alert-info">Nenhuma turma selecionada</div>';
+    } else {
+        previewArea.innerHTML = '<strong>Turmas selecionadas:</strong> ';
+        
+        // Buscar detalhes das turmas selecionadas
+        const turmaBadges = Array.from(document.querySelectorAll('.turma-checkbox:checked')).map(checkbox => {
+            const label = document.querySelector(`label[for="${checkbox.id}"]`);
+            const turmaTexto = label ? label.textContent : checkbox.value;
+            
+            return `<span class="badge bg-primary me-1">${turmaTexto}</span>`;
+        });
+        
+        previewArea.innerHTML += turmaBadges.join('');
+    }
+    
+    console.log("Preview de turmas atualizado com sucesso (checkboxes)");
 }
