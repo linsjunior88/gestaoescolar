@@ -4,14 +4,17 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Path, status
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.models.disciplina import Disciplina
+from app.models.disciplina import Disciplina, TurmaDisciplina
 from app.schemas.disciplina import (
     DisciplinaCreate, 
     DisciplinaUpdate, 
     DisciplinaResponse, 
-    DisciplinaWithRelationships
+    DisciplinaWithRelationships,
+    TurmaDisciplinaCreate,
+    TurmaDisciplina as TurmaDisciplinaSchema
 )
 from app.api.deps import get_current_user, get_current_admin
+from app.models.turma import Turma
 
 router = APIRouter()
 
@@ -235,4 +238,239 @@ def read_disciplina_by_id_disciplina(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Erro ao consultar disciplina: {str(e)}"
+        )
+
+
+@router.post("/{disciplina_id}/turmas", response_model=List[TurmaDisciplinaSchema])
+def create_disciplina_turmas(
+    *,
+    disciplina_id: str = Path(..., description="ID da disciplina"),
+    turmas_ids: List[str] = Query(..., description="Lista de IDs de turmas para vincular"),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_admin)
+) -> Any:
+    """
+    Vincula uma ou mais turmas a uma disciplina específica.
+    """
+    try:
+        # Verificar se a disciplina existe
+        disciplina = None
+        if disciplina_id.isdigit():
+            disciplina = db.query(Disciplina).filter(Disciplina.id == int(disciplina_id)).first()
+        
+        if not disciplina:
+            disciplina = db.query(Disciplina).filter(Disciplina.id_disciplina == disciplina_id).first()
+            
+        if not disciplina:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Disciplina não encontrada"
+            )
+        
+        # Criar uma lista para armazenar os vínculos criados
+        vinculos_criados = []
+        
+        # Para cada ID de turma, verificar se a turma existe e criar o vínculo
+        for turma_id in turmas_ids:
+            # Verificar se a turma existe
+            turma = db.query(Turma).filter(Turma.id_turma == turma_id).first()
+            if not turma:
+                continue  # Se a turma não existe, pular
+            
+            # Verificar se o vínculo já existe
+            vinculo_existente = db.query(TurmaDisciplina).filter(
+                TurmaDisciplina.id_disciplina == disciplina.id_disciplina,
+                TurmaDisciplina.id_turma == turma_id
+            ).first()
+            
+            if not vinculo_existente:
+                # Criar o vínculo
+                vinculo = TurmaDisciplina(
+                    id_disciplina=disciplina.id_disciplina,
+                    id_turma=turma_id
+                )
+                db.add(vinculo)
+                vinculos_criados.append(vinculo)
+        
+        db.commit()
+        # Atualizar os objetos para obter os IDs gerados
+        for vinculo in vinculos_criados:
+            db.refresh(vinculo)
+        
+        return vinculos_criados
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        print(f"Erro ao vincular turmas à disciplina: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao vincular turmas à disciplina: {str(e)}"
+        )
+
+
+@router.delete("/{disciplina_id}/turmas", status_code=status.HTTP_204_NO_CONTENT)
+def delete_disciplina_turmas(
+    *,
+    disciplina_id: str = Path(..., description="ID da disciplina"),
+    turma_id: Optional[str] = Query(None, description="ID da turma específica a ser desvinculada"),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_admin)
+) -> Any:
+    """
+    Remove vínculos entre uma disciplina e uma ou todas as turmas.
+    Se turma_id for fornecido, remove apenas o vínculo com essa turma.
+    Caso contrário, remove todos os vínculos da disciplina.
+    """
+    try:
+        # Verificar se a disciplina existe
+        disciplina = None
+        if disciplina_id.isdigit():
+            disciplina = db.query(Disciplina).filter(Disciplina.id == int(disciplina_id)).first()
+        
+        if not disciplina:
+            disciplina = db.query(Disciplina).filter(Disciplina.id_disciplina == disciplina_id).first()
+            
+        if not disciplina:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Disciplina não encontrada"
+            )
+        
+        # Construir a query para remover vínculos
+        query = db.query(TurmaDisciplina).filter(TurmaDisciplina.id_disciplina == disciplina.id_disciplina)
+        
+        # Se um ID de turma específico foi fornecido, filtrar apenas por esse ID
+        if turma_id:
+            query = query.filter(TurmaDisciplina.id_turma == turma_id)
+        
+        # Remover os vínculos
+        query.delete(synchronize_session=False)
+        db.commit()
+        
+        return None
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        print(f"Erro ao remover vínculos de turmas: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao remover vínculos de turmas: {str(e)}"
+        )
+
+
+@router.post("/{disciplina_id}/turmas/{turma_id}", response_model=TurmaDisciplinaSchema)
+def create_disciplina_turma(
+    *,
+    disciplina_id: str = Path(..., description="ID da disciplina"),
+    turma_id: str = Path(..., description="ID da turma"),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_admin)
+) -> Any:
+    """
+    Vincula uma turma específica a uma disciplina.
+    """
+    try:
+        # Verificar se a disciplina existe
+        disciplina = None
+        if disciplina_id.isdigit():
+            disciplina = db.query(Disciplina).filter(Disciplina.id == int(disciplina_id)).first()
+        
+        if not disciplina:
+            disciplina = db.query(Disciplina).filter(Disciplina.id_disciplina == disciplina_id).first()
+            
+        if not disciplina:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Disciplina não encontrada"
+            )
+        
+        # Verificar se a turma existe
+        turma = db.query(Turma).filter(Turma.id_turma == turma_id).first()
+        if not turma:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Turma não encontrada"
+            )
+        
+        # Verificar se o vínculo já existe
+        vinculo_existente = db.query(TurmaDisciplina).filter(
+            TurmaDisciplina.id_disciplina == disciplina.id_disciplina,
+            TurmaDisciplina.id_turma == turma_id
+        ).first()
+        
+        if vinculo_existente:
+            return vinculo_existente
+        
+        # Criar o vínculo
+        vinculo = TurmaDisciplina(
+            id_disciplina=disciplina.id_disciplina,
+            id_turma=turma_id
+        )
+        db.add(vinculo)
+        db.commit()
+        db.refresh(vinculo)
+        
+        return vinculo
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        print(f"Erro ao vincular turma à disciplina: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao vincular turma à disciplina: {str(e)}"
+        )
+
+
+@router.delete("/{disciplina_id}/turmas/{turma_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_disciplina_turma(
+    *,
+    disciplina_id: str = Path(..., description="ID da disciplina"),
+    turma_id: str = Path(..., description="ID da turma"),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_admin)
+) -> Any:
+    """
+    Remove o vínculo entre uma disciplina específica e uma turma específica.
+    """
+    try:
+        # Verificar se a disciplina existe
+        disciplina = None
+        if disciplina_id.isdigit():
+            disciplina = db.query(Disciplina).filter(Disciplina.id == int(disciplina_id)).first()
+        
+        if not disciplina:
+            disciplina = db.query(Disciplina).filter(Disciplina.id_disciplina == disciplina_id).first()
+            
+        if not disciplina:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Disciplina não encontrada"
+            )
+        
+        # Remover o vínculo
+        result = db.query(TurmaDisciplina).filter(
+            TurmaDisciplina.id_disciplina == disciplina.id_disciplina,
+            TurmaDisciplina.id_turma == turma_id
+        ).delete(synchronize_session=False)
+        
+        if result == 0:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Vínculo não encontrado"
+            )
+        
+        db.commit()
+        
+        return None
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        print(f"Erro ao remover vínculo de turma: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao remover vínculo de turma: {str(e)}"
         ) 
