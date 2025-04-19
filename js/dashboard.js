@@ -3692,13 +3692,13 @@ function salvarDisciplina(event) {
     event.preventDefault();
     console.log("Iniciando salvarDisciplina()");
     
-    const formDisciplina = document.getElementById('formDisciplina');
-    const idDisciplinaField = document.getElementById('idDisciplina');
-    const nomeDisciplinaField = document.getElementById('nomeDisciplina');
-    const cargaHorariaField = document.getElementById('descricaoDisciplina');
-    const turmasSelect = document.getElementById('turmasDisciplina');
+    const formDisciplina = document.getElementById('form-disciplina');
+    const idDisciplinaField = document.getElementById('id_disciplina');
+    const nomeDisciplinaField = document.getElementById('nome_disciplina');
+    const cargaHorariaField = document.getElementById('carga_horaria');
+    const turmasSelect = document.getElementById('vinculo_turmas');
     
-    if (!formDisciplina || !idDisciplinaField || !nomeDisciplinaField || !cargaHorariaField) {
+    if (!formDisciplina || !idDisciplinaField || !nomeDisciplinaField) {
         console.error("Campos do formulário não encontrados");
         alert("Erro ao processar formulário: campos não encontrados");
         return;
@@ -3714,7 +3714,7 @@ function salvarDisciplina(event) {
     const disciplina = {
         id_disciplina: idDisciplinaField.value.trim(),
         nome_disciplina: nomeDisciplinaField.value.trim(),
-        carga_horaria: parseInt(cargaHorariaField.value.trim()) || 0
+        carga_horaria: parseInt(cargaHorariaField ? cargaHorariaField.value.trim() : 0) || 0
     };
     
     // Obter turmas selecionadas usando métodos múltiplos e robustos
@@ -3767,7 +3767,7 @@ function salvarDisciplina(event) {
         }
     }
     
-    // Método 3: Usar jQuery
+    // Método 3: Usar jQuery se disponível
     if (turmasSelecionadas.length === 0 && turmasSelect && typeof $ === 'function') {
         try {
             console.log("Tentando obter turmas selecionadas via jQuery");
@@ -3780,19 +3780,6 @@ function salvarDisciplina(event) {
             }
         } catch (e) {
             console.warn("Erro ao obter turmas via jQuery:", e);
-        }
-    }
-    
-    // Método 4: Verificar elementos com estilo de selecionado
-    if (turmasSelecionadas.length === 0 && turmasSelect) {
-        try {
-            console.log("Tentando obter turmas selecionadas via estilo");
-            turmasSelecionadas = Array.from(turmasSelect.options || [])
-                .filter(option => option.style.fontWeight === 'bold' || option.style.color === '#0066cc')
-                .map(option => option.value);
-            console.log("Turmas obtidas via estilo:", turmasSelecionadas);
-        } catch (e) {
-            console.warn("Erro ao verificar opções por estilo:", e);
         }
     }
     
@@ -3985,63 +3972,116 @@ function carregarDisciplinas() {
         
         // Para cada disciplina, criar uma linha na tabela
         disciplinas.forEach(disciplina => {
+          // Se a disciplina não tem turmas_vinculadas, fazer uma chamada específica para buscar
+          if (!disciplina.turmas_vinculadas || !Array.isArray(disciplina.turmas_vinculadas)) {
+            console.log(`Disciplina ${disciplina.id_disciplina} sem turmas_vinculadas definidas, buscando...`);
+            fetch(CONFIG.getApiUrl(`/disciplinas/${disciplina.id_disciplina}/turmas`))
+              .then(response => response.ok ? response.json() : [])
+              .then(turmasVinculadas => {
+                console.log(`Turmas vinculadas para ${disciplina.id_disciplina} carregadas:`, turmasVinculadas);
+                disciplina.turmas_vinculadas = turmasVinculadas;
+                // Agora que temos as turmas, criar a linha
+                criarLinhaDisciplina(disciplina);
+              })
+              .catch(error => {
+                console.error(`Erro ao buscar turmas para disciplina ${disciplina.id_disciplina}:`, error);
+                disciplina.turmas_vinculadas = [];
+                criarLinhaDisciplina(disciplina);
+              });
+          } else {
+            // Já temos as turmas vinculadas, criar a linha diretamente
+            criarLinhaDisciplina(disciplina);
+          }
+        });
+        
+        // Função para criar linha da tabela de disciplinas
+        function criarLinhaDisciplina(disciplina) {
           const row = document.createElement('tr');
           
           let turmasTexto = '-';
           
           if (disciplina.turmas_vinculadas && disciplina.turmas_vinculadas.length > 0) {
-            console.log(`Turmas vinculadas à disciplina ${disciplina.id_disciplina}:`, disciplina.turmas_vinculadas);
+            console.log(`Processando turmas vinculadas à disciplina ${disciplina.id_disciplina}:`, disciplina.turmas_vinculadas);
             
             const turmasFormatadas = disciplina.turmas_vinculadas.map(t => {
-              // Normalizar o ID da turma
-              const idTurmaStr = String(typeof t === 'object' ? (t.id_turma || t.id) : t);
+              // Normalizar o ID da turma, considerando diferentes formatos possíveis
+              let idTurmaStr;
+              if (typeof t === 'object' && t !== null) {
+                idTurmaStr = String(t.id_turma || t.id || '');
+              } else {
+                idTurmaStr = String(t || '');
+              }
+              
+              // Verificar se é um valor válido
+              if (!idTurmaStr) {
+                console.warn("Valor de turma inválido:", t);
+                return '';
+              }
               
               // Encontrar a turma completa pelo ID
-              const turma = turmas.find(t => 
-                (t.id_turma === idTurmaStr || t.id === idTurmaStr)
+              const turma = turmas.find(turma => 
+                String(turma.id_turma) === idTurmaStr || String(turma.id) === idTurmaStr
               );
               
               if (turma) {
                 return `${idTurmaStr} - ${turma.serie || turma.nome || 'Sem nome'}`;
               }
               return idTurmaStr;
-            });
-            turmasTexto = turmasFormatadas.join(', ');
+            }).filter(t => t); // Remover itens vazios
+            
+            if (turmasFormatadas.length > 0) {
+              turmasTexto = turmasFormatadas.join(', ');
+            }
           }
           
+          // Criar células da linha
           row.innerHTML = `
-            <td>${disciplina.id_disciplina}</td>
-            <td>${disciplina.nome_disciplina}</td>
+            <td>${disciplina.id_disciplina || '-'}</td>
+            <td>${disciplina.nome_disciplina || '-'}</td>
             <td>${disciplina.carga_horaria || '-'}</td>
             <td>${turmasTexto}</td>
-            <td>
-              <button class="btn btn-sm btn-primary btn-editar-disciplina" data-id="${disciplina.id_disciplina}">
+            <td class="text-center">
+              <button class="btn btn-sm btn-outline-primary btn-editar-disciplina" data-id="${disciplina.id_disciplina}">
                 <i class="fas fa-edit"></i>
               </button>
-              <button class="btn btn-sm btn-danger btn-excluir-disciplina" data-id="${disciplina.id_disciplina}" data-nome="${disciplina.nome_disciplina}">
+              <button class="btn btn-sm btn-outline-danger btn-excluir-disciplina" data-id="${disciplina.id_disciplina}" data-nome="${disciplina.nome_disciplina}">
                 <i class="fas fa-trash"></i>
               </button>
             </td>
           `;
           
+          // Adicionar evento de edição
+          const btnEditar = row.querySelector('.btn-editar-disciplina');
+          if (btnEditar) {
+            btnEditar.addEventListener('click', () => {
+              const id = btnEditar.getAttribute('data-id');
+              console.log(`Botão editar clicado para disciplina ${id}`);
+              
+              // Usar a função editarDisciplina para abrir o modal ou preparar o formulário
+              prepararFormularioDisciplina(id);
+            });
+          }
+          
+          // Adicionar evento de exclusão
+          const btnExcluir = row.querySelector('.btn-excluir-disciplina');
+          if (btnExcluir) {
+            btnExcluir.addEventListener('click', () => {
+              const id = btnExcluir.getAttribute('data-id');
+              const nome = btnExcluir.getAttribute('data-nome');
+              console.log(`Botão excluir clicado para disciplina ${id}`);
+              
+              // Confirmar exclusão
+              excluirDisciplina(id, nome);
+            });
+          }
+          
+          // Adicionar a linha à tabela
           disciplinasLista.appendChild(row);
-        });
-        
-        // Adicionar event listeners aos botões
-        document.querySelectorAll('.btn-editar-disciplina').forEach(botao => {
-          botao.addEventListener('click', function() {
-            const idDisciplina = this.getAttribute('data-id');
-            editarDisciplina(idDisciplina);
-          });
-        });
-        
-        document.querySelectorAll('.btn-excluir-disciplina').forEach(botao => {
-          botao.addEventListener('click', function() {
-            const idDisciplina = this.getAttribute('data-id');
-            const nomeDisciplina = this.getAttribute('data-nome');
-            excluirDisciplina(idDisciplina, nomeDisciplina);
-          });
-        });
+        }
+      })
+      .catch(error => {
+        console.error("Erro ao carregar turmas:", error);
+        disciplinasLista.innerHTML = '<tr><td colspan="5" class="text-center">Erro ao carregar disciplinas</td></tr>';
       });
   }
 }
@@ -4098,13 +4138,13 @@ function carregarTurmasSelect(turmasVinculadas = []) {
     }
     
     // Extrair os IDs das turmas vinculadas, convertendo para string para comparação segura
-    const turmasIds = turmasVinculadas.map(id => String(id));
+    const turmasIds = turmasVinculadas.map(id => String(typeof id === 'object' ? (id.id_turma || id.id) : id));
     console.log('IDs das turmas vinculadas normalizados:', turmasIds);
     
     // Obter o elemento select
-    const select = document.getElementById('turmasDisciplina');
+    const select = document.getElementById('vinculo_turmas');
     if (!select) {
-        console.error('Select de turmas não encontrado');
+        console.error('Select de turmas não encontrado (vinculo_turmas)');
         return;
     }
     
@@ -4163,31 +4203,6 @@ function carregarTurmasSelect(turmasVinculadas = []) {
                 } catch (e) {
                     console.warn("Erro ao disparar evento change:", e);
                 }
-                
-                // Tentar atualizar seleção via jQuery para maior compatibilidade
-                setTimeout(() => {
-                    try {
-                        if (typeof $ === 'function') {
-                            console.log("Tentando selecionar via jQuery:", turmasIds);
-                            $(select).val(turmasIds);
-                            
-                            // Forçar atualização em bibliotecas de UI
-                            if (typeof $(select).selectpicker === 'function') {
-                                $(select).selectpicker('refresh');
-                            }
-                            if (typeof $(select).select2 === 'function') {
-                                $(select).trigger('change');
-                            }
-                        }
-                    } catch (e) {
-                        console.warn("Erro ao tentar selecionar via jQuery:", e);
-                    }
-                    
-                    // Verificar se as seleções foram aplicadas
-                    const selecionadas = Array.from(select.selectedOptions || [])
-                        .map(option => option.value);
-                    console.log("Turmas selecionadas após carregamento:", selecionadas);
-                }, 500);
             }
         })
         .catch(error => {
@@ -4243,9 +4258,9 @@ function prepararFormularioDisciplina(disciplinaId) {
     console.log(`Preparando formulário para disciplina: ${disciplinaId}`);
     
     // Usar o formulário existente na página
-    const formDisciplina = document.getElementById('formDisciplina');
-    const tituloForm = document.querySelector('#formDisciplina .card-title') || 
-                       document.querySelector('#form-disciplina-titulo') ||
+    const formDisciplina = document.getElementById('form-disciplina');
+    const tituloForm = document.querySelector('#form-disciplina-titulo') || 
+                       document.querySelector('#formDisciplina .card-title') ||
                        document.querySelector('#modalDisciplinaLabel');
     const submitBtn = formDisciplina.querySelector('button[type="submit"]');
     
@@ -4265,8 +4280,12 @@ function prepararFormularioDisciplina(disciplinaId) {
         if (tituloForm) tituloForm.textContent = 'Editar Disciplina';
         if (submitBtn) submitBtn.textContent = 'Atualizar';
         
+        // Definir o modo do formulário
+        formDisciplina.setAttribute('data-mode', 'editar');
+        formDisciplina.setAttribute('data-id', disciplinaId);
+        
         // Desativar campo ID para edição
-        const idDisciplinaField = document.getElementById('idDisciplina');
+        const idDisciplinaField = document.getElementById('id_disciplina');
         if (idDisciplinaField) idDisciplinaField.readOnly = true;
         
         // Buscar a disciplina para edição
@@ -4277,29 +4296,28 @@ function prepararFormularioDisciplina(disciplinaId) {
                 // Preencher o formulário com os dados da disciplina
                 if (idDisciplinaField) idDisciplinaField.value = disciplina.id_disciplina || '';
                 
-                const nomeDisciplinaField = document.getElementById('nomeDisciplina');
-                const cargaHorariaField = document.getElementById('descricaoDisciplina');
+                const nomeDisciplinaField = document.getElementById('nome_disciplina');
+                const cargaHorariaField = document.getElementById('carga_horaria');
                 
                 if (nomeDisciplinaField) nomeDisciplinaField.value = disciplina.nome_disciplina || '';
                 if (cargaHorariaField) cargaHorariaField.value = disciplina.carga_horaria || '';
                 
-                // Definir o modo do formulário
-                formDisciplina.setAttribute('data-mode', 'editar');
-                formDisciplina.setAttribute('data-id', disciplinaId);
-                
-                // Extrair e normalizar as turmas vinculadas
+                // Processar as turmas vinculadas para seleção no select
                 let turmasVinculadas = disciplina.turmas_vinculadas || [];
                 
-                // Normalizar para obter apenas os IDs das turmas
+                // Normalizar IDs das turmas vinculadas para string
                 const turmasIds = turmasVinculadas.map(turma => {
                     if (typeof turma === 'object' && turma !== null) {
                         return String(turma.id_turma || turma.id || '');
                     } else {
-                        return String(turma);
+                        return String(turma || '');
                     }
-                });
+                }).filter(id => id); // Remover IDs vazios
                 
-                console.log("IDs das turmas vinculadas:", turmasIds);
+                console.log("IDs das turmas vinculadas normalizados:", turmasIds);
+                
+                // Armazenar as turmas vinculadas originais no formulário
+                formDisciplina.setAttribute('data-turmas-vinculadas', JSON.stringify(turmasIds));
                 
                 // Carregar as turmas no select e selecionar as vinculadas
                 carregarTurmasSelect(turmasIds);
@@ -4317,7 +4335,7 @@ function prepararFormularioDisciplina(disciplinaId) {
         if (submitBtn) submitBtn.textContent = 'Salvar';
         
         // Ativar campo ID para nova disciplina
-        const idDisciplinaField = document.getElementById('idDisciplina');
+        const idDisciplinaField = document.getElementById('id_disciplina');
         if (idDisciplinaField) idDisciplinaField.readOnly = false;
         
         // Definir o modo do formulário
@@ -4332,7 +4350,7 @@ function prepararFormularioDisciplina(disciplinaId) {
 // Função para resetar o formulário de disciplina
 function resetarFormularioDisciplina() {
     console.log("Resetando formulário de disciplina");
-    const formDisciplina = document.getElementById('formDisciplina');
+    const formDisciplina = document.getElementById('form-disciplina');
     
     if (!formDisciplina) {
         console.error("Formulário de disciplina não encontrado para reset");
@@ -4345,6 +4363,7 @@ function resetarFormularioDisciplina() {
     // Resetar atributos data
     formDisciplina.removeAttribute('data-id');
     formDisciplina.setAttribute('data-mode', 'novo');
+    formDisciplina.removeAttribute('data-turmas-vinculadas');
     
     // Limpar container de checkboxes se existir
     const checkboxContainer = document.getElementById('turmas-checkboxes');
@@ -4353,7 +4372,7 @@ function resetarFormularioDisciplina() {
     }
     
     // Limpar select de turmas se existir
-    const turmasSelect = document.getElementById('turmasDisciplina');
+    const turmasSelect = document.getElementById('vinculo_turmas');
     if (turmasSelect) {
         // Verificar se é um select (elemento original) ou foi substituído
         if (turmasSelect.tagName === 'SELECT') {
@@ -4363,8 +4382,12 @@ function resetarFormularioDisciplina() {
             });
             
             // Disparar evento change
-            const changeEvent = new Event('change');
-            turmasSelect.dispatchEvent(changeEvent);
+            try {
+                const changeEvent = new Event('change');
+                turmasSelect.dispatchEvent(changeEvent);
+            } catch (e) {
+                console.warn("Erro ao disparar evento change:", e);
+            }
         }
     }
     
@@ -4379,12 +4402,12 @@ function resetarFormularioDisciplina() {
 
 // Implementar a função atualizarPreviewTurmasVinculadas para manter compatibilidade
 function atualizarPreviewTurmasVinculadas() {
-    console.log("Atualizando preview de turmas vinculadas (método legado)");
+    console.log("Atualizando preview de turmas vinculadas");
     
     // Obter o select de turmas
-    const turmasSelect = document.getElementById('turmasDisciplina');
+    const turmasSelect = document.getElementById('vinculo_turmas');
     if (!turmasSelect) {
-        console.error("Select de turmas não encontrado");
+        console.error("Select de turmas não encontrado (vinculo_turmas)");
         
         // Verificar se estamos usando o novo método com checkboxes
         const checkboxes = document.querySelectorAll('.turma-checkbox');
@@ -4441,7 +4464,7 @@ function atualizarPreviewTurmasVinculadas() {
     // Obter a área de preview
     const previewArea = document.getElementById('turmas-vinculadas-preview');
     if (!previewArea) {
-        console.error("Área de preview não encontrada");
+        console.info("Área de preview não encontrada, não é necessário atualizar");
         return;
     }
     
