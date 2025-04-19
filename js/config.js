@@ -6,10 +6,7 @@
 
 const CONFIG = {
     // Detectar ambiente de produção
-    isProd: true, // Forçar produção para testes
-    
-    // Flag para usar dados mockados quando a API não está disponível
-    useMockData: false,
+    isProd: true, // Configurado para ambiente de produção
     
     // URLs da API
     apiUrl: function() {
@@ -23,18 +20,13 @@ const CONFIG = {
     
     // Método para obter URL completa da API
     getApiUrl: function(endpoint) {
-        // Se estamos usando dados mockados, retornar endpoint falso
-        if (this.useMockData) {
-            console.warn(`API indisponível - Usando dados mockados para ${endpoint}`);
-            return `/mock-data${endpoint}.json`;
-        }
         // Construir e retornar URL completa
         return `${this.apiUrl()}${endpoint.startsWith('/') ? endpoint : '/' + endpoint}`;
     },
     
     // Testar conexão com a API e configurar fallback se necessário
     testApiConnection: function(callback) {
-        console.log("Testando conexão com a API...");
+        console.log("Verificando conexão com a API...");
         
         // Endpoint para testar (primeiro tentamos /status, depois um endpoint comum)
         fetch(this.apiUrl() + '/status')
@@ -44,114 +36,79 @@ const CONFIG = {
                     return fetch(this.apiUrl() + '/turmas')
                         .then(response => {
                             if (!response.ok) {
-                                throw new Error('API indisponível');
+                                throw new Error('API respondeu com status: ' + response.status);
                             }
-                            return { status: 'ok' };
+                            return { status: 'ok', message: 'API disponível via /turmas' };
                         });
                 }
                 return response.json();
             })
             .then(data => {
-                console.log("API está disponível:", data);
-                // API está disponível, usar dados reais
-                this.useMockData = false;
+                console.log("API conectada com sucesso:", data);
+                // API está disponível
                 if (callback) callback(true);
+                
+                // Mostrar mensagem de sucesso
+                const alertContainer = document.createElement('div');
+                alertContainer.className = 'alert alert-success alert-dismissible fade show';
+                alertContainer.innerHTML = `
+                    <strong>Conectado!</strong> API funcionando normalmente. 
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+                `;
+                
+                // Inserir aviso no topo da página
+                document.body.insertBefore(alertContainer, document.body.firstChild);
             })
             .catch(error => {
-                console.error("API está indisponível:", error);
-                // API indisponível, habilitar fallback para dados mockados
-                this.useMockData = true;
+                console.error("Erro ao conectar com a API:", error);
+                
+                // Avisar o usuário sobre o problema
+                const alertContainer = document.createElement('div');
+                alertContainer.className = 'alert alert-danger alert-dismissible fade show';
+                alertContainer.innerHTML = `
+                    <strong>Erro de conexão!</strong> Não foi possível conectar à API: ${error.message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+                    <button class="btn btn-sm btn-outline-danger ms-2" onclick="window.location.reload()">Tentar novamente</button>
+                `;
+                
+                // Inserir aviso no topo da página
+                document.body.insertBefore(alertContainer, document.body.firstChild);
+                
                 if (callback) callback(false);
             });
     },
-    
-    // Gerar dados mockados para quando a API estiver indisponível
-    getMockData: function(endpoint) {
-        // Implementação básica de dados mockados
-        const mockData = {
-            '/turmas': [
-                { id: 1, nome: 'Turma A (Mock)', ano: '2023', turno: 'Manhã' },
-                { id: 2, nome: 'Turma B (Mock)', ano: '2023', turno: 'Tarde' }
-            ],
-            '/professores': [
-                { id: 1, nome: 'João Silva (Mock)', email: 'joao@exemplo.com' },
-                { id: 2, nome: 'Maria Santos (Mock)', email: 'maria@exemplo.com' }
-            ],
-            '/alunos': [
-                { id: 1, nome: 'Pedro Alves (Mock)', email: 'pedro@exemplo.com', matricula: '2023001' },
-                { id: 2, nome: 'Ana Costa (Mock)', email: 'ana@exemplo.com', matricula: '2023002' }
-            ],
-            '/disciplinas': [
-                { id: 1, nome: 'Matemática (Mock)' },
-                { id: 2, nome: 'Português (Mock)' }
-            ]
-        };
-        
-        // Normalizar o endpoint (remover o ponto json se foi adicionado)
-        const cleanEndpoint = endpoint.replace('.json', '');
-        
-        // Retornar dados específicos ou um array vazio
-        return mockData[cleanEndpoint] || [];
-    }
 };
 
 // Testa conexão com a API ao inicializar
 document.addEventListener('DOMContentLoaded', function() {
-    CONFIG.testApiConnection(function(isAvailable) {
-        if (!isAvailable) {
-            console.warn("Usando dados mockados - API indisponível");
-            
-            // Avisar o usuário
-            const alertContainer = document.createElement('div');
-            alertContainer.className = 'alert alert-warning alert-dismissible fade show';
-            alertContainer.innerHTML = `
-                <strong>Aviso!</strong> Não foi possível conectar à API. 
-                Usando dados de demonstração temporários. 
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
-            `;
-            
-            // Inserir aviso no topo da página
-            document.body.insertBefore(alertContainer, document.body.firstChild);
-        }
-    });
+    // Verificar a conexão com a API
+    CONFIG.testApiConnection();
 });
 
-// Função para fazer requisições à API com tratamento de erros e fallback
+// Função para fazer requisições à API com tratamento de erros
 CONFIG.fetchApi = function(endpoint, options = {}) {
     return new Promise((resolve, reject) => {
-        // Se estamos usando dados mockados, retornar diretamente
-        if (this.useMockData) {
-            console.log(`Usando dados mockados para ${endpoint}`);
-            setTimeout(() => {
-                resolve(this.getMockData(endpoint));
-            }, 500); // Simulando delay de rede
-            return;
-        }
+        // Adicionar cabeçalhos padrão se não foram fornecidos
+        const requestOptions = { 
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers || {}
+            }
+        };
         
-        // Fazer requisição real à API
-        fetch(this.getApiUrl(endpoint), options)
+        // Fazer requisição à API
+        fetch(this.getApiUrl(endpoint), requestOptions)
             .then(response => {
                 if (!response.ok) {
-                    // Se for um erro 500, tentar usar dados mockados
-                    if (response.status >= 500) {
-                        console.warn(`Erro ${response.status} na API - Usando dados mockados para ${endpoint}`);
-                        return this.getMockData(endpoint);
-                    }
                     throw new Error(`Erro ${response.status}: ${response.statusText}`);
                 }
                 return response.json();
             })
             .then(data => resolve(data))
             .catch(error => {
-                console.error("Erro na requisição à API:", error);
-                
-                // Em caso de erro de rede, usar dados mockados como fallback
-                if (error.name === 'TypeError' || error.message.includes('Failed to fetch')) {
-                    console.warn(`Erro de rede - Usando dados mockados para ${endpoint}`);
-                    resolve(this.getMockData(endpoint));
-                } else {
-                    reject(error);
-                }
+                console.error(`Erro na requisição para ${endpoint}:`, error);
+                reject(error);
             });
     });
 };
