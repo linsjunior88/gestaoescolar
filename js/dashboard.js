@@ -4983,3 +4983,51 @@ function atualizarPreviewTurmasVinculadas() {
     
     console.log("Preview de turmas atualizado com sucesso");
 }
+
+// Função para resetar o formulário de disciplina
+function resetarFormularioDisciplina() {
+    console.log("Resetando formulário de disciplina");
+    const formDisciplina = document.getElementById('formDisciplina');
+    
+    if (!formDisciplina) {
+        console.error("Formulário de disciplina não encontrado para reset");
+        return;
+    }
+    
+    // Limpar campos
+    formDisciplina.reset();
+    
+    // Resetar atributos data
+    formDisciplina.removeAttribute('data-id');
+    formDisciplina.setAttribute('data-mode', 'novo');
+    
+    // Limpar container de checkboxes se existir
+    const checkboxContainer = document.getElementById('turmas-checkboxes');
+    if (checkboxContainer) {
+        checkboxContainer.innerHTML = '';
+    }
+    
+    // Limpar select de turmas se existir
+    const turmasSelect = document.getElementById('turmasDisciplina');
+    if (turmasSelect) {
+        // Verificar se é um select (elemento original) ou foi substituído
+        if (turmasSelect.tagName === 'SELECT') {
+            // Desmarcar todas as opções
+            Array.from(turmasSelect.options).forEach(option => {
+                option.selected = false;
+            });
+            
+            // Disparar evento change
+            const changeEvent = new Event('change');
+            turmasSelect.dispatchEvent(changeEvent);
+        }
+    }
+    
+    // Limpar preview de turmas vinculadas
+    const previewArea = document.getElementById('turmas-vinculadas-preview');
+    if (previewArea) {
+        previewArea.innerHTML = '';
+    }
+    
+    console.log("Formulário de disciplina resetado com sucesso");
+}
