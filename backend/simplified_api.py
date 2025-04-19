@@ -163,6 +163,20 @@ class Disciplina(DisciplinaBase):
     class Config:
         from_attributes = True
 
+# Modelo para TurmaDisciplina
+class TurmaDisciplinaBase(BaseModel):
+    id_disciplina: str
+    id_turma: str
+
+class TurmaDisciplinaCreate(TurmaDisciplinaBase):
+    pass
+
+class TurmaDisciplina(TurmaDisciplinaBase):
+    id: Optional[int] = None
+    
+    class Config:
+        from_attributes = True
+
 # Modelo para Professor
 class Professor(BaseModel):
     id: Optional[int] = None
@@ -3427,6 +3441,265 @@ def get_professor_estatisticas(professor_id: str = Path(..., description="ID do 
         )
     finally:
         print(f"=== FINALIZANDO BUSCA DE ESTATÍSTICAS DO PROFESSOR: {professor_id} ===")
+
+# ==============================================================
+# Endpoints para vincular Disciplinas e Turmas
+# ==============================================================
+
+@app.post("/api/disciplinas/{disciplina_id}/turmas", response_model=List[TurmaDisciplina])
+def create_disciplina_turmas(
+    disciplina_id: str = Path(..., description="ID ou código da disciplina"),
+    turmas_ids: List[str] = Body(..., embed=True, description="Lista de IDs de turmas para vincular")
+):
+    """
+    Vincula uma ou mais turmas a uma disciplina específica.
+    Envie um JSON com o formato: {"turmas_ids": ["id1", "id2", ...]}
+    """
+    print(f"DEBUG: Endpoint POST disciplina-turmas acessado. Disciplina: {disciplina_id}, Turmas: {turmas_ids}")
+    try:
+        # Verificar se a disciplina existe
+        if disciplina_id.isdigit():
+            query_disciplina = "SELECT id_disciplina FROM disciplina WHERE id = %s"
+            params = (int(disciplina_id),)
+        else:
+            query_disciplina = "SELECT id_disciplina FROM disciplina WHERE id_disciplina = %s"
+            params = (disciplina_id,)
+        
+        disciplina = execute_query(query_disciplina, params, fetch_one=True)
+        
+        if not disciplina:
+            raise HTTPException(status_code=404, detail="Disciplina não encontrada")
+        
+        id_disciplina = disciplina["id_disciplina"]
+        
+        # Lista para armazenar os vínculos criados
+        vinculos_criados = []
+        
+        # Para cada ID de turma, verificar se a turma existe e criar o vínculo
+        for turma_id in turmas_ids:
+            # Verificar se a turma existe
+            query_turma = "SELECT id_turma FROM turma WHERE id_turma = %s"
+            turma = execute_query(query_turma, (turma_id,), fetch_one=True)
+            
+            if not turma:
+                print(f"DEBUG: Turma {turma_id} não encontrada, pulando")
+                continue  # Se a turma não existe, pular
+            
+            # Verificar se o vínculo já existe
+            query_vinculo = """
+            SELECT id FROM turma_disciplina 
+            WHERE id_disciplina = %s AND id_turma = %s
+            """
+            vinculo_existente = execute_query(query_vinculo, (id_disciplina, turma_id), fetch_one=True)
+            
+            if not vinculo_existente:
+                # Criar o vínculo
+                query_insert = """
+                INSERT INTO turma_disciplina (id_disciplina, id_turma)
+                VALUES (%s, %s)
+                RETURNING id, id_disciplina, id_turma
+                """
+                novo_vinculo = execute_query(query_insert, (id_disciplina, turma_id), fetch_one=True)
+                
+                vinculos_criados.append({
+                    "id": novo_vinculo["id"],
+                    "id_disciplina": novo_vinculo["id_disciplina"],
+                    "id_turma": novo_vinculo["id_turma"]
+                })
+                
+                print(f"DEBUG: Vínculo criado entre {id_disciplina} e {turma_id}")
+            else:
+                print(f"DEBUG: Vínculo já existe entre {id_disciplina} e {turma_id}")
+                vinculos_criados.append({
+                    "id": vinculo_existente["id"],
+                    "id_disciplina": id_disciplina,
+                    "id_turma": turma_id
+                })
+        
+        return vinculos_criados
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Erro ao vincular turmas à disciplina: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao vincular turmas à disciplina: {str(e)}"
+        )
+
+@app.delete("/api/disciplinas/{disciplina_id}/turmas", status_code=status.HTTP_204_NO_CONTENT)
+def delete_disciplina_turmas(
+    disciplina_id: str = Path(..., description="ID ou código da disciplina"),
+    turma_id: Optional[str] = Query(None, description="ID da turma específica a ser desvinculada")
+):
+    """
+    Remove vínculos entre uma disciplina e uma ou todas as turmas.
+    Se turma_id for fornecido como query parameter, remove apenas o vínculo com essa turma.
+    Caso contrário, remove todos os vínculos da disciplina.
+    """
+    print(f"DEBUG: Removendo vínculos da disciplina {disciplina_id}, turma específica: {turma_id}")
+    try:
+        # Verificar se a disciplina existe
+        if disciplina_id.isdigit():
+            query_disciplina = "SELECT id_disciplina FROM disciplina WHERE id = %s"
+            params = (int(disciplina_id),)
+        else:
+            query_disciplina = "SELECT id_disciplina FROM disciplina WHERE id_disciplina = %s"
+            params = (disciplina_id,)
+        
+        disciplina = execute_query(query_disciplina, params, fetch_one=True)
+        
+        if not disciplina:
+            raise HTTPException(status_code=404, detail="Disciplina não encontrada")
+        
+        id_disciplina = disciplina["id_disciplina"]
+        
+        # Construir a query para remover vínculos
+        if turma_id:
+            # Verificar se a turma existe
+            query_turma = "SELECT id_turma FROM turma WHERE id_turma = %s"
+            turma = execute_query(query_turma, (turma_id,), fetch_one=True)
+            
+            if not turma:
+                raise HTTPException(status_code=404, detail="Turma não encontrada")
+            
+            query_delete = "DELETE FROM turma_disciplina WHERE id_disciplina = %s AND id_turma = %s"
+            execute_query(query_delete, (id_disciplina, turma_id), fetch=False)
+            print(f"DEBUG: Vínculo entre disciplina {id_disciplina} e turma {turma_id} removido")
+        else:
+            # Remover todos os vínculos da disciplina
+            query_delete = "DELETE FROM turma_disciplina WHERE id_disciplina = %s"
+            execute_query(query_delete, (id_disciplina,), fetch=False)
+            print(f"DEBUG: Todos os vínculos da disciplina {id_disciplina} removidos")
+        
+        return None
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Erro ao remover vínculos de turmas: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao remover vínculos de turmas: {str(e)}"
+        )
+
+@app.post("/api/disciplinas/{disciplina_id}/turmas/{turma_id}", response_model=TurmaDisciplina)
+def create_disciplina_turma(
+    disciplina_id: str = Path(..., description="ID ou código da disciplina"),
+    turma_id: str = Path(..., description="ID da turma")
+):
+    """
+    Vincula uma turma específica a uma disciplina.
+    """
+    print(f"DEBUG: Vinculando disciplina {disciplina_id} à turma {turma_id}")
+    try:
+        # Verificar se a disciplina existe
+        if disciplina_id.isdigit():
+            query_disciplina = "SELECT id_disciplina FROM disciplina WHERE id = %s"
+            params = (int(disciplina_id),)
+        else:
+            query_disciplina = "SELECT id_disciplina FROM disciplina WHERE id_disciplina = %s"
+            params = (disciplina_id,)
+        
+        disciplina = execute_query(query_disciplina, params, fetch_one=True)
+        
+        if not disciplina:
+            raise HTTPException(status_code=404, detail="Disciplina não encontrada")
+        
+        id_disciplina = disciplina["id_disciplina"]
+        
+        # Verificar se a turma existe
+        query_turma = "SELECT id_turma FROM turma WHERE id_turma = %s"
+        turma = execute_query(query_turma, (turma_id,), fetch_one=True)
+        
+        if not turma:
+            raise HTTPException(status_code=404, detail="Turma não encontrada")
+        
+        # Verificar se o vínculo já existe
+        query_vinculo = """
+        SELECT id FROM turma_disciplina 
+        WHERE id_disciplina = %s AND id_turma = %s
+        """
+        vinculo_existente = execute_query(query_vinculo, (id_disciplina, turma_id), fetch_one=True)
+        
+        if vinculo_existente:
+            print(f"DEBUG: Vínculo já existe, retornando existente")
+            return {
+                "id": vinculo_existente["id"],
+                "id_disciplina": id_disciplina,
+                "id_turma": turma_id
+            }
+        
+        # Criar o vínculo
+        query_insert = """
+        INSERT INTO turma_disciplina (id_disciplina, id_turma)
+        VALUES (%s, %s)
+        RETURNING id, id_disciplina, id_turma
+        """
+        novo_vinculo = execute_query(query_insert, (id_disciplina, turma_id), fetch_one=True)
+        
+        print(f"DEBUG: Novo vínculo criado com id {novo_vinculo['id']}")
+        return {
+            "id": novo_vinculo["id"],
+            "id_disciplina": novo_vinculo["id_disciplina"],
+            "id_turma": novo_vinculo["id_turma"]
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Erro ao vincular turma à disciplina: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao vincular turma à disciplina: {str(e)}"
+        )
+
+@app.delete("/api/disciplinas/{disciplina_id}/turmas/{turma_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_disciplina_turma(
+    disciplina_id: str = Path(..., description="ID ou código da disciplina"),
+    turma_id: str = Path(..., description="ID da turma")
+):
+    """
+    Remove o vínculo entre uma disciplina específica e uma turma específica.
+    """
+    print(f"DEBUG: Removendo vínculo entre disciplina {disciplina_id} e turma {turma_id}")
+    try:
+        # Verificar se a disciplina existe
+        if disciplina_id.isdigit():
+            query_disciplina = "SELECT id_disciplina FROM disciplina WHERE id = %s"
+            params = (int(disciplina_id),)
+        else:
+            query_disciplina = "SELECT id_disciplina FROM disciplina WHERE id_disciplina = %s"
+            params = (disciplina_id,)
+        
+        disciplina = execute_query(query_disciplina, params, fetch_one=True)
+        
+        if not disciplina:
+            raise HTTPException(status_code=404, detail="Disciplina não encontrada")
+        
+        id_disciplina = disciplina["id_disciplina"]
+        
+        # Verificar se a turma existe
+        query_turma = "SELECT id_turma FROM turma WHERE id_turma = %s"
+        turma = execute_query(query_turma, (turma_id,), fetch_one=True)
+        
+        if not turma:
+            raise HTTPException(status_code=404, detail="Turma não encontrada")
+        
+        # Remover o vínculo
+        query_delete = """
+        DELETE FROM turma_disciplina 
+        WHERE id_disciplina = %s AND id_turma = %s
+        """
+        result = execute_query(query_delete, (id_disciplina, turma_id), fetch=False)
+        
+        print(f"DEBUG: Vínculo removido entre disciplina {id_disciplina} e turma {turma_id}")
+        return None
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Erro ao remover vínculo de turma: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao remover vínculo de turma: {str(e)}"
+        )
 
 # Inicialização do servidor (quando executado diretamente)
 if __name__ == "__main__":
