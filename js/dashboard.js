@@ -1686,11 +1686,172 @@ function initProfessores() {
                 disciplinas: disciplinasSelecionadas  // Usar a propriedade correta para API
             };
             
+            // Criar elemento de feedback
+            const feedbackElement = document.createElement('div');
+            feedbackElement.className = 'alert mt-3';
+            feedbackElement.style.display = 'none';
+            formProfessor.appendChild(feedbackElement);
+            
+            // Função para mostrar feedback
+            function mostrarFeedback(mensagem, tipo) {
+                feedbackElement.textContent = mensagem;
+                feedbackElement.className = `alert mt-3 alert-${tipo}`;
+                feedbackElement.style.display = 'block';
+                
+                // Scroll para o feedback
+                feedbackElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+            
+            // Função para processar resposta da API
+            function processarRespostaAPI(response, mensagemErro) {
+                if (!response.ok) {
+                    if (response.status === 404) {
+                        return { status: "error", message: "Recurso não encontrado" };
+                    } else if (response.status === 400) {
+                        return response.json().then(data => {
+                            return { status: "error", message: data.detail || mensagemErro };
+                        });
+                    } else {
+                        throw new Error(`${mensagemErro}: ${response.status} ${response.statusText}`);
+                    }
+                }
+                return response.json();
+            }
+            
+            // Função para vincular disciplinas
+            async function vincularDisciplinas(professorId, disciplinas) {
+                mostrarFeedback('Vinculando disciplinas...', 'info');
+                
+                // Array para armazenar resultados de cada vinculação
+                const resultados = {
+                    sucesso: [],
+                    falhas: []
+                };
+                
+                if (disciplinas.length === 0) {
+                    return { message: "Nenhuma disciplina para vincular", resultados };
+                }
+
+                // Para cada disciplina, criar vínculo
+                for (const idDisciplina of disciplinas) {
+                    try {
+                        // Primeiro tentamos o endpoint regular que cria vínculos professor-disciplina-turma
+                        let response = await fetch(CONFIG.getApiUrl('/professores/vinculos'), {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                id_professor: professorId,
+                                id_disciplina: idDisciplina
+                            })
+                        });
+                        
+                        let data = await response.json();
+                        
+                        // Se o endpoint indicar que não há turmas vinculadas, 
+                        // usamos o endpoint alternativo
+                        if (!response.ok || data.status === "warning") {
+                            console.warn(`Aviso ao vincular disciplina ${idDisciplina} via endpoint regular:`, data);
+                            
+                            if (data.message && data.message.includes("não tem turmas vinculadas")) {
+                                console.log(`Tentando vincular com endpoint alternativo para disciplina ${idDisciplina}`);
+                                
+                                // Usar o novo endpoint alternativo que permite vincular sem turmas
+                                const alternativeResponse = await fetch(CONFIG.getApiUrl(`/professores/${professorId}/disciplinas/${idDisciplina}`), {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json'
+                                    }
+                                });
+                                
+                                const alternativeData = await alternativeResponse.json();
+                                
+                                if (!alternativeResponse.ok) {
+                                    resultados.falhas.push({
+                                        disciplina: idDisciplina,
+                                        erro: alternativeData.detail || alternativeResponse.statusText
+                                    });
+                                    continue;
+                                }
+                                
+                                // Sucesso com método alternativo
+                                console.log(`Disciplina ${idDisciplina} vinculada com sucesso via método alternativo:`, alternativeData);
+                                resultados.sucesso.push({
+                                    disciplina: idDisciplina,
+                                    mensagem: alternativeData.message,
+                                    info: "Vinculado sem turmas"
+                                });
+                                continue;
+                            }
+                            
+                            // Se chegou aqui, houve um erro não relacionado à falta de turmas
+                            resultados.falhas.push({
+                                disciplina: idDisciplina,
+                                erro: data.message || response.statusText
+                            });
+                            continue;
+                        }
+                        
+                        // Verificar se a resposta tem status "success_without_turmas"
+                        if (data.status === "success_without_turmas") {
+                            console.log(`Disciplina ${idDisciplina} vinculada com sucesso (sem turmas):`, data);
+                            resultados.sucesso.push({
+                                disciplina: idDisciplina,
+                                vinculos: data.vinculos_criados || 0,
+                                info: data.aviso || "Vinculado sem turmas"
+                            });
+                            continue;
+                        }
+                        
+                        // Verificar se a resposta tem status de info
+                        if (data.status === "info") {
+                            console.info(`Informação ao vincular disciplina ${idDisciplina}:`, data);
+                            resultados.sucesso.push({
+                                disciplina: idDisciplina,
+                                vinculos: data.vinculos_criados || 0,
+                                mensagem: data.message,
+                                info: data.aviso || "Informação"
+                            });
+                            continue;
+                        }
+                        
+                        // Sucesso normal
+                        console.log(`Disciplina ${idDisciplina} vinculada com sucesso:`, data);
+                        resultados.sucesso.push({
+                            disciplina: idDisciplina,
+                            vinculos: data.vinculos_criados || 0
+                        });
+                        
+                    } catch (error) {
+                        console.error(`Erro ao vincular disciplina ${idDisciplina}:`, error);
+                        resultados.falhas.push({
+                            disciplina: idDisciplina,
+                            erro: error.message
+                        });
+                    }
+                }
+                
+                return {
+                    message: `${resultados.sucesso.length} disciplinas vinculadas com sucesso, ${resultados.falhas.length} falhas`,
+                    resultados
+                };
+            }
+            
             // Verificar se é novo ou edição
             const modo = formModoProfessor.value;
             
+            // Desabilitar o botão de submit para evitar cliques duplos
+            const submitButton = formProfessor.querySelector('button[type="submit"]');
+            if (submitButton) {
+                submitButton.disabled = true;
+                submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processando...';
+            }
+            
             if (modo === 'editar') {
                 // Atualizar via API
+                mostrarFeedback('Atualizando professor...', 'info');
+                
                 fetch(CONFIG.getApiUrl(`/professores/${idProfessor}`), {
                     method: 'PUT',
                     headers: {
@@ -1698,72 +1859,96 @@ function initProfessores() {
                     },
                     body: JSON.stringify(professor)
                 })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Erro ao atualizar professor: ' + response.statusText);
-                    }
-                    return response.json();
-                })
+                .then(response => processarRespostaAPI(response, 'Erro ao atualizar professor'))
                 .then(data => {
                     console.log("Professor atualizado com sucesso:", data);
+                    mostrarFeedback('Professor atualizado. Processando vínculos...', 'info');
                     
-                    // Agora vamos atualizar os vínculos com disciplinas
-                    // Primeiro, remover todos os vínculos existentes
+                    // Remover vínculos existentes
                     return fetch(CONFIG.getApiUrl(`/professores/${idProfessor}/disciplinas`), {
                         method: 'DELETE'
                     })
                     .then(response => {
-                        if (!response.ok && response.status !== 404) { // Ignorar 404 (não encontrado)
+                        // Ignoramos 404 pois pode significar que não havia vínculos
+                        if (!response.ok && response.status !== 404) {
                             throw new Error('Erro ao remover vínculos existentes: ' + response.statusText);
                         }
                         
-                        // Criar vínculos usando o novo endpoint para todas as disciplinas selecionadas
-                        console.log("Criando vínculos para disciplinas:", disciplinasSelecionadas);
-                        
-                        // Para cada disciplina selecionada, criar vínculo usando o novo endpoint
-                        const promessas = disciplinasSelecionadas.map(idDisciplina => {
-                            // Usar o novo endpoint que corrige os vínculos
-                            return fetch(CONFIG.getApiUrl('/professores/vinculos'), {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json'
-                                },
-                                body: JSON.stringify({
-                                    id_professor: idProfessor,
-                                    id_disciplina: idDisciplina
-                                })
-                            })
-                            .then(response => {
-                                if (!response.ok) {
-                                    console.warn(`Aviso ao vincular disciplina ${idDisciplina}: ${response.statusText}`);
-                                }
-                                return response.json();
-                            })
-                            .then(data => {
-                                console.log(`Resultado da vinculação para disciplina ${idDisciplina}:`, data);
-                                return data;
-                            })
-                            .catch(err => {
-                                console.error(`Erro ao vincular disciplina ${idDisciplina}:`, err);
-                                return null;
-                            });
-                        });
-                        
-                        // Executar todas as promessas de vinculação
-                        return Promise.all(promessas);
+                        // Criar novos vínculos
+                        return vincularDisciplinas(idProfessor, disciplinasSelecionadas);
                     });
                 })
-                .then(() => {
-                    alert('Professor atualizado com sucesso!');
+                .then(resultado => {
+                    console.log("Resultado da vinculação:", resultado);
                     
-                    // Resetar formulário e carregar lista atualizada
-                    resetFormProfessor();
-                    carregarProfessores();
-                    carregarTabelaProfessoresDisciplinasTurmas();
+                    // Mostrar feedback detalhado
+                    if (resultado.resultados.falhas.length > 0) {
+                        const mensagemErro = `Professor atualizado, mas ${resultado.resultados.falhas.length} vínculos não puderam ser criados.`;
+                        mostrarFeedback(mensagemErro, 'warning');
+                        
+                        // Mostrar detalhes dos erros
+                        const errosDetalhados = resultado.resultados.falhas.map(f => 
+                            `Disciplina ${f.disciplina}: ${f.erro}`
+                        ).join('\n');
+                        
+                        console.warn("Detalhes dos erros de vinculação:", errosDetalhados);
+                        
+                        // Se pelo menos uma vinculação teve sucesso, consideramos uma operação parcialmente bem-sucedida
+                        if (resultado.resultados.sucesso.length > 0) {
+                            setTimeout(() => {
+                                if (confirm(`Professor atualizado, mas houve problemas ao vincular algumas disciplinas. Deseja ver os detalhes?`)) {
+                                    alert(`Detalhes dos erros:\n${errosDetalhados}`);
+                                }
+                                
+                                resetFormProfessor();
+                                carregarProfessores();
+                                carregarTabelaProfessoresDisciplinasTurmas();
+                                feedbackElement.remove();
+                            }, 1500);
+                        } else {
+                            // Se todas as vinculações falharam, mantemos o feedback de aviso
+                            alert(`Professor atualizado, mas todas as vinculações falharam.\nDetalhes:\n${errosDetalhados}`);
+                        }
+                    } else {
+                        // Verificar se houve vinculações sem turmas (success_without_turmas)
+                        const vinculosSemTurmas = resultado.resultados.sucesso.filter(s => s.info && (s.info.includes("sem turmas") || s.info.includes("Vinculado sem turmas")));
+                        
+                        if (vinculosSemTurmas.length > 0) {
+                            // Existem vinculações sem turmas, criar mensagem específica
+                            const disciplinasSemTurmas = vinculosSemTurmas.map(v => v.disciplina).join(", ");
+                            const mensagemAviso = `Professor atualizado com sucesso! No entanto, as seguintes disciplinas não possuem turmas associadas: ${disciplinasSemTurmas}`;
+                            
+                            mostrarFeedback(mensagemAviso, 'warning');
+                            
+                            setTimeout(() => {
+                                if (confirm(`${mensagemAviso}\n\nÉ recomendado vincular turmas a estas disciplinas para o correto funcionamento. Deseja fechar o formulário de edição?`)) {
+                                    resetFormProfessor();
+                                    carregarProfessores();
+                                    carregarTabelaProfessoresDisciplinasTurmas();
+                                    feedbackElement.remove();
+                                }
+                            }, 1500);
+                        } else {
+                            // Tudo ocorreu bem, sem avisos
+                            mostrarFeedback('Professor atualizado com sucesso!', 'success');
+                            setTimeout(() => {
+                                resetFormProfessor();
+                                carregarProfessores();
+                                carregarTabelaProfessoresDisciplinasTurmas();
+                                feedbackElement.remove();
+                            }, 1500);
+                        }
+                    }
                 })
                 .catch(error => {
                     console.error("Erro ao atualizar professor:", error);
-                    alert(`Erro ao atualizar professor: ${error.message}`);
+                    mostrarFeedback(`Erro ao atualizar professor: ${error.message}`, 'danger');
+                    
+                    // Reativar o botão
+                    if (submitButton) {
+                        submitButton.disabled = false;
+                        submitButton.textContent = 'Salvar';
+                    }
                     
                     // Atualizar no localStorage como fallback
                     const professores = JSON.parse(localStorage.getItem('professores') || '[]');
@@ -1777,12 +1962,17 @@ function initProfessores() {
                     
                     localStorage.setItem('professores', JSON.stringify(professores));
                     
-                    alert(`Professor ${nomeProfessor} atualizado localmente.`);
-                    resetFormProfessor();
-                    carregarProfessores();
+                    if (confirm(`Erro ao atualizar professor: ${error.message}. Deseja usar o modo offline?`)) {
+                        alert(`Professor ${nomeProfessor} atualizado localmente.`);
+                        resetFormProfessor();
+                        carregarProfessores();
+                        feedbackElement.remove();
+                    }
                 });
             } else {
                 // Adicionar novo professor via API
+                mostrarFeedback('Adicionando novo professor...', 'info');
+                
                 fetch(CONFIG.getApiUrl('/professores'), {
                     method: 'POST',
                     headers: {
@@ -1790,74 +1980,84 @@ function initProfessores() {
                     },
                     body: JSON.stringify(professor)
                 })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Erro ao adicionar professor: ' + response.statusText);
-                    }
-                    return response.json();
-                })
+                .then(response => processarRespostaAPI(response, 'Erro ao adicionar professor'))
                 .then(data => {
                     console.log("Professor adicionado com sucesso:", data);
+                    mostrarFeedback('Professor adicionado. Processando vínculos...', 'info');
                     
-                    // Criar vínculos para as disciplinas selecionadas usando o novo endpoint
-                    console.log("Criando vínculos para disciplinas:", disciplinasSelecionadas);
-                    
-                    // Para cada disciplina selecionada, usar o novo endpoint
-                    const promessas = disciplinasSelecionadas.map(idDisciplina => {
-                        return fetch(CONFIG.getApiUrl('/professores/vinculos'), {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({
-                                id_professor: idProfessor,
-                                id_disciplina: idDisciplina
-                            })
-                        })
-                        .then(response => {
-                            if (!response.ok) {
-                                console.warn(`Aviso ao vincular disciplina ${idDisciplina}: ${response.statusText}`);
-                            }
-                            return response.json();
-                        })
-                        .then(data => {
-                            console.log(`Resultado da vinculação para disciplina ${idDisciplina}:`, data);
-                            return data;
-                        })
-                        .catch(err => {
-                            console.error(`Erro ao vincular disciplina ${idDisciplina}:`, err);
-                            return null;
-                        });
-                    });
-                    
-                    // Executar todas as promessas de vinculação
-                    return Promise.all(promessas);
+                    // Criar vínculos
+                    return vincularDisciplinas(idProfessor, disciplinasSelecionadas);
                 })
-                .then(() => {
-                    alert('Professor adicionado com sucesso!');
-                    resetFormProfessor();
-                    carregarProfessores();
-                    carregarTabelaProfessoresDisciplinasTurmas();
+                .then(resultado => {
+                    console.log("Resultado da vinculação:", resultado);
+                    
+                    // Mostrar feedback detalhado
+                    if (resultado.resultados.falhas.length > 0) {
+                        const mensagemErro = `Professor criado, mas ${resultado.resultados.falhas.length} vínculos não puderam ser criados.`;
+                        mostrarFeedback(mensagemErro, 'warning');
+                        
+                        // Mostrar detalhes dos erros
+                        const errosDetalhados = resultado.resultados.falhas.map(f => 
+                            `Disciplina ${f.disciplina}: ${f.erro}`
+                        ).join('\n');
+                        
+                        console.warn("Detalhes dos erros de vinculação:", errosDetalhados);
+                        
+                        // Se pelo menos uma vinculação teve sucesso, consideramos uma operação parcialmente bem-sucedida
+                        if (resultado.resultados.sucesso.length > 0) {
+                            setTimeout(() => {
+                                if (confirm(`Professor criado, mas houve problemas ao vincular algumas disciplinas. Deseja ver os detalhes?`)) {
+                                    alert(`Detalhes dos erros:\n${errosDetalhados}`);
+                                }
+                                
+                                resetFormProfessor();
+                                carregarProfessores();
+                                carregarTabelaProfessoresDisciplinasTurmas();
+                                feedbackElement.remove();
+                            }, 1500);
+                        } else {
+                            // Se todas as vinculações falharam, mantemos o feedback de aviso
+                            alert(`Professor criado, mas todas as vinculações falharam.\nDetalhes:\n${errosDetalhados}`);
+                        }
+                    } else {
+                        // Tudo ocorreu bem
+                        mostrarFeedback('Professor adicionado com sucesso!', 'success');
+                        setTimeout(() => {
+                            resetFormProfessor();
+                            carregarProfessores();
+                            carregarTabelaProfessoresDisciplinasTurmas();
+                            feedbackElement.remove();
+                        }, 1500);
+                    }
                 })
                 .catch(error => {
                     console.error("Erro ao adicionar professor:", error);
-                    alert(`Erro ao adicionar professor: ${error.message}`);
+                    mostrarFeedback(`Erro ao adicionar professor: ${error.message}`, 'danger');
+                    
+                    // Reativar o botão
+                    if (submitButton) {
+                        submitButton.disabled = false;
+                        submitButton.textContent = 'Salvar';
+                    }
                     
                     // Adicionar no localStorage como fallback
                     const professores = JSON.parse(localStorage.getItem('professores') || '[]');
                     
                     // Verificar se já existe professor com o mesmo ID
                     if (professores.some(p => p.id_professor === idProfessor)) {
-                        alert('Já existe um professor com este ID. Por favor, use outro ID.');
+                        mostrarFeedback(`Já existe um professor com o ID ${idProfessor} no armazenamento local.`, 'danger');
                         return;
                     }
                     
-                    professores.push(professor);
-                    localStorage.setItem('professores', JSON.stringify(professores));
-                    
-                    alert(`Professor ${nomeProfessor} adicionado localmente.`);
-                    resetFormProfessor();
-                    carregarProfessores();
+                    if (confirm(`Erro ao adicionar professor: ${error.message}. Deseja usar o modo offline?`)) {
+                        professores.push(professor);
+                        localStorage.setItem('professores', JSON.stringify(professores));
+                        
+                        alert(`Professor ${nomeProfessor} adicionado localmente.`);
+                        resetFormProfessor();
+                        carregarProfessores();
+                        feedbackElement.remove();
+                    }
                 });
             }
         });

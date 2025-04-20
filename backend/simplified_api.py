@@ -3701,6 +3701,239 @@ def delete_disciplina_turma(
             detail=f"Erro ao remover vínculo de turma: {str(e)}"
         )
 
+@app.post("/api/professores/{professor_id}/disciplinas/{disciplina_id}", status_code=status.HTTP_201_CREATED)
+def vincular_professor_disciplina_basico(
+    professor_id: str = Path(..., description="ID do professor"),
+    disciplina_id: str = Path(..., description="ID da disciplina")
+):
+    """
+    Vincula um professor a uma disciplina, mesmo sem turmas vinculadas.
+    Este é um vínculo mais básico que permite associar professores a disciplinas
+    mesmo antes de haver turmas associadas.
+    """
+    print(f"=== CRIANDO VÍNCULO BÁSICO: Professor {professor_id} - Disciplina {disciplina_id} ===")
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+        
+        # Verificar se o professor existe
+        cursor.execute("SELECT id FROM professor WHERE id_professor = %s", (professor_id,))
+        professor_result = cursor.fetchone()
+        
+        if not professor_result:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Professor {professor_id} não encontrado"
+            )
+        
+        # Verificar se a disciplina existe
+        cursor.execute("SELECT id FROM disciplina WHERE id_disciplina = %s", (disciplina_id,))
+        disciplina_result = cursor.fetchone()
+        
+        if not disciplina_result:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Disciplina {disciplina_id} não encontrada"
+            )
+        
+        # Verificar se a tabela professor_disciplina existe
+        cursor.execute("""
+            SELECT EXISTS (
+                SELECT 1 FROM information_schema.tables 
+                WHERE table_schema = 'public' AND table_name = 'professor_disciplina'
+            )
+        """)
+        
+        tabela_existe = cursor.fetchone()[0]
+        
+        if not tabela_existe:
+            # Criar a tabela professor_disciplina se não existir
+            cursor.execute("""
+                CREATE TABLE professor_disciplina (
+                    id SERIAL PRIMARY KEY,
+                    id_professor VARCHAR(10) NOT NULL,
+                    id_disciplina VARCHAR(10) NOT NULL,
+                    UNIQUE(id_professor, id_disciplina),
+                    FOREIGN KEY (id_professor) REFERENCES professor(id_professor),
+                    FOREIGN KEY (id_disciplina) REFERENCES disciplina(id_disciplina)
+                )
+            """)
+            print("Tabela professor_disciplina criada com sucesso.")
+        
+        # Verificar se o vínculo já existe
+        cursor.execute("""
+            SELECT id FROM professor_disciplina 
+            WHERE id_professor = %s AND id_disciplina = %s
+        """, (professor_id, disciplina_id))
+        
+        vinculo_existente = cursor.fetchone()
+        
+        if vinculo_existente:
+            return {
+                "status": "info",
+                "message": f"Vínculo entre professor {professor_id} e disciplina {disciplina_id} já existe",
+                "id": vinculo_existente["id"]
+            }
+        
+        # Criar o vínculo
+        cursor.execute("""
+            INSERT INTO professor_disciplina (id_professor, id_disciplina)
+            VALUES (%s, %s)
+            RETURNING id
+        """, (professor_id, disciplina_id))
+        
+        novo_vinculo = cursor.fetchone()
+        conn.commit()
+        
+        # Verificar se existem turmas vinculadas à disciplina para criar os vínculos completos
+        cursor.execute("""
+            SELECT td.id_turma 
+            FROM turma_disciplina td 
+            WHERE td.id_disciplina = %s
+        """, (disciplina_id,))
+        
+        turmas = cursor.fetchall()
+        vinculos_turmas_criados = 0
+        
+        if turmas:
+            # Também criar vínculos na tabela professor_disciplina_turma
+            for turma in turmas:
+                id_turma = turma["id_turma"]
+                
+                # Verificar se já existe o vínculo completo
+                cursor.execute("""
+                    SELECT id FROM professor_disciplina_turma 
+                    WHERE id_professor = %s AND id_disciplina = %s AND id_turma = %s
+                """, (professor_id, disciplina_id, id_turma))
+                
+                vinculo_completo_existente = cursor.fetchone()
+                
+                if not vinculo_completo_existente:
+                    # Inserir novo vínculo completo
+                    cursor.execute("""
+                        INSERT INTO professor_disciplina_turma (id_professor, id_disciplina, id_turma)
+                        VALUES (%s, %s, %s)
+                    """, (professor_id, disciplina_id, id_turma))
+                    
+                    vinculos_turmas_criados += 1
+            
+            conn.commit()
+        
+        return {
+            "status": "success",
+            "message": f"Vínculo criado entre professor {professor_id} e disciplina {disciplina_id}",
+            "id": novo_vinculo["id"],
+            "vinculos_turmas_criados": vinculos_turmas_criados
+        }
+    
+    except HTTPException:
+        if conn:
+            conn.rollback()
+        raise
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        print(f"ERRO ao criar vínculo básico: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao criar vínculo básico: {str(e)}"
+        )
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+        print(f"=== FIM DA CRIAÇÃO DE VÍNCULO BÁSICO ===")
+
+
+@app.delete("/api/professores/{professor_id}/disciplinas/{disciplina_id}", status_code=status.HTTP_204_NO_CONTENT)
+def desvincular_professor_disciplina(
+    professor_id: str = Path(..., description="ID do professor"),
+    disciplina_id: str = Path(..., description="ID da disciplina")
+):
+    """
+    Remove todos os vínculos entre um professor e uma disciplina,
+    incluindo vínculos básicos e com turmas.
+    """
+    print(f"=== REMOVENDO VÍNCULOS: Professor {professor_id} - Disciplina {disciplina_id} ===")
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Verificar se o professor existe
+        cursor.execute("SELECT id FROM professor WHERE id_professor = %s", (professor_id,))
+        professor_result = cursor.fetchone()
+        
+        if not professor_result:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Professor {professor_id} não encontrado"
+            )
+        
+        # Verificar se a disciplina existe
+        cursor.execute("SELECT id FROM disciplina WHERE id_disciplina = %s", (disciplina_id,))
+        disciplina_result = cursor.fetchone()
+        
+        if not disciplina_result:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Disciplina {disciplina_id} não encontrada"
+            )
+        
+        # Remover vínculos na tabela professor_disciplina_turma
+        cursor.execute("""
+            DELETE FROM professor_disciplina_turma 
+            WHERE id_professor = %s AND id_disciplina = %s
+        """, (professor_id, disciplina_id))
+        
+        vinculos_turmas_removidos = cursor.rowcount
+        
+        # Verificar se a tabela professor_disciplina existe
+        cursor.execute("""
+            SELECT EXISTS (
+                SELECT 1 FROM information_schema.tables 
+                WHERE table_schema = 'public' AND table_name = 'professor_disciplina'
+            )
+        """)
+        
+        tabela_existe = cursor.fetchone()[0]
+        
+        vinculos_basicos_removidos = 0
+        if tabela_existe:
+            # Remover vínculos na tabela professor_disciplina
+            cursor.execute("""
+                DELETE FROM professor_disciplina 
+                WHERE id_professor = %s AND id_disciplina = %s
+            """, (professor_id, disciplina_id))
+            
+            vinculos_basicos_removidos = cursor.rowcount
+        
+        conn.commit()
+        print(f"=== VÍNCULOS REMOVIDOS: {vinculos_turmas_removidos} com turmas, {vinculos_basicos_removidos} básicos ===")
+        
+        return None  # Retorno vazio para 204 No Content
+    
+    except HTTPException:
+        if conn:
+            conn.rollback()
+        raise
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        print(f"ERRO ao remover vínculos: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao remover vínculos: {str(e)}"
+        )
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+        print(f"=== FIM DA REMOÇÃO DE VÍNCULOS ===")
+
 # Inicialização do servidor (quando executado diretamente)
 if __name__ == "__main__":
     uvicorn.run("simplified_api:app", host="0.0.0.0", port=4000, reload=True) 
