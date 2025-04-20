@@ -3934,6 +3934,276 @@ def desvincular_professor_disciplina(
             conn.close()
         print(f"=== FIM DA REMOÇÃO DE VÍNCULOS ===")
 
+# Nova classe para criar/atualizar professores e vínculos em uma única operação
+class ProfessorComVinculos(BaseModel):
+    professor: Professor
+    disciplinas_ids: List[str] = []
+
+# Endpoint unificado para gerenciar professores e vínculos em uma única transação
+@app.post("/api/professores/completo", status_code=status.HTTP_201_CREATED)
+def gerenciar_professor_completo(dados: ProfessorComVinculos):
+    """
+    Endpoint otimizado que permite criar/atualizar um professor e todos seus vínculos
+    em uma única transação atômica.
+    """
+    print(f"=== GERENCIANDO PROFESSOR COMPLETO: {dados.professor.id_professor} ===")
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+        
+        # Verificar se o professor já existe
+        cursor.execute("SELECT id FROM professor WHERE id_professor = %s", (dados.professor.id_professor,))
+        professor_existente = cursor.fetchone()
+        
+        if professor_existente:
+            # ATUALIZAR PROFESSOR EXISTENTE
+            
+            # Verificar se o e-mail já existe para outro professor
+            if dados.professor.email_professor:
+                cursor.execute("""
+                    SELECT id_professor FROM professor 
+                    WHERE email_professor = %s AND id_professor != %s
+                """, (dados.professor.email_professor, dados.professor.id_professor))
+                
+                email_existente = cursor.fetchone()
+                if email_existente:
+                    return {
+                        "status": "error",
+                        "message": f"E-mail já está em uso pelo professor {email_existente[0]}"
+                    }
+            
+            # Atualizar dados do professor
+            update_fields = []
+            params = []
+            if dados.professor.nome_professor:
+                update_fields.append("nome_professor = %s")
+                params.append(dados.professor.nome_professor)
+            if dados.professor.email_professor:
+                update_fields.append("email_professor = %s")
+                params.append(dados.professor.email_professor)
+            if dados.professor.senha_professor:
+                update_fields.append("senha = %s")  # nome do campo no banco é 'senha'
+                params.append(dados.professor.senha_professor)
+                
+            if update_fields:
+                query = f"UPDATE professor SET {', '.join(update_fields)} WHERE id_professor = %s"
+                params.append(dados.professor.id_professor)
+                cursor.execute(query, params)
+                
+                if cursor.rowcount == 0:
+                    conn.rollback()
+                    return {
+                        "status": "error",
+                        "message": "Falha ao atualizar dados do professor"
+                    }
+                    
+                print(f"Professor {dados.professor.id_professor} atualizado com sucesso")
+            
+            # Remover vínculos existentes
+            cursor.execute("""
+                DELETE FROM professor_disciplina_turma 
+                WHERE id_professor = %s
+            """, (dados.professor.id_professor,))
+            vinculos_removidos = cursor.rowcount
+            print(f"Removidos {vinculos_removidos} vínculos existentes")
+            
+            # Verificar se a tabela professor_disciplina existe
+            cursor.execute("""
+                SELECT EXISTS (
+                    SELECT 1 FROM information_schema.tables 
+                    WHERE table_schema = 'public' AND table_name = 'professor_disciplina'
+                )
+            """)
+            
+            tabela_existe = cursor.fetchone()[0]
+            
+            if tabela_existe:
+                # Remover também da tabela básica
+                cursor.execute("""
+                    DELETE FROM professor_disciplina 
+                    WHERE id_professor = %s
+                """, (dados.professor.id_professor,))
+                
+                vinculos_basicos_removidos = cursor.rowcount
+                print(f"Removidos {vinculos_basicos_removidos} vínculos básicos existentes")
+        else:
+            # CRIAR NOVO PROFESSOR
+            
+            # Verificar se já existe outro professor com o mesmo ID
+            cursor.execute("SELECT id FROM professor WHERE id_professor = %s", (dados.professor.id_professor,))
+            if cursor.fetchone():
+                return {
+                    "status": "error",
+                    "message": f"Já existe um professor com o ID {dados.professor.id_professor}"
+                }
+                
+            # Verificar se o e-mail já existe
+            if dados.professor.email_professor:
+                cursor.execute("SELECT id_professor FROM professor WHERE email_professor = %s", (dados.professor.email_professor,))
+                email_existente = cursor.fetchone()
+                if email_existente:
+                    return {
+                        "status": "error",
+                        "message": f"E-mail já está em uso pelo professor {email_existente[0]}"
+                    }
+            
+            # Inserir o novo professor
+            cursor.execute("""
+                INSERT INTO professor (id_professor, nome_professor, email_professor, senha) 
+                VALUES (%s, %s, %s, %s)
+            """, (
+                dados.professor.id_professor,
+                dados.professor.nome_professor,
+                dados.professor.email_professor,
+                dados.professor.senha_professor
+            ))
+            
+            print(f"Professor {dados.professor.id_professor} criado com sucesso")
+            
+        # PROCESSAR VÍNCULOS COM DISCIPLINAS
+        vinculos_criados = 0
+        vinculos_sem_turmas = 0
+        disciplinas_com_problema = []
+        turmas_vinculadas = []
+        
+        # Processar cada disciplina
+        for disciplina_id in dados.disciplinas_ids:
+            # Verificar se a disciplina existe
+            cursor.execute("SELECT id FROM disciplina WHERE id_disciplina = %s", (disciplina_id,))
+            disciplina_result = cursor.fetchone()
+            
+            if not disciplina_result:
+                print(f"Disciplina {disciplina_id} não encontrada")
+                disciplinas_com_problema.append({
+                    "id_disciplina": disciplina_id,
+                    "erro": "Disciplina não encontrada"
+                })
+                continue
+            
+            # Buscar turmas vinculadas à disciplina
+            cursor.execute("""
+                SELECT td.id_turma 
+                FROM turma_disciplina td 
+                WHERE td.id_disciplina = %s
+            """, (disciplina_id,))
+            
+            turmas = cursor.fetchall()
+            
+            if not turmas:
+                print(f"Disciplina {disciplina_id} não tem turmas vinculadas")
+                
+                # Verificar se a tabela professor_disciplina existe
+                cursor.execute("""
+                    SELECT EXISTS (
+                        SELECT 1 FROM information_schema.tables 
+                        WHERE table_schema = 'public' AND table_name = 'professor_disciplina'
+                    )
+                """)
+                
+                tabela_existe = cursor.fetchone()[0]
+                
+                if not tabela_existe:
+                    # Criar a tabela professor_disciplina se não existir
+                    cursor.execute("""
+                        CREATE TABLE professor_disciplina (
+                            id SERIAL PRIMARY KEY,
+                            id_professor VARCHAR(10) NOT NULL,
+                            id_disciplina VARCHAR(10) NOT NULL,
+                            UNIQUE(id_professor, id_disciplina),
+                            FOREIGN KEY (id_professor) REFERENCES professor(id_professor),
+                            FOREIGN KEY (id_disciplina) REFERENCES disciplina(id_disciplina)
+                        )
+                    """)
+                    print("Tabela professor_disciplina criada com sucesso.")
+                
+                # Verificar se já existe o vínculo básico
+                cursor.execute("""
+                    SELECT id FROM professor_disciplina 
+                    WHERE id_professor = %s AND id_disciplina = %s
+                """, (dados.professor.id_professor, disciplina_id))
+                
+                vinculo_basico_existente = cursor.fetchone()
+                
+                if not vinculo_basico_existente:
+                    # Criar vinculação básica sem turmas
+                    cursor.execute("""
+                        INSERT INTO professor_disciplina (id_professor, id_disciplina)
+                        VALUES (%s, %s)
+                    """, (dados.professor.id_professor, disciplina_id))
+                    
+                    vinculos_sem_turmas += 1
+                    print(f"Vínculo básico criado: Professor={dados.professor.id_professor}, Disciplina={disciplina_id} (sem turmas)")
+                
+                # Adicionar à lista de disciplinas com aviso
+                disciplinas_com_problema.append({
+                    "id_disciplina": disciplina_id,
+                    "aviso": "Disciplina sem turmas vinculadas"
+                })
+                
+                continue
+            
+            # Processar vínculos com turmas
+            for turma in turmas:
+                id_turma = turma['id_turma']
+                
+                # Inserir novo vínculo (sem verificar existência, pois já removemos todos)
+                cursor.execute("""
+                    INSERT INTO professor_disciplina_turma (id_professor, id_disciplina, id_turma)
+                    VALUES (%s, %s, %s)
+                """, (dados.professor.id_professor, disciplina_id, id_turma))
+                
+                vinculos_criados += 1
+                if id_turma not in turmas_vinculadas:
+                    turmas_vinculadas.append(id_turma)
+                print(f"Vínculo criado: Professor={dados.professor.id_professor}, Disciplina={disciplina_id}, Turma={id_turma}")
+        
+        # Commit da transação
+        conn.commit()
+        
+        # Buscar o professor atualizado
+        cursor.execute("""
+            SELECT id, id_professor, nome_professor, email_professor
+            FROM professor
+            WHERE id_professor = %s
+        """, (dados.professor.id_professor,))
+        
+        professor_atualizado = cursor.fetchone()
+        
+        print(f"=== FIM DO GERENCIAMENTO DO PROFESSOR: {vinculos_criados} vínculos criados, {vinculos_sem_turmas} vínculos sem turmas ===")
+        
+        # Construir resposta
+        return {
+            "status": "success",
+            "message": f"Professor gerenciado com sucesso: {vinculos_criados} vínculos criados, {vinculos_sem_turmas} sem turmas",
+            "professor": {
+                "id": professor_atualizado["id"],
+                "id_professor": professor_atualizado["id_professor"],
+                "nome_professor": professor_atualizado["nome_professor"],
+                "email_professor": professor_atualizado["email_professor"],
+                "disciplinas": dados.disciplinas_ids
+            },
+            "vinculos_criados": vinculos_criados,
+            "vinculos_sem_turmas": vinculos_sem_turmas,
+            "disciplinas_com_problema": disciplinas_com_problema,
+            "turmas_vinculadas": turmas_vinculadas
+        }
+        
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        print(f"ERRO ao gerenciar professor: {str(e)}")
+        return {
+            "status": "error",
+            "message": f"Erro ao gerenciar professor: {str(e)}"
+        }
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+        print(f"=== FIM DO PROCESSAMENTO DO PROFESSOR COMPLETO ===")
+
 # Inicialização do servidor (quando executado diretamente)
 if __name__ == "__main__":
     uvicorn.run("simplified_api:app", host="0.0.0.0", port=4000, reload=True) 
