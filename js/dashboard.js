@@ -254,10 +254,10 @@ function ativarSecao(linkId) {
                                                 <td>${disciplinasNomes}</td>
                                                 <td>${turmasHTML}</td>
                                                 <td class="text-center">
-                                                    <button type="button" class="btn btn-sm btn-outline-primary editar-professor me-1" data-id="${professor.id_professor}" onclick="editarProfessor('${professor.id_professor}')">
+                                                    <button class="btn btn-sm btn-outline-primary edit-professor" data-id="${professor.id_professor}">
                                                         <i class="fas fa-edit"></i>
                                                     </button>
-                                                    <button type="button" class="btn btn-sm btn-outline-danger excluir-professor" data-id="${professor.id_professor}">
+                                                    <button class="btn btn-sm btn-outline-danger delete-professor" data-id="${professor.id_professor}">
                                                         <i class="fas fa-trash"></i>
                                                     </button>
                                                 </td>
@@ -266,12 +266,9 @@ function ativarSecao(linkId) {
                                         }
                                         
                                         // Adicionar eventos aos botões
-                                        document.querySelectorAll('.editar-professor').forEach(btn => {
-                                            btn.addEventListener('click', function(e) {
-                                                e.preventDefault();
-                                                e.stopPropagation();
+                                        document.querySelectorAll('.edit-professor').forEach(btn => {
+                                            btn.addEventListener('click', function() {
                                                 const idProfessor = this.getAttribute('data-id');
-                                                console.log("Botão editar clicado para professor ID:", idProfessor);
                                                 if (typeof editarProfessor === 'function') {
                                                     editarProfessor(idProfessor);
                                                 } else {
@@ -280,12 +277,9 @@ function ativarSecao(linkId) {
                                             });
                                         });
                                         
-                                        document.querySelectorAll('.excluir-professor').forEach(btn => {
-                                            btn.addEventListener('click', function(e) {
-                                                e.preventDefault();
-                                                e.stopPropagation();
+                                        document.querySelectorAll('.delete-professor').forEach(btn => {
+                                            btn.addEventListener('click', function() {
                                                 const idProfessor = this.getAttribute('data-id');
-                                                console.log("Botão excluir clicado para professor ID:", idProfessor);
                                                 if (typeof excluirProfessor === 'function') {
                                                     excluirProfessor(idProfessor);
                                                 } else {
@@ -1988,10 +1982,10 @@ function initProfessores() {
                                             <td>${disciplinasNomes}</td>
                                             <td>${turmasHTML}</td>
                                             <td class="text-center">
-                                                <button type="button" class="btn btn-sm btn-outline-primary editar-professor me-1" data-id="${professor.id_professor}" onclick="editarProfessor('${professor.id_professor}')">
+                                                <button class="btn btn-sm btn-outline-primary edit-professor" data-id="${professor.id_professor}">
                                                     <i class="fas fa-edit"></i>
                                                 </button>
-                                                <button type="button" class="btn btn-sm btn-outline-danger excluir-professor" data-id="${professor.id_professor}">
+                                                <button class="btn btn-sm btn-outline-danger delete-professor" data-id="${professor.id_professor}">
                                                     <i class="fas fa-trash"></i>
                                                 </button>
                                             </td>
@@ -2030,10 +2024,10 @@ function initProfessores() {
                                     <td>${professor.email_professor || '-'}</td>
                                     <td>-</td>
                                     <td class="text-center">
-                                        <button type="button" class="btn btn-sm btn-primary editar-professor me-1" data-id="${professor.id_professor}" onclick="editarProfessor('${professor.id_professor}')">
+                                        <button class="btn btn-sm btn-primary editar-professor me-1" data-id="${professor.id_professor}">
                                             <i class="fas fa-edit"></i>
                                         </button>
-                                        <button type="button" class="btn btn-sm btn-danger excluir-professor" data-id="${professor.id_professor}">
+                                        <button class="btn btn-sm btn-danger excluir-professor" data-id="${professor.id_professor}">
                                             <i class="fas fa-trash"></i>
                                         </button>
                                     </td>
@@ -2063,21 +2057,15 @@ function initProfessores() {
                                 
                                 // Adicionar eventos para os botões
                                 document.querySelectorAll('.editar-professor').forEach(btn => {
-                                    btn.addEventListener('click', function(e) {
-                                        e.preventDefault();
-                                        e.stopPropagation();
+                                    btn.addEventListener('click', function() {
                                         const idProfessor = this.getAttribute('data-id');
-                                        console.log("Botão editar clicado para professor ID:", idProfessor);
                                         editarProfessor(idProfessor);
                                     });
                                 });
                                 
                                 document.querySelectorAll('.excluir-professor').forEach(btn => {
-                                    btn.addEventListener('click', function(e) {
-                                        e.preventDefault();
-                                        e.stopPropagation();
+                                    btn.addEventListener('click', function() {
                                         const idProfessor = this.getAttribute('data-id');
-                                        console.log("Botão excluir clicado para professor ID:", idProfessor);
                                         excluirProfessor(idProfessor);
                                     });
                                 });
@@ -2110,10 +2098,10 @@ function initProfessores() {
                         <td>${professor.email_professor || '-'}</td>
                         <td>${professor.disciplinas ? professor.disciplinas.join(', ') : '-'}</td>
                         <td class="text-center">
-                            <button type="button" class="btn btn-sm btn-primary editar-professor me-1" data-id="${professor.id_professor}" onclick="editarProfessor('${professor.id_professor}')">
+                            <button class="btn btn-sm btn-primary editar-professor me-1" data-id="${professor.id_professor}">
                                 <i class="fas fa-edit"></i>
                             </button>
-                            <button type="button" class="btn btn-sm btn-danger excluir-professor" data-id="${professor.id_professor}">
+                            <button class="btn btn-sm btn-danger excluir-professor" data-id="${professor.id_professor}">
                                 <i class="fas fa-trash"></i>
                             </button>
                         </td>
@@ -2124,21 +2112,15 @@ function initProfessores() {
                 
                 // Adicionar eventos para os botões
                 document.querySelectorAll('.editar-professor').forEach(btn => {
-                    btn.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        e.stopPropagation();
+                    btn.addEventListener('click', function() {
                         const idProfessor = this.getAttribute('data-id');
-                        console.log("Botão editar clicado para professor ID:", idProfessor);
                         editarProfessor(idProfessor);
                     });
                 });
                 
                 document.querySelectorAll('.excluir-professor').forEach(btn => {
-                    btn.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        e.stopPropagation();
+                    btn.addEventListener('click', function() {
                         const idProfessor = this.getAttribute('data-id');
-                        console.log("Botão excluir clicado para professor ID:", idProfessor);
                         excluirProfessor(idProfessor);
                     });
                 });
@@ -2445,25 +2427,13 @@ function initProfessores() {
     
     // Função para atualizar a tabela de disciplinas e turmas
     function atualizarTabelaDisciplinasTurmas() {
-        console.log("Atualizando tabela de disciplinas e turmas");
-        
-        // Primeiro, verificar se os elementos existem
         if (!vinculoDisciplinas || !disciplinasTurmasLista) {
-            console.error("Elementos necessários para tabela de disciplinas e turmas não encontrados");
+            console.error("Elementos para atualizar tabela não encontrados!");
             return;
         }
         
-        // Obter disciplinas selecionadas
         const disciplinasSelecionadas = Array.from(vinculoDisciplinas.selectedOptions).map(option => option.value);
         
-        // Mostrar indicador de carregamento
-        disciplinasTurmasLista.innerHTML = `
-            <tr class="text-center">
-                <td colspan="2">Carregando turmas relacionadas...</td>
-            </tr>
-        `;
-        
-        // Se não houver disciplinas selecionadas, mostrar mensagem
         if (disciplinasSelecionadas.length === 0) {
             disciplinasTurmasLista.innerHTML = `
                 <tr class="text-center">
@@ -2473,67 +2443,118 @@ function initProfessores() {
             return;
         }
         
-        // Para cada disciplina selecionada, buscar suas turmas
-        const promessas = disciplinasSelecionadas.map(idDisciplina => {
-            return fetch(CONFIG.getApiUrl(`/disciplinas/${idDisciplina}/turmas`))
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`Erro ao carregar turmas para disciplina ${idDisciplina}`);
-                    }
-                    return response.json();
-                })
-                .then(turmas => {
-                    // Buscar detalhes da disciplina
-                    return fetch(CONFIG.getApiUrl(`/disciplinas/${idDisciplina}`))
-                        .then(response => {
-                            if (!response.ok) {
-                                throw new Error(`Erro ao carregar detalhes da disciplina ${idDisciplina}`);
-                            }
-                            return response.json();
-                        })
-                        .then(disciplina => {
-                            // Retornar objeto com disciplina e suas turmas
-                            return {
-                                disciplina,
-                                turmas
-                            };
-                        });
-                });
-        });
+        disciplinasTurmasLista.innerHTML = `
+            <tr>
+                <td colspan="2" class="text-center">
+                    <div class="spinner-border spinner-border-sm text-primary" role="status">
+                        <span class="visually-hidden">Carregando...</span>
+                    </div>
+                </td>
+            </tr>
+        `;
         
-        // Após todas as promessas, popular a tabela
-        Promise.all(promessas)
-            .then(resultados => {
-                // Limpar tabela
+        // Buscar apenas as disciplinas selecionadas
+        fetch(CONFIG.getApiUrl('/disciplinas'))
+            .then(response => response.ok ? response.json() : [])
+            .then(disciplinas => {
+                console.log("Disciplinas carregadas:", disciplinas.length);
+                
+                // Limpar a tabela
                 disciplinasTurmasLista.innerHTML = '';
                 
-                // Para cada disciplina e suas turmas
-                resultados.forEach(({ disciplina, turmas }) => {
-                    const tr = document.createElement('tr');
-                    
-                    // Nome da disciplina
-                    const tdDisciplina = document.createElement('td');
-                    tdDisciplina.innerHTML = `<strong>${disciplina.id_disciplina}</strong> - ${disciplina.nome_disciplina}`;
-                    tr.appendChild(tdDisciplina);
-                    
-                    // Turmas da disciplina
-                    const tdTurmas = document.createElement('td');
-                    if (turmas.length > 0) {
-                        const turmasTexto = turmas.map(turma => `
-                            <span class="badge bg-secondary me-1">${turma.id_turma}</span>
-                        `).join(' ');
-                        tdTurmas.innerHTML = turmasTexto;
-                    } else {
-                        tdTurmas.innerHTML = '<small class="text-muted">Sem turmas vinculadas</small>';
-                    }
-                    tr.appendChild(tdTurmas);
-                    
-                    // Adicionar à tabela
-                    disciplinasTurmasLista.appendChild(tr);
+                // Filtrar apenas as disciplinas selecionadas
+                const disciplinasFiltradas = disciplinas.filter(d => 
+                    disciplinasSelecionadas.includes(d.id_disciplina)
+                );
+                
+                if (disciplinasFiltradas.length === 0) {
+                    disciplinasTurmasLista.innerHTML = `
+                        <tr class="text-center">
+                            <td colspan="2">Nenhuma informação disponível para as disciplinas selecionadas</td>
+                        </tr>
+                    `;
+                    return;
+                }
+                
+                // Para cada disciplina selecionada, buscar as turmas diretamente do endpoint específico
+                const promessas = disciplinasFiltradas.map(disciplina => {
+                    return fetch(CONFIG.getApiUrl(`/disciplinas/${disciplina.id_disciplina}/turmas`))
+                        .then(response => response.ok ? response.json() : [])
+                        .then(turmas => {
+                            console.log(`Turmas vinculadas à disciplina ${disciplina.id_disciplina}:`, turmas);
+                            
+                            // Se temos turmas, buscar detalhes completos de cada uma
+                            if (turmas.length > 0) {
+                                // Para cada turma, buscar seus detalhes completos
+                                const turmasPromises = turmas.map(turma => {
+                                    return fetch(CONFIG.getApiUrl(`/turmas/${turma.id_turma}`))
+                                        .then(response => response.ok ? response.json() : null)
+                                        .then(detalhes => {
+                                            console.log(`Detalhes da turma ${turma.id_turma}:`, detalhes);
+                                            return {
+                                                id_turma: turma.id_turma,
+                                                serie: detalhes ? detalhes.serie : turma.serie || 'Sem série'
+                                            };
+                                        })
+                                        .catch(err => {
+                                            console.warn(`Erro ao buscar detalhes da turma ${turma.id_turma}:`, err);
+                                            return turma; // Manter a turma original em caso de erro
+                                        });
+                                });
+                                
+                                return Promise.all(turmasPromises).then(turmasDetalhadas => {
+                                    const tr = document.createElement('tr');
+                                    tr.innerHTML = `
+                                        <td>${disciplina.id_disciplina} - ${disciplina.nome_disciplina}</td>
+                                        <td>${turmasDetalhadas.length > 0 
+                                            ? turmasDetalhadas.map(t => `${t.id_turma} (${t.serie || 'Série não informada'})`).join(', ') 
+                                            : '<span class="text-warning">Nenhuma turma vinculada</span>'}
+                                        </td>
+                                    `;
+                                    return tr;
+                                });
+                            } else {
+                                const tr = document.createElement('tr');
+                                tr.innerHTML = `
+                                    <td>${disciplina.id_disciplina} - ${disciplina.nome_disciplina}</td>
+                                    <td><span class="text-warning">Nenhuma turma vinculada</span></td>
+                                `;
+                                return tr;
+                            }
+                        })
+                        .catch(error => {
+                            console.error(`Erro ao buscar turmas da disciplina ${disciplina.id_disciplina}:`, error);
+                            
+                            const tr = document.createElement('tr');
+                            tr.innerHTML = `
+                                <td>${disciplina.id_disciplina} - ${disciplina.nome_disciplina}</td>
+                                <td class="text-danger">Erro ao buscar turmas vinculadas</td>
+                            `;
+                            
+                            return tr;
+                        });
                 });
+                
+                // Aguardar todas as promessas e adicionar os resultados à tabela
+                Promise.all(promessas)
+                    .then(linhas => {
+                        if (linhas.length === 0) {
+                            disciplinasTurmasLista.innerHTML = `
+                                <tr class="text-center">
+                                    <td colspan="2">Nenhuma informação disponível</td>
+                                </tr>
+                            `;
+                            return;
+                        }
+                        
+                        // Adicionar todas as linhas à tabela
+                        linhas.forEach(linha => {
+                            disciplinasTurmasLista.appendChild(linha);
+                        });
+                    });
             })
             .catch(error => {
-                console.error('Erro ao carregar turmas das disciplinas:', error);
+                console.error("Erro ao atualizar tabela:", error);
                 disciplinasTurmasLista.innerHTML = `
                     <tr class="text-center">
                         <td colspan="2">Erro ao carregar informações: ${error.message}</td>
@@ -2544,122 +2565,89 @@ function initProfessores() {
     
     // Função para editar professor
     function editarProfessor(idProfessor) {
-        console.log("### FUNÇÃO EDITARPROFESSOR NO FINAL DO ARQUIVO CHAMADA - ID:", idProfessor);
+        console.log("Editando professor ID:", idProfessor);
         
-        try {
-            // Buscar os dados do professor
-            fetch(CONFIG.getApiUrl(`/professores/${idProfessor}`))
-                .then(response => {
-                    console.log("Resposta da API (fim do arquivo):", response.status, response.statusText);
-                    if (!response.ok) {
-                        throw new Error('Erro ao buscar professor: ' + response.statusText);
+        // Buscar os dados do professor
+        fetch(CONFIG.getApiUrl(`/professores/${idProfessor}`))
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Erro ao buscar professor: ' + response.statusText);
+                }
+                return response.json();
+            })
+            .then(professor => {
+                // Preencher o formulário com os dados do professor
+                const formProfessor = document.getElementById('form-professor');
+                const formModoProfessor = document.getElementById('form-modo-professor');
+                
+                if (formProfessor) {
+                    // Preencher campos do formulário
+                    if (document.getElementById('id_professor')) {
+                        document.getElementById('id_professor').value = professor.id_professor || '';
+                        document.getElementById('id_professor').disabled = true; // Não permitir alterar ID
                     }
-                    return response.json();
-                })
-                .then(professor => {
-                    console.log("Dados do professor recebidos (fim do arquivo):", professor);
+                    if (document.getElementById('nome_professor')) {
+                        document.getElementById('nome_professor').value = professor.nome_professor || '';
+                    }
+                    if (document.getElementById('email_professor')) {
+                        document.getElementById('email_professor').value = professor.email_professor || '';
+                    }
                     
-                    // Preencher o formulário com os dados do professor
-                    const formProfessor = document.getElementById('form-professor');
-                    const formModoProfessor = document.getElementById('form-modo-professor');
+                    // Limpar senha - não carregamos a senha por segurança
+                    if (document.getElementById('senha_professor')) {
+                        document.getElementById('senha_professor').value = '';
+                    }
                     
-                    if (formProfessor) {
-                        console.log("Formulário encontrado (fim do arquivo), preenchendo campos");
+                    // Setar o modo do formulário para edição
+                    if (formModoProfessor) {
+                        formModoProfessor.value = 'editar';
+                    }
+                    
+                    // Atualizar título do formulário se existir
+                    const formTitulo = document.getElementById('form-professor-titulo');
+                    if (formTitulo) {
+                        formTitulo.textContent = 'Editar Professor';
+                    }
+                    
+                    // Selecionar disciplinas do professor no select
+                    const vinculoDisciplinas = document.getElementById('vinculo_disciplinas');
+                    if (vinculoDisciplinas && professor.disciplinas) {
+                        // Limpar seleções anteriores
+                        Array.from(vinculoDisciplinas.options).forEach(option => {
+                            option.selected = false;
+                        });
                         
-                        // Preencher campos do formulário
-                        if (document.getElementById('id_professor')) {
-                            document.getElementById('id_professor').value = professor.id_professor || '';
-                            document.getElementById('id_professor').disabled = true; // Não permitir alterar ID
-                            console.log("Campo ID preenchido (fim do arquivo):", professor.id_professor);
-                        } else {
-                            console.warn("Campo id_professor não encontrado no formulário");
-                        }
-                        
-                        if (document.getElementById('nome_professor')) {
-                            document.getElementById('nome_professor').value = professor.nome_professor || '';
-                            console.log("Campo nome preenchido:", professor.nome_professor);
-                        } else {
-                            console.warn("Campo nome_professor não encontrado no formulário");
-                        }
-                        
-                        if (document.getElementById('email_professor')) {
-                            document.getElementById('email_professor').value = professor.email_professor || '';
-                            console.log("Campo email preenchido:", professor.email_professor);
-                        } else {
-                            console.warn("Campo email_professor não encontrado no formulário");
-                        }
-                        
-                        // Limpar senha - não carregamos a senha por segurança
-                        if (document.getElementById('senha_professor')) {
-                            document.getElementById('senha_professor').value = '';
-                        }
-                        
-                        // Setar o modo do formulário para edição
-                        if (formModoProfessor) {
-                            formModoProfessor.value = 'editar';
-                            console.log("Modo do formulário alterado para: editar");
-                        }
-                        
-                        // Atualizar título do formulário se existir
-                        const formTitulo = document.getElementById('form-professor-titulo');
-                        if (formTitulo) {
-                            formTitulo.textContent = 'Editar Professor';
-                        }
-                        
-                        // Selecionar disciplinas do professor no select
-                        const vinculoDisciplinas = document.getElementById('vinculo_disciplinas');
-                        if (vinculoDisciplinas && professor.disciplinas) {
-                            console.log("Selecionando disciplinas:", professor.disciplinas);
-                            
-                            // Limpar seleções anteriores
+                        // Selecionar disciplinas do professor
+                        professor.disciplinas.forEach(idDisciplina => {
                             Array.from(vinculoDisciplinas.options).forEach(option => {
-                                option.selected = false;
+                                if (option.value === idDisciplina) {
+                                    option.selected = true;
+                                }
                             });
-                            
-                            // Selecionar disciplinas do professor
-                            professor.disciplinas.forEach(idDisciplina => {
-                                Array.from(vinculoDisciplinas.options).forEach(option => {
-                                    if (option.value === idDisciplina) {
-                                        option.selected = true;
-                                        console.log("Disciplina selecionada:", idDisciplina);
-                                    }
-                                });
-                            });
-                            
-                            // Disparar evento de change para atualizar qualquer UI dependente
-                            const event = new Event('change');
-                            vinculoDisciplinas.dispatchEvent(event);
-                        } else {
-                            console.warn("Elemento vinculo_disciplinas não encontrado ou professor sem disciplinas");
-                        }
+                        });
                         
-                        // Rolar até o formulário
-                        formProfessor.scrollIntoView({behavior: 'smooth'});
-                        console.log("Rolando até o formulário");
-                        
-                        // Mostrar botão de cancelar caso exista
-                        const btnCancelar = document.getElementById('btn-cancelar-professor');
-                        if (btnCancelar) {
-                            btnCancelar.style.display = 'inline-block';
-                        }
-                        
-                        alert("Professor carregado para edição com sucesso!");
-                    } else {
-                        console.error("Formulário do professor não encontrado!");
-                        alert("Erro: Formulário do professor não encontrado na página!");
+                        // Disparar evento de change para atualizar qualquer UI dependente
+                        const event = new Event('change');
+                        vinculoDisciplinas.dispatchEvent(event);
                     }
-                })
-                .catch(error => {
-                    console.error("Erro ao buscar dados do professor:", error);
-                    alert(`Erro ao buscar dados do professor: ${error.message}`);
-                });
-        } catch (err) {
-            console.error("Erro não tratado na função editarProfessor:", err);
-            alert("Erro inesperado ao editar professor. Veja o console para detalhes.");
-        }
+                    
+                    // Rolar até o formulário
+                    formProfessor.scrollIntoView({behavior: 'smooth'});
+                    
+                    // Mostrar botão de cancelar caso exista
+                    const btnCancelar = document.getElementById('btn-cancelar-professor');
+                    if (btnCancelar) {
+                        btnCancelar.style.display = 'inline-block';
+                    }
+                }
+            })
+            .catch(error => {
+                console.error("Erro ao buscar dados do professor:", error);
+                alert(`Erro ao buscar dados do professor: ${error.message}`);
+            });
     }
     
-    // Função para excluir um professor - também movida para o escopo global
+    // Função para excluir um professor
     function excluirProfessor(idProfessor) {
         console.log("Excluindo professor ID:", idProfessor);
         
@@ -5411,145 +5399,3 @@ function processarVinculosTurmas(idDisciplina, turmasSelecionadas, turmasOrigina
         throw error;
     });
 }
-
-// Função para editar professor - movida para o escopo global
-function editarProfessor(idProfessor) {
-    console.log("Editando professor ID:", idProfessor);
-    
-    // Buscar os dados do professor
-    fetch(CONFIG.getApiUrl(`/professores/${idProfessor}`))
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Erro ao buscar professor: ' + response.statusText);
-            }
-            return response.json();
-        })
-        .then(professor => {
-            // Preencher o formulário com os dados do professor
-            const formProfessor = document.getElementById('form-professor');
-            const formModoProfessor = document.getElementById('form-modo-professor');
-            
-            if (formProfessor) {
-                // Preencher campos do formulário
-                if (document.getElementById('id_professor')) {
-                    document.getElementById('id_professor').value = professor.id_professor || '';
-                    document.getElementById('id_professor').disabled = true; // Não permitir alterar ID
-                }
-                if (document.getElementById('nome_professor')) {
-                    document.getElementById('nome_professor').value = professor.nome_professor || '';
-                }
-                if (document.getElementById('email_professor')) {
-                    document.getElementById('email_professor').value = professor.email_professor || '';
-                }
-                
-                // Limpar senha - não carregamos a senha por segurança
-                if (document.getElementById('senha_professor')) {
-                    document.getElementById('senha_professor').value = '';
-                }
-                
-                // Setar o modo do formulário para edição
-                if (formModoProfessor) {
-                    formModoProfessor.value = 'editar';
-                }
-                
-                // Atualizar título do formulário se existir
-                const formTitulo = document.getElementById('form-professor-titulo');
-                if (formTitulo) {
-                    formTitulo.textContent = 'Editar Professor';
-                }
-                
-                // Selecionar disciplinas do professor no select
-                const vinculoDisciplinas = document.getElementById('vinculo_disciplinas');
-                if (vinculoDisciplinas && professor.disciplinas) {
-                    // Limpar seleções anteriores
-                    Array.from(vinculoDisciplinas.options).forEach(option => {
-                        option.selected = false;
-                    });
-                    
-                    // Selecionar disciplinas do professor
-                    professor.disciplinas.forEach(idDisciplina => {
-                        Array.from(vinculoDisciplinas.options).forEach(option => {
-                            if (option.value === idDisciplina) {
-                                option.selected = true;
-                            }
-                        });
-                    });
-                    
-                    // Disparar evento de change para atualizar qualquer UI dependente
-                    const event = new Event('change');
-                    vinculoDisciplinas.dispatchEvent(event);
-                }
-                
-                // Rolar até o formulário
-                formProfessor.scrollIntoView({behavior: 'smooth'});
-                
-                // Mostrar botão de cancelar caso exista
-                const btnCancelar = document.getElementById('btn-cancelar-professor');
-                if (btnCancelar) {
-                    btnCancelar.style.display = 'inline-block';
-                }
-            }
-        })
-        .catch(error => {
-            console.error("Erro ao buscar dados do professor:", error);
-            alert(`Erro ao buscar dados do professor: ${error.message}`);
-        });
-}
-
-// Função para excluir um professor - também movida para o escopo global
-function excluirProfessor(idProfessor) {
-    console.log("Excluindo professor ID:", idProfessor);
-    
-    if (confirm(`Tem certeza que deseja excluir o professor com ID ${idProfessor}?`)) {
-        // Excluir o professor via API
-        fetch(CONFIG.getApiUrl(`/professores/${idProfessor}`), {
-            method: 'DELETE',
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`Erro ao excluir professor: ${response.status}`);
-            }
-            return response.json();
-        })
-        .then(() => {
-            // Recarregar a lista após exclusão bem-sucedida
-            carregarProfessores();
-        })
-        .catch(error => {
-            console.error('Erro ao excluir professor:', error);
-            alert('Ocorreu um erro ao excluir o professor. Por favor, tente novamente.');
-        });
-    }
-}
-
-// Garantir que os botões de editar professor estejam sempre funcionando
-document.addEventListener('DOMContentLoaded', function() {
-    console.log("Adicionando event listeners aos botões de editar professor");
-    
-    // Função para adicionar eventos aos botões de editar professor
-    function setupEditButtons() {
-        document.querySelectorAll('.editar-professor, .edit-professor').forEach(btn => {
-            // Remover qualquer evento anterior para evitar duplicação
-            const newBtn = btn.cloneNode(true);
-            if (btn.parentNode) {
-                btn.parentNode.replaceChild(newBtn, btn);
-            }
-            
-            // Adicionar novo event listener
-            newBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                const idProfessor = this.getAttribute('data-id');
-                console.log("Botão de editar professor clicado:", idProfessor);
-                editarProfessor(idProfessor);
-            });
-        });
-        console.log("Event listeners adicionados aos botões de editar professor");
-    }
-    
-    // Configurar os botões inicialmente
-    setupEditButtons();
-    
-    // Também configurar a cada 2 segundos para os botões que são adicionados dinamicamente
-    setInterval(setupEditButtons, 2000);
-});
