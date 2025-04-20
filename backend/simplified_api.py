@@ -12,12 +12,12 @@ import psycopg2
 import psycopg2.extras
 import uvicorn
 import sys
-import os
 from datetime import date, datetime
 import logging
 
 # Configurar logging
 logging.basicConfig(
+    filename='D:/gestaoEscolar1/debug_api.log',  # Caminho absoluto
     level=logging.DEBUG,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
@@ -34,9 +34,6 @@ if sys.version_info >= (3, 7):
         except:
             pass
 
-# Verificar se estamos em ambiente de produção
-IS_PRODUCTION = os.environ.get('PRODUCTION', 'False') == 'True'
-
 # Criação da aplicação FastAPI
 app = FastAPI(
     title="Sistema de Gestão Escolar API Simplificada",
@@ -47,33 +44,20 @@ app = FastAPI(
 # Configuração de CORS para permitir acesso do frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://gestao-escolar-frontend-n9aq.onrender.com"],  # Ajuste para os domínios específicos em produção
+    allow_origins=["*"],  # Ajuste para os domínios específicos em produção
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # Configuração de conexão com o banco de dados
-# Usar variáveis de ambiente em produção
-if IS_PRODUCTION:
-    # Para produção no Render
-    DB_PARAMS = {
-        "dbname": os.environ.get("DB_NAME", "gestao_escolar"),
-        "user": os.environ.get("DB_USER", "postgres"),
-        "password": os.environ.get("DB_PASSWORD", ""),
-        "host": os.environ.get("DB_HOST", "localhost"),
-        "port": os.environ.get("DB_PORT", "5432"),
-        "sslmode": "require"
-    }
-else:
-    # Para desenvolvimento local
-    DB_PARAMS = {
-        "dbname": "gestao_escolar",
-        "user": "postgres",
-        "password": "4chrOn0s",
-        "host": "localhost",
-        "port": "5432"
-    }
+DB_PARAMS = {
+    "dbname": "gestao_escolar",
+    "user": "postgres",
+    "password": "4chrOn0s",
+    "host": "localhost",
+    "port": "5432"
+}
 
 # Função para obter uma conexão com o banco de dados
 def get_db_connection():
@@ -159,20 +143,6 @@ class DisciplinaUpdate(BaseModel):
 
 class Disciplina(DisciplinaBase):
     id: int
-    
-    class Config:
-        from_attributes = True
-
-# Modelo para TurmaDisciplina
-class TurmaDisciplinaBase(BaseModel):
-    id_disciplina: str
-    id_turma: str
-
-class TurmaDisciplinaCreate(TurmaDisciplinaBase):
-    pass
-
-class TurmaDisciplina(TurmaDisciplinaBase):
-    id: Optional[int] = None
     
     class Config:
         from_attributes = True
@@ -1599,10 +1569,9 @@ def get_professor_turmas(professor_id: str):
         if not professor_result:
             raise HTTPException(status_code=404, detail=f"Professor com ID {professor_id} não encontrado")
         
-        # Buscar todas as turmas do professor com contagem de alunos
+        # Buscar todas as turmas do professor
         query_turmas = """
-        SELECT DISTINCT t.*, 
-            (SELECT COUNT(*) FROM aluno a WHERE a.id_turma = t.id_turma) as qtd_alunos
+        SELECT DISTINCT t.* 
         FROM turma t
         JOIN professor_disciplina_turma pdt ON t.id_turma = pdt.id_turma
         WHERE pdt.id_professor = %s
@@ -1616,22 +1585,16 @@ def get_professor_turmas(professor_id: str):
         
         turmas = []
         for turma in turmas_result:
-            # Assegurar que cada campo existe antes de tentar acessá-lo
-            serie = turma.get("serie", "")
-            turno = turma.get("turno", "")
-            
             turmas.append({
                 "id": turma["id"],
                 "id_turma": turma["id_turma"],
-                "serie_turma": serie,
-                "turno_turma": turno,
-                "qtd_alunos": turma.get("qtd_alunos", 0),
-                "ano_letivo": turma.get("ano_letivo", 0)
+                "serie_turma": turma["serie"] if "serie" in turma else "Sem série",  # Corrigido: "serie" em vez de "serie_turma"
+                "turno_turma": turma["turno"] if "turno" in turma else "Sem turno",  # Corrigido: "turno" em vez de "turno_turma"
+                "qtd_alunos": turma["qtd_alunos"] if "qtd_alunos" in turma else 0,
+                "ano_letivo": turma["ano_letivo"] if "ano_letivo" in turma else 0
             })
         
         print(f"Encontradas {len(turmas)} turmas para o professor {professor_id}")
-        # Para depuração
-        print(f"Dados das turmas: {turmas}")
         return turmas
         
     except HTTPException:
@@ -1650,12 +1613,9 @@ def get_professor_alunos(professor_id: str, turma_id: Optional[str] = None):
     try:
         # Verificar se o professor existe
         query_professor = "SELECT id_professor FROM professor WHERE id_professor = %s"
-        print(f"Executando query para verificar professor: {query_professor} com parâmetro: {professor_id}")
         professor_result = execute_query(query_professor, (professor_id,), fetch_one=True)
-        print(f"Resultado da query de professor: {professor_result}")
         
         if not professor_result:
-            print(f"Professor com ID {professor_id} não encontrado")
             raise HTTPException(status_code=404, detail=f"Professor com ID {professor_id} não encontrado")
         
         # Construir a query base
@@ -1675,49 +1635,24 @@ def get_professor_alunos(professor_id: str, turma_id: Optional[str] = None):
         
         query_alunos += " ORDER BY a.nome_aluno"
         
-        print(f"Executando query para buscar alunos: {query_alunos} com parâmetros: {params}")
         alunos_result = execute_query(query_alunos, tuple(params))
-        print(f"Resultados retornados: {len(alunos_result) if alunos_result else 0}")
         
         if not alunos_result:
             print(f"Nenhum aluno encontrado para o professor {professor_id}")
             if turma_id:
                 print(f"com o filtro de turma {turma_id}")
-                
-            # Verificar se o professor tem vínculos com turmas
-            vinculos_query = """
-            SELECT COUNT(*) as total FROM professor_disciplina_turma 
-            WHERE id_professor = %s
-            """
-            vinculos_result = execute_query(vinculos_query, (professor_id,), fetch_one=True)
-            print(f"Verificação de vínculos do professor: {vinculos_result}")
-            
-            # Verificar se existem alunos nas turmas vinculadas ao professor
-            alunos_turmas_query = """
-            SELECT t.id_turma, COUNT(a.id_aluno) as total_alunos
-            FROM professor_disciplina_turma pdt
-            JOIN turma t ON pdt.id_turma = t.id_turma
-            LEFT JOIN aluno a ON t.id_turma = a.id_turma
-            WHERE pdt.id_professor = %s
-            GROUP BY t.id_turma
-            """
-            alunos_turmas_result = execute_query(alunos_turmas_query, (professor_id,))
-            print(f"Verificação de alunos nas turmas do professor: {alunos_turmas_result}")
-            
             return []
         
         alunos = []
         for aluno in alunos_result:
-            print(f"Processando aluno: {aluno['id_aluno']} - {aluno['nome_aluno']}")
-            aluno_obj = {
+            alunos.append({
                 "id": aluno["id"],
                 "id_aluno": aluno["id_aluno"],
                 "nome_aluno": aluno["nome_aluno"],
                 "id_turma": aluno["id_turma"],
-                "email_aluno": aluno.get("email"),  # Using get() to avoid KeyError
-                "telefone_aluno": aluno.get("telefone")  # Using get() to avoid KeyError
-            }
-            alunos.append(aluno_obj)
+                "email_aluno": aluno["email_aluno"] if "email_aluno" in aluno else None,
+                "telefone_aluno": aluno["telefone_aluno"] if "telefone_aluno" in aluno else None
+            })
         
         filtro_msg = f" na turma {turma_id}" if turma_id else ""
         print(f"Encontrados {len(alunos)} alunos para o professor {professor_id}{filtro_msg}")
@@ -1726,13 +1661,11 @@ def get_professor_alunos(professor_id: str, turma_id: Optional[str] = None):
     except HTTPException:
         raise
     except Exception as e:
-        print(f"ERRO ao buscar alunos do professor: {str(e)}")
+        print(f"Erro ao buscar alunos do professor: {str(e)}")
         raise HTTPException(
             status_code=500,
             detail=f"Erro ao buscar alunos do professor: {str(e)}"
         )
-    finally:
-        print(f"=== FINALIZANDO BUSCA DE ALUNOS DO PROFESSOR {professor_id} ===")
 
 @app.get("/api/professores/{professor_id}/turmas/{turma_id}/disciplinas")
 def get_professor_disciplinas_turma(professor_id: str, turma_id: str):
@@ -2531,31 +2464,18 @@ def update_nota(nota_id: int, nota: NotaUpdate, request: Request):
             conn.close()
             raise HTTPException(status_code=404, detail="Turma não encontrada")
         
-        # Verificar se o parâmetro override_media está presente
-        # Se estiver, usar o valor de media fornecido pelo cliente
-        if request.query_params.get('override_media') == 'true' and nota.media is not None:
-            media = nota.media
-            print(f"Usando média fornecida pelo cliente: {media}")
+        # Calcular média
+        nota_mensal = nota.nota_mensal or 0
+        nota_bimestral = nota.nota_bimestral or 0
+        recuperacao = nota.recuperacao or 0
+        
+        # Se tem recuperação, considera na média (60% maior nota + 40% recuperação)
+        if recuperacao > 0:
+            maior_nota = max(nota_mensal, nota_bimestral)
+            media = round((maior_nota * 0.6) + (recuperacao * 0.4), 1)
         else:
-            # Calcular média usando a fórmula correta
-            nota_mensal = nota.nota_mensal or 0
-            nota_bimestral = nota.nota_bimestral or 0
-            recuperacao = nota.recuperacao or 0
-            
-            # Calcular média inicial
-            if nota_mensal > 0 and nota_bimestral > 0:
-                # Se ambas as notas estão presentes, a média é a média aritmética
-                media = round((nota_mensal + nota_bimestral) / 2, 1)
-            elif nota_mensal > 0:
-                media = nota_mensal
-            elif nota_bimestral > 0:
-                media = nota_bimestral
-            else:
-                media = 0
-            
-            # Se tem recuperação, a média final é a média entre a média anterior e a nota de recuperação
-            if recuperacao > 0:
-                media = round((media + recuperacao) / 2, 1)
+            # Senão, média simples entre mensal e bimestral
+            media = round((nota_mensal + nota_bimestral) / 2, 1) if (nota_mensal > 0 or nota_bimestral > 0) else 0
         
         # Atualizar nota
         cursor.execute("""
@@ -3149,17 +3069,13 @@ def read_notas_by_professor(
 ):
     """Busca notas específicas do professor informado."""
     try:
-        print(f"=== BUSCANDO NOTAS PARA O PROFESSOR: {professor_id} ===")
-        print(f"Parâmetros: ano={ano}, bimestre={bimestre}, id_turma={id_turma}, id_disciplina={id_disciplina}, id_aluno={id_aluno}")
+        print(f"Buscando notas para o professor: {professor_id}")
         
         # Verificar se o professor existe
         professor_query = "SELECT id FROM professor WHERE id_professor = %s"
-        print(f"Executando query para verificar professor: {professor_query} com parâmetro: {professor_id}")
         professor_result = execute_query(professor_query, (professor_id,), fetch_one=True)
-        print(f"Resultado da query de professor: {professor_result}")
         
         if not professor_result:
-            print(f"Professor com ID {professor_id} não encontrado")
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Professor com ID {professor_id} não encontrado"
@@ -3213,7 +3129,6 @@ def read_notas_by_professor(
         
         # Executar a consulta
         notas_results = execute_query(query, params)
-        print(f"Resultados retornados: {len(notas_results) if notas_results else 0}")
         
         # Converter resultados para o formato de resposta
         notas = []
@@ -3222,44 +3137,16 @@ def read_notas_by_professor(
             notas.append(nota)
             
         print(f"Encontradas {len(notas)} notas para o professor {professor_id}")
-        
-        # Se não houver resultados, retornar uma lista vazia mas com uma mensagem informativa no log
-        if not notas:
-            print(f"ATENÇÃO: Nenhuma nota encontrada para o professor {professor_id} com os filtros informados")
-            # Vamos verificar se há notas sem o relacionamento com professor_disciplina_turma
-            verificar_query = """
-            SELECT COUNT(*) as total 
-            FROM nota n 
-            WHERE EXISTS (
-                SELECT 1 FROM professor_disciplina_turma pdt 
-                WHERE pdt.id_professor = %s 
-                AND pdt.id_disciplina = n.id_disciplina 
-                AND pdt.id_turma = n.id_turma
-            )
-            """
-            verificar_result = execute_query(verificar_query, (professor_id,), fetch_one=True)
-            print(f"Verificação de notas relacionadas: {verificar_result}")
-            
-            # Verificar vinculações do professor
-            vinculos_query = """
-            SELECT COUNT(*) as total FROM professor_disciplina_turma 
-            WHERE id_professor = %s
-            """
-            vinculos_result = execute_query(vinculos_query, (professor_id,), fetch_one=True)
-            print(f"Verificação de vínculos do professor: {vinculos_result}")
-        
         return notas
         
     except HTTPException:
         raise
     except Exception as e:
-        print(f"ERRO ao buscar notas do professor {professor_id}: {e}")
+        print(f"Erro ao buscar notas do professor {professor_id}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Erro ao buscar notas: {str(e)}"
         )
-    finally:
-        print(f"=== FINALIZANDO BUSCA DE NOTAS DO PROFESSOR: {professor_id} ===")
 
 # ===============================================================
 # ENDPOINTS PARA GERENCIAMENTO DO ESQUEMA DO BANCO DE DADOS
@@ -3304,905 +3191,6 @@ def verificar_campos_tabelas():
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Erro ao verificar/modificar esquema: {str(e)}"
         )
-
-@app.get("/api/professores/{professor_id}/disciplinas")
-def get_professor_disciplinas(
-    professor_id: str = Path(..., description="ID do professor para buscar disciplinas")
-):
-    """Recupera todas as disciplinas associadas a um professor específico."""
-    print(f"=== BUSCANDO DISCIPLINAS DO PROFESSOR: {professor_id} ===")
-    try:
-        # Verificar se o professor existe
-        query_professor = "SELECT * FROM professor WHERE id_professor = %s"
-        professor_result = execute_query(query_professor, (professor_id,), fetch_one=True)
-        
-        if not professor_result:
-            print(f"Professor com ID {professor_id} não encontrado")
-            raise HTTPException(status_code=404, detail="Professor não encontrado")
-        
-        print(f"Professor encontrado: {professor_id}")
-        
-        # Buscar as disciplinas vinculadas ao professor
-        query = """
-        SELECT DISTINCT d.id_disciplina, d.nome_disciplina
-        FROM disciplina d
-        JOIN professor_disciplina_turma pdt ON d.id_disciplina = pdt.id_disciplina
-        WHERE pdt.id_professor = %s
-        """
-        results = execute_query(query, (professor_id,))
-        
-        if not results:
-            print(f"Nenhuma disciplina encontrada para o professor {professor_id}")
-            return []
-        
-        # Converter os resultados em um formato mais detalhado
-        disciplinas = []
-        for row in results:
-            disciplina = {
-                "id_disciplina": row["id_disciplina"],
-                "nome_disciplina": row["nome_disciplina"]
-            }
-            disciplinas.append(disciplina)
-            print(f"Disciplina encontrada: {disciplina['id_disciplina']} - {disciplina['nome_disciplina']}")
-        
-        print(f"Total de disciplinas encontradas: {len(disciplinas)}")
-        return disciplinas
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"ERRO ao buscar disciplinas do professor {professor_id}: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erro ao buscar disciplinas do professor: {str(e)}"
-        )
-    finally:
-        print(f"=== FINALIZANDO BUSCA DE DISCIPLINAS DO PROFESSOR: {professor_id} ===")
-
-@app.get("/api/professores/{professor_id}/estatisticas")
-def get_professor_estatisticas(professor_id: str = Path(..., description="ID do professor")):
-    """Retorna estatísticas do professor para o dashboard."""
-    print(f"=== BUSCANDO ESTATÍSTICAS DO PROFESSOR: {professor_id} ===")
-    try:
-        # Verificar se o professor existe
-        query_professor = "SELECT * FROM professor WHERE id_professor = %s"
-        print(f"Executando query para verificar professor: {query_professor} com parâmetro: {professor_id}")
-        professor_result = execute_query(query_professor, (professor_id,), fetch_one=True)
-        
-        print(f"Resultado da query de professor: {professor_result}")
-        
-        if not professor_result:
-            print(f"Professor com ID {professor_id} não encontrado")
-            raise HTTPException(status_code=404, detail="Professor não encontrado")
-        
-        print(f"Professor encontrado: {professor_id}")
-        
-        # Contar turmas do professor
-        query_turmas = """
-        SELECT COUNT(DISTINCT id_turma) as total_turmas 
-        FROM professor_disciplina_turma 
-        WHERE id_professor = %s
-        """
-        print(f"Executando query para contar turmas: {query_turmas} com parâmetro: {professor_id}")
-        turmas_result = execute_query(query_turmas, (professor_id,), fetch_one=True)
-        print(f"Resultado da query de turmas: {turmas_result}")
-        total_turmas = turmas_result["total_turmas"] if turmas_result else 0
-        
-        # Contar disciplinas do professor
-        query_disciplinas = """
-        SELECT COUNT(DISTINCT id_disciplina) as total_disciplinas 
-        FROM professor_disciplina_turma 
-        WHERE id_professor = %s
-        """
-        print(f"Executando query para contar disciplinas: {query_disciplinas} com parâmetro: {professor_id}")
-        disciplinas_result = execute_query(query_disciplinas, (professor_id,), fetch_one=True)
-        print(f"Resultado da query de disciplinas: {disciplinas_result}")
-        total_disciplinas = disciplinas_result["total_disciplinas"] if disciplinas_result else 0
-        
-        # Contar alunos do professor (todos os alunos nas turmas que ele leciona)
-        query_alunos = """
-        SELECT COUNT(DISTINCT a.id_aluno) as total_alunos
-        FROM aluno a
-        JOIN professor_disciplina_turma pdt ON a.id_turma = pdt.id_turma
-        WHERE pdt.id_professor = %s
-        """
-        print(f"Executando query para contar alunos: {query_alunos} com parâmetro: {professor_id}")
-        alunos_result = execute_query(query_alunos, (professor_id,), fetch_one=True)
-        print(f"Resultado da query de alunos: {alunos_result}")
-        total_alunos = alunos_result["total_alunos"] if alunos_result else 0
-        
-        # Contar notas lançadas pelo professor (todas as notas das disciplinas que ele leciona)
-        query_notas = """
-        SELECT COUNT(*) as total_notas
-        FROM nota n
-        JOIN professor_disciplina_turma pdt ON n.id_disciplina = pdt.id_disciplina AND n.id_turma = pdt.id_turma
-        WHERE pdt.id_professor = %s
-        """
-        print(f"Executando query para contar notas: {query_notas} com parâmetro: {professor_id}")
-        notas_result = execute_query(query_notas, (professor_id,), fetch_one=True)
-        print(f"Resultado da query de notas: {notas_result}")
-        total_notas = notas_result["total_notas"] if notas_result else 0
-        
-        estatisticas = {
-            "total_turmas": total_turmas,
-            "total_disciplinas": total_disciplinas,
-            "total_alunos": total_alunos,
-            "total_notas": total_notas
-        }
-        
-        print(f"Estatísticas do professor {professor_id}: {estatisticas}")
-        return estatisticas
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"ERRO ao buscar estatísticas do professor {professor_id}: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erro ao buscar estatísticas do professor: {str(e)}"
-        )
-    finally:
-        print(f"=== FINALIZANDO BUSCA DE ESTATÍSTICAS DO PROFESSOR: {professor_id} ===")
-
-# ==============================================================
-# Endpoints para vincular Disciplinas e Turmas
-# ==============================================================
-
-@app.post("/api/disciplinas/{disciplina_id}/turmas", response_model=List[TurmaDisciplina])
-def create_disciplina_turmas(
-    disciplina_id: str = Path(..., description="ID ou código da disciplina"),
-    turmas_ids: List[str] = Body(..., embed=True, description="Lista de IDs de turmas para vincular")
-):
-    """
-    Vincula uma ou mais turmas a uma disciplina específica.
-    Envie um JSON com o formato: {"turmas_ids": ["id1", "id2", ...]}
-    """
-    print(f"DEBUG: Endpoint POST disciplina-turmas acessado. Disciplina: {disciplina_id}, Turmas: {turmas_ids}")
-    try:
-        # Verificar se a disciplina existe
-        if disciplina_id.isdigit():
-            query_disciplina = "SELECT id_disciplina FROM disciplina WHERE id = %s"
-            params = (int(disciplina_id),)
-        else:
-            query_disciplina = "SELECT id_disciplina FROM disciplina WHERE id_disciplina = %s"
-            params = (disciplina_id,)
-        
-        disciplina = execute_query(query_disciplina, params, fetch_one=True)
-        
-        if not disciplina:
-            raise HTTPException(status_code=404, detail="Disciplina não encontrada")
-        
-        id_disciplina = disciplina["id_disciplina"]
-        
-        # Lista para armazenar os vínculos criados
-        vinculos_criados = []
-        
-        # Para cada ID de turma, verificar se a turma existe e criar o vínculo
-        for turma_id in turmas_ids:
-            # Verificar se a turma existe
-            query_turma = "SELECT id_turma FROM turma WHERE id_turma = %s"
-            turma = execute_query(query_turma, (turma_id,), fetch_one=True)
-            
-            if not turma:
-                print(f"DEBUG: Turma {turma_id} não encontrada, pulando")
-                continue  # Se a turma não existe, pular
-            
-            # Verificar se o vínculo já existe
-            query_vinculo = """
-            SELECT id FROM turma_disciplina 
-            WHERE id_disciplina = %s AND id_turma = %s
-            """
-            vinculo_existente = execute_query(query_vinculo, (id_disciplina, turma_id), fetch_one=True)
-            
-            if not vinculo_existente:
-                # Criar o vínculo
-                query_insert = """
-                INSERT INTO turma_disciplina (id_disciplina, id_turma)
-                VALUES (%s, %s)
-                RETURNING id, id_disciplina, id_turma
-                """
-                novo_vinculo = execute_query(query_insert, (id_disciplina, turma_id), fetch_one=True)
-                
-                vinculos_criados.append({
-                    "id": novo_vinculo["id"],
-                    "id_disciplina": novo_vinculo["id_disciplina"],
-                    "id_turma": novo_vinculo["id_turma"]
-                })
-                
-                print(f"DEBUG: Vínculo criado entre {id_disciplina} e {turma_id}")
-            else:
-                print(f"DEBUG: Vínculo já existe entre {id_disciplina} e {turma_id}")
-                vinculos_criados.append({
-                    "id": vinculo_existente["id"],
-                    "id_disciplina": id_disciplina,
-                    "id_turma": turma_id
-                })
-        
-        return vinculos_criados
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"Erro ao vincular turmas à disciplina: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erro ao vincular turmas à disciplina: {str(e)}"
-        )
-
-@app.delete("/api/disciplinas/{disciplina_id}/turmas", status_code=status.HTTP_204_NO_CONTENT)
-def delete_disciplina_turmas(
-    disciplina_id: str = Path(..., description="ID ou código da disciplina"),
-    turma_id: Optional[str] = Query(None, description="ID da turma específica a ser desvinculada")
-):
-    """
-    Remove vínculos entre uma disciplina e uma ou todas as turmas.
-    Se turma_id for fornecido como query parameter, remove apenas o vínculo com essa turma.
-    Caso contrário, remove todos os vínculos da disciplina.
-    """
-    print(f"DEBUG: Removendo vínculos da disciplina {disciplina_id}, turma específica: {turma_id}")
-    try:
-        # Verificar se a disciplina existe
-        if disciplina_id.isdigit():
-            query_disciplina = "SELECT id_disciplina FROM disciplina WHERE id = %s"
-            params = (int(disciplina_id),)
-        else:
-            query_disciplina = "SELECT id_disciplina FROM disciplina WHERE id_disciplina = %s"
-            params = (disciplina_id,)
-        
-        disciplina = execute_query(query_disciplina, params, fetch_one=True)
-        
-        if not disciplina:
-            raise HTTPException(status_code=404, detail="Disciplina não encontrada")
-        
-        id_disciplina = disciplina["id_disciplina"]
-        
-        # Construir a query para remover vínculos
-        if turma_id:
-            # Verificar se a turma existe
-            query_turma = "SELECT id_turma FROM turma WHERE id_turma = %s"
-            turma = execute_query(query_turma, (turma_id,), fetch_one=True)
-            
-            if not turma:
-                raise HTTPException(status_code=404, detail="Turma não encontrada")
-            
-            query_delete = "DELETE FROM turma_disciplina WHERE id_disciplina = %s AND id_turma = %s"
-            execute_query(query_delete, (id_disciplina, turma_id), fetch=False)
-            print(f"DEBUG: Vínculo entre disciplina {id_disciplina} e turma {turma_id} removido")
-        else:
-            # Remover todos os vínculos da disciplina
-            query_delete = "DELETE FROM turma_disciplina WHERE id_disciplina = %s"
-            execute_query(query_delete, (id_disciplina,), fetch=False)
-            print(f"DEBUG: Todos os vínculos da disciplina {id_disciplina} removidos")
-        
-        return None
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"Erro ao remover vínculos de turmas: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erro ao remover vínculos de turmas: {str(e)}"
-        )
-
-@app.post("/api/disciplinas/{disciplina_id}/turmas/{turma_id}", response_model=TurmaDisciplina)
-def create_disciplina_turma(
-    disciplina_id: str = Path(..., description="ID ou código da disciplina"),
-    turma_id: str = Path(..., description="ID da turma")
-):
-    """
-    Vincula uma turma específica a uma disciplina.
-    """
-    print(f"DEBUG: Vinculando disciplina {disciplina_id} à turma {turma_id}")
-    try:
-        # Verificar se a disciplina existe
-        if disciplina_id.isdigit():
-            query_disciplina = "SELECT id_disciplina FROM disciplina WHERE id = %s"
-            params = (int(disciplina_id),)
-        else:
-            query_disciplina = "SELECT id_disciplina FROM disciplina WHERE id_disciplina = %s"
-            params = (disciplina_id,)
-        
-        disciplina = execute_query(query_disciplina, params, fetch_one=True)
-        
-        if not disciplina:
-            raise HTTPException(status_code=404, detail="Disciplina não encontrada")
-        
-        id_disciplina = disciplina["id_disciplina"]
-        
-        # Verificar se a turma existe
-        query_turma = "SELECT id_turma FROM turma WHERE id_turma = %s"
-        turma = execute_query(query_turma, (turma_id,), fetch_one=True)
-        
-        if not turma:
-            raise HTTPException(status_code=404, detail="Turma não encontrada")
-        
-        # Verificar se o vínculo já existe
-        query_vinculo = """
-        SELECT id FROM turma_disciplina 
-        WHERE id_disciplina = %s AND id_turma = %s
-        """
-        vinculo_existente = execute_query(query_vinculo, (id_disciplina, turma_id), fetch_one=True)
-        
-        if vinculo_existente:
-            print(f"DEBUG: Vínculo já existe, retornando existente")
-            return {
-                "id": vinculo_existente["id"],
-                "id_disciplina": id_disciplina,
-                "id_turma": turma_id
-            }
-        
-        # Criar o vínculo
-        query_insert = """
-        INSERT INTO turma_disciplina (id_disciplina, id_turma)
-        VALUES (%s, %s)
-        RETURNING id, id_disciplina, id_turma
-        """
-        novo_vinculo = execute_query(query_insert, (id_disciplina, turma_id), fetch_one=True)
-        
-        print(f"DEBUG: Novo vínculo criado com id {novo_vinculo['id']}")
-        return {
-            "id": novo_vinculo["id"],
-            "id_disciplina": novo_vinculo["id_disciplina"],
-            "id_turma": novo_vinculo["id_turma"]
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"Erro ao vincular turma à disciplina: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erro ao vincular turma à disciplina: {str(e)}"
-        )
-
-@app.delete("/api/disciplinas/{disciplina_id}/turmas/{turma_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_disciplina_turma(
-    disciplina_id: str = Path(..., description="ID ou código da disciplina"),
-    turma_id: str = Path(..., description="ID da turma")
-):
-    """
-    Remove o vínculo entre uma disciplina específica e uma turma específica.
-    """
-    print(f"DEBUG: Removendo vínculo entre disciplina {disciplina_id} e turma {turma_id}")
-    try:
-        # Verificar se a disciplina existe
-        if disciplina_id.isdigit():
-            query_disciplina = "SELECT id_disciplina FROM disciplina WHERE id = %s"
-            params = (int(disciplina_id),)
-        else:
-            query_disciplina = "SELECT id_disciplina FROM disciplina WHERE id_disciplina = %s"
-            params = (disciplina_id,)
-        
-        disciplina = execute_query(query_disciplina, params, fetch_one=True)
-        
-        if not disciplina:
-            raise HTTPException(status_code=404, detail="Disciplina não encontrada")
-        
-        id_disciplina = disciplina["id_disciplina"]
-        
-        # Verificar se a turma existe
-        query_turma = "SELECT id_turma FROM turma WHERE id_turma = %s"
-        turma = execute_query(query_turma, (turma_id,), fetch_one=True)
-        
-        if not turma:
-            raise HTTPException(status_code=404, detail="Turma não encontrada")
-        
-        # Remover o vínculo
-        query_delete = """
-        DELETE FROM turma_disciplina 
-        WHERE id_disciplina = %s AND id_turma = %s
-        """
-        result = execute_query(query_delete, (id_disciplina, turma_id), fetch=False)
-        
-        print(f"DEBUG: Vínculo removido entre disciplina {id_disciplina} e turma {turma_id}")
-        return None
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"Erro ao remover vínculo de turma: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erro ao remover vínculo de turma: {str(e)}"
-        )
-
-@app.post("/api/professores/{professor_id}/disciplinas/{disciplina_id}", status_code=status.HTTP_201_CREATED)
-def vincular_professor_disciplina_basico(
-    professor_id: str = Path(..., description="ID do professor"),
-    disciplina_id: str = Path(..., description="ID da disciplina")
-):
-    """
-    Vincula um professor a uma disciplina, mesmo sem turmas vinculadas.
-    Este é um vínculo mais básico que permite associar professores a disciplinas
-    mesmo antes de haver turmas associadas.
-    """
-    print(f"=== CRIANDO VÍNCULO BÁSICO: Professor {professor_id} - Disciplina {disciplina_id} ===")
-    conn = None
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-        
-        # Verificar se o professor existe
-        cursor.execute("SELECT id FROM professor WHERE id_professor = %s", (professor_id,))
-        professor_result = cursor.fetchone()
-        
-        if not professor_result:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Professor {professor_id} não encontrado"
-            )
-        
-        # Verificar se a disciplina existe
-        cursor.execute("SELECT id FROM disciplina WHERE id_disciplina = %s", (disciplina_id,))
-        disciplina_result = cursor.fetchone()
-        
-        if not disciplina_result:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Disciplina {disciplina_id} não encontrada"
-            )
-        
-        # Verificar se a tabela professor_disciplina existe
-        cursor.execute("""
-            SELECT EXISTS (
-                SELECT 1 FROM information_schema.tables 
-                WHERE table_schema = 'public' AND table_name = 'professor_disciplina'
-            )
-        """)
-        
-        tabela_existe = cursor.fetchone()[0]
-        
-        if not tabela_existe:
-            # Criar a tabela professor_disciplina se não existir
-            cursor.execute("""
-                CREATE TABLE professor_disciplina (
-                    id SERIAL PRIMARY KEY,
-                    id_professor VARCHAR(10) NOT NULL,
-                    id_disciplina VARCHAR(10) NOT NULL,
-                    UNIQUE(id_professor, id_disciplina),
-                    FOREIGN KEY (id_professor) REFERENCES professor(id_professor),
-                    FOREIGN KEY (id_disciplina) REFERENCES disciplina(id_disciplina)
-                )
-            """)
-            print("Tabela professor_disciplina criada com sucesso.")
-        
-        # Verificar se o vínculo já existe
-        cursor.execute("""
-            SELECT id FROM professor_disciplina 
-            WHERE id_professor = %s AND id_disciplina = %s
-        """, (professor_id, disciplina_id))
-        
-        vinculo_existente = cursor.fetchone()
-        
-        if vinculo_existente:
-            return {
-                "status": "info",
-                "message": f"Vínculo entre professor {professor_id} e disciplina {disciplina_id} já existe",
-                "id": vinculo_existente["id"]
-            }
-        
-        # Criar o vínculo
-        cursor.execute("""
-            INSERT INTO professor_disciplina (id_professor, id_disciplina)
-            VALUES (%s, %s)
-            RETURNING id
-        """, (professor_id, disciplina_id))
-        
-        novo_vinculo = cursor.fetchone()
-        conn.commit()
-        
-        # Verificar se existem turmas vinculadas à disciplina para criar os vínculos completos
-        cursor.execute("""
-            SELECT td.id_turma 
-            FROM turma_disciplina td 
-            WHERE td.id_disciplina = %s
-        """, (disciplina_id,))
-        
-        turmas = cursor.fetchall()
-        vinculos_turmas_criados = 0
-        
-        if turmas:
-            # Também criar vínculos na tabela professor_disciplina_turma
-            for turma in turmas:
-                id_turma = turma["id_turma"]
-                
-                # Verificar se já existe o vínculo completo
-                cursor.execute("""
-                    SELECT id FROM professor_disciplina_turma 
-                    WHERE id_professor = %s AND id_disciplina = %s AND id_turma = %s
-                """, (professor_id, disciplina_id, id_turma))
-                
-                vinculo_completo_existente = cursor.fetchone()
-                
-                if not vinculo_completo_existente:
-                    # Inserir novo vínculo completo
-                    cursor.execute("""
-                        INSERT INTO professor_disciplina_turma (id_professor, id_disciplina, id_turma)
-                        VALUES (%s, %s, %s)
-                    """, (professor_id, disciplina_id, id_turma))
-                    
-                    vinculos_turmas_criados += 1
-            
-            conn.commit()
-        
-        return {
-            "status": "success",
-            "message": f"Vínculo criado entre professor {professor_id} e disciplina {disciplina_id}",
-            "id": novo_vinculo["id"],
-            "vinculos_turmas_criados": vinculos_turmas_criados
-        }
-    
-    except HTTPException:
-        if conn:
-            conn.rollback()
-        raise
-    except Exception as e:
-        if conn:
-            conn.rollback()
-        print(f"ERRO ao criar vínculo básico: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erro ao criar vínculo básico: {str(e)}"
-        )
-    finally:
-        if cursor:
-            cursor.close()
-        if conn:
-            conn.close()
-        print(f"=== FIM DA CRIAÇÃO DE VÍNCULO BÁSICO ===")
-
-
-@app.delete("/api/professores/{professor_id}/disciplinas/{disciplina_id}", status_code=status.HTTP_204_NO_CONTENT)
-def desvincular_professor_disciplina(
-    professor_id: str = Path(..., description="ID do professor"),
-    disciplina_id: str = Path(..., description="ID da disciplina")
-):
-    """
-    Remove todos os vínculos entre um professor e uma disciplina,
-    incluindo vínculos básicos e com turmas.
-    """
-    print(f"=== REMOVENDO VÍNCULOS: Professor {professor_id} - Disciplina {disciplina_id} ===")
-    conn = None
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        # Verificar se o professor existe
-        cursor.execute("SELECT id FROM professor WHERE id_professor = %s", (professor_id,))
-        professor_result = cursor.fetchone()
-        
-        if not professor_result:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Professor {professor_id} não encontrado"
-            )
-        
-        # Verificar se a disciplina existe
-        cursor.execute("SELECT id FROM disciplina WHERE id_disciplina = %s", (disciplina_id,))
-        disciplina_result = cursor.fetchone()
-        
-        if not disciplina_result:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Disciplina {disciplina_id} não encontrada"
-            )
-        
-        # Remover vínculos na tabela professor_disciplina_turma
-        cursor.execute("""
-            DELETE FROM professor_disciplina_turma 
-            WHERE id_professor = %s AND id_disciplina = %s
-        """, (professor_id, disciplina_id))
-        
-        vinculos_turmas_removidos = cursor.rowcount
-        
-        # Verificar se a tabela professor_disciplina existe
-        cursor.execute("""
-            SELECT EXISTS (
-                SELECT 1 FROM information_schema.tables 
-                WHERE table_schema = 'public' AND table_name = 'professor_disciplina'
-            )
-        """)
-        
-        tabela_existe = cursor.fetchone()[0]
-        
-        vinculos_basicos_removidos = 0
-        if tabela_existe:
-            # Remover vínculos na tabela professor_disciplina
-            cursor.execute("""
-                DELETE FROM professor_disciplina 
-                WHERE id_professor = %s AND id_disciplina = %s
-            """, (professor_id, disciplina_id))
-            
-            vinculos_basicos_removidos = cursor.rowcount
-        
-        conn.commit()
-        print(f"=== VÍNCULOS REMOVIDOS: {vinculos_turmas_removidos} com turmas, {vinculos_basicos_removidos} básicos ===")
-        
-        return None  # Retorno vazio para 204 No Content
-    
-    except HTTPException:
-        if conn:
-            conn.rollback()
-        raise
-    except Exception as e:
-        if conn:
-            conn.rollback()
-        print(f"ERRO ao remover vínculos: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erro ao remover vínculos: {str(e)}"
-        )
-    finally:
-        if cursor:
-            cursor.close()
-        if conn:
-            conn.close()
-        print(f"=== FIM DA REMOÇÃO DE VÍNCULOS ===")
-
-# Nova classe para criar/atualizar professores e vínculos em uma única operação
-class ProfessorComVinculos(BaseModel):
-    professor: Professor
-    disciplinas_ids: List[str] = []
-
-# Endpoint unificado para gerenciar professores e vínculos em uma única transação
-@app.post("/api/professores/completo", status_code=status.HTTP_201_CREATED)
-def gerenciar_professor_completo(dados: ProfessorComVinculos):
-    """
-    Endpoint otimizado que permite criar/atualizar um professor e todos seus vínculos
-    em uma única transação atômica.
-    """
-    print(f"=== GERENCIANDO PROFESSOR COMPLETO: {dados.professor.id_professor} ===")
-    conn = None
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-        
-        # Verificar se o professor já existe
-        cursor.execute("SELECT id FROM professor WHERE id_professor = %s", (dados.professor.id_professor,))
-        professor_existente = cursor.fetchone()
-        
-        if professor_existente:
-            # ATUALIZAR PROFESSOR EXISTENTE
-            
-            # Verificar se o e-mail já existe para outro professor
-            if dados.professor.email_professor:
-                cursor.execute("""
-                    SELECT id_professor FROM professor 
-                    WHERE email_professor = %s AND id_professor != %s
-                """, (dados.professor.email_professor, dados.professor.id_professor))
-                
-                email_existente = cursor.fetchone()
-                if email_existente:
-                    return {
-                        "status": "error",
-                        "message": f"E-mail já está em uso pelo professor {email_existente[0]}"
-                    }
-            
-            # Atualizar dados do professor
-            update_fields = []
-            params = []
-            if dados.professor.nome_professor:
-                update_fields.append("nome_professor = %s")
-                params.append(dados.professor.nome_professor)
-            if dados.professor.email_professor:
-                update_fields.append("email_professor = %s")
-                params.append(dados.professor.email_professor)
-            if dados.professor.senha_professor:
-                update_fields.append("senha = %s")  # nome do campo no banco é 'senha'
-                params.append(dados.professor.senha_professor)
-                
-            if update_fields:
-                query = f"UPDATE professor SET {', '.join(update_fields)} WHERE id_professor = %s"
-                params.append(dados.professor.id_professor)
-                cursor.execute(query, params)
-                
-                if cursor.rowcount == 0:
-                    conn.rollback()
-                    return {
-                        "status": "error",
-                        "message": "Falha ao atualizar dados do professor"
-                    }
-                    
-                print(f"Professor {dados.professor.id_professor} atualizado com sucesso")
-            
-            # Remover vínculos existentes
-            cursor.execute("""
-                DELETE FROM professor_disciplina_turma 
-                WHERE id_professor = %s
-            """, (dados.professor.id_professor,))
-            vinculos_removidos = cursor.rowcount
-            print(f"Removidos {vinculos_removidos} vínculos existentes")
-            
-            # Verificar se a tabela professor_disciplina existe
-            cursor.execute("""
-                SELECT EXISTS (
-                    SELECT 1 FROM information_schema.tables 
-                    WHERE table_schema = 'public' AND table_name = 'professor_disciplina'
-                )
-            """)
-            
-            tabela_existe = cursor.fetchone()[0]
-            
-            if tabela_existe:
-                # Remover também da tabela básica
-                cursor.execute("""
-                    DELETE FROM professor_disciplina 
-                    WHERE id_professor = %s
-                """, (dados.professor.id_professor,))
-                
-                vinculos_basicos_removidos = cursor.rowcount
-                print(f"Removidos {vinculos_basicos_removidos} vínculos básicos existentes")
-        else:
-            # CRIAR NOVO PROFESSOR
-            
-            # Verificar se já existe outro professor com o mesmo ID
-            cursor.execute("SELECT id FROM professor WHERE id_professor = %s", (dados.professor.id_professor,))
-            if cursor.fetchone():
-                return {
-                    "status": "error",
-                    "message": f"Já existe um professor com o ID {dados.professor.id_professor}"
-                }
-                
-            # Verificar se o e-mail já existe
-            if dados.professor.email_professor:
-                cursor.execute("SELECT id_professor FROM professor WHERE email_professor = %s", (dados.professor.email_professor,))
-                email_existente = cursor.fetchone()
-                if email_existente:
-                    return {
-                        "status": "error",
-                        "message": f"E-mail já está em uso pelo professor {email_existente[0]}"
-                    }
-            
-            # Inserir o novo professor
-            cursor.execute("""
-                INSERT INTO professor (id_professor, nome_professor, email_professor, senha) 
-                VALUES (%s, %s, %s, %s)
-            """, (
-                dados.professor.id_professor,
-                dados.professor.nome_professor,
-                dados.professor.email_professor,
-                dados.professor.senha_professor
-            ))
-            
-            print(f"Professor {dados.professor.id_professor} criado com sucesso")
-            
-        # PROCESSAR VÍNCULOS COM DISCIPLINAS
-        vinculos_criados = 0
-        vinculos_sem_turmas = 0
-        disciplinas_com_problema = []
-        turmas_vinculadas = []
-        
-        # Processar cada disciplina
-        for disciplina_id in dados.disciplinas_ids:
-            # Verificar se a disciplina existe
-            cursor.execute("SELECT id FROM disciplina WHERE id_disciplina = %s", (disciplina_id,))
-            disciplina_result = cursor.fetchone()
-            
-            if not disciplina_result:
-                print(f"Disciplina {disciplina_id} não encontrada")
-                disciplinas_com_problema.append({
-                    "id_disciplina": disciplina_id,
-                    "erro": "Disciplina não encontrada"
-                })
-                continue
-            
-            # Buscar turmas vinculadas à disciplina
-            cursor.execute("""
-                SELECT td.id_turma 
-                FROM turma_disciplina td 
-                WHERE td.id_disciplina = %s
-            """, (disciplina_id,))
-            
-            turmas = cursor.fetchall()
-            
-            if not turmas:
-                print(f"Disciplina {disciplina_id} não tem turmas vinculadas")
-                
-                # Verificar se a tabela professor_disciplina existe
-                cursor.execute("""
-                    SELECT EXISTS (
-                        SELECT 1 FROM information_schema.tables 
-                        WHERE table_schema = 'public' AND table_name = 'professor_disciplina'
-                    )
-                """)
-                
-                tabela_existe = cursor.fetchone()[0]
-                
-                if not tabela_existe:
-                    # Criar a tabela professor_disciplina se não existir
-                    cursor.execute("""
-                        CREATE TABLE professor_disciplina (
-                            id SERIAL PRIMARY KEY,
-                            id_professor VARCHAR(10) NOT NULL,
-                            id_disciplina VARCHAR(10) NOT NULL,
-                            UNIQUE(id_professor, id_disciplina),
-                            FOREIGN KEY (id_professor) REFERENCES professor(id_professor),
-                            FOREIGN KEY (id_disciplina) REFERENCES disciplina(id_disciplina)
-                        )
-                    """)
-                    print("Tabela professor_disciplina criada com sucesso.")
-                
-                # Verificar se já existe o vínculo básico
-                cursor.execute("""
-                    SELECT id FROM professor_disciplina 
-                    WHERE id_professor = %s AND id_disciplina = %s
-                """, (dados.professor.id_professor, disciplina_id))
-                
-                vinculo_basico_existente = cursor.fetchone()
-                
-                if not vinculo_basico_existente:
-                    # Criar vinculação básica sem turmas
-                    cursor.execute("""
-                        INSERT INTO professor_disciplina (id_professor, id_disciplina)
-                        VALUES (%s, %s)
-                    """, (dados.professor.id_professor, disciplina_id))
-                    
-                    vinculos_sem_turmas += 1
-                    print(f"Vínculo básico criado: Professor={dados.professor.id_professor}, Disciplina={disciplina_id} (sem turmas)")
-                
-                # Adicionar à lista de disciplinas com aviso
-                disciplinas_com_problema.append({
-                    "id_disciplina": disciplina_id,
-                    "aviso": "Disciplina sem turmas vinculadas"
-                })
-                
-                continue
-            
-            # Processar vínculos com turmas
-            for turma in turmas:
-                id_turma = turma['id_turma']
-                
-                # Inserir novo vínculo (sem verificar existência, pois já removemos todos)
-                cursor.execute("""
-                    INSERT INTO professor_disciplina_turma (id_professor, id_disciplina, id_turma)
-                    VALUES (%s, %s, %s)
-                """, (dados.professor.id_professor, disciplina_id, id_turma))
-                
-                vinculos_criados += 1
-                if id_turma not in turmas_vinculadas:
-                    turmas_vinculadas.append(id_turma)
-                print(f"Vínculo criado: Professor={dados.professor.id_professor}, Disciplina={disciplina_id}, Turma={id_turma}")
-        
-        # Commit da transação
-        conn.commit()
-        
-        # Buscar o professor atualizado
-        cursor.execute("""
-            SELECT id, id_professor, nome_professor, email_professor
-            FROM professor
-            WHERE id_professor = %s
-        """, (dados.professor.id_professor,))
-        
-        professor_atualizado = cursor.fetchone()
-        
-        print(f"=== FIM DO GERENCIAMENTO DO PROFESSOR: {vinculos_criados} vínculos criados, {vinculos_sem_turmas} vínculos sem turmas ===")
-        
-        # Construir resposta
-        return {
-            "status": "success",
-            "message": f"Professor gerenciado com sucesso: {vinculos_criados} vínculos criados, {vinculos_sem_turmas} sem turmas",
-            "professor": {
-                "id": professor_atualizado["id"],
-                "id_professor": professor_atualizado["id_professor"],
-                "nome_professor": professor_atualizado["nome_professor"],
-                "email_professor": professor_atualizado["email_professor"],
-                "disciplinas": dados.disciplinas_ids
-            },
-            "vinculos_criados": vinculos_criados,
-            "vinculos_sem_turmas": vinculos_sem_turmas,
-            "disciplinas_com_problema": disciplinas_com_problema,
-            "turmas_vinculadas": turmas_vinculadas
-        }
-        
-    except Exception as e:
-        if conn:
-            conn.rollback()
-        print(f"ERRO ao gerenciar professor: {str(e)}")
-        return {
-            "status": "error",
-            "message": f"Erro ao gerenciar professor: {str(e)}"
-        }
-    finally:
-        if cursor:
-            cursor.close()
-        if conn:
-            conn.close()
-        print(f"=== FIM DO PROCESSAMENTO DO PROFESSOR COMPLETO ===")
 
 # Inicialização do servidor (quando executado diretamente)
 if __name__ == "__main__":

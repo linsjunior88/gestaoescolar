@@ -40,7 +40,7 @@
                             <li><a class="dropdown-item" href="#"><i class="fas fa-cog"></i> Configurações</a></li>
                             <li><a class="dropdown-item" href="#" id="btn-reset-dados"><i class="fas fa-sync-alt"></i> Reiniciar Dados</a></li>
                             <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="#" id="btn-logout" style="position: relative; z-index: 9999; pointer-events: auto;"><i class="fas fa-sign-out-alt"></i> Sair</a></li>
+                            <li><a class="dropdown-item" href="index.html"><i class="fas fa-sign-out-alt"></i> Sair</a></li>
                         </ul>
                     </li>
                 </ul>
@@ -52,14 +52,14 @@
     <div class="container-fluid">
         <div class="row">
             <!-- Sidebar / Menu Lateral -->
-            <nav class="col-md-3 col-lg-2 d-md-block sidebar" id="sidebarMenu">
+            <nav class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse" id="sidebarMenu">
                 <div class="position-sticky pt-3">
                     <div class="d-flex justify-content-between align-items-center px-3 mb-3">
                         <span class="fs-5 fw-semibold d-none">Menu</span>
-                        <button type="button" class="btn btn-sm btn-link d-md-none" id="toggleSidebar">
+                        <button type="button" class="btn btn-sm btn-outline-primary d-md-none" id="toggleSidebar">
                             <i class="fas fa-bars"></i>
                         </button>
-                        <button type="button" class="btn btn-sm btn-link d-none d-md-block" id="toggleSidebarDesktop">
+                        <button type="button" class="btn btn-sm btn-outline-primary d-none d-md-block" id="toggleSidebarDesktop">
                             <i class="fas fa-angle-left" id="sidebarIcon"></i>
                         </button>
                     </div>
@@ -303,7 +303,7 @@
                         <h2 class="h3 mb-4">Gestão de Turmas</h2>
                         
                         <!-- Card para cadastro/edição de turmas -->
-                        <div class="card shadow mb-4" id="turmaForm">
+                        <div class="card shadow mb-4">
                             <div class="card-header py-3 d-flex justify-content-between align-items-center">
                                 <h6 class="m-0 font-weight-bold text-primary" id="form-turma-titulo">Nova Turma</h6>
                                 <button class="btn btn-outline-secondary btn-sm" id="btn-cancelar-turma" style="display: none;">
@@ -393,7 +393,7 @@
                         <h2 class="h3 mb-4">Gestão de Disciplinas</h2>
                         
                         <!-- Card para cadastro/edição de disciplinas -->
-                        <div class="card shadow mb-4" id="disciplinaForm">
+                        <div class="card shadow mb-4">
                             <div class="card-header py-3 d-flex justify-content-between align-items-center">
                                 <h6 class="m-0 font-weight-bold text-primary" id="form-disciplina-titulo">Nova Disciplina</h6>
                                 <button class="btn btn-outline-secondary btn-sm" id="btn-cancelar-disciplina" style="display: none;">
@@ -479,7 +479,7 @@
                         <h2 class="h3 mb-4">Gestão de Professores</h2>
                         
                         <!-- Card para cadastro/edição de professores -->
-                        <div class="card shadow mb-4" id="professorForm">
+                        <div class="card shadow mb-4">
                             <div class="card-header py-3 d-flex justify-content-between align-items-center">
                                 <h6 class="m-0 font-weight-bold text-primary" id="form-professor-titulo">Novo Professor</h6>
                                 <button class="btn btn-outline-secondary btn-sm" id="btn-cancelar-professor" style="display: none;">
@@ -500,18 +500,6 @@
                                         <div class="col-md-8">
                                             <label for="nome_professor" class="form-label">Nome do Professor</label>
                                             <input type="text" class="form-control" id="nome_professor" name="nome_professor" required placeholder="Nome completo do professor">
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="row mb-3">
-                                        <div class="col-md-6">
-                                            <label for="email_professor" class="form-label">Email</label>
-                                            <input type="email" class="form-control" id="email_professor" name="email_professor" required placeholder="email@exemplo.com">
-                                        </div>
-                                        <div class="col-md-6">
-                                            <label for="senha_professor" class="form-label">Senha</label>
-                                            <input type="password" class="form-control" id="senha_professor" name="senha_professor" required placeholder="Senha de acesso">
-                                            <div class="form-text">Será usada para login no sistema</div>
                                         </div>
                                     </div>
                                     
@@ -573,7 +561,6 @@
                                             <tr>
                                                 <th>ID</th>
                                                 <th>Nome do Professor</th>
-                                                <th>Email</th>
                                                 <th>Disciplinas</th>
                                                 <th>Turmas</th>
                                                 <th>Ações</th>
@@ -582,33 +569,7 @@
                                         <tbody id="professores-lista">
                                             <!-- Professores serão listados aqui via JavaScript -->
                                             <tr class="text-center">
-                                                <td colspan="6">Carregando professores...</td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Card para visualização dos vínculos entre professores, disciplinas e turmas -->
-                        <div class="card mt-4">
-                            <div class="card-header d-flex justify-content-between align-items-center">
-                                <h5 id="vinculos-detalhados-titulo" class="mb-0">Vínculos Detalhados</h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="table-responsive">
-                                    <table class="table table-striped table-hover">
-                                        <thead>
-                                            <tr>
-                                                <th>Professor</th>
-                                                <th>Disciplina</th>
-                                                <th>Turmas</th>
-                                                <th>Ações</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="tabela-vinculos-pdt-corpo">
-                                            <tr class="text-center">
-                                                <td colspan="4">Clique em um professor para ver seus vínculos</td>
+                                                <td colspan="5">Nenhum professor cadastrado</td>
                                             </tr>
                                         </tbody>
                                     </table>
@@ -917,35 +878,6 @@
         </div>
     </div>
 
-    <!-- Modal para exibir vínculos do professor -->
-    <div class="modal fade" id="vinculos-professor-modal" tabindex="-1" aria-labelledby="vinculosProfessorModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="vinculosProfessorModalLabel">Vínculos do Professor</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-                </div>
-                <div class="modal-body">
-                    <table class="table table-striped table-hover">
-                        <thead>
-                            <tr>
-                                <th>Disciplina</th>
-                                <th>Turma</th>
-                                <th>Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody id="vinculos-professor-tabela">
-                            <!-- Conteúdo será preenchido dinamicamente -->
-                        </tbody>
-                    </table>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- Rodapé -->
     <footer class="footer mt-auto py-3 bg-light">
         <div class="container">
@@ -959,294 +891,11 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <!-- Chart.js para os gráficos -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- jQuery (necessário para algumas funcionalidades Bootstrap) -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    
-    <!-- Scripts do dashboard -->
+    <!-- JavaScript Personalizado -->
     <script src="js/config.js"></script>
     <script src="js/api-checker.js"></script>
     <script src="js/scripts.js"></script>
     <script src="js/dashboard.js"></script>
-    
-    <!-- Script para garantir que o botão de logout funcione -->
-    <script>
-        // Função de logout direta
-        function fazerLogout() {
-            console.log("Logout direto acionado");
-            // Limpar sessão
-            sessionStorage.clear();
-            // Redirecionar para a página inicial
-            window.location.href = 'index.html';
-        }
-        
-        // Função para ativar seção quando um link do sidebar é clicado
-        function ativarSecao(linkId) {
-            console.log("Ativando seção:", linkId);
-            
-            // Remover classe ativa de todos os links
-            for (const key in links) {
-                if (links[key]) {
-                    links[key].classList.remove('active');
-                }
-            }
-            
-            // Adicionar classe ativa ao link clicado
-            if (links[linkId]) {
-                links[linkId].classList.add('active');
-            }
-            
-            // Ocultar todos os conteúdos
-            for (const key in conteudos) {
-                if (conteudos[key]) {
-                    conteudos[key].classList.remove('active');
-                }
-            }
-            
-            // Mostrar o conteúdo correspondente
-            if (conteudos[linkId]) {
-                conteudos[linkId].classList.add('active');
-                
-                // Atualizar título da página
-                const pageTitle = document.querySelector('.d-flex.justify-content-between h1');
-                if (pageTitle) {
-                    switch(linkId) {
-                        case 'dashboard': pageTitle.textContent = 'Dashboard Administrativo'; break;
-                        case 'turmas': pageTitle.textContent = 'Gestão de Turmas'; break;
-                        case 'disciplinas': pageTitle.textContent = 'Gestão de Disciplinas'; break;
-                        case 'professores': pageTitle.textContent = 'Gestão de Professores'; break;
-                        case 'alunos': pageTitle.textContent = 'Gestão de Alunos'; break;
-                        case 'notas': pageTitle.textContent = 'Gestão de Notas'; break;
-                        default: pageTitle.textContent = 'Dashboard Administrativo';
-                    }
-                }
-            }
-        }
-        
-        // Função para alternar o sidebar (expandir/recolher)
-        function toggleSidebarFunc() {
-            const sidebar = document.getElementById('sidebarMenu');
-            const mainContent = document.getElementById('mainContent');
-            const sidebarIcon = document.getElementById('sidebarIcon');
-            
-            console.log("Toggle sidebar chamado - estado atual:", sidebar ? sidebar.classList.contains('collapsed') : "sidebar não encontrado");
-            
-            if (!sidebar) {
-                console.error("Elemento sidebar não encontrado!");
-                return;
-            }
-            
-            sidebar.classList.toggle('collapsed');
-            
-            // Alternar a margem do conteúdo principal quando o sidebar é recolhido
-            if (sidebar.classList.contains('collapsed')) {
-                console.log("Recolhendo sidebar...");
-                if (mainContent) mainContent.style.marginLeft = '4.5rem';
-                if (sidebarIcon) {
-                    sidebarIcon.style.transform = 'rotate(180deg)';
-                }
-            } else {
-                console.log("Expandindo sidebar...");
-                if (mainContent) mainContent.style.marginLeft = ''; // Voltar para o valor padrão do CSS
-                if (sidebarIcon) {
-                    sidebarIcon.style.transform = '';
-                }
-            }
-            
-            // Salvar o estado do sidebar no localStorage
-            localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
-            console.log("Estado do sidebar salvo no localStorage:", sidebar.classList.contains('collapsed'));
-        }
-        
-        // Garantir que o botão de logout tenha o evento de clique
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log("DOM carregado, inicializando funcionalidades...");
-            
-            // Inicializar links do sidebar manualmente
-            links = {
-                dashboard: document.getElementById('dashboard-link'),
-                turmas: document.getElementById('turmas-link'),
-                disciplinas: document.getElementById('disciplinas-link'),
-                professores: document.getElementById('professores-link'),
-                alunos: document.getElementById('alunos-link'),
-                notas: document.getElementById('notas-link')
-            };
-            
-            conteudos = {
-                dashboard: document.getElementById('conteudo-dashboard'),
-                turmas: document.getElementById('conteudo-turmas'),
-                disciplinas: document.getElementById('conteudo-disciplinas'),
-                professores: document.getElementById('conteudo-professores'),
-                alunos: document.getElementById('conteudo-alunos'),
-                notas: document.getElementById('conteudo-notas')
-            };
-            
-            // Associar eventos de clique aos links
-            for (const key in links) {
-                if (links[key]) {
-                    links[key].addEventListener('click', function(e) {
-                        e.preventDefault();
-                        ativarSecao(key);
-                    });
-                    console.log("Evento click adicionado ao link:", key);
-                }
-            }
-            
-            // Inicializar o toggle do sidebar
-            const toggleSidebar = document.getElementById('toggleSidebar');
-            const toggleSidebarDesktop = document.getElementById('toggleSidebarDesktop');
-            
-            // Identifica o sidebar correto para este dashboard
-            let sidebarMenuElement = document.getElementById('sidebarMenu');
-            // Se não encontrar, tenta com o ID usado na página atual
-            if (!sidebarMenuElement) {
-                console.log("Elemento com ID 'sidebarMenu' não encontrado, tentando encontrar pela classe 'sidebar'");
-                // Tente encontrar o sidebar pela classe
-                sidebarMenuElement = document.querySelector('.sidebar');
-                if (sidebarMenuElement) {
-                    console.log("Encontrado sidebar pela classe '.sidebar'");
-                } else {
-                    console.error("Não foi possível encontrar o elemento sidebar!");
-                }
-            }
-            
-            // Referência global para uso em outros lugares
-            window.sidebarElement = sidebarMenuElement;
-            
-            if (toggleSidebar) {
-                toggleSidebar.addEventListener('click', function() {
-                    if (sidebarMenuElement) {
-                        sidebarMenuElement.classList.toggle('show-mobile');
-                    }
-                });
-            }
-            
-            if (toggleSidebarDesktop) {
-                console.log("Adicionando evento de clique ao botão de toggle do sidebar");
-                
-                // Importante: remover qualquer listener existente primeiro para evitar duplicações
-                const btnClone = toggleSidebarDesktop.cloneNode(true);
-                if (toggleSidebarDesktop.parentNode) {
-                    toggleSidebarDesktop.parentNode.replaceChild(btnClone, toggleSidebarDesktop);
-                }
-                
-                // Adicionar o event listener ao elemento clonado
-                btnClone.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    console.log("Botão de toggle do sidebar clicado");
-                    toggleSidebarFunc();
-                });
-                
-                console.log("Evento de toggle adicionado ao botão do sidebar desktop");
-            } else {
-                console.error("Botão de toggle do sidebar não encontrado!");
-            }
-            
-            // Verificar se o sidebar estava recolhido anteriormente
-            const sidebarCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
-            console.log("Estado do sidebar no localStorage:", sidebarCollapsed);
-            
-            // Importante: Inicializamos ao contrário porque a função toggleSidebarFunc irá trocar o estado
-            if (sidebarMenuElement) {
-                if (sidebarCollapsed) {
-                    if (!sidebarMenuElement.classList.contains('collapsed')) {
-                        console.log("Inicializando sidebar como recolhido");
-                        toggleSidebarFunc();
-                    }
-                } else {
-                    if (sidebarMenuElement.classList.contains('collapsed')) {
-                        console.log("Inicializando sidebar como expandido");
-                        toggleSidebarFunc();
-                    }
-                }
-            }
-            
-            var btnLogout = document.getElementById('btn-logout');
-            if (btnLogout) {
-                btnLogout.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    fazerLogout();
-                });
-                console.log("Evento de logout registrado com sucesso");
-            } else {
-                console.error("Elemento btn-logout não encontrado!");
-            }
-            
-            // Adicionar event listener global para capturar cliques em qualquer lugar do documento
-            document.addEventListener('click', function(e) {
-                // Verificar se o clique foi no botão de logout ou em algum de seus elementos filhos
-                if (e.target.id === 'btn-logout' || e.target.closest('#btn-logout')) {
-                    e.preventDefault();
-                    console.log("Clique no botão de logout capturado globalmente");
-                    fazerLogout();
-                }
-            });
-            
-            // Adicionar evento de teclado para permitir logout via tecla ESC
-            document.addEventListener('keydown', function(e) {
-                if (e.key === 'Escape' && document.querySelector('.dropdown-menu.show')) {
-                    console.log("Tecla ESC pressionada com dropdown aberto");
-                    fazerLogout();
-                }
-            });
-        });
-    </script>
-    <script>
-        // Garantir que as funções estejam acessíveis globalmente
-        window.onload = function() {
-            if (typeof window.editarTurma !== 'function') {
-                console.log("Exportando funções manualmente para o escopo global");
-                window.editarTurma = window.editarTurma || function(id) { console.log("Função editarTurma acionada para:", id); };
-                window.excluirTurma = window.excluirTurma || function(id) { console.log("Função excluirTurma acionada para:", id); };
-                window.editarDisciplina = window.editarDisciplina || function(id) { console.log("Função editarDisciplina acionada para:", id); };
-                window.excluirDisciplina = window.excluirDisciplina || function(id) { console.log("Função excluirDisciplina acionada para:", id); };
-                window.editarProfessor = window.editarProfessor || function(id) { console.log("Função editarProfessor acionada para:", id); };
-                window.excluirProfessor = window.excluirProfessor || function(id) { console.log("Função excluirProfessor acionada para:", id); };
-            }
-        };
-    </script>
-
-    <!-- Modal para Disciplinas -->
-    <div class="modal fade" id="modalDisciplina" tabindex="-1" aria-labelledby="modalDisciplinaLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="modalDisciplinaLabel">Nova Disciplina</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="formDisciplina">
-                        <div class="mb-3">
-                            <label for="idDisciplina" class="form-label">ID da Disciplina</label>
-                            <input type="text" class="form-control" id="idDisciplina" placeholder="Ex: MAT, PORT" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="nomeDisciplina" class="form-label">Nome da Disciplina</label>
-                            <input type="text" class="form-control" id="nomeDisciplina" placeholder="Ex: Matemática, Português" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="descricaoDisciplina" class="form-label">Carga Horária</label>
-                            <input type="text" class="form-control" id="descricaoDisciplina" placeholder="Ex: 60, 90">
-                        </div>
-                        <div class="mb-3">
-                            <label for="turmasDisciplina" class="form-label">Turmas Vinculadas</label>
-                            <select class="form-select" id="turmasDisciplina" multiple>
-                                <!-- Turmas serão carregadas via JavaScript -->
-                            </select>
-                            <small class="form-text text-muted">Segure CTRL para selecionar múltiplas turmas</small>
-                            <div id="turmas-vinculadas-preview" class="mt-2">
-                                <p class="text-muted">Selecione turmas para vincular à disciplina</p>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-secondary" id="cancelarEdicaoDisciplina" style="display: none;">Cancelar</button>
-                    <button type="submit" class="btn btn-primary" form="formDisciplina">Salvar</button>
-                </div>
-            </div>
-        </div>
-    </div>
+    <script src="js/init.js"></script>
 </body>
 </html> 
