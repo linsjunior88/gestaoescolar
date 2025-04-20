@@ -1585,12 +1585,45 @@ function initProfessores() {
         return;
     }
     
+    // Verificar e criar botão de cancelar se não existir
+    if (!btnCancelarProfessor && formProfessor) {
+        console.log("Botão cancelar não encontrado, criando um novo...");
+        
+        // Encontrar o botão de submit
+        const submitButton = formProfessor.querySelector('button[type="submit"]');
+        
+        if (submitButton) {
+            // Criar botão cancelar
+            const cancelButton = document.createElement('button');
+            cancelButton.id = 'btn-cancelar-professor';
+            cancelButton.type = 'button';
+            cancelButton.className = 'btn btn-secondary ms-2';
+            cancelButton.textContent = 'Cancelar';
+            
+            // Adicionar o botão após o botão de submit
+            if (submitButton.parentNode) {
+                submitButton.parentNode.insertBefore(cancelButton, submitButton.nextSibling);
+            }
+            
+            // Adicionar event listener
+            cancelButton.addEventListener('click', function() {
+                resetFormProfessor();
+            });
+        }
+    } else if (btnCancelarProfessor) {
+        // Se o botão já existe, certifique-se de que tenha o event listener correto
+        btnCancelarProfessor.addEventListener('click', function() {
+            resetFormProfessor();
+        });
+    }
+    
     // Exibir elementos encontrados para debug
     console.log("Elementos do módulo de professores encontrados:");
     console.log("professoresLista:", professoresLista);
     console.log("formProfessor:", formProfessor);
     console.log("vinculoDisciplinas:", vinculoDisciplinas);
     console.log("btnNovoProfessor:", btnNovoProfessor);
+    console.log("btnCancelarProfessor:", btnCancelarProfessor || document.getElementById('btn-cancelar-professor'));
     
     // Função para limpar cache local de professores
     function limparCacheProfessores() {
@@ -1778,14 +1811,14 @@ function initProfessores() {
             .then(data => {
                 console.log("Resposta do endpoint completo:", data);
                 
+                // Reativar o botão de submit independentemente do resultado
+                if (submitButton) {
+                    submitButton.disabled = false;
+                    submitButton.innerHTML = 'Salvar';
+                }
+                
                 if (data.status === "error") {
                     mostrarFeedback(`Erro: ${data.message}`, 'danger');
-                    
-                    // Reativar o botão
-                    if (submitButton) {
-                        submitButton.disabled = false;
-                        submitButton.textContent = 'Salvar';
-                    }
                     return;
                 }
                 
@@ -2207,12 +2240,12 @@ function initProfessores() {
                 
                 // Adicionar eventos para os botões de remover vínculo
                 document.querySelectorAll('.remover-vinculo').forEach(btn => {
-                    btn.addEventListener('click', function() {
+                    btn.addEventListener('click', function(event) {
                         const professorId = this.getAttribute('data-professor');
                         const disciplinaId = this.getAttribute('data-disciplina');
                         
                         if (confirm(`Deseja remover o vínculo do professor ${professorId} com a disciplina ${disciplinaId}?`)) {
-                            removerVinculoProfessorDisciplina(professorId, disciplinaId);
+                            removerVinculoProfessorDisciplina(professorId, disciplinaId, event);
                         }
                     });
                 });
@@ -2364,10 +2397,12 @@ function initProfessores() {
                         
                         // Adicionar event listeners aos botões de remover vínculo
                         document.querySelectorAll('.remover-vinculo').forEach(btn => {
-                            btn.addEventListener('click', function() {
+                            btn.addEventListener('click', function(event) {
                                 const professorId = this.getAttribute('data-professor');
                                 const disciplinaId = this.getAttribute('data-disciplina');
-                                removerVinculoProfessorDisciplina(professorId, disciplinaId);
+                                
+                                // Passar o evento para que o botão clicado possa ser identificado
+                                removerVinculoProfessorDisciplina(professorId, disciplinaId, event);
                             });
                         });
                     });
@@ -2673,29 +2708,47 @@ function initProfessores() {
     }
     
     // Função para remover vínculo entre professor e disciplina
-    function removerVinculoProfessorDisciplina(professorId, disciplinaId) {
+    function removerVinculoProfessorDisciplina(professorId, disciplinaId, evento) {
         console.log(`Removendo vínculo: Professor ${professorId} - Disciplina ${disciplinaId}`);
         
-        if (confirm(`Deseja remover o vínculo entre o professor e a disciplina ${disciplinaId}?`)) {
-            // Remover vínculo via API
-            fetch(CONFIG.getApiUrl(`/professores/${professorId}/disciplinas/${disciplinaId}`), {
-                method: 'DELETE'
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Erro ao remover vínculo: ' + response.statusText);
-                }
-                return response.text();
-            })
-            .then(() => {
-                alert('Vínculo removido com sucesso!');
-                carregarTabelaProfessoresDisciplinasTurmas();
-            })
-            .catch(error => {
-                console.error("Erro ao remover vínculo:", error);
-                alert('Erro ao remover vínculo.');
-            });
+        // Identificar o botão que foi clicado (se houver)
+        // Primeiro tentar usar o evento passado, depois o evento global se disponível
+        const e = evento || event;
+        const botaoClicado = e ? e.currentTarget : null;
+        
+        // Guardar o estado original do botão
+        const conteudoOriginal = botaoClicado ? botaoClicado.innerHTML : null;
+        
+        // Desabilitar e mostrar indicador de processamento no botão
+        if (botaoClicado) {
+            botaoClicado.disabled = true;
+            botaoClicado.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processando...';
         }
+        
+        // Remover vínculo via API
+        fetch(CONFIG.getApiUrl(`/professores/${professorId}/disciplinas/${disciplinaId}`), {
+            method: 'DELETE'
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Erro ao remover vínculo: ' + response.statusText);
+            }
+            return response.text();
+        })
+        .then(() => {
+            alert('Vínculo removido com sucesso!');
+            carregarTabelaProfessoresDisciplinasTurmas();
+        })
+        .catch(error => {
+            console.error("Erro ao remover vínculo:", error);
+            alert('Erro ao remover vínculo: ' + error.message);
+            
+            // Restaurar o botão em caso de erro
+            if (botaoClicado) {
+                botaoClicado.disabled = false;
+                botaoClicado.innerHTML = conteudoOriginal || '<i class="fas fa-unlink"></i>';
+            }
+        });
     }
     
     // Função para resetar o formulário
@@ -2704,17 +2757,32 @@ function initProfessores() {
         formModoProfessor.value = 'novo';
         
         // Atualizar título e esconder botão cancelar
-        formProfessorTitulo.textContent = 'Novo Professor';
-        btnCancelarProfessor.style.display = 'none';
+        if (formProfessorTitulo) {
+            formProfessorTitulo.textContent = 'Novo Professor';
+        }
         
-        // Remover readonly do ID
-        document.getElementById('id_professor').readOnly = false;
+        // Buscar o botão cancelar (pode ter sido criado dinamicamente)
+        const btnCancelar = btnCancelarProfessor || document.getElementById('btn-cancelar-professor');
+        if (btnCancelar) {
+            btnCancelar.style.display = 'none';
+        }
+        
+        // Habilitar campo de ID
+        const idProfessorInput = document.getElementById('id_professor');
+        if (idProfessorInput) {
+            idProfessorInput.disabled = false;
+            idProfessorInput.readOnly = false;
+        }
         
         // Desmarcar todas as disciplinas
         if (vinculoDisciplinas) {
             Array.from(vinculoDisciplinas.options).forEach(option => {
                 option.selected = false;
             });
+            
+            // Disparar evento de change para atualizar a visualização
+            const event = new Event('change');
+            vinculoDisciplinas.dispatchEvent(event);
         }
         
         // Limpar tabela de disciplinas e turmas
@@ -2725,6 +2793,10 @@ function initProfessores() {
                 </tr>
             `;
         }
+        
+        // Limpar qualquer feedback anterior
+        const feedbackElements = formProfessor.querySelectorAll('.alert');
+        feedbackElements.forEach(element => element.remove());
     }
 }
 
