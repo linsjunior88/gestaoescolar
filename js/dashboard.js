@@ -1728,88 +1728,6 @@ function initProfessores() {
                         
                         // Para cada disciplina selecionada, criar vínculo usando o novo endpoint
                         const promessas = disciplinasSelecionadas.map(idDisciplina => {
-                            // Usar o novo endpoint que corrige os vínculos
-                            return fetch(CONFIG.getApiUrl('/professores/vinculos'), {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json'
-                                },
-                                body: JSON.stringify({
-                                    id_professor: idProfessor,
-                                    id_disciplina: idDisciplina
-                                })
-                            })
-                            .then(response => {
-                                if (!response.ok) {
-                                    console.warn(`Aviso ao vincular disciplina ${idDisciplina}: ${response.statusText}`);
-                                }
-                                return response.json();
-                            })
-                            .then(data => {
-                                console.log(`Resultado da vinculação para disciplina ${idDisciplina}:`, data);
-                                return data;
-                            })
-                            .catch(err => {
-                                console.error(`Erro ao vincular disciplina ${idDisciplina}:`, err);
-                                return null;
-                            });
-                        });
-                        
-                        // Executar todas as promessas de vinculação
-                        return Promise.all(promessas);
-                    });
-                })
-                .then(() => {
-                    alert('Professor atualizado com sucesso!');
-                    
-                    // Resetar formulário e carregar lista atualizada
-                    resetFormProfessor();
-                    carregarProfessores();
-                    carregarTabelaProfessoresDisciplinasTurmas();
-                })
-                .catch(error => {
-                    console.error("Erro ao atualizar professor:", error);
-                    alert(`Erro ao atualizar professor: ${error.message}`);
-                    
-                    // Atualizar no localStorage como fallback
-                    const professores = JSON.parse(localStorage.getItem('professores') || '[]');
-                    const index = professores.findIndex(p => p.id_professor === idProfessor);
-                    
-                    if (index !== -1) {
-                        professores[index] = professor;
-                    } else {
-                        professores.push(professor);
-                    }
-                    
-                    localStorage.setItem('professores', JSON.stringify(professores));
-                    
-                    alert(`Professor ${nomeProfessor} atualizado localmente.`);
-                    resetFormProfessor();
-                    carregarProfessores();
-                });
-            } else {
-                // Adicionar novo professor via API
-                fetch(CONFIG.getApiUrl('/professores'), {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(professor)
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Erro ao adicionar professor: ' + response.statusText);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    console.log("Professor adicionado com sucesso:", data);
-                    
-                    // Criar vínculos para as disciplinas selecionadas usando o novo endpoint
-                    console.log("Criando vínculos para disciplinas:", disciplinasSelecionadas);
-                    
-                    // Para cada disciplina selecionada, usar o novo endpoint
-                    const promessas = disciplinasSelecionadas.map(idDisciplina => {
                         return fetch(CONFIG.getApiUrl('/professores/vinculos'), {
                             method: 'POST',
                             headers: {
@@ -5441,6 +5359,7 @@ function editarProfessor(idProfessor) {
                 if (document.getElementById('senha_professor')) {
                     document.getElementById('senha_professor').value = '';
                 }
+                
                 
                 // Setar o modo do formulário para edição
                 if (formModoProfessor) {

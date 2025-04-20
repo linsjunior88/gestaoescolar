@@ -3358,6 +3358,42 @@ def get_professor_disciplinas(
     finally:
         print(f"=== FINALIZANDO BUSCA DE DISCIPLINAS DO PROFESSOR: {professor_id} ===")
 
+@app.delete("/api/professores/{professor_id}/disciplinas", status_code=status.HTTP_204_NO_CONTENT)
+def delete_professor_disciplinas(
+    professor_id: str = Path(..., description="ID do professor para remover vínculos com disciplinas")
+):
+    """Remove todos os vínculos entre um professor e suas disciplinas."""
+    print(f"=== REMOVENDO VÍNCULOS DO PROFESSOR: {professor_id} COM TODAS AS DISCIPLINAS ===")
+    try:
+        # Verificar se o professor existe
+        query_professor = "SELECT * FROM professor WHERE id_professor = %s"
+        professor_result = execute_query(query_professor, (professor_id,), fetch_one=True)
+        
+        if not professor_result:
+            print(f"Professor com ID {professor_id} não encontrado")
+            raise HTTPException(status_code=404, detail="Professor não encontrado")
+        
+        print(f"Professor encontrado: {professor_id}, removendo vínculos com disciplinas")
+        
+        # Remover todos os vínculos entre o professor e suas disciplinas
+        delete_query = """
+        DELETE FROM professor_disciplina_turma 
+        WHERE id_professor = %s
+        """
+        # Executar a query sem fetch (para DELETE)
+        execute_query(delete_query, (professor_id,), fetch=False)
+        
+        print(f"Vínculos do professor {professor_id} com disciplinas removidos com sucesso")
+        return None
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"ERRO ao remover vínculos do professor {professor_id} com disciplinas: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao remover vínculos do professor com disciplinas: {str(e)}"
+        )
+
 @app.get("/api/professores/{professor_id}/estatisticas")
 def get_professor_estatisticas(professor_id: str = Path(..., description="ID do professor")):
     """Retorna estatísticas do professor para o dashboard."""
