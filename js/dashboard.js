@@ -1448,6 +1448,54 @@ function initDisciplinas() {
     // Adicionar event listener ao formulário
     formDisciplina.addEventListener('submit', salvarDisciplina);
     
+    // Verificar se já existe o botão de cancelar
+    let btnCancelarDisciplina = document.getElementById('btn-cancelar-disciplina');
+    
+    // Se não existir, criar o botão de cancelar
+    if (!btnCancelarDisciplina) {
+        // Encontrar o botão de submit para posicionar o botão de cancelar ao lado
+        const submitBtn = formDisciplina.querySelector('button[type="submit"]');
+        if (submitBtn) {
+            // Criar o botão de cancelar
+            btnCancelarDisciplina = document.createElement('button');
+            btnCancelarDisciplina.type = 'button';
+            btnCancelarDisciplina.id = 'btn-cancelar-disciplina';
+            btnCancelarDisciplina.className = 'btn btn-secondary ms-2';
+            btnCancelarDisciplina.textContent = 'Cancelar';
+            
+            // Adicionar evento de clique para resetar o formulário
+            btnCancelarDisciplina.addEventListener('click', function() {
+                resetarFormularioDisciplina();
+                // Rolar para o topo da lista
+                const listSection = document.querySelector('.section-disciplinas .card-table');
+                if (listSection) {
+                    listSection.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+            
+            // Inserir o botão após o botão de submit
+            // Primeiro, ver se o botão está em um container (como um div.form-group)
+            const btnContainer = submitBtn.parentElement;
+            if (btnContainer && btnContainer.classList.contains('form-group')) {
+                // Se estiver em um container, adicionar o botão ao container
+                btnContainer.appendChild(btnCancelarDisciplina);
+            } else {
+                // Caso contrário, inserir após o botão de submit
+                submitBtn.insertAdjacentElement('afterend', btnCancelarDisciplina);
+            }
+        }
+    } else {
+        // Se já existir, garantir que tenha o event listener
+        btnCancelarDisciplina.addEventListener('click', function() {
+            resetarFormularioDisciplina();
+            // Rolar para o topo da lista
+            const listSection = document.querySelector('.section-disciplinas .card-table');
+            if (listSection) {
+                listSection.scrollIntoView({ behavior: 'smooth' });
+            }
+        });
+    }
+    
     // Adicionar event listener ao select de turmas para atualizar o preview
     if (vinculoTurmasSelect) {
         vinculoTurmasSelect.addEventListener('change', function() {
@@ -4072,6 +4120,13 @@ function carregarDisciplinas() {
       // Armazenar no localStorage para fallback
       localStorage.setItem('disciplinas', JSON.stringify(disciplinas));
       
+      // Ordenar as disciplinas por nome
+      disciplinas.sort((a, b) => {
+        const nomeA = (a.nome_disciplina || '').toLowerCase();
+        const nomeB = (b.nome_disciplina || '').toLowerCase();
+        return nomeA.localeCompare(nomeB);
+      });
+      
       // Verificar se a lista está vazia
       if (!disciplinas || disciplinas.length === 0) {
         disciplinasLista.innerHTML = '<tr><td colspan="5" class="text-center">Nenhuma disciplina cadastrada</td></tr>';
@@ -4226,6 +4281,13 @@ function carregarDisciplinas() {
         
         if (disciplinasLocal && disciplinasLocal.length > 0) {
           console.log("Usando disciplinas do localStorage:", disciplinasLocal);
+          
+          // Ordenar as disciplinas por nome
+          disciplinasLocal.sort((a, b) => {
+            const nomeA = (a.nome_disciplina || '').toLowerCase();
+            const nomeB = (b.nome_disciplina || '').toLowerCase();
+            return nomeA.localeCompare(nomeB);
+          });
           
           // Exibir as disciplinas do localStorage
           disciplinasLista.innerHTML = '';
@@ -4509,6 +4571,12 @@ function prepararFormularioDisciplina(disciplinaId) {
     // Rolar até o formulário para garantir visibilidade
     formDisciplina.scrollIntoView({ behavior: 'smooth' });
     
+    // Garantir que o botão de cancelar esteja visível
+    const btnCancelarDisciplina = document.getElementById('btn-cancelar-disciplina');
+    if (btnCancelarDisciplina) {
+        btnCancelarDisciplina.style.display = 'inline-block';
+    }
+    
     if (disciplinaId) {
         // Modo Editar
         if (tituloForm) tituloForm.textContent = 'Editar Disciplina';
@@ -4629,6 +4697,33 @@ function resetarFormularioDisciplina() {
     const previewArea = document.getElementById('turmas-vinculadas-preview');
     if (previewArea) {
         previewArea.innerHTML = '';
+    }
+    
+    // Resetar o campo ID para poder ser editado (caso de nova disciplina)
+    const idDisciplinaField = document.getElementById('id_disciplina');
+    if (idDisciplinaField) {
+        idDisciplinaField.readOnly = false;
+    }
+    
+    // Atualizar título do formulário
+    const tituloForm = document.querySelector('#form-disciplina-titulo') || 
+                       document.querySelector('#formDisciplina .card-title') ||
+                       document.querySelector('#modalDisciplinaLabel');
+    if (tituloForm) {
+        tituloForm.textContent = 'Nova Disciplina';
+    }
+    
+    // Atualizar texto do botão submit
+    const submitBtn = formDisciplina.querySelector('button[type="submit"]');
+    if (submitBtn) {
+        submitBtn.textContent = 'Salvar';
+    }
+    
+    // Configurar botão de cancelar
+    const btnCancelarDisciplina = document.getElementById('btn-cancelar-disciplina');
+    if (btnCancelarDisciplina) {
+        // Manter o botão sempre visível para consistência com outros módulos
+        btnCancelarDisciplina.style.display = 'inline-block';
     }
     
     console.log("Formulário de disciplina resetado com sucesso");
