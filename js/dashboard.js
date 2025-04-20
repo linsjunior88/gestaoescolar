@@ -1432,14 +1432,9 @@ function initDisciplinas() {
     
     // Adicionar event listener ao botão para nova disciplina
     btnNovaDisciplina.addEventListener('click', function() {
-        // Limpar e redefinir o formulário para nova entrada
-        resetarFormularioDisciplina();
-        
-        // Chamar a função para configurar o formulário para nova disciplina
-        prepararFormularioDisciplina(); // Sem ID = nova disciplina
-        
-        // Carregar turmas para o select
-        carregarTurmasSelect([]);
+        // Chamar a função para preparar o formulário para nova disciplina
+        // Esta função já reseta o formulário, carrega as turmas e cuida do botão cancelar
+        prepararFormularioDisciplina();
         
         // Rolar até o formulário
         formDisciplina.scrollIntoView({ behavior: 'smooth' });
@@ -1447,54 +1442,6 @@ function initDisciplinas() {
     
     // Adicionar event listener ao formulário
     formDisciplina.addEventListener('submit', salvarDisciplina);
-    
-    // Verificar se já existe o botão de cancelar
-    let btnCancelarDisciplina = document.getElementById('btn-cancelar-disciplina');
-    
-    // Se não existir, criar o botão de cancelar
-    if (!btnCancelarDisciplina) {
-        // Encontrar o botão de submit para posicionar o botão de cancelar ao lado
-        const submitBtn = formDisciplina.querySelector('button[type="submit"]');
-        if (submitBtn) {
-            // Criar o botão de cancelar
-            btnCancelarDisciplina = document.createElement('button');
-            btnCancelarDisciplina.type = 'button';
-            btnCancelarDisciplina.id = 'btn-cancelar-disciplina';
-            btnCancelarDisciplina.className = 'btn btn-secondary ms-2';
-            btnCancelarDisciplina.textContent = 'Cancelar';
-            
-            // Adicionar evento de clique para resetar o formulário
-            btnCancelarDisciplina.addEventListener('click', function() {
-                resetarFormularioDisciplina();
-                // Rolar para o topo da lista
-                const listSection = document.querySelector('.section-disciplinas .card-table');
-                if (listSection) {
-                    listSection.scrollIntoView({ behavior: 'smooth' });
-                }
-            });
-            
-            // Inserir o botão após o botão de submit
-            // Primeiro, ver se o botão está em um container (como um div.form-group)
-            const btnContainer = submitBtn.parentElement;
-            if (btnContainer && btnContainer.classList.contains('form-group')) {
-                // Se estiver em um container, adicionar o botão ao container
-                btnContainer.appendChild(btnCancelarDisciplina);
-            } else {
-                // Caso contrário, inserir após o botão de submit
-                submitBtn.insertAdjacentElement('afterend', btnCancelarDisciplina);
-            }
-        }
-    } else {
-        // Se já existir, garantir que tenha o event listener
-        btnCancelarDisciplina.addEventListener('click', function() {
-            resetarFormularioDisciplina();
-            // Rolar para o topo da lista
-            const listSection = document.querySelector('.section-disciplinas .card-table');
-            if (listSection) {
-                listSection.scrollIntoView({ behavior: 'smooth' });
-            }
-        });
-    }
     
     // Adicionar event listener ao select de turmas para atualizar o preview
     if (vinculoTurmasSelect) {
@@ -1510,8 +1457,8 @@ function initDisciplinas() {
         });
     }
     
-    // Inicialização do formulário - carregar turmas para o select
-    carregarTurmasSelect([]);
+    // Inicializar o formulário logo no início
+    prepararFormularioDisciplina();
     
     // Carregar lista de disciplinas
     carregarDisciplinas();
@@ -4571,10 +4518,46 @@ function prepararFormularioDisciplina(disciplinaId) {
     // Rolar até o formulário para garantir visibilidade
     formDisciplina.scrollIntoView({ behavior: 'smooth' });
     
-    // Garantir que o botão de cancelar esteja visível
-    const btnCancelarDisciplina = document.getElementById('btn-cancelar-disciplina');
+    // Garantir que o botão de cancelar esteja presente e funcionando
+    let btnCancelarDisciplina = document.getElementById('btn-cancelar-disciplina');
+    
+    // Se não existir o botão, criar um novo
+    if (!btnCancelarDisciplina && submitBtn) {
+        console.log("Criando botão cancelar que não existia");
+        btnCancelarDisciplina = document.createElement('button');
+        btnCancelarDisciplina.type = 'button';
+        btnCancelarDisciplina.id = 'btn-cancelar-disciplina';
+        btnCancelarDisciplina.className = 'btn btn-secondary ms-2';
+        btnCancelarDisciplina.textContent = 'Cancelar';
+        
+        // Inserir após o botão submit
+        submitBtn.insertAdjacentElement('afterend', btnCancelarDisciplina);
+    }
+    
+    // Configurar evento do botão cancelar (se existir)
     if (btnCancelarDisciplina) {
+        // Garantir que o botão esteja visível
         btnCancelarDisciplina.style.display = 'inline-block';
+        
+        // Remover eventos antigos e adicionar novo
+        const novoBtn = btnCancelarDisciplina.cloneNode(true);
+        btnCancelarDisciplina.parentNode.replaceChild(novoBtn, btnCancelarDisciplina);
+        
+        // Configurar novo evento
+        novoBtn.addEventListener('click', function() {
+            console.log("Botão cancelar clicado");
+            resetarFormularioDisciplina();
+            
+            // Rolar para a lista
+            const listSection = document.querySelector('.section-disciplinas .card-table');
+            if (listSection) {
+                listSection.scrollIntoView({ behavior: 'smooth' });
+            } else {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        });
+        
+        btnCancelarDisciplina = novoBtn;
     }
     
     if (disciplinaId) {
@@ -4623,6 +4606,11 @@ function prepararFormularioDisciplina(disciplinaId) {
                 
                 // Carregar as turmas no select e selecionar as vinculadas
                 carregarTurmasSelect(turmasIds);
+                
+                // Garantir que o botão cancelar esteja visível novamente após o carregamento
+                if (btnCancelarDisciplina) {
+                    btnCancelarDisciplina.style.display = 'inline-block';
+                }
             })
             .catch(error => {
                 console.error(`Erro ao buscar disciplina: ${error}`);
@@ -4646,6 +4634,11 @@ function prepararFormularioDisciplina(disciplinaId) {
         
         // Carregar lista de turmas vazia
         carregarTurmasSelect([]);
+        
+        // Garantir que o botão cancelar esteja visível
+        if (btnCancelarDisciplina) {
+            btnCancelarDisciplina.style.display = 'inline-block';
+        }
     }
 }
 
@@ -4703,6 +4696,7 @@ function resetarFormularioDisciplina() {
     const idDisciplinaField = document.getElementById('id_disciplina');
     if (idDisciplinaField) {
         idDisciplinaField.readOnly = false;
+        idDisciplinaField.value = '';  // Garantir que o campo esteja vazio
     }
     
     // Atualizar título do formulário
