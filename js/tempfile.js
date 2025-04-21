@@ -1,5 +1,3 @@
-﻿// Dashboard.js corrigido
-
 // Função para criar vínculos para cada disciplina
 function criarVinculos(disciplinasParaVincular) {
     const promessasVinculos = disciplinasParaVincular.map(idDisciplina => {
@@ -9,6 +7,4 @@ function criarVinculos(disciplinasParaVincular) {
     return Promise.all(promessasVinculos);
 }
 
-// Esta função precisa estar dentro da função verificarDisciplinasECriarVinculos
-// e deve ser fechada corretamente para evitar o erro de sintaxe:
-// "missing } after function body"
+return criarVinculos(disciplinasComTurmas); 
