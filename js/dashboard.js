@@ -4624,7 +4624,193 @@ function initProfessores() {
     }
     
     // Função para atualizar a tabela de disciplinas e turmas
+
     function atualizarTabelaDisciplinasTurmas() {
+        if (!vinculoDisciplinas || !disciplinasTurmasLista) {
+            console.error("Elementos para atualizar tabela não encontrados!");
+            return;
+        }
+        
+        // Verificar se já está atualizando para evitar duplicação
+        if (disciplinasTurmasLista.dataset.atualizando === "true") {
+            console.log("Atualização da tabela já em andamento, ignorando chamada duplicada");
+            return;
+        }
+        
+        // Marcar como atualizando
+        disciplinasTurmasLista.dataset.atualizando = "true";
+        
+        const disciplinasSelecionadas = Array.from(vinculoDisciplinas.selectedOptions).map(option => option.value);
+        
+        if (disciplinasSelecionadas.length === 0) {
+            disciplinasTurmasLista.innerHTML = `
+                <tr class="text-center">
+                    <td colspan="2">Selecione disciplinas para ver as turmas vinculadas</td>
+                </tr>
+            `;
+            disciplinasTurmasLista.dataset.atualizando = "false";
+            return;
+        }
+        
+        disciplinasTurmasLista.innerHTML = `
+            <tr>
+                <td colspan="2" class="text-center">
+                    <div class="spinner-border spinner-border-sm text-primary" role="status">
+                        <span class="visually-hidden">Carregando...</span>
+                    </div>
+                </td>
+            </tr>
+        `;
+        
+        // Conjunto para rastrear disciplinas já processadas
+        const disciplinasProcessadas = new Set();
+        
+        // Buscar apenas as disciplinas selecionadas
+        fetch(CONFIG.getApiUrl('/disciplinas'))
+            .then(response => response.ok ? response.json() : [])
+            .then(disciplinas => {
+                console.log("Disciplinas carregadas:", disciplinas.length);
+                
+                // Limpar a tabela
+                disciplinasTurmasLista.innerHTML = '';
+                
+                // Filtrar apenas as disciplinas selecionadas e não duplicadas
+                const disciplinasFiltradas = disciplinas.filter(d => {
+                    if (!disciplinasSelecionadas.includes(d.id_disciplina)) {
+                        return false;
+                    }
+                    
+                    // Verificar se já processamos esta disciplina
+                    if (disciplinasProcessadas.has(d.id_disciplina)) {
+                        console.log(`Disciplina ${d.id_disciplina} já processada, ignorando duplicata`);
+                        return false;
+                    }
+                    
+                    // Marcar como processada
+                    disciplinasProcessadas.add(d.id_disciplina);
+                    return true;
+                });
+                
+                if (disciplinasFiltradas.length === 0) {
+                    disciplinasTurmasLista.innerHTML = `
+                        <tr class="text-center">
+                            <td colspan="2">Nenhuma informação disponível para as disciplinas selecionadas</td>
+                        </tr>
+                    `;
+                    disciplinasTurmasLista.dataset.atualizando = "false";
+                    return;
+                }
+                
+                // Para cada disciplina selecionada, buscar as turmas diretamente do endpoint específico
+                const promessas = disciplinasFiltradas.map(disciplina => {
+                    return fetch(CONFIG.getApiUrl(`/disciplinas/${disciplina.id_disciplina}/turmas`))
+                        .then(response => response.ok ? response.json() : [])
+                        .then(turmas => {
+                            console.log(`Turmas vinculadas à disciplina ${disciplina.id_disciplina}:`, turmas);
+                            
+                            // Se temos turmas, buscar detalhes completos de cada uma
+                            if (turmas.length > 0) {
+                                // Conjunto para rastrear turmas já processadas para esta disciplina
+                                const turmasProcessadas = new Set();
+                                
+                                // Filtrar turmas duplicadas
+                                const turmasUnicas = turmas.filter(turma => {
+                                    if (!turma.id_turma) return false;
+                                    
+                                    const turmaKey = turma.id_turma;
+                                    if (turmasProcessadas.has(turmaKey)) {
+                                        return false;
+                                    }
+                                    
+                                    turmasProcessadas.add(turmaKey);
+                                    return true;
+                                });
+                                
+                                // Para cada turma, buscar seus detalhes completos
+                                const turmasPromises = turmasUnicas.map(turma => {
+                                    return fetch(CONFIG.getApiUrl(`/turmas/${turma.id_turma}`))
+                                        .then(response => response.ok ? response.json() : null)
+                                        .then(detalhes => {
+                                            console.log(`Detalhes da turma ${turma.id_turma}:`, detalhes);
+                                            return {
+                                                id_turma: turma.id_turma,
+                                                serie: detalhes ? detalhes.serie : turma.serie || 'Sem série'
+                                            };
+                                        })
+                                        .catch(err => {
+                                            console.warn(`Erro ao buscar detalhes da turma ${turma.id_turma}:`, err);
+                                            return turma; // Manter a turma original em caso de erro
+                                        });
+                                });
+                                
+                                return Promise.all(turmasPromises).then(turmasDetalhadas => {
+                                    const tr = document.createElement('tr');
+                                    tr.innerHTML = `
+                                        <td>${disciplina.id_disciplina} - ${disciplina.nome_disciplina}</td>
+                                        <td>${turmasDetalhadas.length > 0 
+                                            ? turmasDetalhadas.map(t => `${t.id_turma} (${t.serie || 'Série não informada'})`).join(', ') 
+                                            : '<span class="text-warning">Nenhuma turma vinculada</span>'}
+                                        </td>
+                                    `;
+                                    return tr;
+                                });
+                            } else {
+                                const tr = document.createElement('tr');
+                                tr.innerHTML = `
+                                    <td>${disciplina.id_disciplina} - ${disciplina.nome_disciplina}</td>
+                                    <td><span class="text-warning">Nenhuma turma vinculada</span></td>
+                                `;
+                                return tr;
+                            }
+                        })
+                        .catch(error => {
+                            console.error(`Erro ao buscar turmas da disciplina ${disciplina.id_disciplina}:`, error);
+                            
+                            const tr = document.createElement('tr');
+                            tr.innerHTML = `
+                                <td>${disciplina.id_disciplina} - ${disciplina.nome_disciplina}</td>
+                                <td class="text-danger">Erro ao buscar turmas vinculadas</td>
+                            `;
+                            
+                            return tr;
+                        });
+                });
+                
+                // Aguardar todas as promessas e adicionar os resultados à tabela
+                Promise.all(promessas)
+                    .then(linhas => {
+                        if (linhas.length === 0) {
+                            disciplinasTurmasLista.innerHTML = `
+                                <tr class="text-center">
+                                    <td colspan="2">Nenhuma informação disponível</td>
+                                </tr>
+                            `;
+                            return;
+                        }
+                        
+                        // Adicionar todas as linhas à tabela
+                        linhas.forEach(linha => {
+                            disciplinasTurmasLista.appendChild(linha);
+                        });
+                    })
+                    .finally(() => {
+                        // Marcar como não mais atualizando
+                        disciplinasTurmasLista.dataset.atualizando = "false";
+                    });
+            })
+            .catch(error => {
+                console.error("Erro ao atualizar tabela:", error);
+                disciplinasTurmasLista.innerHTML = `
+                    <tr class="text-center">
+                        <td colspan="2">Erro ao carregar informações: ${error.message}</td>
+                    </tr>
+                `;
+                // Marcar como não mais atualizando
+                disciplinasTurmasLista.dataset.atualizando = "false";
+            });
+    }
+
+    /*function atualizarTabelaDisciplinasTurmas() {
         if (!vinculoDisciplinas || !disciplinasTurmasLista) {
             console.error("Elementos para atualizar tabela não encontrados!");
             return;
@@ -4759,7 +4945,7 @@ function initProfessores() {
                     </tr>
                 `;
             });
-    }
+    }*/
     
     // Função para editar professor
     function editarProfessor(idProfessor) {
