@@ -3630,15 +3630,7 @@ function initProfessores() {
         }
         
         // Mostrar indicador de carregamento
-        professoresLista.innerHTML = `
-            <tr>
-                <td colspan="5" class="text-center">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Carregando...</span>
-                    </div>
-                </td>
-            </tr>
-        `;
+        professoresLista.innerHTML = '';
         
         // Primeiro, buscar disciplinas para ter informações corretas
         fetch(CONFIG.getApiUrl('disciplinas'))
@@ -4137,12 +4129,17 @@ function initProfessores() {
     
     // Função para carregar disciplinas no select
     function carregarDisciplinasSelect() {
+
+       /* const disciplinasLista = document.getElementById('disciplinas-lista');
+        if (disciplinasLista) {
+            disciplinasLista.innerHTML = ''; // Limpar completamente
+        }*/
         if (!vinculoDisciplinas) {
             console.error("Select de disciplinas não encontrado!");
             return;
         }
         
-        vinculoDisciplinas.innerHTML = '<option value="" disabled>Carregando disciplinas...</option>';
+        vinculoDisciplinas.innerHTML = '';//'<option value="" disabled>Carregando disciplinas...</option>';
         
         // Buscar disciplinas da API
         fetch(CONFIG.getApiUrl('/disciplinas'))
