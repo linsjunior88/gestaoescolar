@@ -3552,9 +3552,18 @@ function initProfessores() {
                                         return Promise.resolve();
                                     }
                                     
-                                    // Comentado: Remoção de vínculos existentes foi removida para evitar exclusão
-                                    console.log("Criando novos vínculos sem remover os existentes");
-                                    return criarVinculos(disciplinasComTurmas);
+                                    // Se houver alterações, remover vínculos existentes e criar novos
+                                    return fetch(CONFIG.getApiUrl(`/professores/${idProf}/disciplinas`), {
+                                        method: 'DELETE'
+                                    })
+                                    .then(response => {
+                                        if (!response.ok && response.status !== 404) {
+                                            throw new Error('Erro ao remover vínculos existentes: ' + response.statusText);
+                                        }
+                                        
+                                        // Criar novos vínculos
+                                        return criarVinculos(disciplinasComTurmas);
+                                    });
                                 });
                         } else {
                             // No modo de inclusão, simplesmente criar os vínculos
@@ -7176,4 +7185,4 @@ function processarVinculosTurmas(idDisciplina, turmasSelecionadas, turmasOrigina
         console.error("Erro ao processar vínculos de turmas:", error);
         throw error;
     });
-}
+}}
