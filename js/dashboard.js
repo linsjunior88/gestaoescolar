@@ -1722,10 +1722,6 @@ function initProfessores() {
                         
                         // Para cada disciplina selecionada, criar vínculo usando o novo endpoint
                         const promessas = disciplinasSelecionadas.map(idDisciplina => {
-<<<<<<< HEAD
-=======
-                            // Usar o novo endpoint que corrige os vínculos
->>>>>>> parent of 0227a80 (up dash endpoint novo para vinculos professor turma e disciplina)
                             return fetch(CONFIG.getApiUrl('/professores/vinculos'), {
                                 method: 'POST',
                                 headers: {
@@ -1735,8 +1731,6 @@ function initProfessores() {
                                     id_professor: idProfessor,
                                     id_disciplina: idDisciplina
                                 })
-<<<<<<< HEAD
-=======
                             })
                             .then(response => {
                                 if (!response.ok) {
@@ -1756,36 +1750,35 @@ function initProfessores() {
                         
                         // Executar todas as promessas de vinculação
                         return Promise.all(promessas);
+                    })
+                    .then(() => {
+                        alert('Professor atualizado com sucesso!');
+                        
+                        // Resetar formulário e carregar lista atualizada
+                        resetFormProfessor();
+                        carregarProfessores();
+                        carregarTabelaProfessoresDisciplinasTurmas();
+                    })
+                    .catch(error => {
+                        console.error("Erro ao atualizar professor:", error);
+                        alert(`Erro ao atualizar professor: ${error.message}`);
+                        
+                        // Atualizar no localStorage como fallback
+                        const professores = JSON.parse(localStorage.getItem('professores') || '[]');
+                        const index = professores.findIndex(p => p.id_professor === idProfessor);
+                        
+                        if (index !== -1) {
+                            professores[index] = professor;
+                        } else {
+                            professores.push(professor);
+                        }
+                        
+                        localStorage.setItem('professores', JSON.stringify(professores));
+                        
+                        alert(`Professor ${nomeProfessor} atualizado localmente.`);
+                        resetFormProfessor();
+                        carregarProfessores();
                     });
-                })
-                .then(() => {
-                    alert('Professor atualizado com sucesso!');
-                    
-                    // Resetar formulário e carregar lista atualizada
-                    resetFormProfessor();
-                    carregarProfessores();
-                    carregarTabelaProfessoresDisciplinasTurmas();
-                })
-                .catch(error => {
-                    console.error("Erro ao atualizar professor:", error);
-                    alert(`Erro ao atualizar professor: ${error.message}`);
-                    
-                    // Atualizar no localStorage como fallback
-                    const professores = JSON.parse(localStorage.getItem('professores') || '[]');
-                    const index = professores.findIndex(p => p.id_professor === idProfessor);
-                    
-                    if (index !== -1) {
-                        professores[index] = professor;
-                    } else {
-                        professores.push(professor);
-                    }
-                    
-                    localStorage.setItem('professores', JSON.stringify(professores));
-                    
-                    alert(`Professor ${nomeProfessor} atualizado localmente.`);
-                    resetFormProfessor();
-                    carregarProfessores();
-                });
             } else {
                 // Adicionar novo professor via API
                 fetch(CONFIG.getApiUrl('/professores'), {
@@ -1817,53 +1810,53 @@ function initProfessores() {
                             body: JSON.stringify({
                                 id_professor: idProfessor,
                                 id_disciplina: idDisciplina
->>>>>>> parent of 0227a80 (up dash endpoint novo para vinculos professor turma e disciplina)
                             })
-                            .then(response => {
-                                if (!response.ok) {
-                                    console.warn(`Aviso ao vincular disciplina ${idDisciplina}: ${response.statusText}`);
-                                }
-                                return response.json();
-                            })
-                            .then(data => {
-                                console.log(`Resultado da vinculação para disciplina ${idDisciplina}:`, data);
-                                return data;
-                            })
-                            .catch(err => {
-                                console.error(`Erro ao vincular disciplina ${idDisciplina}:`, err);
-                                return null;
-                            });
+                        })
+                        .then(response => {
+                            if (!response.ok) {
+                                console.warn(`Aviso ao vincular disciplina ${idDisciplina}: ${response.statusText}`);
+                            }
+                            return response.json();
+                        })
+                        .then(data => {
+                            console.log(`Resultado da vinculação para disciplina ${idDisciplina}:`, data);
+                            return data;
+                        })
+                        .catch(err => {
+                            console.error(`Erro ao vincular disciplina ${idDisciplina}:`, err);
+                            return null;
                         });
-                        
-                        // Executar todas as promessas de vinculação
-                        return Promise.all(promessas);
-                    })
-                    .then(() => {
-                        alert('Professor adicionado com sucesso!');
-                        resetFormProfessor();
-                        carregarProfessores();
-                        carregarTabelaProfessoresDisciplinasTurmas();
-                    })
-                    .catch(error => {
-                        console.error("Erro ao adicionar professor:", error);
-                        alert(`Erro ao adicionar professor: ${error.message}`);
-                        
-                        // Adicionar no localStorage como fallback
-                        const professores = JSON.parse(localStorage.getItem('professores') || '[]');
-                        
-                        // Verificar se já existe professor com o mesmo ID
-                        if (professores.some(p => p.id_professor === idProfessor)) {
-                            alert('Já existe um professor com este ID. Por favor, use outro ID.');
-                            return;
-                        }
-                        
-                        professores.push(professor);
-                        localStorage.setItem('professores', JSON.stringify(professores));
-                        
-                        alert(`Professor ${nomeProfessor} adicionado localmente.`);
-                        resetFormProfessor();
-                        carregarProfessores();
                     });
+                    
+                    // Executar todas as promessas de vinculação
+                    return Promise.all(promessas);
+                })
+                .then(() => {
+                    alert('Professor adicionado com sucesso!');
+                    resetFormProfessor();
+                    carregarProfessores();
+                    carregarTabelaProfessoresDisciplinasTurmas();
+                })
+                .catch(error => {
+                    console.error("Erro ao adicionar professor:", error);
+                    alert(`Erro ao adicionar professor: ${error.message}`);
+                    
+                    // Adicionar no localStorage como fallback
+                    const professores = JSON.parse(localStorage.getItem('professores') || '[]');
+                    
+                    // Verificar se já existe professor com o mesmo ID
+                    if (professores.some(p => p.id_professor === idProfessor)) {
+                        alert('Já existe um professor com este ID. Por favor, use outro ID.');
+                        return;
+                    }
+                    
+                    professores.push(professor);
+                    localStorage.setItem('professores', JSON.stringify(professores));
+                    
+                    alert(`Professor ${nomeProfessor} adicionado localmente.`);
+                    resetFormProfessor();
+                    carregarProfessores();
+                });
             }
         });
     }
