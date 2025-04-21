@@ -48,15 +48,10 @@ function checkApiStatus() {
         .then(data => {
             console.log("API status:", data);
             
-            statusContainer.innerHTML = `
-                <div class="alert alert-success">
-                    <i class="fas fa-check-circle me-2"></i> API conectada com sucesso!
-                    <hr>
-                    <small>URL da API: ${CONFIG.apiUrl()}</small><br>
-                    <small>Versão: ${data.version || 'N/A'}</small><br>
-                    <small>Ambiente: ${CONFIG.isProd ? 'Produção' : 'Desenvolvimento'}</small>
-                </div>
-            `;
+            // Remover a exibição da mensagem de sucesso
+            if (statusContainer) {
+                statusContainer.innerHTML = ''; // Deixar o container vazio em caso de sucesso
+            }
         })
         .catch(error => {
             console.error("Erro ao verificar API:", error);
@@ -81,29 +76,8 @@ function checkApiStatus() {
 document.addEventListener('DOMContentLoaded', function() {
     console.log("Inicializando verificador de API...");
     
-    // Criar container para o status da API se não existir
-    if (!document.getElementById('api-status-container')) {
-        const container = document.createElement('div');
-        container.id = 'api-status-container';
-        container.className = 'mt-3';
-        
-        // Inserir no início do conteúdo principal
-        const mainContent = document.getElementById('mainContent');
-        if (mainContent) {
-            // Método mais seguro para inserir no início do elemento
-            if (mainContent.firstChild) {
-                mainContent.insertBefore(container, mainContent.firstChild);
-            } else {
-                mainContent.appendChild(container);
-            }
-        } else {
-            // Alternativa - adicionar no body do documento
-            document.body.appendChild(container);
-        }
-    }
-    
-    // Verificar status da API
-    setTimeout(checkApiStatus, 500); // Um pequeno atraso para garantir que tudo esteja carregado
+    // Não criar o container automaticamente na inicialização
+    // O container será criado apenas quando o usuário clicar no botão de verificação
     
     // Adicionar botão de diagnóstico no menu dropdown
     const dropdown = document.querySelector('.dropdown-menu');
@@ -125,6 +99,28 @@ document.addEventListener('DOMContentLoaded', function() {
             if (btnCheckApi) {
                 btnCheckApi.addEventListener('click', function(e) {
                     e.preventDefault();
+                    
+                    // Criar o container apenas quando o botão for clicado
+                    if (!document.getElementById('api-status-container')) {
+                        const container = document.createElement('div');
+                        container.id = 'api-status-container';
+                        container.className = 'mt-3';
+                        
+                        // Inserir no início do conteúdo principal
+                        const mainContent = document.getElementById('mainContent');
+                        if (mainContent) {
+                            // Método mais seguro para inserir no início do elemento
+                            if (mainContent.firstChild) {
+                                mainContent.insertBefore(container, mainContent.firstChild);
+                            } else {
+                                mainContent.appendChild(container);
+                            }
+                        } else {
+                            // Alternativa - adicionar no body do documento
+                            document.body.appendChild(container);
+                        }
+                    }
+                    
                     checkApiStatus();
                 });
             }

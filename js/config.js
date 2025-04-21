@@ -35,7 +35,7 @@ const CONFIG = {
     },
     
     // Testar conexão com a API e configurar fallback se necessário
-    testApiConnection: function(callback) {
+    testApiConnection: function(callback, silencioso = false) {
         console.log("Verificando conexão com a API...");
         console.log("Ambiente: ", this.isProd ? "Produção" : "Desenvolvimento");
         console.log("URL da API: ", this.apiUrl());
@@ -63,16 +63,19 @@ const CONFIG = {
                 // API está disponível
                 if (callback) callback(true);
                 
-                // Mostrar mensagem de sucesso
-                const alertContainer = document.createElement('div');
-                alertContainer.className = 'alert alert-success alert-dismissible fade show';
-                alertContainer.innerHTML = `
-                    <strong>Conectado!</strong> API funcionando normalmente. 
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
-                `;
-                
-                // Inserir aviso no topo da página
-                document.body.insertBefore(alertContainer, document.body.firstChild);
+                // Não exibir mensagem se for no modo silencioso
+                if (!silencioso) {
+                    // Mostrar mensagem de sucesso apenas quando solicitado explicitamente
+                    const alertContainer = document.createElement('div');
+                    alertContainer.className = 'alert alert-success alert-dismissible fade show';
+                    alertContainer.innerHTML = `
+                        <strong>Conectado!</strong> API funcionando normalmente. 
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+                    `;
+                    
+                    // Inserir aviso no topo da página
+                    document.body.insertBefore(alertContainer, document.body.firstChild);
+                }
             })
             .catch(error => {
                 console.error("Erro ao conectar com a API:", error);
@@ -90,13 +93,16 @@ const CONFIG = {
                                     return 'http://localhost:4000/api';
                                 };
                                 
-                                const alertSuccess = document.createElement('div');
-                                alertSuccess.className = 'alert alert-warning alert-dismissible fade show';
-                                alertSuccess.innerHTML = `
-                                    <strong>Atenção!</strong> Usando API local como fallback. 
-                                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
-                                `;
-                                document.body.insertBefore(alertSuccess, document.body.firstChild);
+                                // Somente exibir a mensagem se não estiver no modo silencioso
+                                if (!silencioso) {
+                                    const alertSuccess = document.createElement('div');
+                                    alertSuccess.className = 'alert alert-warning alert-dismissible fade show';
+                                    alertSuccess.innerHTML = `
+                                        <strong>Atenção!</strong> Usando API local como fallback. 
+                                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+                                    `;
+                                    document.body.insertBefore(alertSuccess, document.body.firstChild);
+                                }
                                 
                                 // Informar que está conectado
                                 if (callback) callback(true);
@@ -107,32 +113,36 @@ const CONFIG = {
                         .catch(localError => {
                             console.error("Tentativa de fallback para API local falhou:", localError);
                             
-                            // Avisar o usuário sobre o problema
-                            const alertContainer = document.createElement('div');
-                            alertContainer.className = 'alert alert-danger alert-dismissible fade show';
-                            alertContainer.innerHTML = `
-                                <strong>Erro de conexão!</strong> Não foi possível conectar à API: ${error.message}
-                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
-                                <button class="btn btn-sm btn-outline-danger ms-2" onclick="window.location.reload()">Tentar novamente</button>
-                            `;
-                            
-                            // Inserir aviso no topo da página
-                            document.body.insertBefore(alertContainer, document.body.firstChild);
+                            // Avisar o usuário sobre o problema apenas se não estiver no modo silencioso
+                            if (!silencioso) {
+                                const alertContainer = document.createElement('div');
+                                alertContainer.className = 'alert alert-danger alert-dismissible fade show';
+                                alertContainer.innerHTML = `
+                                    <strong>Erro de conexão!</strong> Não foi possível conectar à API: ${error.message}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+                                    <button class="btn btn-sm btn-outline-danger ms-2" onclick="window.location.reload()">Tentar novamente</button>
+                                `;
+                                
+                                // Inserir aviso no topo da página
+                                document.body.insertBefore(alertContainer, document.body.firstChild);
+                            }
                             
                             if (callback) callback(false);
                         });
                 } else {
-                    // Já estamos em ambiente de desenvolvimento, mostrar erro
-                    const alertContainer = document.createElement('div');
-                    alertContainer.className = 'alert alert-danger alert-dismissible fade show';
-                    alertContainer.innerHTML = `
-                        <strong>Erro de conexão!</strong> Não foi possível conectar à API: ${error.message}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
-                        <button class="btn btn-sm btn-outline-danger ms-2" onclick="window.location.reload()">Tentar novamente</button>
-                    `;
-                    
-                    // Inserir aviso no topo da página
-                    document.body.insertBefore(alertContainer, document.body.firstChild);
+                    // Já estamos em ambiente de desenvolvimento, mostrar erro apenas se não estiver no modo silencioso
+                    if (!silencioso) {
+                        const alertContainer = document.createElement('div');
+                        alertContainer.className = 'alert alert-danger alert-dismissible fade show';
+                        alertContainer.innerHTML = `
+                            <strong>Erro de conexão!</strong> Não foi possível conectar à API: ${error.message}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+                            <button class="btn btn-sm btn-outline-danger ms-2" onclick="window.location.reload()">Tentar novamente</button>
+                        `;
+                        
+                        // Inserir aviso no topo da página
+                        document.body.insertBefore(alertContainer, document.body.firstChild);
+                    }
                     
                     if (callback) callback(false);
                 }
@@ -142,8 +152,8 @@ const CONFIG = {
 
 // Testa conexão com a API ao inicializar
 document.addEventListener('DOMContentLoaded', function() {
-    // Verificar a conexão com a API
-    CONFIG.testApiConnection();
+    // Verificar a conexão com a API silenciosamente (sem mostrar mensagens na tela)
+    CONFIG.testApiConnection(null, true);
 });
 
 // Função para fazer requisições à API com tratamento de erros

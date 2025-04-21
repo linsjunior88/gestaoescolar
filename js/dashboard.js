@@ -1822,34 +1822,18 @@ function initProfessores() {
                     console.log("Professor atualizado com sucesso:", data);
                     
                     // Verificar disciplinas e criar vínculos
-                    return verificarDisciplinasECriarVinculos(idProfessor, disciplinasSelecionadas);
-                })
-                .then(() => {
-                    alert('Professor atualizado com sucesso!');
-                    resetFormProfessor();
-                    carregarProfessores();
-                    carregarTabelaProfessoresDisciplinasTurmas();
+                    return verificarDisciplinasECriarVinculos(idProfessor, disciplinasSelecionadas)
+                        .then(() => {
+                            alert('Professor atualizado com sucesso!');
+                            resetFormProfessor();
+                            carregarProfessores();
+                            carregarTabelaProfessoresDisciplinasTurmas();
+                        });
                 })
                 .catch(error => {
                     console.error("Erro ao atualizar professor:", error);
                     alert("Erro ao atualizar professor: " + error.message);
-                    
-                    // Atualizar no localStorage como fallback
-                    var professores = JSON.parse(localStorage.getItem('professores') || '[]');
-                    var index = professores.findIndex(function(p) { 
-                        return p.id_professor === idProfessor; 
-                    });
-                    
-                    if (index !== -1) {
-                        professores[index] = professor;
-                    } else {
-                        professores.push(professor);
-                    }
-                    
-                    localStorage.setItem('professores', JSON.stringify(professores));
-                    alert("Professor " + nomeProfessor + " atualizado localmente.");
-                    resetFormProfessor();
-                    carregarProfessores();
+                    // Não usar mais localStorage como fallback
                 });
             } else {
                 // Adicionar novo professor via API
@@ -1870,33 +1854,25 @@ function initProfessores() {
                     console.log("Professor adicionado com sucesso:", data);
                     
                     // Verificar disciplinas e criar vínculos
-                    return verificarDisciplinasECriarVinculos(idProfessor, disciplinasSelecionadas);
-                })
-                .then(() => {
-                    alert('Professor adicionado com sucesso!');
-                    resetFormProfessor();
-                    carregarProfessores();
-                    carregarTabelaProfessoresDisciplinasTurmas();
+                    return verificarDisciplinasECriarVinculos(idProfessor, disciplinasSelecionadas)
+                        .then(() => {
+                            alert('Professor adicionado com sucesso!');
+                            resetFormProfessor();
+                            carregarProfessores();
+                            carregarTabelaProfessoresDisciplinasTurmas();
+                        })
+                        .catch(vinculoError => {
+                            console.error("Erro ao criar vínculos:", vinculoError);
+                            alert('Professor adicionado com sucesso, mas houve um problema ao criar vínculos: ' + vinculoError.message);
+                            resetFormProfessor();
+                            carregarProfessores();
+                            carregarTabelaProfessoresDisciplinasTurmas();
+                        });
                 })
                 .catch(error => {
                     console.error("Erro ao adicionar professor:", error);
-                    alert(`Erro ao adicionar professor: ${error.message}`);
-                    
-                    // Adicionar no localStorage como fallback
-                    const professores = JSON.parse(localStorage.getItem('professores') || '[]');
-                    
-                    // Verificar se já existe professor com o mesmo ID
-                    if (professores.some(p => p.id_professor === idProfessor)) {
-                        alert('Já existe um professor com este ID. Por favor, use outro ID.');
-                        return;
-                    }
-                    
-                    professores.push(professor);
-                    localStorage.setItem('professores', JSON.stringify(professores));
-                    
-                    alert(`Professor ${nomeProfessor} adicionado localmente.`);
-                    resetFormProfessor();
-                    carregarProfessores();
+                    alert("Erro ao adicionar professor: " + error.message);
+                    // Não usar mais localStorage como fallback
                 });
             }
         });
