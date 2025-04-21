@@ -4270,7 +4270,162 @@ function initProfessores() {
     }
     
     // Função para carregar a tabela de vínculos detalhados
+
     function carregarTabelaProfessoresDisciplinasTurmas() {
+        console.log("Carregando tabela de vínculos detalhados...");
+        
+        const tabelaVinculos = document.getElementById('vinculos-professores-disciplinas-turmas');
+        if (!tabelaVinculos) {
+            console.error("Tabela de vínculos não encontrada");
+            return;
+        }
+        
+        // Verificar se já está carregando para evitar duplicações
+        if (tabelaVinculos.dataset.carregando === "true") {
+            console.log("Carregamento de vínculos já em andamento, ignorando chamada duplicada");
+            return;
+        }
+        
+        // Marcar como carregando
+        tabelaVinculos.dataset.carregando = "true";
+        
+        // Limpar a tabela antes de começar
+        tabelaVinculos.innerHTML = '<tr><td colspan="4" class="text-center">Carregando vínculos...</td></tr>';
+        
+        // Conjunto para rastrear vínculos já adicionados (evitar duplicação)
+        const vinculosProcessados = new Set();
+        
+        // Carregar professores
+        fetch(CONFIG.getApiUrl('/professores'))
+            .then(response => response.ok ? response.json() : [])
+            .then(professores => {
+                console.log("Professores carregados:", professores.length);
+                
+                // Carregar disciplinas para ter informações completas
+                return fetch(CONFIG.getApiUrl('/disciplinas'))
+                    .then(response => response.ok ? response.json() : [])
+                    .then(disciplinas => {
+                        console.log("Disciplinas carregadas:", disciplinas.length);
+                        
+                        // Limpar a tabela
+                        tabelaVinculos.innerHTML = '';
+                        
+                        // Criar um array de promessas para processar cada professor
+                        const promessas = [];
+                        
+                        // Para cada professor com disciplinas, processar vínculos
+                        professores.forEach(professor => {
+                            if (!professor.disciplinas || professor.disciplinas.length === 0) {
+                                return;
+                            }
+                            
+                            // Para cada disciplina do professor, buscar turmas vinculadas
+                            professor.disciplinas.forEach(idDisciplina => {
+                                // Criar uma chave única para este vínculo
+                                const vinculoKey = `${professor.id_professor}_${idDisciplina}`;
+                                
+                                // Verificar se já processamos este vínculo
+                                if (vinculosProcessados.has(vinculoKey)) {
+                                    console.log(`Vínculo ${vinculoKey} já processado, ignorando duplicata`);
+                                    return;
+                                }
+                                
+                                // Marcar como processado
+                                vinculosProcessados.add(vinculoKey);
+                                
+                                // Encontrar a disciplina completa
+                                const disciplina = disciplinas.find(d => d.id_disciplina === idDisciplina);
+                                if (!disciplina) {
+                                    console.warn(`Disciplina ${idDisciplina} não encontrada`);
+                                    return;
+                                }
+                                
+                                // Buscar turmas vinculadas à disciplina
+                                const promessa = fetch(CONFIG.getApiUrl(`/disciplinas/${idDisciplina}/turmas`))
+                                    .then(response => response.ok ? response.json() : [])
+                                    .then(turmas => {
+                                        // Criar a linha da tabela
+                                        const row = document.createElement('tr');
+                                        
+                                        // Formatar as turmas
+                                        let turmasTexto = 'Nenhuma turma vinculada';
+                                        if (turmas && turmas.length > 0) {
+                                            turmasTexto = turmas.map(turma => 
+                                                `${turma.id_turma} (${turma.serie || 'Sem série'})`
+                                            ).join(', ');
+                                        }
+                                        
+                                        // Criar as células
+                                        row.innerHTML = `
+                                            <td>${professor.nome_professor}</td>
+                                            <td>${disciplina.nome_disciplina}</td>
+                                            <td>${turmasTexto}</td>
+                                            <td class="text-center">
+                                                <button class="btn btn-sm btn-danger btn-remover-vinculo" 
+                                                    data-professor="${professor.id_professor}" 
+                                                    data-disciplina="${idDisciplina}">
+                                                    <i class="fas fa-unlink"></i>
+                                                </button>
+                                            </td>
+                                        `;
+                                        
+                                        // Adicionar evento ao botão de remover vínculo
+                                        const btnRemover = row.querySelector('.btn-remover-vinculo');
+                                        if (btnRemover) {
+                                            btnRemover.addEventListener('click', function() {
+                                                const profId = this.getAttribute('data-professor');
+                                                const discId = this.getAttribute('data-disciplina');
+                                                
+                                                if (typeof removerVinculoProfessorDisciplina === 'function') {
+                                                    removerVinculoProfessorDisciplina(profId, discId);
+                                                } else {
+                                                    console.error("Função removerVinculoProfessorDisciplina não encontrada");
+                                                }
+                                            });
+                                        }
+                                        
+                                        // Retornar a linha para adicionar depois
+                                        return row;
+                                    })
+                                    .catch(error => {
+                                        console.error(`Erro ao carregar turmas para disciplina ${idDisciplina}:`, error);
+                                        return null;
+                                    });
+                                
+                                promessas.push(promessa);
+                            });
+                        });
+                        
+                        // Quando todas as promessas forem resolvidas, adicionar as linhas à tabela
+                        return Promise.all(promessas)
+                            .then(linhas => {
+                                // Filtrar linhas nulas
+                                const linhasValidas = linhas.filter(linha => linha !== null);
+                                
+                                if (linhasValidas.length === 0) {
+                                    tabelaVinculos.innerHTML = '<tr><td colspan="4" class="text-center">Nenhum vínculo encontrado</td></tr>';
+                                } else {
+                                    // Adicionar cada linha à tabela
+                                    linhasValidas.forEach(linha => {
+                                        tabelaVinculos.appendChild(linha);
+                                    });
+                                }
+                                
+                                // Marcar como não mais carregando
+                                tabelaVinculos.dataset.carregando = "false";
+                            });
+                    });
+            })
+            .catch(error => {
+                console.error("Erro ao carregar vínculos:", error);
+                tabelaVinculos.innerHTML = '<tr><td colspan="4" class="text-center text-danger">Erro ao carregar vínculos</td></tr>';
+                
+                // Marcar como não mais carregando
+                tabelaVinculos.dataset.carregando = "false";
+            });
+    }
+
+    /*function carregarTabelaProfessoresDisciplinasTurmas() {
         console.log("Carregando tabela de vínculos detalhados...");
         
         const tabelaVinculos = document.getElementById('tabela-vinculos-pdt-corpo');
@@ -4419,7 +4574,7 @@ function initProfessores() {
                     </tr>
                 `;
             });
-    }
+    }*/
     
     // Função para carregar disciplinas no select
     function carregarDisciplinasSelect() {
