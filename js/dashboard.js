@@ -1689,6 +1689,120 @@ function initProfessores() {
             // Verificar se é novo ou edição
             const modo = formModoProfessor.value;
             
+            // Função para verificar disciplinas e criar vínculos
+            function verificarDisciplinasECriarVinculos(idProf, disciplinas) {
+                if (disciplinas.length === 0) {
+                    return Promise.resolve();
+                }
+                
+                // Primeiro verificar quais disciplinas têm turmas vinculadas
+                const promessasVerificacao = disciplinas.map(idDisciplina => {
+                    return fetch(CONFIG.getApiUrl(`/disciplinas/${idDisciplina}/turmas`))
+                        .then(response => response.ok ? response.json() : [])
+                        .then(turmas => {
+                            return {
+                                idDisciplina,
+                                temTurmas: turmas && turmas.length > 0,
+                                turmas: turmas || []
+                            };
+                        })
+                        .catch(error => {
+                            console.error(`Erro ao verificar turmas da disciplina ${idDisciplina}:`, error);
+                            return {
+                                idDisciplina,
+                                temTurmas: false,
+                                turmas: [],
+                                erro: true
+                            };
+                        });
+                });
+                
+                return Promise.all(promessasVerificacao)
+                    .then(resultados => {
+                        console.log("Resultado da verificação de disciplinas:", resultados);
+                        
+                        // Verificar disciplinas sem turmas
+                        const disciplinasSemTurmas = resultados.filter(r => !r.temTurmas).map(r => r.idDisciplina);
+                        
+                        if (disciplinasSemTurmas.length > 0) {
+                            // Mostrar mensagem sobre disciplinas sem turmas
+                            alert(`ATENÇÃO: As disciplinas ${disciplinasSemTurmas.join(', ')} não possuem turmas vinculadas. É necessário vincular turmas a essas disciplinas no módulo de Disciplinas primeiro.`);
+                        }
+                        
+                        // Filtrar apenas disciplinas com turmas para vincular
+                        const disciplinasComTurmas = resultados.filter(r => r.temTurmas).map(r => r.idDisciplina);
+                        
+                        if (disciplinasComTurmas.length === 0) {
+                            return Promise.resolve();
+                        }
+                        
+                        // Função para criar vínculos para cada disciplina
+                        function criarVinculos(disciplinasParaVincular) {
+                            const promessasVinculos = disciplinasParaVincular.map(idDisciplina => {
+                                return fetch(CONFIG.getApiUrl('/professores/vinculos'), {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json'
+                                    },
+                                    body: JSON.stringify({
+                                        id_professor: idProf,
+                                        id_disciplina: idDisciplina
+                                    })
+                                })
+                                .then(response => {
+                                    if (!response.ok) {
+                                        console.warn(`Aviso ao vincular disciplina ${idDisciplina}: ${response.statusText}`);
+                                    }
+                                    return response.json();
+                                })
+                                .catch(err => {
+                                    console.error(`Erro ao vincular disciplina ${idDisciplina}:`, err);
+                                    return null;
+                                });
+                            });
+                            
+                            return Promise.all(promessasVinculos);
+                        }
+                        
+                        // No modo de edição, precisamos verificar as disciplinas atuais antes
+                        if (modo === 'editar') {
+                            return fetch(CONFIG.getApiUrl(`/professores/${idProf}/disciplinas`))
+                                .then(response => response.ok ? response.json() : [])
+                                .then(disciplinasAtuais => {
+                                    console.log("Disciplinas atuais do professor:", disciplinasAtuais);
+                                    
+                                    // Extrair apenas IDs das disciplinas atuais
+                                    const idsAtuais = disciplinasAtuais.map(d => d.id_disciplina);
+                                    
+                                    // Verificar se há alterações
+                                    const disciplinasIguais = disciplinasComTurmas.length === idsAtuais.length && 
+                                        disciplinasComTurmas.every(id => idsAtuais.includes(id));
+                                    
+                                    if (disciplinasIguais) {
+                                        console.log("Vínculos de disciplinas não mudaram. Nenhuma ação necessária.");
+                                        return Promise.resolve();
+                                    }
+                                    
+                                    // Se houver alterações, remover vínculos existentes e criar novos
+                                    return fetch(CONFIG.getApiUrl(`/professores/${idProf}/disciplinas`), {
+                                        method: 'DELETE'
+                                    })
+                                    .then(response => {
+                                        if (!response.ok && response.status !== 404) {
+                                            throw new Error('Erro ao remover vínculos existentes: ' + response.statusText);
+                                        }
+                                        
+                                        // Criar novos vínculos
+                                        return criarVinculos(disciplinasComTurmas);
+                                    });
+                                });
+                        } else {
+                            // No modo de inclusão, simplesmente criar os vínculos
+                            return criarVinculos(disciplinasComTurmas);
+                        }
+                    });
+            }
+            
             if (modo === 'editar') {
                 // Atualizar via API
                 fetch(CONFIG.getApiUrl(`/professores/${idProfessor}`), {
@@ -1707,163 +1821,36 @@ function initProfessores() {
                 .then(data => {
                     console.log("Professor atualizado com sucesso:", data);
                     
-                    // Agora vamos atualizar os vínculos com disciplinas
-                    console.log("Verificando disciplinas selecionadas:", disciplinasSelecionadas);
+                    // Verificar disciplinas e criar vínculos
+                    return verificarDisciplinasECriarVinculos(idProfessor, disciplinasSelecionadas);
+                })
+                .then(() => {
+                    alert('Professor atualizado com sucesso!');
+                    resetFormProfessor();
+                    carregarProfessores();
+                    carregarTabelaProfessoresDisciplinasTurmas();
+                })
+                .catch(error => {
+                    console.error("Erro ao atualizar professor:", error);
+                    alert("Erro ao atualizar professor: " + error.message);
                     
-                    if (disciplinasSelecionadas.length === 0) {
-                        alert('Professor atualizado com sucesso!');
-                        resetFormProfessor();
-                        carregarProfessores();
-                        carregarTabelaProfessoresDisciplinasTurmas();
-                        return;
+                    // Atualizar no localStorage como fallback
+                    var professores = JSON.parse(localStorage.getItem('professores') || '[]');
+                    var index = professores.findIndex(function(p) { 
+                        return p.id_professor === idProfessor; 
+                    });
+                    
+                    if (index !== -1) {
+                        professores[index] = professor;
+                    } else {
+                        professores.push(professor);
                     }
                     
-                    // Primeiro verificar quais disciplinas têm turmas vinculadas
-                    const verificarDisciplinas = disciplinasSelecionadas.map(idDisciplina => {
-                        return fetch(CONFIG.getApiUrl(`/disciplinas/${idDisciplina}/turmas`))
-                            .then(response => response.ok ? response.json() : [])
-                            .then(turmas => {
-                                return {
-                                    idDisciplina,
-                                    temTurmas: turmas && turmas.length > 0,
-                                    turmas: turmas || []
-                                };
-                            })
-                            .catch(error => {
-                                console.error(`Erro ao verificar turmas da disciplina ${idDisciplina}:`, error);
-                                return {
-                                    idDisciplina,
-                                    temTurmas: false,
-                                    turmas: [],
-                                    erro: true
-                                };
-                            });
-                    });
-                    
-                    // Verificar todas as disciplinas primeiro
-                    return Promise.all(verificarDisciplinas)
-                        .then(resultados => {
-                            console.log("Resultado da verificação de disciplinas:", resultados);
-                            
-                            // Verificar disciplinas sem turmas
-                            const disciplinasSemTurmas = resultados.filter(r => !r.temTurmas).map(r => r.idDisciplina);
-                            
-                            if (disciplinasSemTurmas.length > 0) {
-                                // Mostrar mensagem sobre disciplinas sem turmas
-                                alert(`ATENÇÃO: As disciplinas ${disciplinasSemTurmas.join(', ')} não possuem turmas vinculadas. É necessário vincular turmas a essas disciplinas no módulo de Disciplinas primeiro.`);
-                            }
-                            
-                            // Filtrar apenas disciplinas com turmas para vincular
-                            const disciplinasComTurmas = resultados.filter(r => r.temTurmas).map(r => r.idDisciplina);
-                            
-                            if (disciplinasComTurmas.length === 0) {
-                                alert('Professor atualizado com sucesso, mas não foi possível vincular disciplinas pois nenhuma delas possui turmas vinculadas.');
-                                resetFormProfessor();
-                                carregarProfessores();
-                                return;
-                            }
-                            
-                            // Obter disciplinas atuais do professor para comparar
-                            return fetch(CONFIG.getApiUrl(`/professores/${idProfessor}/disciplinas`))
-                                .then(response => response.ok ? response.json() : [])
-                                .then(disciplinasAtuais => {
-                                    console.log("Disciplinas atuais do professor:", disciplinasAtuais);
-                                    
-                                    // Extrair apenas IDs das disciplinas atuais
-                                    const idsAtuais = disciplinasAtuais.map(d => d.id_disciplina);
-                                    
-                                    // Verificar se há alterações
-                                    const disciplinasIguais = disciplinasComTurmas.length === idsAtuais.length && 
-                                        disciplinasComTurmas.every(id => idsAtuais.includes(id));
-                                    
-                                    if (disciplinasIguais) {
-                                        console.log("Vínculos de disciplinas não mudaram. Nenhuma ação necessária.");
-                                        alert('Professor atualizado com sucesso!');
-                                        resetFormProfessor();
-                                        carregarProfessores();
-                                        carregarTabelaProfessoresDisciplinasTurmas();
-                                        return;
-                                    }
-                                    
-                                    // Se houver alterações, remover vínculos existentes e criar novos
-                                    return fetch(CONFIG.getApiUrl(`/professores/${idProfessor}/disciplinas`), {
-                                        method: 'DELETE'
-                                    })
-                                    .then(response => {
-                                        if (!response.ok && response.status !== 404) {
-                                            throw new Error('Erro ao remover vínculos existentes: ' + response.statusText);
-                                        }
-                                        
-                                        // Criar array de promessas para cada disciplina com turmas
-                                        const promessas = [];
-                                        
-                                        // Criar vínculos para cada disciplina com turmas
-                                        for (const idDisciplina of disciplinasComTurmas) {
-                                            // Função para criar uma promessa para cada vínculo
-                                            function criarPromessa(idDisc) {
-                                                return fetch(CONFIG.getApiUrl('/professores/vinculos'), {
-                                                    method: 'POST',
-                                                    headers: {
-                                                        'Content-Type': 'application/json'
-                                                    },
-                                                    body: JSON.stringify({
-                                                        id_professor: idProfessor,
-                                                        id_disciplina: idDisc
-                                                    })
-                                                })
-                                                .then(function(response) {
-                                                    if (!response.ok) {
-                                                        console.warn("Aviso ao vincular disciplina: " + response.statusText);
-                                                    }
-                                                    return response.json();
-                                                })
-                                                .then(function(data) {
-                                                    console.log("Resultado da vinculação:", data);
-                                                    return data;
-                                                })
-                                                .catch(function(err) {
-                                                    console.error("Erro ao vincular disciplina:", err);
-                                                    return null;
-                                                });
-                                            }
-                                            
-                                            // Adicionar promessa ao array
-                                            promessas.push(criarPromessa(idDisciplina));
-                                        }
-                                        
-                                        // Executar todas as promessas de vinculação
-                                        return Promise.all(promessas);
-                                    });
-                            });
-                    })
-                    .then(function() {
-                        alert('Professor atualizado com sucesso!');
-                        
-                        // Resetar formulário e carregar lista atualizada
-                        resetFormProfessor();
-                        carregarProfessores();
-                        carregarTabelaProfessoresDisciplinasTurmas();
-                    })
-                    .catch(function(error) {
-                        console.error("Erro ao atualizar professor:", error);
-                        alert("Erro ao atualizar professor: " + error.message);
-                        
-                        // Atualizar no localStorage como fallback
-                        var professores = JSON.parse(localStorage.getItem('professores') || '[]');
-                        var index = professores.findIndex(function(p) { return p.id_professor === idProfessor; });
-                        
-                        if (index !== -1) {
-                            professores[index] = professor;
-                        } else {
-                            professores.push(professor);
-                        }
-                        
-                        localStorage.setItem('professores', JSON.stringify(professores));
-                        
-                        alert("Professor " + nomeProfessor + " atualizado localmente.");
-                        resetFormProfessor();
-                        carregarProfessores();
-                    });
+                    localStorage.setItem('professores', JSON.stringify(professores));
+                    alert("Professor " + nomeProfessor + " atualizado localmente.");
+                    resetFormProfessor();
+                    carregarProfessores();
+                });
             } else {
                 // Adicionar novo professor via API
                 fetch(CONFIG.getApiUrl('/professores'), {
@@ -1882,92 +1869,8 @@ function initProfessores() {
                 .then(data => {
                     console.log("Professor adicionado com sucesso:", data);
                     
-                    if (disciplinasSelecionadas.length === 0) {
-                        alert('Professor adicionado com sucesso!');
-                        resetFormProfessor();
-                        carregarProfessores();
-                        return;
-                    }
-                    
-                    // Verificar disciplinas selecionadas
-                    console.log("Verificando disciplinas selecionadas:", disciplinasSelecionadas);
-                    
-                    // Verificar quais disciplinas têm turmas vinculadas
-                    const verificarDisciplinas = disciplinasSelecionadas.map(idDisciplina => {
-                        return fetch(CONFIG.getApiUrl(`/disciplinas/${idDisciplina}/turmas`))
-                            .then(response => response.ok ? response.json() : [])
-                            .then(turmas => {
-                                return {
-                                    idDisciplina,
-                                    temTurmas: turmas && turmas.length > 0,
-                                    turmas: turmas || []
-                                };
-                            })
-                            .catch(error => {
-                                console.error(`Erro ao verificar turmas da disciplina ${idDisciplina}:`, error);
-                                return {
-                                    idDisciplina,
-                                    temTurmas: false,
-                                    turmas: [],
-                                    erro: true
-                                };
-                            });
-                    });
-                    
-                    // Verificar todas as disciplinas primeiro
-                    return Promise.all(verificarDisciplinas)
-                        .then(resultados => {
-                            console.log("Resultado da verificação de disciplinas:", resultados);
-                            
-                            // Verificar disciplinas sem turmas
-                            const disciplinasSemTurmas = resultados.filter(r => !r.temTurmas).map(r => r.idDisciplina);
-                            
-                            if (disciplinasSemTurmas.length > 0) {
-                                // Mostrar mensagem sobre disciplinas sem turmas
-                                alert(`ATENÇÃO: As disciplinas ${disciplinasSemTurmas.join(', ')} não possuem turmas vinculadas. É necessário vincular turmas a essas disciplinas no módulo de Disciplinas primeiro.`);
-                            }
-                            
-                            // Filtrar apenas disciplinas com turmas para vincular
-                            const disciplinasComTurmas = resultados.filter(r => r.temTurmas).map(r => r.idDisciplina);
-                            
-                            if (disciplinasComTurmas.length === 0) {
-                                alert('Professor adicionado com sucesso, mas não foi possível vincular disciplinas pois nenhuma delas possui turmas vinculadas.');
-                                resetFormProfessor();
-                                carregarProfessores();
-                                return;
-                            }
-                            
-                            // Criar array de promessas para cada disciplina com turmas
-                            const promessas = disciplinasComTurmas.map(idDisciplina => {
-                                return fetch(CONFIG.getApiUrl('/professores/vinculos'), {
-                                    method: 'POST',
-                                    headers: {
-                                        'Content-Type': 'application/json'
-                                    },
-                                    body: JSON.stringify({
-                                        id_professor: idProfessor,
-                                        id_disciplina: idDisciplina
-                                    })
-                                })
-                                .then(response => {
-                                    if (!response.ok) {
-                                        console.warn(`Aviso ao vincular disciplina ${idDisciplina}: ${response.statusText}`);
-                                    }
-                                    return response.json();
-                                })
-                                .then(data => {
-                                    console.log(`Resultado da vinculação para disciplina ${idDisciplina}:`, data);
-                                    return data;
-                                })
-                                .catch(err => {
-                                    console.error(`Erro ao vincular disciplina ${idDisciplina}:`, err);
-                                    return null;
-                                });
-                            });
-                            
-                            // Executar todas as promessas de vinculação
-                            return Promise.all(promessas);
-                        });
+                    // Verificar disciplinas e criar vínculos
+                    return verificarDisciplinasECriarVinculos(idProfessor, disciplinasSelecionadas);
                 })
                 .then(() => {
                     alert('Professor adicionado com sucesso!');
