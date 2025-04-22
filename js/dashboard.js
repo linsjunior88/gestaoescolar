@@ -1818,7 +1818,16 @@ function initProfessores() {
             } else {
                 // AQUI ESTÁ A CORREÇÃO PRINCIPAL - criar novo professor
                 // Verificar primeiro se o professor já existe para evitar duplicatas
-                fetch(CONFIG.getApiUrl(`professores/${idProfessor}`))
+                // AQUI ESTÁ A CORREÇÃO PRINCIPAL - criar novo professor
+                // Adicionar diretamente sem verificação prévia, deixando o backend tratar duplicatas
+                fetch(CONFIG.getApiUrl('professores'), {  // Removida a barra no início
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(professor)
+                })
+                /*fetch(CONFIG.getApiUrl(`professores/${idProfessor}`))
                     .then(response => {
                         if (response.ok) {
                             // Professor já existe
@@ -1834,7 +1843,7 @@ function initProfessores() {
                             },
                             body: JSON.stringify(professor)
                         });
-                    })
+                    })*/
                     .then(response => {
                         if (!response.ok) {
                             // Verificar se há mensagem de erro específica da API
