@@ -3799,7 +3799,7 @@ function initProfessores() {
                 })
                 .catch(error => {
                     console.error("Erro ao atualizar professor:", error);
-                    alert("Erro ao atualizar professor: " + error.message);
+                    alert("Erro ao atualizar professor linha 3802: " + error.message);
                     // Não usar mais localStorage como fallback
                 });
             } else {
@@ -3820,7 +3820,7 @@ function initProfessores() {
                             })
                             .catch(jsonError => {
                                 // Se não conseguir ler o JSON, usar mensagem padrão
-                                throw new Error(`Erro ao adicionar professor: ${response.status} - ${response.statusText}`);
+                                throw new Error(`Erro ao adicionar professor linha3823: ${response.status} - ${response.statusText}`);
                             });
                     }
                     return response.json();
@@ -3859,7 +3859,7 @@ function initProfessores() {
                     carregarTabelaProfessoresDisciplinasTurmas();
                 })
                 .catch(error => {
-                    console.error("Erro ao adicionar professor:", error);
+                    console.error("Erro ao adicionar professor linha 3862:", error);
                     alert(error.message);
                     // Não usar mais localStorage como fallback
                 });
