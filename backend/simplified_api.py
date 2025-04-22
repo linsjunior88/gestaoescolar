@@ -969,6 +969,149 @@ def read_professor(professor_id: str = Path(..., description="ID ou código do p
     finally:
         print(f"=== FINALIZANDO BUSCA DO PROFESSOR {professor_id} ===")
 
+@app.post("/api/professores/", response_model=Professor, status_code=status.HTTP_201_CREATED)
+def create_professor(professor: ProfessorCreate):
+    """Cria um novo professor."""
+    print(f"=== INICIANDO CRIAÇÃO DE PROFESSOR: {professor.id_professor} ===")
+    try:
+        # Verificar se já existe um professor com o mesmo id_professor
+        query = "SELECT id FROM professor WHERE id_professor = %s"
+        existing = execute_query(query, (professor.id_professor,), fetch_one=True)
+        
+        if existing:
+            print(f"Professor com ID {professor.id_professor} já existe")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Já existe um professor com o código {professor.id_professor}"
+            )
+        
+        # Inserir o novo professor
+        query = """
+        INSERT INTO professor (id_professor, nome_professor, email_professor, senha)
+        VALUES (%s, %s, %s, %s)
+        RETURNING id, id_professor, nome_professor, email_professor
+        """
+        params = (
+            professor.id_professor,
+            professor.nome_professor,
+            professor.email_professor,
+            professor.senha_professor
+        )
+        
+        print(f"Executando query de inserção: {query}")
+        result = execute_query(query, params, fetch_one=True)
+        
+        if not result:
+            print("Falha ao criar professor")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Falha ao criar professor"
+            )
+        
+        print(f"Professor criado com sucesso: {result}")
+        
+        # Lista para armazenar mensagens informativas
+        mensagens = []
+        
+        # Verificar se há disciplinas para vincular
+        disciplinas_com_turmas = []
+        disciplinas_sem_turmas = []
+        
+        if hasattr(professor, 'disciplinas') and professor.disciplinas:
+            print(f"Verificando disciplinas: {professor.disciplinas}")
+            conn = None
+            try:
+                conn = get_db_connection()
+                cursor = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+                
+                for disciplina_id in professor.disciplinas:
+                    # Verificar se a disciplina existe
+                    cursor.execute("SELECT id FROM disciplina WHERE id_disciplina = %s", (disciplina_id,))
+                    disciplina_result = cursor.fetchone()
+                    
+                    if not disciplina_result:
+                        mensagens.append(f"Disciplina {disciplina_id} não encontrada")
+                        print(f"Disciplina {disciplina_id} não encontrada")
+                        continue
+                    
+                    # Buscar turmas vinculadas à disciplina
+                    cursor.execute("""
+                        SELECT td.id_turma 
+                        FROM turma_disciplina td 
+                        WHERE td.id_disciplina = %s
+                    """, (disciplina_id,))
+                    
+                    turmas = cursor.fetchall()
+                    
+                    if not turmas:
+                        disciplinas_sem_turmas.append(disciplina_id)
+                        mensagem = f"Disciplina {disciplina_id} não tem turmas vinculadas. É necessário realizar o vínculo de turmas e disciplinas primeiro no módulo de disciplinas."
+                        mensagens.append(mensagem)
+                        print(mensagem)
+                        continue
+                    
+                    disciplinas_com_turmas.append(disciplina_id)
+                    
+                    # Para cada turma, criar um vínculo
+                    for turma in turmas:
+                        id_turma = turma['id_turma']
+                        
+                        # Verificar se já existe o vínculo
+                        cursor.execute("""
+                            SELECT id FROM professor_disciplina_turma 
+                            WHERE id_professor = %s AND id_disciplina = %s AND id_turma = %s
+                        """, (professor.id_professor, disciplina_id, id_turma))
+                        
+                        vinculo_existente = cursor.fetchone()
+                        
+                        if not vinculo_existente:
+                            # Inserir novo vínculo
+                            cursor.execute("""
+                                INSERT INTO professor_disciplina_turma (id_professor, id_disciplina, id_turma)
+                                VALUES (%s, %s, %s)
+                            """, (professor.id_professor, disciplina_id, id_turma))
+                            
+                            mensagem = f"Vínculo criado: Professor={professor.id_professor}, Disciplina={disciplina_id}, Turma={id_turma}"
+                            mensagens.append(mensagem)
+                            print(mensagem)
+                
+                conn.commit()
+                print("Vínculos de disciplinas e turmas processados com sucesso")
+                
+            except Exception as e:
+                if conn:
+                    conn.rollback()
+                erro = f"Erro ao vincular disciplinas: {str(e)}"
+                mensagens.append(erro)
+                print(erro)
+            finally:
+                if conn:
+                    conn.close()
+        
+        # Preparar a resposta
+        response = {
+            "id": result["id"],
+            "id_professor": result["id_professor"],
+            "nome_professor": result["nome_professor"],
+            "email_professor": result["email_professor"],
+            "senha_professor": None,  # Não retornar a senha
+            "disciplinas": disciplinas_com_turmas,
+            "mensagens": mensagens
+        }
+        
+        print(f"Retornando resposta: {response}")
+        return response
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"ERRO ao criar professor: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao criar professor: {str(e)}"
+        )
+    finally:
+        print(f"=== FINALIZANDO CRIAÇÃO DE PROFESSOR ===")
+
 @app.get("/api/professores/vinculos/{prof_id}")
 def read_vinculos_professor_by_id(prof_id: str = Path(..., description="ID do professor para buscar vínculos")):
     logger.debug(f"Tentando acessar endpoint /api/professores/vinculos/{prof_id}")
