@@ -22,6 +22,8 @@ class ProfessorUpdate(BaseModel):
 
 class Professor(ProfessorBase):
     id: int
+    disciplinas: Optional[List[str]] = []
+    mensagens: Optional[List[str]] = []
     
     class Config:
         from_attributes = True
@@ -166,14 +168,88 @@ def create_professor(professor: ProfessorCreate):
             detail="Falha ao criar professor"
         )
     
-    return {
+    # Lista para armazenar mensagens informativas
+    mensagens = []
+    
+    # Verificar se há disciplinas para vincular
+    disciplinas_com_turmas = []
+    disciplinas_sem_turmas = []
+    
+    if hasattr(professor, 'disciplinas') and professor.disciplinas:
+        conn = None
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+            
+            for disciplina_id in professor.disciplinas:
+                # Verificar se a disciplina existe
+                cursor.execute("SELECT id FROM disciplina WHERE id_disciplina = %s", (disciplina_id,))
+                disciplina_result = cursor.fetchone()
+                
+                if not disciplina_result:
+                    mensagens.append(f"Disciplina {disciplina_id} não encontrada")
+                    continue
+                
+                # Buscar turmas vinculadas à disciplina
+                cursor.execute("""
+                    SELECT td.id_turma 
+                    FROM turma_disciplina td 
+                    WHERE td.id_disciplina = %s
+                """, (disciplina_id,))
+                
+                turmas = cursor.fetchall()
+                
+                if not turmas:
+                    disciplinas_sem_turmas.append(disciplina_id)
+                    mensagens.append(f"Disciplina {disciplina_id} não tem turmas vinculadas. É necessário realizar o vínculo de turmas e disciplinas primeiro no módulo de disciplinas.")
+                    continue
+                
+                disciplinas_com_turmas.append(disciplina_id)
+                
+                # Para cada turma, criar um vínculo
+                for turma in turmas:
+                    id_turma = turma['id_turma']
+                    
+                    # Verificar se já existe o vínculo
+                    cursor.execute("""
+                        SELECT id FROM professor_disciplina_turma 
+                        WHERE id_professor = %s AND id_disciplina = %s AND id_turma = %s
+                    """, (professor.id_professor, disciplina_id, id_turma))
+                    
+                    vinculo_existente = cursor.fetchone()
+                    
+                    if not vinculo_existente:
+                        # Inserir novo vínculo
+                        cursor.execute("""
+                            INSERT INTO professor_disciplina_turma (id_professor, id_disciplina, id_turma)
+                            VALUES (%s, %s, %s)
+                        """, (professor.id_professor, disciplina_id, id_turma))
+                        
+                        mensagens.append(f"Vínculo criado: Professor={professor.id_professor}, Disciplina={disciplina_id}, Turma={id_turma}")
+            
+            conn.commit()
+            
+        except Exception as e:
+            if conn:
+                conn.rollback()
+            mensagens.append(f"Erro ao vincular disciplinas: {str(e)}")
+        finally:
+            if conn:
+                conn.close()
+    
+    # Preparar a resposta
+    response = {
         "id": result["id"],
         "id_professor": result["id_professor"],
         "nome_professor": result["nome_professor"],
         "email_professor": result["email_professor"],
         "telefone_professor": result["telefone_professor"],
-        "ativo": result["ativo"]
+        "ativo": result["ativo"],
+        "disciplinas": disciplinas_com_turmas,
+        "mensagens": mensagens
     }
+    
+    return response
 
 @app.put("/api/professores/{professor_id}", response_model=Professor)
 def update_professor(

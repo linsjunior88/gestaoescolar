@@ -185,6 +185,7 @@ class Professor(BaseModel):
     email_professor: Optional[str] = None
     senha_professor: Optional[str] = None
     disciplinas: Optional[List[str]] = []
+    mensagens: Optional[List[str]] = []
 
 # Modelo para login de professor
 class ProfessorLogin(BaseModel):
