@@ -181,15 +181,19 @@ function filtrarAlunos() {
     const filtroTurmaVal = filtroTurma ? filtroTurma.value : '';
     const filtroDataVal = filtroDataNasc ? filtroDataNasc.value : '';
     
-    // Construir query string para filtros
-    let queryParams = [];
-    if (filtroId) queryParams.push(`id_aluno=${encodeURIComponent(filtroId)}`);
-    if (filtroNome) queryParams.push(`nome_aluno=${encodeURIComponent(filtroNome)}`);
-    if (filtroTurmaVal) queryParams.push(`id_turma=${encodeURIComponent(filtroTurmaVal)}`);
-    if (filtroDataVal) queryParams.push(`data_nasc=${encodeURIComponent(filtroDataVal)}`);
+    // Verificar se pelo menos um filtro foi aplicado ou se estamos buscando todos
+    const buscandoTodos = !filtroId && !filtroNome && !filtroTurmaVal && !filtroDataVal;
     
-    // Verificar se pelo menos um filtro foi aplicado
-    if (queryParams.length === 0) {
+    console.log("Filtros aplicados:", {
+        id: filtroId,
+        nome: filtroNome,
+        turma: filtroTurmaVal,
+        dataNasc: filtroDataVal,
+        buscandoTodos: buscandoTodos
+    });
+    
+    // Se não há filtros e não estamos querendo buscar todos, mostrar mensagem
+    if (!buscandoTodos && !filtroId && !filtroNome && !filtroTurmaVal && !filtroDataVal) {
         alunosLista.innerHTML = `
             <tr class="text-center">
                 <td colspan="7">Aplique pelo menos um filtro para buscar alunos</td>
@@ -198,14 +202,8 @@ function filtrarAlunos() {
         return;
     }
     
-    // Endpoint para buscar alunos com filtro
-    let url = CONFIG.getApiUrl('/alunos');
-    if (queryParams.length > 0) {
-        url += '?' + queryParams.join('&');
-    }
-    
-    // Buscar alunos da API
-    fetch(url)
+    // Buscar todos os alunos e aplicar filtros no cliente, já que a API não está filtrando corretamente
+    fetch(CONFIG.getApiUrl('/alunos'))
         .then(response => {
             if (!response.ok) {
                 throw new Error(`Erro ao carregar alunos: ${response.status} - ${response.statusText}`);
@@ -213,9 +211,46 @@ function filtrarAlunos() {
             return response.json();
         })
         .then(alunos => {
-            console.log("Alunos filtrados da API:", alunos.length);
+            console.log("Total de alunos recebidos:", alunos.length);
             
-            if (!Array.isArray(alunos) || alunos.length === 0) {
+            // Aplicar filtros no cliente
+            let alunosFiltrados = alunos;
+            
+            if (!buscandoTodos) {
+                alunosFiltrados = alunos.filter(aluno => {
+                    // Verificar cada filtro
+                    if (filtroId && !aluno.id_aluno.toLowerCase().includes(filtroId.toLowerCase())) {
+                        return false;
+                    }
+                    
+                    if (filtroNome && !aluno.nome_aluno.toLowerCase().includes(filtroNome.toLowerCase())) {
+                        return false;
+                    }
+                    
+                    if (filtroTurmaVal && aluno.id_turma !== filtroTurmaVal) {
+                        return false;
+                    }
+                    
+                    if (filtroDataVal) {
+                        // Comparar apenas as datas sem considerar timezone
+                        const filtroData = filtroDataVal.split('-'); // formato yyyy-mm-dd
+                        const alunoData = aluno.data_nasc.split('-');
+                        
+                        // Comparar ano, mês e dia
+                        if (filtroData[0] !== alunoData[0] || 
+                            filtroData[1] !== alunoData[1] || 
+                            filtroData[2] !== alunoData[2]) {
+                            return false;
+                        }
+                    }
+                    
+                    return true;
+                });
+            }
+            
+            console.log("Alunos após filtragem local:", alunosFiltrados.length);
+            
+            if (alunosFiltrados.length === 0) {
                 alunosLista.innerHTML = `
                     <tr class="text-center">
                         <td colspan="7">Nenhum aluno encontrado com os filtros aplicados</td>
@@ -225,7 +260,7 @@ function filtrarAlunos() {
             }
             
             // Ordenar alunos por ID ou nome
-            alunos.sort((a, b) => {
+            alunosFiltrados.sort((a, b) => {
                 return a.nome_aluno.localeCompare(b.nome_aluno);
             });
             
@@ -233,7 +268,7 @@ function filtrarAlunos() {
             alunosLista.innerHTML = '';
             
             // Adicionar cada aluno à lista
-            alunos.forEach(aluno => {
+            alunosFiltrados.forEach(aluno => {
                 // Formatar data de nascimento
                 let dataNascFormatada = '-';
                 if (aluno.data_nasc) {
@@ -350,12 +385,29 @@ document.addEventListener('click', function(e) {
     if (e.target.matches('#alunos-link') || e.target.closest('#alunos-link')) {
         console.log("Clique no link de alunos detectado");
         setTimeout(function() {
-            if (document.querySelector('#conteudo-alunos.active')) {
+            const conteudoAlunos = document.querySelector('#conteudo-alunos');
+            if (conteudoAlunos && conteudoAlunos.classList.contains('active')) {
                 console.log("Seção de alunos ativada, verificando filtros");
                 if (!document.getElementById('card-filtro-alunos')) {
                     console.log("Filtros não encontrados, adicionando-os");
                     adicionarFiltroAlunos();
                     substituirCarregarAlunos();
+                }
+                
+                // Impedir o carregamento automático da lista de alunos
+                const alunosLista = document.getElementById('alunos-lista');
+                if (alunosLista) {
+                    // Se a lista estiver vazia ou mostrando todos os alunos, substituir pela mensagem de filtro
+                    const rowCount = alunosLista.querySelectorAll('tr').length;
+                    
+                    if (rowCount > 1 && !document.querySelector('#alunos-lista tr td[colspan="7"]')) {
+                        console.log("Substituindo lista automática por mensagem de filtro");
+                        alunosLista.innerHTML = `
+                            <tr class="text-center">
+                                <td colspan="7">Use os filtros acima para buscar alunos</td>
+                            </tr>
+                        `;
+                    }
                 }
             }
         }, 100);
