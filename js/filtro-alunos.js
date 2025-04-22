@@ -5,7 +5,7 @@ function adicionarFiltroAlunos() {
     console.log("Adicionando filtros ao módulo de alunos");
     
     // Localizar o contêiner do módulo de alunos
-    const alunosContainer = document.querySelector('.module-container[data-module="alunos"]');
+    const alunosContainer = document.querySelector('#conteudo-alunos');
     if (!alunosContainer) {
         console.error("Contêiner do módulo de alunos não encontrado");
         return;
@@ -47,20 +47,19 @@ function adicionarFiltroAlunos() {
         </div>
     `;
     
-    // Inserir seção de filtros antes da tabela de alunos
-    const tabelaAlunos = alunosContainer.querySelector('.card-lista-alunos') || 
-                          alunosContainer.querySelector('.table-responsive').closest('.card');
+    // Inserir seção de filtros após o título h2 e antes do primeiro card
+    const tituloAlunos = alunosContainer.querySelector('h2');
     
-    if (tabelaAlunos) {
+    if (tituloAlunos) {
         // Verificar se o filtro já existe
         if (!document.getElementById('card-filtro-alunos')) {
-            tabelaAlunos.insertAdjacentHTML('beforebegin', filtrosHTML);
+            tituloAlunos.insertAdjacentHTML('afterend', filtrosHTML);
             
             // Inicializar os filtros
             inicializarFiltrosAlunos();
         }
     } else {
-        console.error("Tabela de alunos não encontrada");
+        console.error("Título da seção de alunos não encontrado");
     }
 }
 
@@ -322,8 +321,10 @@ function substituirCarregarAlunos() {
 
 // Executar após o carregamento da página
 document.addEventListener('DOMContentLoaded', function() {
+    console.log("Verificando presença da seção de alunos");
     // Verificar se estamos na página de alunos
-    if (document.querySelector('.module-container[data-module="alunos"]')) {
+    if (document.querySelector('#conteudo-alunos')) {
+        console.log("Seção de alunos encontrada, adicionando filtros");
         // Adicionar filtros e substituir a função original
         adicionarFiltroAlunos();
         substituirCarregarAlunos();
@@ -333,11 +334,30 @@ document.addEventListener('DOMContentLoaded', function() {
 // Se a página já estiver carregada, executar imediatamente
 if (document.readyState === 'complete' || document.readyState === 'interactive') {
     setTimeout(function() {
+        console.log("Verificando presença da seção de alunos (documento já carregado)");
         // Verificar se estamos na página de alunos
-        if (document.querySelector('.module-container[data-module="alunos"]')) {
+        if (document.querySelector('#conteudo-alunos')) {
+            console.log("Seção de alunos encontrada, adicionando filtros");
             // Adicionar filtros e substituir a função original
             adicionarFiltroAlunos();
             substituirCarregarAlunos();
         }
     }, 500);
-} 
+}
+
+// Adicionar um event listener para capturar quando a seção de alunos é ativada
+document.addEventListener('click', function(e) {
+    if (e.target.matches('#alunos-link') || e.target.closest('#alunos-link')) {
+        console.log("Clique no link de alunos detectado");
+        setTimeout(function() {
+            if (document.querySelector('#conteudo-alunos.active')) {
+                console.log("Seção de alunos ativada, verificando filtros");
+                if (!document.getElementById('card-filtro-alunos')) {
+                    console.log("Filtros não encontrados, adicionando-os");
+                    adicionarFiltroAlunos();
+                    substituirCarregarAlunos();
+                }
+            }
+        }, 100);
+    }
+}); 
