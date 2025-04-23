@@ -63,13 +63,30 @@ document.addEventListener('DOMContentLoaded', function() {
 function inicializarFiltrosNotas() {
     console.log("Inicializando filtros de notas");
     
-    // Inicializar os selectboxes com os valores padrão
-    // Desabilitar disciplinas e alunos até que uma turma seja selecionada
-    document.getElementById('filtro-disciplina').disabled = true;
-    document.getElementById('filtro-disciplina').innerHTML = '<option value="">Selecione uma turma primeiro</option>';
+    // Inicializar os selectboxes com indicadores de carregamento
+    const filtroAno = document.getElementById('filtro-ano');
+    const filtroBimestre = document.getElementById('filtro-bimestre');
+    const filtroTurma = document.getElementById('filtro-turma');
+    const filtroDisciplina = document.getElementById('filtro-disciplina');
+    const filtroAluno = document.getElementById('filtro-aluno');
     
-    document.getElementById('filtro-aluno').disabled = true;
-    document.getElementById('filtro-aluno').innerHTML = '<option value="">Selecione uma turma primeiro</option>';
+    // Verificar se todos os elementos existem
+    if (!filtroAno || !filtroBimestre || !filtroTurma || !filtroDisciplina || !filtroAluno) {
+        console.error("Alguns elementos de filtro não foram encontrados");
+        return;
+    }
+    
+    // Carregar indicadores iniciais
+    filtroAno.innerHTML = '<option value="">Carregando anos...</option>';
+    filtroBimestre.innerHTML = '<option value="">Carregando bimestres...</option>';
+    filtroTurma.innerHTML = '<option value="">Carregando turmas...</option>';
+    
+    // Desabilitar apenas disciplinas e alunos até que uma turma seja selecionada
+    filtroDisciplina.disabled = true;
+    filtroDisciplina.innerHTML = '<option value="">Selecione uma turma primeiro</option>';
+    
+    filtroAluno.disabled = true;
+    filtroAluno.innerHTML = '<option value="">Selecione uma turma primeiro</option>';
     
     // Carregar anos letivos
     carregarAnosLetivos();
@@ -81,7 +98,7 @@ function inicializarFiltrosNotas() {
     carregarTurmas();
     
     // Adicionar evento de change para a seleção de turma
-    document.getElementById('filtro-turma').addEventListener('change', function() {
+    filtroTurma.addEventListener('change', function() {
         // Quando a turma mudar, carregar disciplinas e alunos associados
         const turmaId = this.value;
         carregarDisciplinas(turmaId);
@@ -107,20 +124,26 @@ function inicializarFiltrosNotas() {
     if (notasContainer) {
         notasContainer.innerHTML = '<div class="alert alert-info mt-3">Selecione pelo menos um filtro e clique em "Aplicar Filtros" para visualizar as notas.</div>';
     }
+    
+    // Restaurar filtros salvos, se existirem
+    setTimeout(restaurarFiltrosSalvos, 1000);
 }
 
 // Função para carregar anos letivos
 function carregarAnosLetivos() {
     const anoSelect = document.getElementById('filtro-ano');
-    anoSelect.innerHTML = '<option value="">Carregando anos...</option>';
-    
+    if (!anoSelect) {
+        console.error("Elemento de filtro de ano não encontrado");
+        return;
+    }
+
     console.log("Carregando anos letivos");
     
-    // Gerar anos de 2020 até o ano atual + 1
+    // Gerar anos de 2020 até o ano atual + 2
     const anoAtual = new Date().getFullYear();
     const anos = [];
     
-    for (let ano = 2020; ano <= anoAtual + 1; ano++) {
+    for (let ano = 2020; ano <= anoAtual + 2; ano++) {
         anos.push(ano);
     }
     
@@ -141,7 +164,10 @@ function carregarAnosLetivos() {
 // Função para carregar bimestres
 function carregarBimestres() {
     const bimestreSelect = document.getElementById('filtro-bimestre');
-    bimestreSelect.innerHTML = '<option value="">Carregando bimestres...</option>';
+    if (!bimestreSelect) {
+        console.error("Elemento de filtro de bimestre não encontrado");
+        return;
+    }
     
     console.log("Carregando bimestres");
     
@@ -170,14 +196,20 @@ function carregarBimestres() {
 // Função para carregar turmas
 function carregarTurmas() {
     const turmaSelect = document.getElementById('filtro-turma');
+    if (!turmaSelect) {
+        console.error("Elemento de filtro de turma não encontrado");
+        return;
+    }
+    
     turmaSelect.innerHTML = '<option value="">Carregando turmas...</option>';
     
     console.log("Carregando turmas");
     
+    // Primeiro, tentar buscar do endpoint padrão
     fetch(`${BASE_API_URL}/turmas`)
         .then(response => {
             if (!response.ok) {
-                throw new Error('Falha ao buscar turmas');
+                throw new Error('Falha ao buscar turmas do endpoint padrão');
             }
             return response.json();
         })
@@ -196,8 +228,45 @@ function carregarTurmas() {
             });
         })
         .catch(error => {
-            console.error("Erro ao carregar turmas:", error);
-            turmaSelect.innerHTML = '<option value="">Erro ao carregar turmas</option>';
+            console.error("Erro ao carregar turmas do endpoint padrão:", error);
+            
+            // Se falhar, tentar através do CONFIG.getApiUrl()
+            try {
+                if (typeof CONFIG !== 'undefined' && typeof CONFIG.getApiUrl === 'function') {
+                    console.log("Tentando carregar turmas através do CONFIG.getApiUrl");
+                    
+                    fetch(CONFIG.getApiUrl('/turmas'))
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error(`Erro ao carregar turmas: ${response.status}`);
+                            }
+                            return response.json();
+                        })
+                        .then(turmas => {
+                            console.log(`${turmas.length} turmas carregadas via CONFIG`);
+                            
+                            // Limpar e adicionar opção padrão
+                            turmaSelect.innerHTML = '<option value="">Todas as Turmas</option>';
+                            
+                            // Adicionar as turmas ao select
+                            turmas.forEach(turma => {
+                                const option = document.createElement('option');
+                                option.value = turma.id_turma || turma.id;
+                                option.textContent = turma.id_turma ? `${turma.id_turma} - ${turma.serie || 'Sem nome'}` : turma.nome;
+                                turmaSelect.appendChild(option);
+                            });
+                        })
+                        .catch(configError => {
+                            console.error("Erro ao carregar turmas via CONFIG:", configError);
+                            turmaSelect.innerHTML = '<option value="">Erro ao carregar turmas</option>';
+                        });
+                } else {
+                    turmaSelect.innerHTML = '<option value="">Erro ao carregar turmas</option>';
+                }
+            } catch (configErr) {
+                console.error("Erro ao tentar carregar via CONFIG:", configErr);
+                turmaSelect.innerHTML = '<option value="">Erro ao carregar turmas</option>';
+            }
         });
 }
 
@@ -862,7 +931,7 @@ function aplicarCorrecaoFormulario(form) {
             // Mostrar mensagem de erro
             Swal.fire({
                 icon: 'error',
-                title: 'Erro!',
+                title: 'Erro',
                 text: `Falha ao ${notaId ? 'atualizar' : 'salvar'} nota: ${error.message}`,
                 confirmButtonText: 'OK'
             });
@@ -875,6 +944,10 @@ function aplicarCorrecaoFormulario(form) {
 // Função para carregar opções de disciplinas com base na turma selecionada
 function carregarDisciplinas(turmaId) {
     const disciplinaSelect = document.getElementById('filtro-disciplina');
+    if (!disciplinaSelect) {
+        console.error("Elemento de filtro de disciplina não encontrado");
+        return;
+    }
     
     // Desabilitar o select de disciplina se nenhuma turma for selecionada
     if (!turmaId) {
@@ -889,10 +962,11 @@ function carregarDisciplinas(turmaId) {
     
     console.log(`Carregando disciplinas para a turma ${turmaId}`);
     
+    // Primeiro, tentar buscar do endpoint padrão
     fetch(`${BASE_API_URL}/disciplinas?turmaId=${turmaId}`)
         .then(response => {
             if (!response.ok) {
-                throw new Error('Falha ao buscar disciplinas');
+                throw new Error('Falha ao buscar disciplinas do endpoint padrão');
             }
             return response.json();
         })
@@ -911,14 +985,96 @@ function carregarDisciplinas(turmaId) {
             });
         })
         .catch(error => {
-            console.error("Erro ao carregar disciplinas:", error);
-            disciplinaSelect.innerHTML = '<option value="">Erro ao carregar disciplinas</option>';
+            console.error("Erro ao carregar disciplinas do endpoint padrão:", error);
+            
+            // Se falhar, tentar através do CONFIG.getApiUrl()
+            try {
+                if (typeof CONFIG !== 'undefined' && typeof CONFIG.getApiUrl === 'function') {
+                    console.log("Tentando carregar disciplinas através do CONFIG.getApiUrl");
+                    
+                    // Carregar todas as disciplinas e filtrar no cliente
+                    fetch(CONFIG.getApiUrl('/disciplinas'))
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error(`Erro ao carregar disciplinas: ${response.status}`);
+                            }
+                            return response.json();
+                        })
+                        .then(todasDisciplinas => {
+                            console.log(`Total de disciplinas carregadas: ${todasDisciplinas.length}`);
+                            
+                            // Filtrar disciplinas vinculadas à turma
+                            const disciplinasFiltradas = todasDisciplinas.filter(disciplina => {
+                                if (!disciplina) return false;
+                                
+                                // Verificar se a disciplina tem turmas
+                                if (disciplina.turmas) {
+                                    if (Array.isArray(disciplina.turmas)) {
+                                        for (const turma of disciplina.turmas) {
+                                            if (turma === turmaId || (turma && turma.id_turma === turmaId)) {
+                                                return true;
+                                            }
+                                        }
+                                    } else if (typeof disciplina.turmas === 'object') {
+                                        for (const key in disciplina.turmas) {
+                                            const turma = disciplina.turmas[key];
+                                            if (turma === turmaId || (turma && turma.id_turma === turmaId)) {
+                                                return true;
+                                            }
+                                        }
+                                    }
+                                }
+                                
+                                // Verificar outro formato possível
+                                if (disciplina.id_turma && disciplina.id_turma === turmaId) {
+                                    return true;
+                                }
+                                
+                                return false;
+                            });
+                            
+                            console.log(`${disciplinasFiltradas.length} disciplinas filtradas para turma ${turmaId}`);
+                            
+                            // Limpar e adicionar opção padrão
+                            disciplinaSelect.innerHTML = '<option value="">Todas as Disciplinas</option>';
+                            
+                            if (disciplinasFiltradas.length === 0) {
+                                // Se não encontrou disciplinas, adicionar mensagem
+                                const option = document.createElement('option');
+                                option.disabled = true;
+                                option.textContent = 'Nenhuma disciplina encontrada para esta turma';
+                                disciplinaSelect.appendChild(option);
+                            } else {
+                                // Adicionar as disciplinas ao select
+                                disciplinasFiltradas.forEach(disciplina => {
+                                    const option = document.createElement('option');
+                                    option.value = disciplina.id_disciplina || disciplina.id;
+                                    option.textContent = disciplina.nome_disciplina || disciplina.nome;
+                                    disciplinaSelect.appendChild(option);
+                                });
+                            }
+                        })
+                        .catch(configError => {
+                            console.error("Erro ao carregar disciplinas via CONFIG:", configError);
+                            disciplinaSelect.innerHTML = '<option value="">Erro ao carregar disciplinas</option>';
+                        });
+                } else {
+                    disciplinaSelect.innerHTML = '<option value="">Erro ao carregar disciplinas</option>';
+                }
+            } catch (configErr) {
+                console.error("Erro ao tentar carregar disciplinas via CONFIG:", configErr);
+                disciplinaSelect.innerHTML = '<option value="">Erro ao carregar disciplinas</option>';
+            }
         });
 }
 
 // Função para carregar opções de alunos com base na turma selecionada
 function carregarAlunos(turmaId) {
     const alunoSelect = document.getElementById('filtro-aluno');
+    if (!alunoSelect) {
+        console.error("Elemento de filtro de aluno não encontrado");
+        return;
+    }
     
     // Desabilitar o select de aluno se nenhuma turma for selecionada
     if (!turmaId) {
@@ -933,10 +1089,11 @@ function carregarAlunos(turmaId) {
     
     console.log(`Carregando alunos para a turma ${turmaId}`);
     
+    // Primeiro, tentar buscar do endpoint padrão
     fetch(`${BASE_API_URL}/alunos?turmaId=${turmaId}`)
         .then(response => {
             if (!response.ok) {
-                throw new Error('Falha ao buscar alunos');
+                throw new Error('Falha ao buscar alunos do endpoint padrão');
             }
             return response.json();
         })
@@ -963,8 +1120,71 @@ function carregarAlunos(turmaId) {
             });
         })
         .catch(error => {
-            console.error("Erro ao carregar alunos:", error);
-            alunoSelect.innerHTML = '<option value="">Erro ao carregar alunos</option>';
+            console.error("Erro ao carregar alunos do endpoint padrão:", error);
+            
+            // Se falhar, tentar através do CONFIG.getApiUrl()
+            try {
+                if (typeof CONFIG !== 'undefined' && typeof CONFIG.getApiUrl === 'function') {
+                    console.log("Tentando carregar alunos através do CONFIG.getApiUrl");
+                    
+                    fetch(CONFIG.getApiUrl('/alunos'))
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error(`Erro ao carregar alunos: ${response.status}`);
+                            }
+                            return response.json();
+                        })
+                        .then(todosAlunos => {
+                            console.log(`Total de alunos carregados: ${todosAlunos.length}`);
+                            
+                            // Filtrar alunos da turma específica
+                            const alunosFiltrados = todosAlunos.filter(aluno => aluno.id_turma === turmaId);
+                            
+                            console.log(`${alunosFiltrados.length} alunos filtrados para turma ${turmaId}`);
+                            
+                            // Usar Set para evitar duplicatas
+                            const idsAlunos = new Set();
+                            const alunosSemDuplicatas = alunosFiltrados.filter(aluno => {
+                                if (idsAlunos.has(aluno.id_aluno)) {
+                                    return false;
+                                }
+                                idsAlunos.add(aluno.id_aluno);
+                                return true;
+                            });
+                            
+                            // Limpar e adicionar opção padrão
+                            alunoSelect.innerHTML = '<option value="">Todos os Alunos</option>';
+                            
+                            if (alunosSemDuplicatas.length === 0) {
+                                // Se não encontrou alunos, adicionar mensagem
+                                const option = document.createElement('option');
+                                option.disabled = true;
+                                option.textContent = 'Nenhum aluno encontrado para esta turma';
+                                alunoSelect.appendChild(option);
+                            } else {
+                                // Ordenar alunos por nome
+                                alunosSemDuplicatas.sort((a, b) => (a.nome_aluno || "").localeCompare(b.nome_aluno || ""));
+                                
+                                // Adicionar os alunos ao select
+                                alunosSemDuplicatas.forEach(aluno => {
+                                    const option = document.createElement('option');
+                                    option.value = aluno.id_aluno || aluno.id;
+                                    option.textContent = aluno.nome_aluno || aluno.nome;
+                                    alunoSelect.appendChild(option);
+                                });
+                            }
+                        })
+                        .catch(configError => {
+                            console.error("Erro ao carregar alunos via CONFIG:", configError);
+                            alunoSelect.innerHTML = '<option value="">Erro ao carregar alunos</option>';
+                        });
+                } else {
+                    alunoSelect.innerHTML = '<option value="">Erro ao carregar alunos</option>';
+                }
+            } catch (configErr) {
+                console.error("Erro ao tentar carregar alunos via CONFIG:", configErr);
+                alunoSelect.innerHTML = '<option value="">Erro ao carregar alunos</option>';
+            }
         });
 }
 
