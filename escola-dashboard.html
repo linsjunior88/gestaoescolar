@@ -11,6 +11,29 @@
     <!-- CSS Personalizado -->
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="css/dashboard.css">
+    <!-- Script para forçar recarregamento de recursos e limpar cache -->
+    <script>
+        // Adicionar timestamp à URL dos scripts para evitar cache
+        function adicionarTimestamp() {
+            // Buscar todos os scripts
+            const scripts = document.querySelectorAll('script[src]');
+            const timestamp = Date.now();
+            
+            // Adicionar timestamp à URL de cada script
+            scripts.forEach(script => {
+                if (script.src && script.src.includes('/js/')) {
+                    const url = new URL(script.src);
+                    url.searchParams.set('v', timestamp);
+                    script.src = url.toString();
+                }
+            });
+            
+            console.log('Scripts marcados para recarregamento forçado');
+        }
+        
+        // Executar quando o DOM estiver pronto
+        document.addEventListener('DOMContentLoaded', adicionarTimestamp);
+    </script>
 </head>
 <body>
     <!-- Barra de navegação -->
@@ -978,12 +1001,10 @@
     <script src="js/modules/alunos.js"></script>
     <script src="js/modules/professores.js"></script>
     
-    <!-- Carregar dashboard.js temporariamente até que todos os módulos estejam implementados -->
-    <script src="js/dashboard.js"></script>
-    
     <!-- Módulos adicionais -->
     <script src="js/filtro-alunos.js"></script>
     <script src="js/filtro-notas.js"></script>
+    
     <script src="js/app.js"></script>
 </body>
 </html> 

@@ -4,28 +4,32 @@
  * navegação entre seções e outros elementos da UI.
  */
 
+// Variáveis globais para armazenar referências a elementos da UI
+const links = {};
+const conteudos = {};
+
 // Função para inicializar os links do menu
 function initLinks() {
     console.log("Inicializando links do menu");
     
     // Mapear os links do menu para seus respectivos conteúdos
-    links = {
+    Object.assign(links, {
         'dashboard-link': document.getElementById('dashboard-link'),
         'turmas-link': document.getElementById('turmas-link'),
         'disciplinas-link': document.getElementById('disciplinas-link'),
         'professores-link': document.getElementById('professores-link'),
         'alunos-link': document.getElementById('alunos-link'),
         'notas-link': document.getElementById('notas-link')
-    };
+    });
     
-    conteudos = {
+    Object.assign(conteudos, {
         'dashboard-link': document.getElementById('conteudo-dashboard'),
         'turmas-link': document.getElementById('conteudo-turmas'),
         'disciplinas-link': document.getElementById('conteudo-disciplinas'),
         'professores-link': document.getElementById('conteudo-professores'),
         'alunos-link': document.getElementById('conteudo-alunos'),
         'notas-link': document.getElementById('conteudo-notas')
-    };
+    });
     
     // Adicionar eventos de clique para alternar entre as seções
     for (const key in links) {
@@ -36,6 +40,9 @@ function initLinks() {
             });
         }
     }
+    
+    console.log("Links inicializados:", Object.keys(links).filter(k => links[k]));
+    console.log("Conteúdos inicializados:", Object.keys(conteudos).filter(k => conteudos[k]));
 }
 
 // Função para ativar a seção selecionada

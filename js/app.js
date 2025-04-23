@@ -34,46 +34,78 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Inicializar UI e sidebar
     if (typeof initSidebar === 'function') {
+        console.log("Inicializando sidebar...");
         initSidebar();
+    } else {
+        console.warn("Função initSidebar não encontrada!");
     }
     
     // Inicializar módulos conforme necessário
     
     // Módulo geral de estatísticas na dashboard
     if (typeof initGeral === 'function') {
+        console.log("Inicializando dashboard geral...");
         initGeral();
+    } else {
+        console.warn("Função initGeral não encontrada!");
     }
     
     // Módulo de gráficos
     if (typeof initCharts === 'function') {
+        console.log("Inicializando gráficos...");
         initCharts();
+    } else {
+        console.warn("Função initCharts não encontrada!");
     }
     
     // Módulos específicos
     
     // Turmas
     if (typeof initTurmas === 'function') {
+        console.log("Inicializando módulo de turmas...");
         initTurmas();
+    } else {
+        console.warn("Função initTurmas não encontrada!");
     }
     
     // Disciplinas
     if (typeof initDisciplinas === 'function') {
+        console.log("Inicializando módulo de disciplinas...");
         initDisciplinas();
+    } else {
+        console.warn("Função initDisciplinas não encontrada!");
     }
     
     // Professores
     if (typeof initProfessores === 'function') {
+        console.log("Inicializando módulo de professores...");
         initProfessores();
+    } else {
+        console.warn("Função initProfessores não encontrada!");
     }
     
     // Alunos
     if (typeof initAlunos === 'function') {
+        console.log("Inicializando módulo de alunos...");
         initAlunos();
+    } else {
+        console.warn("Função initAlunos não encontrada!");
     }
     
     // Notas
     if (typeof initNotas === 'function') {
+        console.log("Inicializando módulo de notas...");
         initNotas();
+    } else {
+        console.warn("Função initNotas não encontrada!");
+    }
+    
+    // Inicialização de navegação
+    if (typeof initLinks === 'function') {
+        console.log("Inicializando links de navegação...");
+        initLinks();
+    } else {
+        console.warn("Função initLinks não encontrada!");
     }
     
     // Ativar seção inicial e configurar navegação
@@ -81,17 +113,22 @@ document.addEventListener('DOMContentLoaded', function() {
         // Verificar URL para ativar a seção correspondente
         const hash = window.location.hash.substring(1);
         if (hash) {
+            console.log(`Ativando seção de hash: ${hash}`);
             ativarSecao(hash);
         } else {
             // Seção padrão
+            console.log("Ativando seção padrão: dashboard");
             ativarSecao('dashboard');
         }
         
         // Configurar navegação por hash
         window.addEventListener('hashchange', function() {
             const novoHash = window.location.hash.substring(1);
+            console.log(`Hash alterado para: ${novoHash}`);
             ativarSecao(novoHash);
         });
+    } else {
+        console.warn("Função ativarSecao não encontrada!");
     }
     
     console.log("Inicialização da aplicação concluída!");
