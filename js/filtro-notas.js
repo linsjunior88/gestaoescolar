@@ -509,26 +509,40 @@ function aplicarFiltros() {
         .then(notas => {
             console.log("Total de notas recebidas:", notas.length);
             
+            // Garantir que todos os valores de comparação sejam strings
+            const anoStr = String(ano);
+            const bimestreStr = String(bimestre);
+            const turmaStr = String(turma);
+            const disciplinaStr = String(disciplina);
+            const alunoStr = String(aluno);
+            
             // Filtrar notas manualmente baseado nos critérios selecionados
             const notasFiltradas = notas.filter(nota => {
+                // Converter valores da nota para string para garantir comparação consistente
+                const notaAnoStr = String(nota.ano || '');
+                const notaBimestreStr = String(nota.bimestre || '');
+                const notaTurmaStr = String(nota.id_turma || '');
+                const notaDisciplinaStr = String(nota.id_disciplina || '');
+                const notaAlunoStr = String(nota.id_aluno || '');
+                
                 // Verificar cada critério
-                if (ano && nota.ano !== ano) {
+                if (anoStr && notaAnoStr !== anoStr) {
                     return false;
                 }
                 
-                if (bimestre && nota.bimestre !== bimestre) {
+                if (bimestreStr && notaBimestreStr !== bimestreStr) {
                     return false;
                 }
                 
-                if (turma && nota.id_turma !== turma) {
+                if (turmaStr && notaTurmaStr !== turmaStr) {
                     return false;
                 }
                 
-                if (disciplina && nota.id_disciplina !== disciplina) {
+                if (disciplinaStr && notaDisciplinaStr !== disciplinaStr) {
                     return false;
                 }
                 
-                if (aluno && nota.id_aluno !== aluno) {
+                if (alunoStr && notaAlunoStr !== alunoStr) {
                     return false;
                 }
                 
@@ -575,22 +589,52 @@ function mostrarNotasFiltradas(notas) {
     .then(([alunos, disciplinas, turmas]) => {
         // Funções auxiliares para obter nomes
         const getNomeAluno = (id) => {
-            const aluno = alunos.find(a => a.id_aluno === id);
+            const aluno = alunos.find(a => String(a.id_aluno) === String(id));
             return aluno ? aluno.nome_aluno : `Aluno ${id}`;
         };
         
         const getNomeDisciplina = (id) => {
-            const disciplina = disciplinas.find(d => d.id_disciplina === id);
+            const disciplina = disciplinas.find(d => String(d.id_disciplina) === String(id));
             return disciplina ? disciplina.nome_disciplina : `Disciplina ${id}`;
         };
         
         const getNomeTurma = (id) => {
-            const turma = turmas.find(t => t.id_turma === id);
+            const turma = turmas.find(t => String(t.id_turma) === String(id));
             return turma ? `${turma.id_turma} - ${turma.serie || ''}` : id;
         };
         
+        const getTurmaPorAluno = (idAluno) => {
+            const aluno = alunos.find(a => String(a.id_aluno) === String(idAluno));
+            return aluno ? aluno.id_turma : null;
+        };
+        
+        // Eliminar duplicatas baseadas na combinação de aluno, disciplina e bimestre
+        const notasUnicas = [];
+        const jaAdicionadas = new Set();
+        
+        notas.forEach(nota => {
+            // Criar uma chave única para cada nota
+            const chaveUnica = `${nota.id_aluno}-${nota.id_disciplina}-${nota.bimestre}-${nota.ano}`;
+            
+            if (!jaAdicionadas.has(chaveUnica)) {
+                // Verificar se a nota está consistente com a turma do aluno
+                const turmaAluno = getTurmaPorAluno(nota.id_aluno);
+                
+                // Se temos a turma do aluno e ela não bate com a turma da nota, corrigir
+                if (turmaAluno && (!nota.id_turma || nota.id_turma !== turmaAluno)) {
+                    console.log(`Corrigindo turma da nota: aluno ${nota.id_aluno} (${getNomeAluno(nota.id_aluno)}) está na turma ${turmaAluno}, mas a nota indica turma ${nota.id_turma}`);
+                    nota.id_turma = turmaAluno;
+                }
+                
+                notasUnicas.push(nota);
+                jaAdicionadas.add(chaveUnica);
+            }
+        });
+        
+        console.log(`Removidas ${notas.length - notasUnicas.length} notas duplicadas`);
+        
         // Ordenar notas
-        notas.sort((a, b) => {
+        notasUnicas.sort((a, b) => {
             const nomeAlunoA = getNomeAluno(a.id_aluno);
             const nomeAlunoB = getNomeAluno(b.id_aluno);
             
@@ -610,7 +654,7 @@ function mostrarNotasFiltradas(notas) {
         });
         
         // Adicionar cada nota à tabela
-        notas.forEach(nota => {
+        notasUnicas.forEach(nota => {
             const tr = document.createElement('tr');
             
             // Determinar classe CSS para colorir a linha baseado na nota
