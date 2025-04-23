@@ -4,15 +4,54 @@
 // URL base da API
 const BASE_API_URL = 'http://localhost:3000';
 
+// Logger para diagnóstico
+function logFiltros(mensagem, dados) {
+    console.log(`### FILTROS: ${mensagem}`, dados || '');
+}
+
 // Detectar quando a seção de notas está ativa e inicializar os filtros
 document.addEventListener('DOMContentLoaded', function() {
-    console.log("Script de filtro-notas.js carregado");
+    logFiltros("Script de filtro-notas.js carregado");
     
     // Verificar se estamos na página do dashboard
     if (!document.querySelector('.main-content')) {
-        console.log("Não estamos na página do dashboard, script de filtros de notas não será inicializado");
+        logFiltros("Não estamos na página do dashboard, script de filtros de notas não será inicializado");
         return;
     }
+    
+    // Tentar identificar o problema adicionando logs extras
+    const secaoNotas = document.getElementById('notas');
+    if (secaoNotas) {
+        logFiltros("Seção de notas encontrada no DOM");
+        
+        // Verificar se existem elementos de formulário dentro da seção
+        const filtroAno = secaoNotas.querySelector('#filtro-ano');
+        const filtroBimestre = secaoNotas.querySelector('#filtro-bimestre');
+        const filtroTurma = secaoNotas.querySelector('#filtro-turma');
+        
+        logFiltros("Elementos de filtro na seção:", {
+            filtroAno: !!filtroAno,
+            filtroBimestre: !!filtroBimestre,
+            filtroTurma: !!filtroTurma
+        });
+    } else {
+        logFiltros("ALERTA: Seção de notas não encontrada no DOM");
+    }
+    
+    // Adicionar diagnóstico dos elementos globais
+    const filtroAnoGlobal = document.querySelector('#filtro-ano');
+    const filtroBimestreGlobal = document.querySelector('#filtro-bimestre');
+    const filtroTurmaGlobal = document.querySelector('#filtro-turma');
+    
+    logFiltros("Elementos de filtro globais:", {
+        filtroAnoGlobal: !!filtroAnoGlobal,
+        filtroBimestreGlobal: !!filtroBimestreGlobal,
+        filtroTurmaGlobal: !!filtroTurmaGlobal
+    });
+    
+    // Inicializar os filtros imediatamente para garantir que estejam disponíveis
+    logFiltros("Tentando inicializar filtros de notas imediatamente");
+    setTimeout(inicializarFiltrosNotas, 500);
     
     // Função para verificar se a seção de notas está ativa
     function verificarSecaoNotasAtiva() {
@@ -27,52 +66,107 @@ document.addEventListener('DOMContentLoaded', function() {
         return secaoNotasAtiva || secaoNotasVisivel;
     }
     
-    // Inicializar filtros se a seção de notas estiver ativa ao carregar a página
-    if (verificarSecaoNotasAtiva()) {
-        console.log("Seção de notas ativa no carregamento da página");
-        inicializarFiltrosNotas();
-    }
-    
     // Adicionar ouvinte para os links da navegação
     document.querySelectorAll('.nav-link').forEach(link => {
         link.addEventListener('click', function() {
             // Verificar após um pequeno atraso para garantir que as classes foram atualizadas
             setTimeout(() => {
                 if (this.getAttribute('href') === '#notas' || verificarSecaoNotasAtiva()) {
-                    console.log("Navegado para a seção de notas");
+                    logFiltros("Navegado para a seção de notas");
                     inicializarFiltrosNotas();
                 }
-            }, 100);
+            }, 200);
         });
     });
     
-    // Verificação periódica (a cada 3 segundos) para garantir que os filtros sejam inicializados
+    // Verificação periódica para garantir que os filtros sejam inicializados
     setInterval(() => {
         if (verificarSecaoNotasAtiva()) {
             const filtroTurma = document.getElementById('filtro-turma');
-            // Se o filtro de turmas estiver vazio, reinicializar
-            if (filtroTurma && (!filtroTurma.options || filtroTurma.options.length <= 1)) {
-                console.log("Detectada seção de notas ativa com filtros não inicializados");
+            const filtroAno = document.getElementById('filtro-ano');
+            const filtroBimestre = document.getElementById('filtro-bimestre');
+            
+            // Verificar se algum dos filtros está vazio
+            if ((filtroTurma && (!filtroTurma.options || filtroTurma.options.length <= 1)) ||
+                (filtroAno && (!filtroAno.options || filtroAno.options.length <= 1)) ||
+                (filtroBimestre && (!filtroBimestre.options || filtroBimestre.options.length <= 1))) {
+                logFiltros("Detectada seção de notas ativa com filtros não inicializados - tentando recarregar");
                 inicializarFiltrosNotas();
             }
         }
-    }, 3000);
+    }, 2000);
 });
+
+// Função para encontrar os elementos de filtro mesmo se as IDs forem diferentes
+function detectarElementosFiltro() {
+    logFiltros("Tentando identificar elementos de filtro na página");
+    
+    // Primeiro, tentar pelo ID padrão
+    let filtroAno = document.getElementById('filtro-ano');
+    let filtroBimestre = document.getElementById('filtro-bimestre');
+    let filtroTurma = document.getElementById('filtro-turma');
+    let filtroAluno = document.getElementById('filtro-aluno');
+    let filtroDisciplina = document.getElementById('filtro-disciplina');
+    
+    // Se não encontrar todos os elementos, tentar outras estratégias
+    if (!filtroAno || !filtroBimestre || !filtroTurma || !filtroAluno || !filtroDisciplina) {
+        logFiltros("Não foi possível encontrar todos os elementos pelo ID, tentando outras estratégias");
+        
+        // Verificar se existe uma seção de notas e buscar dentro dela
+        const secaoNotas = document.getElementById('notas');
+        if (secaoNotas) {
+            // Tentar encontrar usando seletores mais genéricos
+            if (!filtroAno) filtroAno = secaoNotas.querySelector('select[id*="ano"], select[name*="ano"]');
+            if (!filtroBimestre) filtroBimestre = secaoNotas.querySelector('select[id*="bimestre"], select[name*="bimestre"]');
+            if (!filtroTurma) filtroTurma = secaoNotas.querySelector('select[id*="turma"], select[name*="turma"]');
+            if (!filtroAluno) filtroAluno = secaoNotas.querySelector('select[id*="aluno"], select[name*="aluno"]');
+            if (!filtroDisciplina) filtroDisciplina = secaoNotas.querySelector('select[id*="disciplina"], select[name*="disciplina"]');
+        }
+        
+        // Tentar buscar em toda a página
+        if (!filtroAno) filtroAno = document.querySelector('select[id*="ano"], select[name*="ano"]');
+        if (!filtroBimestre) filtroBimestre = document.querySelector('select[id*="bimestre"], select[name*="bimestre"]');
+        if (!filtroTurma) filtroTurma = document.querySelector('select[id*="turma"], select[name*="turma"]');
+        if (!filtroAluno) filtroAluno = document.querySelector('select[id*="aluno"], select[name*="aluno"]');
+        if (!filtroDisciplina) filtroDisciplina = document.querySelector('select[id*="disciplina"], select[name*="disciplina"]');
+    }
+    
+    const resultado = {
+        filtroAno,
+        filtroBimestre,
+        filtroTurma,
+        filtroAluno,
+        filtroDisciplina
+    };
+    
+    logFiltros("Elementos detectados:", {
+        filtroAno: !!resultado.filtroAno,
+        filtroBimestre: !!resultado.filtroBimestre,
+        filtroTurma: !!resultado.filtroTurma,
+        filtroAluno: !!resultado.filtroAluno,
+        filtroDisciplina: !!resultado.filtroDisciplina
+    });
+    
+    return resultado;
+}
 
 // Função para inicializar os filtros na seção de notas
 function inicializarFiltrosNotas() {
-    console.log("Inicializando filtros de notas");
+    logFiltros("Inicializando filtros de notas");
     
-    // Inicializar os selectboxes com indicadores de carregamento
-    const filtroAno = document.getElementById('filtro-ano');
-    const filtroBimestre = document.getElementById('filtro-bimestre');
-    const filtroTurma = document.getElementById('filtro-turma');
-    const filtroDisciplina = document.getElementById('filtro-disciplina');
-    const filtroAluno = document.getElementById('filtro-aluno');
+    // Tentar detectar os elementos do filtro
+    const { filtroAno, filtroBimestre, filtroTurma, filtroDisciplina, filtroAluno } = detectarElementosFiltro();
     
-    // Verificar se todos os elementos existem
+    // Se algum elemento não for encontrado, tentar novamente após um atraso
     if (!filtroAno || !filtroBimestre || !filtroTurma || !filtroDisciplina || !filtroAluno) {
-        console.error("Alguns elementos de filtro não foram encontrados");
+        logFiltros("Alguns elementos de filtro não foram encontrados, tentando novamente em 800ms");
+        setTimeout(inicializarFiltrosNotas, 800);
+        return;
+    }
+    
+    // Verificar se os elementos já têm opções carregadas - se sim, não recarregar
+    if (filtroAno.options.length > 1 && filtroBimestre.options.length > 1 && filtroTurma.options.length > 1) {
+        logFiltros("Os filtros já estão carregados, não é necessário recarregar");
         return;
     }
     
@@ -88,19 +182,16 @@ function inicializarFiltrosNotas() {
     filtroAluno.disabled = true;
     filtroAluno.innerHTML = '<option value="">Selecione uma turma primeiro</option>';
     
-    // Carregar anos letivos
+    // Carregar os dados dos filtros
     carregarAnosLetivos();
-    
-    // Carregar bimestres
     carregarBimestres();
-    
-    // Carregar turmas
     carregarTurmas();
     
     // Adicionar evento de change para a seleção de turma
     filtroTurma.addEventListener('change', function() {
         // Quando a turma mudar, carregar disciplinas e alunos associados
         const turmaId = this.value;
+        logFiltros(`Turma selecionada: ${turmaId}`);
         carregarDisciplinas(turmaId);
         carregarAlunos(turmaId);
     });
@@ -111,86 +202,29 @@ function inicializarFiltrosNotas() {
     // Configurar o botão de aplicar filtros
     const btnAplicarFiltros = document.getElementById('btn-aplicar-filtros');
     if (btnAplicarFiltros) {
-        btnAplicarFiltros.addEventListener('click', aplicarFiltros);
-        console.log("Evento adicionado ao botão de aplicar filtros");
+        // Remover todos os event listeners anteriores
+        const novoBtn = btnAplicarFiltros.cloneNode(true);
+        btnAplicarFiltros.parentNode.replaceChild(novoBtn, btnAplicarFiltros);
+        
+        // Adicionar novo event listener
+        novoBtn.addEventListener('click', aplicarFiltros);
+        logFiltros("Evento adicionado ao botão de aplicar filtros");
     } else {
-        console.warn("Botão de aplicar filtros não encontrado");
+        logFiltros("ALERTA: Botão de aplicar filtros não encontrado");
     }
     
-    console.log("Filtros de notas inicializados - aguardando usuário aplicar filtros");
+    logFiltros("Filtros de notas inicializados - aguardando usuário aplicar filtros");
     
     // Exibir mensagem inicial no local das notas
     const notasContainer = document.querySelector('.notas-container');
     if (notasContainer) {
         notasContainer.innerHTML = '<div class="alert alert-info mt-3">Selecione pelo menos um filtro e clique em "Aplicar Filtros" para visualizar as notas.</div>';
+    } else {
+        logFiltros("ALERTA: Container de notas não encontrado");
     }
     
     // Restaurar filtros salvos, se existirem
     setTimeout(restaurarFiltrosSalvos, 1000);
-}
-
-// Função para carregar anos letivos
-function carregarAnosLetivos() {
-    const anoSelect = document.getElementById('filtro-ano');
-    if (!anoSelect) {
-        console.error("Elemento de filtro de ano não encontrado");
-        return;
-    }
-
-    console.log("Carregando anos letivos");
-    
-    // Gerar anos de 2020 até o ano atual + 2
-    const anoAtual = new Date().getFullYear();
-    const anos = [];
-    
-    for (let ano = 2020; ano <= anoAtual + 2; ano++) {
-        anos.push(ano);
-    }
-    
-    // Limpar e adicionar opção padrão
-    anoSelect.innerHTML = '<option value="">Todos os Anos</option>';
-    
-    // Adicionar os anos ao select
-    anos.forEach(ano => {
-        const option = document.createElement('option');
-        option.value = ano;
-        option.textContent = ano;
-        anoSelect.appendChild(option);
-    });
-    
-    console.log(`${anos.length} anos letivos carregados`);
-}
-
-// Função para carregar bimestres
-function carregarBimestres() {
-    const bimestreSelect = document.getElementById('filtro-bimestre');
-    if (!bimestreSelect) {
-        console.error("Elemento de filtro de bimestre não encontrado");
-        return;
-    }
-    
-    console.log("Carregando bimestres");
-    
-    // Definir os bimestres
-    const bimestres = [
-        { id: "1", nome: "1º Bimestre" },
-        { id: "2", nome: "2º Bimestre" },
-        { id: "3", nome: "3º Bimestre" },
-        { id: "4", nome: "4º Bimestre" }
-    ];
-    
-    // Limpar e adicionar opção padrão
-    bimestreSelect.innerHTML = '<option value="">Todos os Bimestres</option>';
-    
-    // Adicionar os bimestres ao select
-    bimestres.forEach(bimestre => {
-        const option = document.createElement('option');
-        option.value = bimestre.id;
-        option.textContent = bimestre.nome;
-        bimestreSelect.appendChild(option);
-    });
-    
-    console.log(`${bimestres.length} bimestres carregados`);
 }
 
 // Função para carregar turmas
@@ -203,7 +237,7 @@ function carregarTurmas() {
     
     turmaSelect.innerHTML = '<option value="">Carregando turmas...</option>';
     
-    console.log("Carregando turmas");
+    logFiltros("Carregando turmas do servidor");
     
     // Primeiro, tentar buscar do endpoint padrão
     fetch(`${BASE_API_URL}/turmas`)
@@ -214,7 +248,7 @@ function carregarTurmas() {
             return response.json();
         })
         .then(turmas => {
-            console.log(`${turmas.length} turmas carregadas`);
+            logFiltros(`${turmas.length} turmas carregadas com sucesso`);
             
             // Limpar e adicionar opção padrão
             turmaSelect.innerHTML = '<option value="">Todas as Turmas</option>';
@@ -228,12 +262,12 @@ function carregarTurmas() {
             });
         })
         .catch(error => {
-            console.error("Erro ao carregar turmas do endpoint padrão:", error);
+            logFiltros("Erro ao carregar turmas do endpoint padrão, tentando via CONFIG", error);
             
             // Se falhar, tentar através do CONFIG.getApiUrl()
             try {
                 if (typeof CONFIG !== 'undefined' && typeof CONFIG.getApiUrl === 'function') {
-                    console.log("Tentando carregar turmas através do CONFIG.getApiUrl");
+                    logFiltros("Tentando carregar turmas através do CONFIG.getApiUrl");
                     
                     fetch(CONFIG.getApiUrl('/turmas'))
                         .then(response => {
@@ -243,7 +277,7 @@ function carregarTurmas() {
                             return response.json();
                         })
                         .then(turmas => {
-                            console.log(`${turmas.length} turmas carregadas via CONFIG`);
+                            logFiltros(`${turmas.length} turmas carregadas via CONFIG com sucesso`);
                             
                             // Limpar e adicionar opção padrão
                             turmaSelect.innerHTML = '<option value="">Todas as Turmas</option>';
@@ -257,17 +291,91 @@ function carregarTurmas() {
                             });
                         })
                         .catch(configError => {
-                            console.error("Erro ao carregar turmas via CONFIG:", configError);
-                            turmaSelect.innerHTML = '<option value="">Erro ao carregar turmas</option>';
+                            logFiltros("Erro ao carregar turmas via CONFIG", configError);
+                            turmaSelect.innerHTML = '<option value="">Erro ao carregar turmas - verifique a conexão com o servidor</option>';
                         });
                 } else {
-                    turmaSelect.innerHTML = '<option value="">Erro ao carregar turmas</option>';
+                    turmaSelect.innerHTML = '<option value="">Erro ao carregar turmas - verifique a configuração da API</option>';
                 }
             } catch (configErr) {
-                console.error("Erro ao tentar carregar via CONFIG:", configErr);
-                turmaSelect.innerHTML = '<option value="">Erro ao carregar turmas</option>';
+                logFiltros("Erro ao tentar carregar via CONFIG", configErr);
+                turmaSelect.innerHTML = '<option value="">Erro ao carregar turmas - verifique a configuração da API</option>';
             }
         });
+}
+
+// Função para carregar anos letivos
+function carregarAnosLetivos() {
+    const anoSelect = document.getElementById('filtro-ano');
+    if (!anoSelect) {
+        console.error("Elemento de filtro de ano não encontrado");
+        return;
+    }
+
+    logFiltros("Carregando anos letivos");
+    
+    try {
+        // Gerar anos de 2020 até o ano atual + 2
+        const anoAtual = new Date().getFullYear();
+        const anos = [];
+        
+        for (let ano = 2020; ano <= anoAtual + 2; ano++) {
+            anos.push(ano);
+        }
+        
+        // Limpar e adicionar opção padrão
+        anoSelect.innerHTML = '<option value="">Todos os Anos</option>';
+        
+        // Adicionar os anos ao select
+        anos.forEach(ano => {
+            const option = document.createElement('option');
+            option.value = ano;
+            option.textContent = ano;
+            anoSelect.appendChild(option);
+        });
+        
+        logFiltros(`${anos.length} anos letivos carregados`);
+    } catch (erro) {
+        logFiltros("Erro ao carregar anos letivos", erro);
+        anoSelect.innerHTML = '<option value="">Erro ao carregar anos</option>';
+    }
+}
+
+// Função para carregar bimestres
+function carregarBimestres() {
+    const bimestreSelect = document.getElementById('filtro-bimestre');
+    if (!bimestreSelect) {
+        console.error("Elemento de filtro de bimestre não encontrado");
+        return;
+    }
+    
+    logFiltros("Carregando bimestres");
+    
+    try {
+        // Definir os bimestres
+        const bimestres = [
+            { id: "1", nome: "1º Bimestre" },
+            { id: "2", nome: "2º Bimestre" },
+            { id: "3", nome: "3º Bimestre" },
+            { id: "4", nome: "4º Bimestre" }
+        ];
+        
+        // Limpar e adicionar opção padrão
+        bimestreSelect.innerHTML = '<option value="">Todos os Bimestres</option>';
+        
+        // Adicionar os bimestres ao select
+        bimestres.forEach(bimestre => {
+            const option = document.createElement('option');
+            option.value = bimestre.id;
+            option.textContent = bimestre.nome;
+            bimestreSelect.appendChild(option);
+        });
+        
+        logFiltros(`${bimestres.length} bimestres carregados`);
+    } catch (erro) {
+        logFiltros("Erro ao carregar bimestres", erro);
+        bimestreSelect.innerHTML = '<option value="">Erro ao carregar bimestres</option>';
+    }
 }
 
 // Função para aplicar filtros e buscar notas
