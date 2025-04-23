@@ -587,24 +587,34 @@ function mostrarNotasFiltradas(notas) {
         fetch(CONFIG.getApiUrl('/turmas')).then(r => r.ok ? r.json() : [])
     ])
     .then(([alunos, disciplinas, turmas]) => {
-        // Funções auxiliares para obter nomes
+        console.log("Dados auxiliares carregados:", {
+            alunos: alunos.length,
+            disciplinas: disciplinas.length,
+            turmas: turmas.length
+        });
+        
+        // Funções auxiliares para obter nomes e verificar dados
         const getNomeAluno = (id) => {
-            const aluno = alunos.find(a => String(a.id_aluno) === String(id));
+            const idStr = String(id || '');
+            const aluno = alunos.find(a => String(a.id_aluno) === idStr);
             return aluno ? aluno.nome_aluno : `Aluno ${id}`;
         };
         
         const getNomeDisciplina = (id) => {
-            const disciplina = disciplinas.find(d => String(d.id_disciplina) === String(id));
+            const idStr = String(id || '');
+            const disciplina = disciplinas.find(d => String(d.id_disciplina) === idStr);
             return disciplina ? disciplina.nome_disciplina : `Disciplina ${id}`;
         };
         
         const getNomeTurma = (id) => {
-            const turma = turmas.find(t => String(t.id_turma) === String(id));
+            const idStr = String(id || '');
+            const turma = turmas.find(t => String(t.id_turma) === idStr);
             return turma ? `${turma.id_turma} - ${turma.serie || ''}` : id;
         };
         
         const getTurmaPorAluno = (idAluno) => {
-            const aluno = alunos.find(a => String(a.id_aluno) === String(idAluno));
+            const idStr = String(idAluno || '');
+            const aluno = alunos.find(a => String(a.id_aluno) === idStr);
             return aluno ? aluno.id_turma : null;
         };
         
@@ -612,20 +622,31 @@ function mostrarNotasFiltradas(notas) {
         const notasUnicas = [];
         const jaAdicionadas = new Set();
         
-        notas.forEach(nota => {
+        console.log("Processando notas para remover duplicatas:", notas.length);
+        
+        // Primeiro passo: corrigir as turmas das notas
+        const notasCorrigidas = notas.map(nota => {
+            // Criar uma cópia para não modificar o objeto original
+            const notaCorrigida = { ...nota };
+            
+            // Verificar se a nota está consistente com a turma do aluno
+            const turmaAluno = getTurmaPorAluno(notaCorrigida.id_aluno);
+            
+            // Se temos a turma do aluno e ela não bate com a turma da nota, corrigir
+            if (turmaAluno && (!notaCorrigida.id_turma || notaCorrigida.id_turma !== turmaAluno)) {
+                console.log(`Corrigindo turma da nota: aluno ${notaCorrigida.id_aluno} (${getNomeAluno(notaCorrigida.id_aluno)}) está na turma ${turmaAluno}, mas a nota indica turma ${notaCorrigida.id_turma}`);
+                notaCorrigida.id_turma = turmaAluno;
+            }
+            
+            return notaCorrigida;
+        });
+        
+        // Segundo passo: remover duplicatas
+        notasCorrigidas.forEach(nota => {
             // Criar uma chave única para cada nota
             const chaveUnica = `${nota.id_aluno}-${nota.id_disciplina}-${nota.bimestre}-${nota.ano}`;
             
             if (!jaAdicionadas.has(chaveUnica)) {
-                // Verificar se a nota está consistente com a turma do aluno
-                const turmaAluno = getTurmaPorAluno(nota.id_aluno);
-                
-                // Se temos a turma do aluno e ela não bate com a turma da nota, corrigir
-                if (turmaAluno && (!nota.id_turma || nota.id_turma !== turmaAluno)) {
-                    console.log(`Corrigindo turma da nota: aluno ${nota.id_aluno} (${getNomeAluno(nota.id_aluno)}) está na turma ${turmaAluno}, mas a nota indica turma ${nota.id_turma}`);
-                    nota.id_turma = turmaAluno;
-                }
-                
                 notasUnicas.push(nota);
                 jaAdicionadas.add(chaveUnica);
             }
@@ -633,8 +654,32 @@ function mostrarNotasFiltradas(notas) {
         
         console.log(`Removidas ${notas.length - notasUnicas.length} notas duplicadas`);
         
+        // Obter os filtros aplicados
+        const filtroTurma = document.getElementById('filtro-turma');
+        const filtroDisciplina = document.getElementById('filtro-disciplina');
+        const turmaFiltrada = filtroTurma && filtroTurma.value ? String(filtroTurma.value) : '';
+        const disciplinaFiltrada = filtroDisciplina && filtroDisciplina.value ? String(filtroDisciplina.value) : '';
+        
+        // Aplicar filtro adicional para garantir que estamos exibindo apenas notas da turma selecionada
+        const notasFiltradas = notasUnicas.filter(nota => {
+            if (turmaFiltrada && String(nota.id_turma) !== turmaFiltrada) {
+                return false;
+            }
+            
+            if (disciplinaFiltrada && String(nota.id_disciplina) !== disciplinaFiltrada) {
+                return false;
+            }
+            
+            return true;
+        });
+        
+        if (turmaFiltrada || disciplinaFiltrada) {
+            console.log(`Filtro adicional aplicado - turma: ${turmaFiltrada}, disciplina: ${disciplinaFiltrada}`);
+            console.log(`Notas após filtro adicional: ${notasFiltradas.length} (de ${notasUnicas.length})`);
+        }
+        
         // Ordenar notas
-        notasUnicas.sort((a, b) => {
+        notasFiltradas.sort((a, b) => {
             const nomeAlunoA = getNomeAluno(a.id_aluno);
             const nomeAlunoB = getNomeAluno(b.id_aluno);
             
@@ -654,7 +699,7 @@ function mostrarNotasFiltradas(notas) {
         });
         
         // Adicionar cada nota à tabela
-        notasUnicas.forEach(nota => {
+        notasFiltradas.forEach(nota => {
             const tr = document.createElement('tr');
             
             // Determinar classe CSS para colorir a linha baseado na nota
@@ -667,18 +712,22 @@ function mostrarNotasFiltradas(notas) {
                 tr.classList.add('table-danger');
             }
             
+            // CORRIGIDO: Garantir que os dados estejam nas colunas corretas
             tr.innerHTML = `
-                <td>${getNomeAluno(nota.id_aluno)}</td>
-                <td>${getNomeTurma(nota.id_turma)}</td>
-                <td>${getNomeDisciplina(nota.id_disciplina)}</td>
                 <td>${nota.ano || '-'}</td>
                 <td>${nota.bimestre}º Bimestre</td>
-                <td>${nota.valor || '-'}</td>
+                <td>${getNomeTurma(nota.id_turma)}</td>
+                <td>${getNomeDisciplina(nota.id_disciplina)}</td>
+                <td>${getNomeAluno(nota.id_aluno)}</td>
+                <td>${nota.nota_mensal || '-'}</td>
+                <td>${nota.nota_bimestral || '-'}</td>
+                <td>${nota.recuperacao || '-'}</td>
+                <td>${nota.valor || nota.media || '-'}</td>
                 <td>
-                    <button class="btn btn-sm btn-primary editar-nota me-1" data-id="${nota.id_nota || `${nota.id_aluno}-${nota.id_disciplina}-${nota.bimestre}`}">
+                    <button class="btn btn-sm btn-primary editar-nota me-1" data-id="${nota.id_nota || `${nota.id_aluno}-${nota.id_disciplina}-${nota.bimestre}-${nota.ano}`}">
                         <i class="fas fa-edit"></i>
                     </button>
-                    <button class="btn btn-sm btn-danger excluir-nota" data-id="${nota.id_nota || `${nota.id_aluno}-${nota.id_disciplina}-${nota.bimestre}`}">
+                    <button class="btn btn-sm btn-danger excluir-nota" data-id="${nota.id_nota || `${nota.id_aluno}-${nota.id_disciplina}-${nota.bimestre}-${nota.ano}`}">
                         <i class="fas fa-trash"></i>
                     </button>
                 </td>
@@ -1091,43 +1140,19 @@ function salvarNotaManualmente() {
     });
 }
 
-// Modifica a verificação periódica para ser menos frequente e parar depois de um tempo
-let verificacoesContador = 0;
+// Modifica a verificação periódica para rodar apenas uma vez
+// Remover todo o código de verificação periódica excessiva
 let verificacaoInterval = null;
 
 // Adicionar inicialização imediata ao carregar o script
 console.log("Script filtro-notas.js carregado");
 inicializarFiltrosNotas();
 
-// Iniciar verificação periódica com limite
-verificacaoInterval = setInterval(function() {
+// Substituir a verificação periódica por uma única verificação adicional após o carregamento
+setTimeout(function() {
     const conteudoNotas = document.querySelector('#conteudo-notas');
     if (conteudoNotas && (conteudoNotas.classList.contains('active') || getComputedStyle(conteudoNotas).display !== 'none')) {
-        // Incrementar contador de verificações
-        verificacoesContador++;
-        
-        console.log(`Verificação #${verificacoesContador}: seção de notas ativa`);
+        console.log("Verificação final dos filtros");
         verificarCarregamentoFiltros();
-        
-        // Após 10 verificações, verificar se os filtros estão carregados e parar se estiverem
-        if (verificacoesContador >= 10) {
-            const filtroTurma = document.getElementById('filtro-turma');
-            const filtroDisciplina = document.getElementById('filtro-disciplina');
-            const filtroAluno = document.getElementById('filtro-aluno');
-            
-            // Se os filtros essenciais já foram carregados, parar as verificações
-            if (filtroTurma && filtroTurma.options.length > 1 && 
-                filtroDisciplina && filtroDisciplina.options.length >= 1 && 
-                filtroAluno && filtroAluno.options.length >= 1) {
-                console.log("Todos os filtros já foram carregados, parando verificações periódicas");
-                clearInterval(verificacaoInterval);
-            }
-        }
-        
-        // Após 20 verificações, parar de qualquer forma
-        if (verificacoesContador >= 20) {
-            console.log("Limite de verificações atingido, parando verificações periódicas");
-            clearInterval(verificacaoInterval);
-        }
     }
-}, 10000); // Verificação a cada 10 segundos em vez de 5 
+}, 3000); // Verificação única após 3 segundos 
