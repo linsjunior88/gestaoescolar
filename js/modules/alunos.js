@@ -1,452 +1,340 @@
 /**
- * alunos.js
- * Módulo para gerenciamento de alunos no sistema escolar
+ * Módulo de Alunos
+ * Contém todas as funções relacionadas à gestão de alunos
  */
 
-// Inicialização do módulo de alunos
-function initAlunos() {
-    console.log("Inicializando módulo de alunos");
+import ConfigModule from './config.js';
+
+// Namespace para evitar conflitos
+const AlunosModule = {
+    // Estado do módulo
+    state: {
+        alunos: [],
+        alunoSelecionado: null,
+        modoEdicao: false,
+        turmas: [] // Para o select de turmas
+    },
     
-    // Elementos do formulário
-    const formAluno = document.getElementById('form-aluno');
-    const formModoAluno = document.getElementById('form-modo-aluno');
-    const alunoIndex = document.getElementById('aluno-index');
-    const idAluno = document.getElementById('id_aluno');
-    const nomeAluno = document.getElementById('nome_aluno');
-    const idTurma = document.getElementById('id_turma');
-    const sexo = document.getElementById('sexo');
-    const dataNasc = document.getElementById('data_nasc');
-    const mae = document.getElementById('mae');
-    const btnCancelarAluno = document.getElementById('btn-cancelar-aluno');
-    const btnNovoAluno = document.getElementById('btn-novo-aluno');
-    const alunosLista = document.getElementById('alunos-lista');
+    // Elementos DOM
+    elements: {
+        listaAlunos: null,
+        formAluno: null,
+        inputNomeAluno: null,
+        inputMatricula: null,
+        selectTurma: null,
+        btnSalvarAluno: null,
+        btnCancelarAluno: null,
+        btnNovoAluno: null,
+        filtroTurma: null,
+        btnFiltrar: null
+    },
     
-    // Verificar se os elementos existem
-    if (!formAluno || !alunosLista) {
-        console.error("Elementos do módulo de alunos não encontrados.");
-        return;
-    }
+    // Inicializar módulo
+    init: async function() {
+        console.log("Inicializando módulo de alunos");
+        this.cachearElementos();
+        this.adicionarEventListeners();
+        await this.carregarTurmas();
+        this.carregarAlunos();
+    },
     
-    // Carregar alunos e turmas para o select
-    carregarAlunos();
-    carregarTurmasParaAlunos();
+    // Cachear elementos DOM para melhor performance
+    cachearElementos: function() {
+        this.elements.listaAlunos = document.getElementById('lista-alunos');
+        this.elements.formAluno = document.getElementById('form-aluno');
+        this.elements.inputNomeAluno = document.getElementById('nome-aluno');
+        this.elements.inputMatricula = document.getElementById('matricula');
+        this.elements.selectTurma = document.getElementById('turma-aluno');
+        this.elements.btnSalvarAluno = document.getElementById('btn-salvar-aluno');
+        this.elements.btnCancelarAluno = document.getElementById('btn-cancelar-aluno');
+        this.elements.btnNovoAluno = document.getElementById('btn-novo-aluno');
+        this.elements.filtroTurma = document.getElementById('filtro-turma');
+        this.elements.btnFiltrar = document.getElementById('btn-filtrar-alunos');
+    },
     
-    // Configurar botões do formulário
-    if (btnNovoAluno) {
-        btnNovoAluno.addEventListener('click', function() {
-            resetarFormularioAluno();
-            if (formAluno) formAluno.scrollIntoView({behavior: 'smooth'});
-        });
-    }
+    // Adicionar event listeners
+    adicionarEventListeners: function() {
+        if (this.elements.formAluno) {
+            this.elements.formAluno.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.salvarAluno();
+            });
+        }
+        
+        if (this.elements.btnCancelarAluno) {
+            this.elements.btnCancelarAluno.addEventListener('click', () => {
+                this.cancelarEdicao();
+            });
+        }
+        
+        if (this.elements.btnNovoAluno) {
+            this.elements.btnNovoAluno.addEventListener('click', () => {
+                this.novoAluno();
+            });
+        }
+        
+        if (this.elements.btnFiltrar) {
+            this.elements.btnFiltrar.addEventListener('click', () => {
+                this.filtrarAlunos();
+            });
+        }
+    },
     
-    if (btnCancelarAluno) {
-        btnCancelarAluno.addEventListener('click', function() {
-            resetarFormularioAluno();
-        });
-    }
+    // Carregar turmas para o select
+    carregarTurmas: async function() {
+        try {
+            const turmas = await ConfigModule.fetchApi('/turmas');
+            this.state.turmas = turmas;
+            this.popularSelectTurmas();
+            console.log("Turmas carregadas com sucesso para o módulo de alunos:", turmas);
+        } catch (error) {
+            console.error("Erro ao carregar turmas para o módulo de alunos:", error);
+            this.mostrarErro("Não foi possível carregar as turmas. Tente novamente mais tarde.");
+        }
+    },
     
-    // Configurar formulário
-    if (formAluno) {
-        formAluno.addEventListener('submit', function(e) {
-            e.preventDefault(); // Impedir o envio padrão do formulário
-            console.log("Formulário de aluno submetido");
+    // Popular select de turmas
+    popularSelectTurmas: function() {
+        if (!this.elements.selectTurma || !this.elements.filtroTurma) return;
+        
+        // Limpar selects
+        this.elements.selectTurma.innerHTML = '<option value="">Selecione uma turma</option>';
+        this.elements.filtroTurma.innerHTML = '<option value="">Todas as turmas</option>';
+        
+        // Adicionar opções
+        this.state.turmas.forEach(turma => {
+            const option1 = document.createElement('option');
+            option1.value = turma.id;
+            option1.textContent = `${turma.nome} (${turma.ano} - ${turma.turno})`;
+            this.elements.selectTurma.appendChild(option1);
             
-            // Validar campos obrigatórios
-            if (!idAluno.value || !nomeAluno.value || !idTurma.value || !sexo.value || !dataNasc.value || !mae.value) {
-                alert('Por favor, preencha todos os campos obrigatórios.');
-                return;
+            const option2 = document.createElement('option');
+            option2.value = turma.id;
+            option2.textContent = `${turma.nome} (${turma.ano} - ${turma.turno})`;
+            this.elements.filtroTurma.appendChild(option2);
+        });
+    },
+    
+    // Carregar alunos da API
+    carregarAlunos: async function(filtroTurmaId = '') {
+        try {
+            let endpoint = '/alunos';
+            if (filtroTurmaId) {
+                endpoint += `?turma_id=${filtroTurmaId}`;
             }
             
-            // Coletar dados do formulário
-            const aluno = {
-                id_aluno: idAluno.value.trim(),
-                nome_aluno: nomeAluno.value.trim(),
-                id_turma: idTurma.value,
-                sexo: sexo.value,
-                data_nasc: dataNasc.value,
-                mae: mae.value.trim()
+            const alunos = await ConfigModule.fetchApi(endpoint);
+            this.state.alunos = alunos;
+            this.renderizarAlunos();
+            console.log("Alunos carregados com sucesso:", alunos);
+        } catch (error) {
+            console.error("Erro ao carregar alunos:", error);
+            this.mostrarErro("Não foi possível carregar os alunos. Tente novamente mais tarde.");
+        }
+    },
+    
+    // Filtrar alunos por turma
+    filtrarAlunos: function() {
+        const turmaId = this.elements.filtroTurma.value;
+        this.carregarAlunos(turmaId);
+    },
+    
+    // Renderizar lista de alunos
+    renderizarAlunos: function() {
+        if (!this.elements.listaAlunos) return;
+        
+        this.elements.listaAlunos.innerHTML = '';
+        
+        if (this.state.alunos.length === 0) {
+            this.elements.listaAlunos.innerHTML = '<tr><td colspan="5" class="text-center">Nenhum aluno cadastrado</td></tr>';
+            return;
+        }
+        
+        this.state.alunos.forEach(aluno => {
+            // Encontrar nome da turma
+            const turma = this.state.turmas.find(t => t.id === aluno.turma_id) || { nome: 'N/A', ano: 'N/A', turno: 'N/A' };
+            
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${aluno.id}</td>
+                <td>${aluno.nome}</td>
+                <td>${aluno.matricula}</td>
+                <td>${turma.nome} (${turma.ano} - ${turma.turno})</td>
+                <td>
+                    <button class="btn btn-sm btn-primary editar-aluno" data-id="${aluno.id}">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn btn-sm btn-danger excluir-aluno" data-id="${aluno.id}">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            `;
+            
+            // Adicionar event listeners para os botões
+            const btnEditar = row.querySelector('.editar-aluno');
+            const btnExcluir = row.querySelector('.excluir-aluno');
+            
+            btnEditar.addEventListener('click', () => this.editarAluno(aluno.id));
+            btnExcluir.addEventListener('click', () => this.confirmarExclusao(aluno.id));
+            
+            this.elements.listaAlunos.appendChild(row);
+        });
+    },
+    
+    // Criar novo aluno
+    novoAluno: function() {
+        this.state.modoEdicao = false;
+        this.state.alunoSelecionado = null;
+        
+        if (this.elements.formAluno) {
+            this.elements.formAluno.reset();
+            this.elements.formAluno.classList.remove('d-none');
+        }
+        
+        if (this.elements.inputNomeAluno) {
+            this.elements.inputNomeAluno.focus();
+        }
+    },
+    
+    // Editar aluno existente
+    editarAluno: function(id) {
+        const aluno = this.state.alunos.find(a => a.id === id);
+        if (!aluno) return;
+        
+        this.state.modoEdicao = true;
+        this.state.alunoSelecionado = aluno;
+        
+        if (this.elements.formAluno) {
+            this.elements.formAluno.classList.remove('d-none');
+            this.elements.inputNomeAluno.value = aluno.nome;
+            this.elements.inputMatricula.value = aluno.matricula;
+            this.elements.selectTurma.value = aluno.turma_id;
+            this.elements.inputNomeAluno.focus();
+        }
+    },
+    
+    // Salvar aluno (criar novo ou atualizar existente)
+    salvarAluno: async function() {
+        try {
+            const alunoDados = {
+                nome: this.elements.inputNomeAluno.value,
+                matricula: this.elements.inputMatricula.value,
+                turma_id: parseInt(this.elements.selectTurma.value)
             };
             
-            console.log("Dados do aluno:", aluno);
+            let response;
             
-            // Verificar modo de operação (novo ou edição)
-            if (formModoAluno.value === 'novo') {
-                // Adicionar novo aluno via API
-                fetch(CONFIG.getApiUrl('/alunos'), {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(aluno)
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Erro ao adicionar aluno: ' + response.statusText);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    console.log('Aluno adicionado com sucesso:', data);
-                    alert('Aluno cadastrado com sucesso!');
-                    resetarFormularioAluno();
-                    carregarAlunos();
-                })
-                .catch(error => {
-                    console.error('Erro ao adicionar aluno:', error);
-                    alert('Erro ao adicionar aluno: ' + error.message);
-                });
-            } else {
-                // Editar aluno existente via API
-                fetch(CONFIG.getApiUrl(`/alunos/${aluno.id_aluno}`), {
+            if (this.state.modoEdicao && this.state.alunoSelecionado) {
+                // Atualizar aluno existente
+                response = await ConfigModule.fetchApi(`/alunos/${this.state.alunoSelecionado.id}`, {
                     method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(aluno)
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Erro ao atualizar aluno: ' + response.statusText);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    console.log('Aluno atualizado com sucesso:', data);
-                    alert('Aluno atualizado com sucesso!');
-                    resetarFormularioAluno();
-                    carregarAlunos();
-                })
-                .catch(error => {
-                    console.error('Erro ao atualizar aluno:', error);
-                    alert('Erro ao atualizar aluno: ' + error.message);
-                    
-                    // Verificar se precisa atualizar referências (legado para compatibilidade)
-                    const antigoId = alunosLista.getAttribute('data-aluno-editando');
-                    if (antigoId && antigoId !== aluno.id_aluno) {
-                        atualizarReferenciasAposMudancaIdAluno(antigoId, aluno.id_aluno);
-                    }
+                    body: JSON.stringify(alunoDados)
                 });
+                
+                // Atualizar aluno na lista local
+                const index = this.state.alunos.findIndex(a => a.id === this.state.alunoSelecionado.id);
+                if (index !== -1) {
+                    this.state.alunos[index] = { ...this.state.alunos[index], ...alunoDados };
+                }
+                
+                this.mostrarSucesso("Aluno atualizado com sucesso!");
+            } else {
+                // Criar novo aluno
+                response = await ConfigModule.fetchApi('/alunos', {
+                    method: 'POST',
+                    body: JSON.stringify(alunoDados)
+                });
+                
+                // Adicionar novo aluno à lista local
+                this.state.alunos.push(response);
+                
+                this.mostrarSucesso("Aluno criado com sucesso!");
             }
-        });
-    }
-    
-    /**
-     * Carrega as turmas disponíveis para o formulário de alunos
-     */
-    function carregarTurmasParaAlunos() {
-        console.log("Carregando turmas para o select de alunos");
-        
-        if (!idTurma) {
-            console.error("Select de turmas para alunos não encontrado!");
-            return;
+            
+            // Resetar formulário e estado
+            this.cancelarEdicao();
+            
+            // Atualizar lista de alunos
+            this.renderizarAlunos();
+            
+        } catch (error) {
+            console.error("Erro ao salvar aluno:", error);
+            this.mostrarErro("Não foi possível salvar o aluno. Tente novamente mais tarde.");
         }
+    },
+    
+    // Cancelar edição
+    cancelarEdicao: function() {
+        this.state.modoEdicao = false;
+        this.state.alunoSelecionado = null;
         
-        // Mostrar indicador de carregamento
-        idTurma.innerHTML = '<option value="">Carregando turmas...</option>';
-        
-        // Buscar turmas da API
-        fetch(CONFIG.getApiUrl('/turmas'))
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Erro ao carregar turmas: ' + response.statusText);
-                }
-                return response.json();
-            })
-            .then(turmas => {
-                console.log("Turmas recuperadas da API:", turmas.length);
-                
-                idTurma.innerHTML = '<option value="">Selecione uma turma</option>';
-                
-                if (turmas.length === 0) {
-                    const option = document.createElement('option');
-                    option.value = "";
-                    option.textContent = "Nenhuma turma cadastrada";
-                    option.disabled = true;
-                    idTurma.appendChild(option);
-                    return;
-                }
-                
-                // Adicionar cada turma ao select
-                turmas.forEach(turma => {
-                    const option = document.createElement('option');
-                    option.value = turma.id_turma;
-                    option.textContent = `${turma.id_turma} - ${turma.serie}`;
-                    idTurma.appendChild(option);
-                });
-            })
-            .catch(error => {
-                console.error("Erro ao carregar turmas para alunos:", error);
-                idTurma.innerHTML = '<option value="">Erro ao carregar turmas</option>';
+        if (this.elements.formAluno) {
+            this.elements.formAluno.reset();
+            this.elements.formAluno.classList.add('d-none');
+        }
+    },
+    
+    // Confirmar exclusão de aluno
+    confirmarExclusao: function(id) {
+        if (confirm("Tem certeza que deseja excluir este aluno? Esta ação não pode ser desfeita.")) {
+            this.excluirAluno(id);
+        }
+    },
+    
+    // Excluir aluno
+    excluirAluno: async function(id) {
+        try {
+            await ConfigModule.fetchApi(`/alunos/${id}`, {
+                method: 'DELETE'
             });
-    }
-    
-    /**
-     * Carrega a lista de alunos da API
-     */
-    function carregarAlunos() {
-        console.log("Carregando alunos");
-        
-        if (!alunosLista) {
-            console.error("Lista de alunos não encontrada!");
-            return;
+            
+            // Remover aluno da lista local
+            this.state.alunos = this.state.alunos.filter(a => a.id !== id);
+            
+            // Atualizar lista de alunos
+            this.renderizarAlunos();
+            
+            this.mostrarSucesso("Aluno excluído com sucesso!");
+        } catch (error) {
+            console.error("Erro ao excluir aluno:", error);
+            this.mostrarErro("Não foi possível excluir o aluno. Tente novamente mais tarde.");
         }
-        
-        // Mostrar indicador de carregamento
-        alunosLista.innerHTML = `
-            <tr>
-                <td colspan="7" class="text-center">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Carregando...</span>
-                    </div>
-                </td>
-            </tr>
+    },
+    
+    // Mostrar mensagem de sucesso
+    mostrarSucesso: function(mensagem) {
+        const alertContainer = document.createElement('div');
+        alertContainer.className = 'alert alert-success alert-dismissible fade show';
+        alertContainer.innerHTML = `
+            ${mensagem}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
         `;
         
-        // Buscar alunos da API
-        fetch(CONFIG.getApiUrl('/alunos'))
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Erro ao carregar alunos: ' + response.statusText);
-                }
-                return response.json();
-            })
-            .then(alunos => {
-                console.log("Alunos recuperados da API:", alunos.length);
-                
-                if (alunos.length === 0) {
-                    alunosLista.innerHTML = `
-                        <tr class="text-center">
-                            <td colspan="7">Nenhum aluno cadastrado</td>
-                        </tr>
-                    `;
-                    return;
-                }
-                
-                // Ordenar alunos pelo nome para melhor visualização
-                alunos.sort((a, b) => {
-                    const nomeA = a.nome_aluno || '';
-                    const nomeB = b.nome_aluno || '';
-                    return nomeA.localeCompare(nomeB);
-                });
-                
-                // Limpar lista e preenchê-la com os alunos
-                alunosLista.innerHTML = '';
-                
-                // Adicionar cada aluno à lista
-                alunos.forEach(aluno => {
-                    // Formatar data de nascimento
-                    let dataNascFormatada = '-';
-                    if (aluno.data_nasc) {
-                        try {
-                            // Garantir que a data seja interpretada no timezone local
-                            const [ano, mes, dia] = aluno.data_nasc.split('-');
-                            if (ano && mes && dia) {
-                                const dataCorrigida = new Date(parseInt(ano), parseInt(mes) - 1, parseInt(dia));
-                                dataNascFormatada = dataCorrigida.toLocaleDateString('pt-BR');
-                            }
-                        } catch (e) {
-                            console.warn("Erro ao formatar data de nascimento:", e);
-                        }
-                    }
-                    
-                    // Verificar se todos os campos existem
-                    const id = aluno.id_aluno || '-';
-                    const nome = aluno.nome_aluno || '-';
-                    const turma = aluno.id_turma || '-';
-                    const sexoTexto = aluno.sexo === 'M' ? 'Masculino' : (aluno.sexo === 'F' ? 'Feminino' : '-');
-                    const mae = aluno.mae || '-';
-                    
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                        <td>${id}</td>
-                        <td>${nome}</td>
-                        <td>${turma}</td>
-                        <td>${sexoTexto}</td>
-                        <td>${dataNascFormatada}</td>
-                        <td>${mae}</td>
-                        <td class="text-center">
-                            <button class="btn btn-sm btn-outline-primary editar-aluno me-1" data-id="${id}">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button class="btn btn-sm btn-outline-danger excluir-aluno" data-id="${id}">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </td>
-                    `;
-                    
-                    alunosLista.appendChild(tr);
-                });
-                
-                // Adicionar eventos para botões de editar e excluir
-                document.querySelectorAll('.editar-aluno').forEach(btn => {
-                    btn.addEventListener('click', function() {
-                        const idAluno = this.getAttribute('data-id');
-                        editarAluno(idAluno);
-                    });
-                });
-                
-                document.querySelectorAll('.excluir-aluno').forEach(btn => {
-                    btn.addEventListener('click', function() {
-                        const idAluno = this.getAttribute('data-id');
-                        excluirAluno(idAluno);
-                    });
-                });
-            })
-            .catch(error => {
-                console.error("Erro ao carregar alunos:", error);
-                
-                alunosLista.innerHTML = `
-                    <tr class="text-center">
-                        <td colspan="7">
-                            Erro ao carregar alunos: ${error.message}
-                        </td>
-                    </tr>
-                `;
-            });
-    }
+        document.querySelector('#conteudo-alunos').insertBefore(alertContainer, document.querySelector('#conteudo-alunos').firstChild);
+        
+        // Auto-remover após 5 segundos
+        setTimeout(() => {
+            alertContainer.remove();
+        }, 5000);
+    },
     
-    /**
-     * Busca um aluno para edição
-     * @param {string} alunoId ID do aluno a ser editado
-     */
-    function editarAluno(alunoId) {
-        console.log(`Editando aluno com ID: ${alunoId}`);
+    // Mostrar mensagem de erro
+    mostrarErro: function(mensagem) {
+        const alertContainer = document.createElement('div');
+        alertContainer.className = 'alert alert-danger alert-dismissible fade show';
+        alertContainer.innerHTML = `
+            ${mensagem}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+        `;
         
-        // Buscar dados do aluno na API
-        fetch(CONFIG.getApiUrl(`/alunos/${alunoId}`))
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Erro ao buscar aluno: ' + response.statusText);
-                }
-                return response.json();
-            })
-            .then(aluno => {
-                // Preencher formulário com dados do aluno
-                formModoAluno.value = 'editar';
-                idAluno.value = aluno.id_aluno;
-                idAluno.readOnly = true; // Tornar ID somente leitura na edição
-                nomeAluno.value = aluno.nome_aluno;
-                idTurma.value = aluno.id_turma;
-                sexo.value = aluno.sexo;
-                
-                // Formatar a data corretamente para o campo de data HTML
-                if (aluno.data_nasc) {
-                    // A data já vem no formato ISO (YYYY-MM-DD) do backend, que é o formato esperado
-                    // pelo input type="date", então podemos usá-la diretamente
-                    dataNasc.value = aluno.data_nasc;
-                } else {
-                    dataNasc.value = '';
-                }
-                
-                mae.value = aluno.mae;
-                
-                // Guardar o ID original para verificar mudanças
-                alunosLista.setAttribute('data-aluno-editando', aluno.id_aluno);
-                
-                // Atualizar título e mostrar botão cancelar
-                document.getElementById('form-aluno-titulo').textContent = 'Editar Aluno';
-                btnCancelarAluno.style.display = 'block';
-                
-                // Rolar para o formulário
-                formAluno.scrollIntoView({behavior: 'smooth'});
-            })
-            .catch(error => {
-                console.error("Erro ao buscar dados do aluno:", error);
-                alert(`Erro ao buscar dados do aluno: ${error.message}`);
-            });
+        document.querySelector('#conteudo-alunos').insertBefore(alertContainer, document.querySelector('#conteudo-alunos').firstChild);
+        
+        // Auto-remover após 5 segundos
+        setTimeout(() => {
+            alertContainer.remove();
+        }, 5000);
     }
-    
-    /**
-     * Exclui um aluno
-     * @param {string} alunoId ID do aluno a ser excluído
-     */
-    function excluirAluno(alunoId) {
-        console.log(`Excluindo aluno com ID: ${alunoId}`);
-        
-        // Confirmar exclusão
-        if (confirm(`Tem certeza que deseja excluir o aluno ${alunoId}?`)) {
-            // Excluir aluno na API
-            fetch(CONFIG.getApiUrl(`/alunos/${alunoId}`), {
-                method: 'DELETE'
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`Erro ao excluir aluno: ${response.status}`);
-                }
-                return response.json();
-            })
-            .then(() => {
-                alert('Aluno excluído com sucesso!');
-                carregarAlunos();
-            })
-            .catch(error => {
-                console.error("Erro ao excluir aluno:", error);
-                alert(`Erro ao excluir aluno: ${error.message}`);
-            });
-        }
-    }
-    
-    /**
-     * Reseta o formulário de alunos
-     */
-    function resetarFormularioAluno() {
-        console.log("Resetando formulário de aluno");
-        
-        // Resetar formulário
-        formAluno.reset();
-        formModoAluno.value = 'novo';
-        alunoIndex.value = '';
-        
-        // Remover readonly do ID
-        idAluno.readOnly = false;
-        
-        // Remover ID do aluno em edição
-        alunosLista.removeAttribute('data-aluno-editando');
-        
-        // Atualizar título e esconder botão cancelar
-        document.getElementById('form-aluno-titulo').textContent = 'Novo Aluno';
-        btnCancelarAluno.style.display = 'none';
-    }
-    
-    /**
-     * Atualiza referências após mudança de ID de um aluno
-     * @param {string} antigoId ID antigo do aluno
-     * @param {string} novoId Novo ID do aluno
-     */
-    function atualizarReferenciasAposMudancaIdAluno(antigoId, novoId) {
-        if (antigoId === novoId) return;
-        
-        console.log(`Atualizando referências: ID de aluno alterado de ${antigoId} para ${novoId}`);
-        
-        // Atualizar referências nas notas
-        fetch(CONFIG.getApiUrl(`/notas?aluno=${antigoId}`))
-            .then(response => response.ok ? response.json() : [])
-            .then(notas => {
-                if (notas.length === 0) return;
-                
-                console.log(`Encontradas ${notas.length} notas para atualizar referência do aluno`);
-                
-                // Criar promessas para atualizar cada nota
-                const atualizacoes = notas.map(nota => {
-                    const notaAtualizada = { ...nota, id_aluno: novoId };
-                    return fetch(CONFIG.getApiUrl(`/notas/${nota.id_nota}`), {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(notaAtualizada)
-                    });
-                });
-                
-                // Executar todas as atualizações
-                return Promise.all(atualizacoes);
-            })
-            .then(() => {
-                console.log("Referências atualizadas com sucesso");
-            })
-            .catch(error => {
-                console.error("Erro ao atualizar referências após mudança de ID:", error);
-            });
-    }
-}
+};
 
-// Exportar função para o escopo global
-window.initAlunos = initAlunos; 
+// Exportar módulo
+export default AlunosModule;

@@ -1,245 +1,139 @@
 /**
- * app.js
- * Arquivo principal para inicialização de todos os módulos do sistema escolar
+ * Arquivo principal da aplicação
+ * Responsável por inicializar e coordenar todos os módulos
  */
 
-// Configurações globais do sistema
-const CONFIG = {
-    // URL base da API
-    apiUrl: 'http://localhost:4000/api',
-    
-    // Função para obter a URL completa da API
-    getApiUrl: function(endpoint) {
-        // Remover barra no início do endpoint se existir
-        if (endpoint.startsWith('/')) {
-            endpoint = endpoint.substring(1);
-        }
-        
-        return `${this.apiUrl}/${endpoint}`;
+// Importar módulos
+import ConfigModule from './modules/config.js';
+import DashboardModule from './modules/dashboard.js';
+import TurmasModule from './modules/turmas.js';
+import DisciplinasModule from './modules/disciplinas.js';
+import ProfessoresModule from './modules/professores.js';
+import AlunosModule from './modules/alunos.js';
+import NotasModule from './modules/notas.js';
+
+// Objeto principal da aplicação
+const App = {
+    // Módulos da aplicação
+    modules: {
+        config: ConfigModule,
+        dashboard: DashboardModule,
+        turmas: TurmasModule,
+        disciplinas: DisciplinasModule,
+        professores: ProfessoresModule,
+        alunos: AlunosModule,
+        notas: NotasModule
     },
     
-    // Função para inicializar o sistema
+    // Links do menu
+    links: {},
+    
+    // Conteúdos das seções
+    conteudos: {},
+    
+    // Inicializar aplicação
     init: function() {
-        // Implemente a inicialização do sistema
+        console.log("Inicializando aplicação...");
+        
+        // Inicializar módulo de configuração primeiro
+        this.modules.config.init();
+        
+        // Inicializar links do menu
+        this.initLinks();
+        
+        // Ativar seção inicial (dashboard)
+        this.ativarSecao('dashboard-link');
+        
+        console.log("Aplicação inicializada com sucesso!");
+    },
+    
+    // Inicializar links do menu
+    initLinks: function() {
+        // Mapear os links do menu para seus respectivos conteúdos
+        this.links = {
+            'dashboard-link': document.getElementById('dashboard-link'),
+            'turmas-link': document.getElementById('turmas-link'),
+            'disciplinas-link': document.getElementById('disciplinas-link'),
+            'professores-link': document.getElementById('professores-link'),
+            'alunos-link': document.getElementById('alunos-link'),
+            'notas-link': document.getElementById('notas-link')
+        };
+        
+        this.conteudos = {
+            'dashboard-link': document.getElementById('conteudo-dashboard'),
+            'turmas-link': document.getElementById('conteudo-turmas'),
+            'disciplinas-link': document.getElementById('conteudo-disciplinas'),
+            'professores-link': document.getElementById('conteudo-professores'),
+            'alunos-link': document.getElementById('conteudo-alunos'),
+            'notas-link': document.getElementById('conteudo-notas')
+        };
+        
+        // Adicionar eventos de clique para alternar entre as seções
+        for (const key in this.links) {
+            if (this.links[key]) {
+                this.links[key].addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.ativarSecao(key);
+                });
+            }
+        }
+    },
+    
+    // Ativar seção selecionada
+    ativarSecao: function(linkId) {
+        console.log("Ativando seção para o link:", linkId);
+        
+        // Desativar todos os links e conteúdos
+        for (const key in this.links) {
+            if (this.links[key]) {
+                this.links[key].classList.remove('active');
+            }
+        }
+        
+        for (const key in this.conteudos) {
+            if (this.conteudos[key]) {
+                this.conteudos[key].classList.add('d-none');
+            }
+        }
+        
+        // Ativar link e conteúdo selecionados
+        if (this.links[linkId]) {
+            this.links[linkId].classList.add('active');
+        }
+        
+        if (this.conteudos[linkId]) {
+            this.conteudos[linkId].classList.remove('d-none');
+        }
+        
+        // Inicializar módulo correspondente
+        this.inicializarModuloAtivo(linkId);
+    },
+    
+    // Inicializar módulo ativo
+    inicializarModuloAtivo: function(linkId) {
+        // Mapear link para nome do módulo
+        const moduleMap = {
+            'dashboard-link': 'dashboard',
+            'turmas-link': 'turmas',
+            'disciplinas-link': 'disciplinas',
+            'professores-link': 'professores',
+            'alunos-link': 'alunos',
+            'notas-link': 'notas'
+        };
+        
+        const moduleName = moduleMap[linkId];
+        
+        if (moduleName && this.modules[moduleName]) {
+            console.log(`Inicializando módulo: ${moduleName}`);
+            this.modules[moduleName].init();
+        }
     }
 };
 
+// Inicializar aplicação quando o DOM estiver pronto
 document.addEventListener('DOMContentLoaded', function() {
-    console.log("Inicializando aplicação escola-dashboard (modularizada)");
-    
-    // Inicializar configurações e UI
-    if (typeof CONFIG !== 'undefined') {
-        CONFIG.init();
-    }
-    
-    // Inicializar UI e sidebar
-    if (typeof initSidebar === 'function') {
-        console.log("Inicializando sidebar...");
-        initSidebar();
-    } else {
-        console.warn("Função initSidebar não encontrada!");
-    }
-    
-    // Inicializar módulos conforme necessário
-    
-    // Módulo geral de estatísticas na dashboard
-    if (typeof initGeral === 'function') {
-        console.log("Inicializando dashboard geral...");
-        initGeral();
-    } else {
-        console.warn("Função initGeral não encontrada!");
-    }
-    
-    // Módulo de gráficos
-    if (typeof initCharts === 'function') {
-        console.log("Inicializando gráficos...");
-        initCharts();
-    } else {
-        console.warn("Função initCharts não encontrada!");
-    }
-    
-    // Módulos específicos
-    
-    // Turmas
-    if (typeof initTurmas === 'function') {
-        console.log("Inicializando módulo de turmas...");
-        initTurmas();
-    } else {
-        console.warn("Função initTurmas não encontrada!");
-    }
-    
-    // Disciplinas
-    if (typeof initDisciplinas === 'function') {
-        console.log("Inicializando módulo de disciplinas...");
-        initDisciplinas();
-    } else {
-        console.warn("Função initDisciplinas não encontrada!");
-    }
-    
-    // Professores
-    if (typeof initProfessores === 'function') {
-        console.log("Inicializando módulo de professores...");
-        initProfessores();
-    } else {
-        console.warn("Função initProfessores não encontrada!");
-    }
-    
-    // Alunos
-    if (typeof initAlunos === 'function') {
-        console.log("Inicializando módulo de alunos...");
-        initAlunos();
-    } else {
-        console.warn("Função initAlunos não encontrada!");
-    }
-    
-    // Notas
-    if (typeof initNotas === 'function') {
-        console.log("Inicializando módulo de notas...");
-        initNotas();
-    } else {
-        console.warn("Função initNotas não encontrada!");
-    }
-    
-    // Inicialização de navegação
-    if (typeof initLinks === 'function') {
-        console.log("Inicializando links de navegação...");
-        initLinks();
-    } else {
-        console.warn("Função initLinks não encontrada!");
-    }
-    
-    // Ativar seção inicial e configurar navegação
-    if (typeof ativarSecao === 'function') {
-        // Verificar URL para ativar a seção correspondente
-        const hash = window.location.hash.substring(1);
-        if (hash) {
-            console.log(`Ativando seção de hash: ${hash}`);
-            ativarSecao(hash);
-        } else {
-            // Seção padrão
-            console.log("Ativando seção padrão: dashboard");
-            ativarSecao('dashboard');
-        }
-        
-        // Configurar navegação por hash
-        window.addEventListener('hashchange', function() {
-            const novoHash = window.location.hash.substring(1);
-            console.log(`Hash alterado para: ${novoHash}`);
-            ativarSecao(novoHash);
-        });
-    } else {
-        console.warn("Função ativarSecao não encontrada!");
-    }
-    
-    console.log("Inicialização da aplicação concluída!");
+    App.init();
 });
 
-/**
- * Inicializa todos os módulos do sistema
- */
-function initModulos() {
-    // Inicializar a sidebar e funcionalidades básicas
-    if (typeof initSidebar === 'function') {
-        initSidebar();
-    }
-    
-    // Módulo de turmas
-    if (typeof initTurmas === 'function') {
-        initTurmas();
-    } else {
-        console.warn('Módulo de turmas não encontrado!');
-    }
-    
-    // Módulo de disciplinas
-    if (typeof initDisciplinas === 'function') {
-        initDisciplinas();
-    } else {
-        console.warn('Módulo de disciplinas não encontrado!');
-    }
-    
-    // Módulo de professores
-    if (typeof initProfessores === 'function') {
-        initProfessores();
-    }
-    
-    // Módulo de alunos
-    if (typeof initAlunos === 'function') {
-        initAlunos();
-    }
-    
-    // Módulo de notas
-    if (typeof initNotas === 'function') {
-        initNotas();
-    }
-    
-    // Dashboard e indicadores
-    if (typeof initGeral === 'function') {
-        initGeral();
-    }
-}
-
-/**
- * Inicializa a navegação entre as seções
- */
-function initNavegacao() {
-    // Gerenciar links do menu lateral
-    const menuLinks = document.querySelectorAll('[data-section]');
-    
-    menuLinks.forEach(link => {
-        link.addEventListener('click', function(e) {
-            e.preventDefault();
-            
-            // Obter o ID da seção a ser ativada
-            const sectionId = this.getAttribute('data-section');
-            
-            // Ativar a seção
-            ativarSecao(sectionId);
-        });
-    });
-    
-    // Ativar a primeira seção por padrão (dashboard)
-    ativarSecao('dashboard');
-}
-
-/**
- * Ativa uma seção específica da aplicação
- * @param {string} sectionId ID da seção a ser ativada
- */
-function ativarSecao(sectionId) {
-    console.log(`Ativando seção: ${sectionId}`);
-    
-    // Esconder todas as seções
-    const sections = document.querySelectorAll('.content-section');
-    sections.forEach(section => {
-        section.style.display = 'none';
-    });
-    
-    // Mostrar a seção selecionada
-    const targetSection = document.getElementById(sectionId);
-    if (targetSection) {
-        targetSection.style.display = 'block';
-    } else {
-        console.error(`Seção não encontrada: ${sectionId}`);
-    }
-    
-    // Atualizar links ativos no menu
-    const menuLinks = document.querySelectorAll('[data-section]');
-    menuLinks.forEach(link => {
-        if (link.getAttribute('data-section') === sectionId) {
-            link.classList.add('active');
-        } else {
-            link.classList.remove('active');
-        }
-    });
-    
-    // Atualizar histórico do navegador e título da página
-    const pageTitle = document.querySelector(`[data-section="${sectionId}"]`)?.textContent || 'Gestão Escolar';
-    document.title = pageTitle;
-    history.pushState({section: sectionId}, pageTitle, `#${sectionId}`);
-    
-    // Fechar o menu em dispositivos móveis
-    const sidebar = document.querySelector('.sidebar');
-    if (sidebar && window.innerWidth < 768) {
-        sidebar.classList.remove('active');
-    }
-} 
+// Exportar aplicação para uso global
+window.App = App;

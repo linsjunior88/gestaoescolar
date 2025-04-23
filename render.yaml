@@ -3,7 +3,7 @@ services:
     name: gestao-escolar-api
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn -b 0.0.0.0:$PORT backend.simplified_api:app
+    startCommand: cd backend && python -m uvicorn simplified_api:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: PRODUCTION
         value: True
@@ -30,4 +30,4 @@ services:
     headers:
       - path: /*
         name: Cache-Control
-        value: no-cache 
+        value: no-store
