@@ -299,9 +299,6 @@ function initProfessores() {
             </tr>
         `;
         
-        // Conjunto para rastrear professores já processados
-        const professoresProcessados = new Set();
-        
         // Primeiro, buscar disciplinas para ter informações corretas
         fetch(CONFIG.getApiUrl('disciplinas'))
             .then(response => {
@@ -322,14 +319,15 @@ function initProfessores() {
                     .then(professores => {
                         console.log("Professores carregados da API:", professores.length);
                         
-                        // Filtrar professores duplicados
-                        const professoresUnicos = professores.filter(professor => {
-                            if (professoresProcessados.has(professor.id_professor)) {
-                                return false;
-                            }
-                            professoresProcessados.add(professor.id_professor);
-                            return true;
+                        // Deduplicate professores usando Map com ID como chave
+                        const professoresMap = new Map();
+                        professores.forEach(professor => {
+                            professoresMap.set(professor.id_professor, professor);
                         });
+                        
+                        // Converter de volta para array
+                        const professoresUnicos = Array.from(professoresMap.values());
+                        console.log("Professores após remoção de duplicatas:", professoresUnicos.length);
                         
                         // Armazenar no localStorage
                         localStorage.setItem('professores', JSON.stringify(professoresUnicos));

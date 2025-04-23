@@ -222,12 +222,11 @@ function initAlunos() {
                     return;
                 }
                 
-                // Ordenar alunos por ID
+                // Ordenar alunos pelo nome para melhor visualização
                 alunos.sort((a, b) => {
-                    // Converte para número se for string numérica
-                    const idA = typeof a.id_aluno === 'string' ? parseInt(a.id_aluno) : a.id_aluno;
-                    const idB = typeof b.id_aluno === 'string' ? parseInt(b.id_aluno) : b.id_aluno;
-                    return idA - idB;
+                    const nomeA = a.nome_aluno || '';
+                    const nomeB = b.nome_aluno || '';
+                    return nomeA.localeCompare(nomeB);
                 });
                 
                 // Limpar lista e preenchê-la com os alunos
@@ -235,28 +234,41 @@ function initAlunos() {
                 
                 // Adicionar cada aluno à lista
                 alunos.forEach(aluno => {
-                    // Formatar data de nascimento - Corrigindo problema de timezone
+                    // Formatar data de nascimento
                     let dataNascFormatada = '-';
                     if (aluno.data_nasc) {
-                        // Garantir que a data seja interpretada no timezone local
-                        const [ano, mes, dia] = aluno.data_nasc.split('-');
-                        const dataCorrigida = new Date(parseInt(ano), parseInt(mes) - 1, parseInt(dia));
-                        dataNascFormatada = dataCorrigida.toLocaleDateString('pt-BR');
+                        try {
+                            // Garantir que a data seja interpretada no timezone local
+                            const [ano, mes, dia] = aluno.data_nasc.split('-');
+                            if (ano && mes && dia) {
+                                const dataCorrigida = new Date(parseInt(ano), parseInt(mes) - 1, parseInt(dia));
+                                dataNascFormatada = dataCorrigida.toLocaleDateString('pt-BR');
+                            }
+                        } catch (e) {
+                            console.warn("Erro ao formatar data de nascimento:", e);
+                        }
                     }
+                    
+                    // Verificar se todos os campos existem
+                    const id = aluno.id_aluno || '-';
+                    const nome = aluno.nome_aluno || '-';
+                    const turma = aluno.id_turma || '-';
+                    const sexoTexto = aluno.sexo === 'M' ? 'Masculino' : (aluno.sexo === 'F' ? 'Feminino' : '-');
+                    const mae = aluno.mae || '-';
                     
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
-                        <td>${aluno.id_aluno}</td>
-                        <td>${aluno.nome_aluno}</td>
-                        <td>${aluno.id_turma}</td>
-                        <td>${aluno.sexo === 'M' ? 'Masculino' : 'Feminino'}</td>
+                        <td>${id}</td>
+                        <td>${nome}</td>
+                        <td>${turma}</td>
+                        <td>${sexoTexto}</td>
                         <td>${dataNascFormatada}</td>
-                        <td>${aluno.mae}</td>
+                        <td>${mae}</td>
                         <td class="text-center">
-                            <button class="btn btn-sm btn-primary editar-aluno me-1" data-id="${aluno.id_aluno}">
+                            <button class="btn btn-sm btn-outline-primary editar-aluno me-1" data-id="${id}">
                                 <i class="fas fa-edit"></i>
                             </button>
-                            <button class="btn btn-sm btn-danger excluir-aluno" data-id="${aluno.id_aluno}">
+                            <button class="btn btn-sm btn-outline-danger excluir-aluno" data-id="${id}">
                                 <i class="fas fa-trash"></i>
                             </button>
                         </td>

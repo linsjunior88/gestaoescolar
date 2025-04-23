@@ -439,37 +439,43 @@ function criarLinhaDisciplina(disciplina, turmas) {
     
     let turmasTexto = '-';
     
+    // Verificar se a disciplina tem turmas vinculadas
     if (disciplina.turmas_vinculadas && disciplina.turmas_vinculadas.length > 0) {
         console.log(`Processando turmas vinculadas à disciplina ${disciplina.id_disciplina}:`, disciplina.turmas_vinculadas);
         
-        const turmasFormatadas = disciplina.turmas_vinculadas.map(t => {
-            // Normalizar o ID da turma, considerando diferentes formatos possíveis
-            let idTurmaStr;
-            if (typeof t === 'object' && t !== null) {
-                idTurmaStr = String(t.id_turma || t.id || '');
+        // Transformar as turmas em uma lista legível
+        const turmasFormatadas = disciplina.turmas_vinculadas.map(turma => {
+            // Verificar o formato da turma (pode ser objeto ou string de ID)
+            let idTurma = '';
+            let infoTurma = '';
+            
+            if (typeof turma === 'object' && turma !== null) {
+                idTurma = turma.id_turma || turma.id || '';
             } else {
-                idTurmaStr = String(t || '');
+                idTurma = turma;
             }
             
-            // Verificar se é um valor válido
-            if (!idTurmaStr) {
-                console.warn("Valor de turma inválido:", t);
-                return '';
+            // Buscar informações adicionais da turma na lista completa
+            if (turmas && turmas.length > 0) {
+                const turmaCompleta = turmas.find(t => 
+                    t.id_turma === idTurma || t.id === idTurma || 
+                    String(t.id_turma) === String(idTurma) || String(t.id) === String(idTurma)
+                );
+                
+                if (turmaCompleta) {
+                    infoTurma = ` (${turmaCompleta.serie || turmaCompleta.nome_turma || 'Sem info'})`;
+                }
             }
             
-            // Encontrar a turma completa pelo ID
-            const turma = turmas.find(turma => 
-                String(turma.id_turma) === idTurmaStr || String(turma.id) === idTurmaStr
-            );
-            
-            if (turma) {
-                return `${idTurmaStr} - ${turma.serie || turma.nome || 'Sem nome'}`;
-            }
-            return idTurmaStr;
-        }).filter(t => t); // Remover itens vazios
+            return `${idTurma}${infoTurma}`;
+        });
         
-        if (turmasFormatadas.length > 0) {
-            turmasTexto = turmasFormatadas.join(', ');
+        // Filtrar valores vazios e juntar com vírgulas
+        turmasTexto = turmasFormatadas.filter(t => t).join(', ');
+        
+        // Se ainda assim ficou vazio
+        if (!turmasTexto) {
+            turmasTexto = '-';
         }
     }
     
