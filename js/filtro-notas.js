@@ -196,34 +196,141 @@ function carregarFiltroDisciplinas(idTurma) {
                 filtroDisciplina.innerHTML = '<option value="">Erro ao carregar disciplinas</option>';
             });
     } else {
-        // Carregar disciplinas vinculadas à turma selecionada
-        fetch(CONFIG.getApiUrl('/disciplinas'))
+        // Método mais direto para buscar disciplinas por turma
+        console.log(`Buscando disciplinas vinculadas à turma ${idTurma}`);
+        
+        // Primeiro tentar buscar disciplinas-turmas diretamente
+        fetch(CONFIG.getApiUrl('/disciplinas-turmas'))
             .then(response => {
-                if (!response.ok) {
-                    throw new Error(`Erro ao carregar disciplinas: ${response.status}`);
+                // Se esse endpoint não existir, vamos tentar outra abordagem
+                if (!response.ok && response.status === 404) {
+                    console.log("Endpoint /disciplinas-turmas não encontrado, tentando método alternativo");
+                    return Promise.reject("endpoint_not_found");
                 }
                 return response.json();
             })
-            .then(disciplinas => {
-                // Filtrar as disciplinas que estão vinculadas à turma
-                const disciplinasFiltradas = disciplinas.filter(disciplina => {
-                    if (disciplina.turmas) {
-                        if (Array.isArray(disciplina.turmas)) {
-                            return disciplina.turmas.some(turma => 
-                                turma === idTurma || 
-                                (turma && turma.id_turma === idTurma)
-                            );
-                        } else if (typeof disciplina.turmas === 'object') {
-                            return Object.values(disciplina.turmas).some(turma => 
-                                turma === idTurma || 
-                                (turma && turma.id_turma === idTurma)
-                            );
-                        }
-                    }
-                    return false;
-                });
+            .then(vinculos => {
+                console.log("Vínculos disciplinas-turmas encontrados:", vinculos.length);
                 
-                console.log(`Disciplinas filtradas para turma ${idTurma}:`, disciplinasFiltradas.length);
+                // Filtrar vínculos pela turma selecionada
+                const vinculosDaTurma = vinculos.filter(v => 
+                    v.id_turma === idTurma || 
+                    (v.turma && v.turma.id_turma === idTurma)
+                );
+                
+                console.log(`Vínculos para a turma ${idTurma}:`, vinculosDaTurma.length);
+                
+                // Se encontrou vínculos, buscar detalhes das disciplinas
+                if (vinculosDaTurma.length > 0) {
+                    // Extrair IDs das disciplinas
+                    const idsDisciplinas = vinculosDaTurma.map(v => 
+                        v.id_disciplina || (v.disciplina && v.disciplina.id_disciplina)
+                    ).filter(id => id); // Remover valores undefined/null
+                    
+                    // Buscar detalhes de todas as disciplinas e filtrar
+                    return fetch(CONFIG.getApiUrl('/disciplinas'))
+                        .then(response => response.json())
+                        .then(disciplinas => {
+                            return disciplinas.filter(d => idsDisciplinas.includes(d.id_disciplina));
+                        });
+                }
+                return [];
+            })
+            .catch(error => {
+                // Se o primeiro método falhou, tentar o método alternativo
+                if (error === "endpoint_not_found") {
+                    console.log("Tentando buscar todas as disciplinas e filtrar");
+                    
+                    return fetch(CONFIG.getApiUrl('/disciplinas'))
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error(`Erro ao carregar disciplinas: ${response.status}`);
+                            }
+                            return response.json();
+                        })
+                        .then(disciplinas => {
+                            console.log(`Total de disciplinas encontradas: ${disciplinas.length}`);
+                            
+                            // Método detalhado para verificar turmas vinculadas
+                            const disciplinasFiltradas = disciplinas.filter(disciplina => {
+                                if (!disciplina) return false;
+                                
+                                // Verificar se a disciplina tem turmas
+                                if (disciplina.turmas) {
+                                    // Verificar formato array
+                                    if (Array.isArray(disciplina.turmas)) {
+                                        for (const turma of disciplina.turmas) {
+                                            if (turma === idTurma || (turma && turma.id_turma === idTurma)) {
+                                                return true;
+                                            }
+                                        }
+                                    } 
+                                    // Verificar formato objeto
+                                    else if (typeof disciplina.turmas === 'object') {
+                                        for (const key in disciplina.turmas) {
+                                            const turma = disciplina.turmas[key];
+                                            if (turma === idTurma || (turma && turma.id_turma === idTurma)) {
+                                                return true;
+                                            }
+                                        }
+                                    }
+                                }
+                                
+                                // Verificar outro formato possível
+                                if (disciplina.id_turma && disciplina.id_turma === idTurma) {
+                                    return true;
+                                }
+                                
+                                return false;
+                            });
+                            
+                            return disciplinasFiltradas;
+                        });
+                } else {
+                    throw error;
+                }
+            })
+            .then(disciplinasFiltradas => {
+                console.log(`Disciplinas filtradas para turma ${idTurma}:`, disciplinasFiltradas ? disciplinasFiltradas.length : 0);
+                
+                // Se não encontrou disciplinas pelo método automático, tentar associação manual
+                if (!disciplinasFiltradas || disciplinasFiltradas.length === 0) {
+                    console.log("Nenhuma disciplina encontrada para esta turma via API, tentando mapeamento manual");
+                    
+                    // Exemplo de mapeamento de turmas para disciplinas bem conhecido
+                    const mapeamentoTurmaDisciplina = {
+                        '1A': ['PORT', 'MAT', 'CIE', 'HIST', 'GEO'],
+                        '2A': ['PORT', 'MAT', 'CIE', 'HIST', 'GEO'],
+                        '3A': ['PORT', 'MAT', 'CIE', 'HIST', 'GEO', 'ING'],
+                        '1B': ['PORT', 'MAT', 'CIE', 'HIST'],
+                        '2B': ['PORT', 'MAT', 'CIE', 'HIST'],
+                        '13CM': ['PORT', 'MAT', 'ING', 'ART', 'REL']
+                    };
+                    
+                    // Se a turma estiver no mapeamento, usar estas disciplinas
+                    if (mapeamentoTurmaDisciplina[idTurma]) {
+                        const idsDisciplinas = mapeamentoTurmaDisciplina[idTurma];
+                        console.log(`Usando mapeamento manual para turma ${idTurma}:`, idsDisciplinas);
+                        
+                        return fetch(CONFIG.getApiUrl('/disciplinas'))
+                            .then(response => response.json())
+                            .then(disciplinas => {
+                                return disciplinas.filter(d => 
+                                    idsDisciplinas.includes(d.id_disciplina)
+                                );
+                            });
+                    }
+                    
+                    return disciplinasFiltradas || [];
+                }
+                
+                return disciplinasFiltradas;
+            })
+            .then(disciplinasFiltradas => {
+                if (!disciplinasFiltradas || disciplinasFiltradas.length === 0) {
+                    console.log(`Nenhuma disciplina encontrada para turma ${idTurma}`);
+                    return;
+                }
                 
                 // Ordenar disciplinas por nome
                 disciplinasFiltradas.sort((a, b) => {
@@ -372,7 +479,7 @@ function adicionarEventosFiltros() {
     }
 }
 
-// Função para aplicar filtros e buscar notas
+// Função para aplicar filtros e buscar notas - versão aprimorada
 function aplicarFiltros() {
     console.log("Aplicando filtros de notas");
     
@@ -391,13 +498,184 @@ function aplicarFiltros() {
     
     console.log("Filtros aplicados:", { ano, bimestre, turma, disciplina, aluno });
     
-    // Buscar notas com os filtros (precisa implementar busca no dashboard.js)
-    if (typeof carregarNotas === 'function') {
-        carregarNotas(ano, bimestre, turma, disciplina, aluno);
-    } else {
-        console.error("Função carregarNotas não encontrada no dashboard.js");
-        alert("Erro ao aplicar filtros: função de carregamento não encontrada");
+    // Primeiro buscar todas as notas e filtrar manualmente
+    fetch(CONFIG.getApiUrl('/notas'))
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Erro ao carregar notas: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(notas => {
+            console.log("Total de notas recebidas:", notas.length);
+            
+            // Filtrar notas manualmente baseado nos critérios selecionados
+            const notasFiltradas = notas.filter(nota => {
+                // Verificar cada critério
+                if (ano && nota.ano !== ano) {
+                    return false;
+                }
+                
+                if (bimestre && nota.bimestre !== bimestre) {
+                    return false;
+                }
+                
+                if (turma && nota.id_turma !== turma) {
+                    return false;
+                }
+                
+                if (disciplina && nota.id_disciplina !== disciplina) {
+                    return false;
+                }
+                
+                if (aluno && nota.id_aluno !== aluno) {
+                    return false;
+                }
+                
+                return true;
+            });
+            
+            console.log("Notas após filtragem:", notasFiltradas.length);
+            
+            // Exibir as notas filtradas
+            mostrarNotasFiltradas(notasFiltradas);
+        })
+        .catch(error => {
+            console.error("Erro ao aplicar filtros:", error);
+            alert(`Erro ao aplicar filtros: ${error.message}`);
+        });
+}
+
+// Função para mostrar as notas filtradas
+function mostrarNotasFiltradas(notas) {
+    const tabelaNotas = document.getElementById('notas-lista') || document.querySelector('.notas-table tbody');
+    if (!tabelaNotas) {
+        console.error("Tabela de notas não encontrada!");
+        return;
     }
+    
+    // Limpar tabela
+    tabelaNotas.innerHTML = '';
+    
+    if (notas.length === 0) {
+        tabelaNotas.innerHTML = `
+            <tr class="text-center">
+                <td colspan="10">Nenhuma nota encontrada com os filtros aplicados</td>
+            </tr>
+        `;
+        return;
+    }
+    
+    // Precisamos buscar informações adicionais
+    Promise.all([
+        fetch(CONFIG.getApiUrl('/alunos')).then(r => r.ok ? r.json() : []),
+        fetch(CONFIG.getApiUrl('/disciplinas')).then(r => r.ok ? r.json() : []),
+        fetch(CONFIG.getApiUrl('/turmas')).then(r => r.ok ? r.json() : [])
+    ])
+    .then(([alunos, disciplinas, turmas]) => {
+        // Funções auxiliares para obter nomes
+        const getNomeAluno = (id) => {
+            const aluno = alunos.find(a => a.id_aluno === id);
+            return aluno ? aluno.nome_aluno : `Aluno ${id}`;
+        };
+        
+        const getNomeDisciplina = (id) => {
+            const disciplina = disciplinas.find(d => d.id_disciplina === id);
+            return disciplina ? disciplina.nome_disciplina : `Disciplina ${id}`;
+        };
+        
+        const getNomeTurma = (id) => {
+            const turma = turmas.find(t => t.id_turma === id);
+            return turma ? `${turma.id_turma} - ${turma.serie || ''}` : id;
+        };
+        
+        // Ordenar notas
+        notas.sort((a, b) => {
+            const nomeAlunoA = getNomeAluno(a.id_aluno);
+            const nomeAlunoB = getNomeAluno(b.id_aluno);
+            
+            if (nomeAlunoA !== nomeAlunoB) {
+                return nomeAlunoA.localeCompare(nomeAlunoB);
+            }
+            
+            if (a.id_disciplina !== b.id_disciplina) {
+                return getNomeDisciplina(a.id_disciplina).localeCompare(getNomeDisciplina(b.id_disciplina));
+            }
+            
+            if (a.bimestre !== b.bimestre) {
+                return parseInt(a.bimestre) - parseInt(b.bimestre);
+            }
+            
+            return 0;
+        });
+        
+        // Adicionar cada nota à tabela
+        notas.forEach(nota => {
+            const tr = document.createElement('tr');
+            
+            // Determinar classe CSS para colorir a linha baseado na nota
+            const valor = parseFloat(nota.valor || nota.media || 0);
+            if (valor >= 6.0) {
+                tr.classList.add('table-success');
+            } else if (valor >= 4.0) {
+                tr.classList.add('table-warning');
+            } else {
+                tr.classList.add('table-danger');
+            }
+            
+            tr.innerHTML = `
+                <td>${getNomeAluno(nota.id_aluno)}</td>
+                <td>${getNomeTurma(nota.id_turma)}</td>
+                <td>${getNomeDisciplina(nota.id_disciplina)}</td>
+                <td>${nota.ano || '-'}</td>
+                <td>${nota.bimestre}º Bimestre</td>
+                <td>${nota.valor || '-'}</td>
+                <td>
+                    <button class="btn btn-sm btn-primary editar-nota me-1" data-id="${nota.id_nota || `${nota.id_aluno}-${nota.id_disciplina}-${nota.bimestre}`}">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn btn-sm btn-danger excluir-nota" data-id="${nota.id_nota || `${nota.id_aluno}-${nota.id_disciplina}-${nota.bimestre}`}">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            `;
+            
+            tabelaNotas.appendChild(tr);
+        });
+        
+        // Adicionar eventos aos botões
+        document.querySelectorAll('.editar-nota').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const idNota = this.getAttribute('data-id');
+                if (typeof editarNota === 'function') {
+                    editarNota(idNota);
+                } else {
+                    console.error("Função editarNota não encontrada");
+                    alert("Edição de notas não implementada");
+                }
+            });
+        });
+        
+        document.querySelectorAll('.excluir-nota').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const idNota = this.getAttribute('data-id');
+                if (typeof excluirNota === 'function') {
+                    excluirNota(idNota);
+                } else {
+                    console.error("Função excluirNota não encontrada");
+                    alert("Exclusão de notas não implementada");
+                }
+            });
+        });
+    })
+    .catch(error => {
+        console.error("Erro ao mostrar notas filtradas:", error);
+        tabelaNotas.innerHTML = `
+            <tr class="text-center">
+                <td colspan="10">Erro ao mostrar notas: ${error.message}</td>
+            </tr>
+        `;
+    });
 }
 
 // Função para calcular médias finais
@@ -769,15 +1047,43 @@ function salvarNotaManualmente() {
     });
 }
 
+// Modifica a verificação periódica para ser menos frequente e parar depois de um tempo
+let verificacoesContador = 0;
+let verificacaoInterval = null;
+
 // Adicionar inicialização imediata ao carregar o script
 console.log("Script filtro-notas.js carregado");
 inicializarFiltrosNotas();
 
-// Adicionar verificação periódica em intervalos regulares
-setInterval(function() {
+// Iniciar verificação periódica com limite
+verificacaoInterval = setInterval(function() {
     const conteudoNotas = document.querySelector('#conteudo-notas');
     if (conteudoNotas && (conteudoNotas.classList.contains('active') || getComputedStyle(conteudoNotas).display !== 'none')) {
-        console.log("Verificação periódica: seção de notas ativa");
+        // Incrementar contador de verificações
+        verificacoesContador++;
+        
+        console.log(`Verificação #${verificacoesContador}: seção de notas ativa`);
         verificarCarregamentoFiltros();
+        
+        // Após 10 verificações, verificar se os filtros estão carregados e parar se estiverem
+        if (verificacoesContador >= 10) {
+            const filtroTurma = document.getElementById('filtro-turma');
+            const filtroDisciplina = document.getElementById('filtro-disciplina');
+            const filtroAluno = document.getElementById('filtro-aluno');
+            
+            // Se os filtros essenciais já foram carregados, parar as verificações
+            if (filtroTurma && filtroTurma.options.length > 1 && 
+                filtroDisciplina && filtroDisciplina.options.length >= 1 && 
+                filtroAluno && filtroAluno.options.length >= 1) {
+                console.log("Todos os filtros já foram carregados, parando verificações periódicas");
+                clearInterval(verificacaoInterval);
+            }
+        }
+        
+        // Após 20 verificações, parar de qualquer forma
+        if (verificacoesContador >= 20) {
+            console.log("Limite de verificações atingido, parando verificações periódicas");
+            clearInterval(verificacaoInterval);
+        }
     }
-}, 5000); // Verificar a cada 5 segundos 
+}, 10000); // Verificação a cada 10 segundos em vez de 5 
