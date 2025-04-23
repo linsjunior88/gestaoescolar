@@ -31,9 +31,13 @@ document.addEventListener('click', function(e) {
         console.log("Clique no link de notas detectado");
         
         setTimeout(function() {
-            if (document.querySelector('#conteudo-notas.active')) {
+            const conteudoNotas = document.querySelector('#conteudo-notas');
+            if (conteudoNotas && conteudoNotas.classList.contains('active')) {
                 console.log("Seção de notas ativada, verificando filtros");
                 inicializarFiltrosNotas();
+                
+                // Verificar novamente após um tempo maior para garantir
+                setTimeout(verificarCarregamentoFiltros, 1500);
             }
         }, 100);
     }
@@ -56,6 +60,9 @@ function inicializarFiltrosNotas() {
     // Adicionar eventos para os filtros e botões
     adicionarEventosFiltros();
     adicionarEventosFormulario();
+    
+    // Verificar carregamento após um tempo
+    setTimeout(verificarCarregamentoFiltros, 1000);
 }
 
 // Carregar anos nos filtros (2025 a 2030)
@@ -237,10 +244,20 @@ function carregarFiltroAlunos(idTurma, idDisciplina) {
                 return response.json();
             })
             .then(alunos => {
-                // Ordenar alunos por nome
-                alunos.sort((a, b) => (a.nome_aluno || "").localeCompare(b.nome_aluno || ""));
+                // Remover duplicados pelo ID
+                const idsAlunos = new Set();
+                const alunosSemDuplicatas = alunos.filter(aluno => {
+                    if (idsAlunos.has(aluno.id_aluno)) {
+                        return false;
+                    }
+                    idsAlunos.add(aluno.id_aluno);
+                    return true;
+                });
                 
-                alunos.forEach(aluno => {
+                // Ordenar alunos por nome
+                alunosSemDuplicatas.sort((a, b) => (a.nome_aluno || "").localeCompare(b.nome_aluno || ""));
+                
+                alunosSemDuplicatas.forEach(aluno => {
                     const option = document.createElement('option');
                     option.value = aluno.id_aluno;
                     option.textContent = `${aluno.nome_aluno} (${aluno.id_turma})`;
@@ -261,15 +278,25 @@ function carregarFiltroAlunos(idTurma, idDisciplina) {
                 return response.json();
             })
             .then(alunos => {
-                // Filtrar alunos pela turma
+                // Filtrar alunos pela turma e remover duplicados
                 const alunosFiltrados = alunos.filter(aluno => aluno.id_turma === idTurma);
                 
-                console.log(`Alunos filtrados para turma ${idTurma}:`, alunosFiltrados.length);
+                // Criar um conjunto de IDs para identificar duplicatas
+                const idsAlunos = new Set();
+                const alunosSemDuplicatas = alunosFiltrados.filter(aluno => {
+                    if (idsAlunos.has(aluno.id_aluno)) {
+                        return false; // Aluno já encontrado, não adicionar novamente
+                    }
+                    idsAlunos.add(aluno.id_aluno);
+                    return true;
+                });
+                
+                console.log(`Alunos filtrados para turma ${idTurma}:`, alunosSemDuplicatas.length);
                 
                 // Ordenar alunos por nome
-                alunosFiltrados.sort((a, b) => (a.nome_aluno || "").localeCompare(b.nome_aluno || ""));
+                alunosSemDuplicatas.sort((a, b) => (a.nome_aluno || "").localeCompare(b.nome_aluno || ""));
                 
-                alunosFiltrados.forEach(aluno => {
+                alunosSemDuplicatas.forEach(aluno => {
                     const option = document.createElement('option');
                     option.value = aluno.id_aluno;
                     option.textContent = aluno.nome_aluno;
@@ -523,15 +550,25 @@ function carregarFormularioAlunos(idTurma) {
             return response.json();
         })
         .then(alunos => {
-            // Filtrar alunos pela turma
+            // Filtrar alunos pela turma e remover duplicados
             const alunosFiltrados = alunos.filter(aluno => aluno.id_turma === idTurma);
             
-            console.log(`Alunos filtrados para turma ${idTurma} (formulário):`, alunosFiltrados.length);
+            // Criar um conjunto de IDs para identificar duplicatas
+            const idsAlunos = new Set();
+            const alunosSemDuplicatas = alunosFiltrados.filter(aluno => {
+                if (idsAlunos.has(aluno.id_aluno)) {
+                    return false; // Aluno já encontrado, não adicionar novamente
+                }
+                idsAlunos.add(aluno.id_aluno);
+                return true;
+            });
+            
+            console.log(`Alunos filtrados para turma ${idTurma} (formulário):`, alunosSemDuplicatas.length);
             
             // Ordenar alunos por nome
-            alunosFiltrados.sort((a, b) => (a.nome_aluno || "").localeCompare(b.nome_aluno || ""));
+            alunosSemDuplicatas.sort((a, b) => (a.nome_aluno || "").localeCompare(b.nome_aluno || ""));
             
-            alunosFiltrados.forEach(aluno => {
+            alunosSemDuplicatas.forEach(aluno => {
                 const option = document.createElement('option');
                 option.value = aluno.id_aluno;
                 option.textContent = aluno.nome_aluno;
@@ -555,5 +592,40 @@ function adicionarEventosFormulario() {
             carregarFormularioDisciplinas(this.value);
             carregarFormularioAlunos(this.value);
         });
+    }
+}
+
+// Função para verificar o carregamento dos filtros e forçar a inicialização se necessário
+function verificarCarregamentoFiltros() {
+    console.log("Verificando se os filtros de notas foram carregados corretamente");
+    
+    const filtroTurma = document.getElementById('filtro-turma');
+    const filtroDisciplina = document.getElementById('filtro-disciplina');
+    const filtroAluno = document.getElementById('filtro-aluno');
+    
+    // Verificar combobox de turma
+    if (filtroTurma && (!filtroTurma.options || filtroTurma.options.length <= 1)) {
+        console.log("Combobox de turma vazio, tentando carregar novamente");
+        carregarFiltroTurmas();
+    }
+    
+    // Verificar formulários também
+    const selectTurmaNota = document.getElementById('turma_nota');
+    const selectAnoNota = document.getElementById('ano_nota');
+    const selectBimestreNota = document.getElementById('bimestre');
+    
+    if (selectAnoNota && (!selectAnoNota.options || selectAnoNota.options.length <= 1)) {
+        console.log("Combobox de ano no formulário vazio, tentando carregar novamente");
+        carregarFormularioAnos();
+    }
+    
+    if (selectBimestreNota && (!selectBimestreNota.options || selectBimestreNota.options.length <= 1)) {
+        console.log("Combobox de bimestre no formulário vazio, tentando carregar novamente");
+        carregarFormularioBimestres();
+    }
+    
+    if (selectTurmaNota && (!selectTurmaNota.options || selectTurmaNota.options.length <= 1)) {
+        console.log("Combobox de turma no formulário vazio, tentando carregar novamente");
+        carregarFormularioTurmas();
     }
 } 
