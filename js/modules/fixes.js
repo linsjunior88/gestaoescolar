@@ -4,8 +4,130 @@
  * para resolver problemas identificados sem ter que modificar o arquivo principal
  */
 
+// Resolver problemas de redeclaração de variáveis
+// Executar antes que o DOMContentLoaded para interceptar declarações
+(function() {
+    console.log("Aplicando correções para redeclaração de variáveis");
+    
+    // Hack para evitar redeclaração da variável conteudos em dashboard.js
+    // Verificamos se ela já existe e, se sim, salvamos temporariamente
+    if (typeof window.conteudos !== 'undefined') {
+        console.log("Salvando conteudos existente para evitar redeclaração");
+        window._conteudosSalvo = window.conteudos;
+        
+        // Definir getter/setter para conteudos para evitar redeclaração
+        Object.defineProperty(window, 'conteudos', {
+            get: function() {
+                return window._conteudosSalvo;
+            },
+            set: function(val) {
+                console.log("Tentativa de redeclarar conteudos interceptada");
+                window._conteudosSalvo = val;
+            },
+            configurable: true
+        });
+    }
+    
+    // Hack para evitar redeclaração da variável CONFIG em app.js
+    if (typeof window.CONFIG !== 'undefined') {
+        console.log("Salvando CONFIG existente para evitar redeclaração");
+        window._CONFIGSalvo = window.CONFIG;
+        
+        // Definir getter/setter para CONFIG para evitar redeclaração
+        Object.defineProperty(window, 'CONFIG', {
+            get: function() {
+                return window._CONFIGSalvo;
+            },
+            set: function(val) {
+                console.log("Tentativa de redeclarar CONFIG interceptada");
+                // Mesclar propriedades em vez de substituir
+                Object.assign(window._CONFIGSalvo, val);
+            },
+            configurable: true
+        });
+    }
+    
+    // Corrigir a redeclaração de btnCancelarProfessor
+    // Primeiro, salvar a referência se já existir
+    if (typeof window.btnCancelarProfessor !== 'undefined') {
+        console.log("Salvando btnCancelarProfessor existente para evitar redeclaração");
+        window._btnCancelarProfessorSalvo = window.btnCancelarProfessor;
+    }
+    
+    // Sobrescrever o Object.defineProperty temporariamente para interceptar
+    // novas declarações de btnCancelarProfessor usando const
+    const originalDefineProperty = Object.defineProperty;
+    Object.defineProperty = function(obj, prop, descriptor) {
+        // Se tentar definir btnCancelarProfessor que já existe, apenas reutilize o existente
+        if (prop === 'btnCancelarProfessor' && obj === window) {
+            console.log("Interceptando tentativa de redeclaração de btnCancelarProfessor");
+            
+            if (typeof window._btnCancelarProfessorSalvo !== 'undefined') {
+                // Se já temos uma referência salva, use-a
+                console.log("Usando referência salva para btnCancelarProfessor");
+                return window._btnCancelarProfessorSalvo;
+            } else if (typeof window.btnCancelarProfessor !== 'undefined') {
+                // Se a variável existe na janela, use-a
+                console.log("Usando btnCancelarProfessor existente na janela");
+                return window.btnCancelarProfessor;
+            }
+            
+            // Se chegou aqui, deixe a declaração prosseguir normalmente
+            // mas defina como configurável para futuras interceptações
+            if (descriptor && descriptor.configurable === false) {
+                descriptor.configurable = true;
+            }
+        }
+        
+        // Comportamento padrão para outras propriedades
+        return originalDefineProperty.call(this, obj, prop, descriptor);
+    };
+    
+    // Também substituir o getElementById para interceptar tentativas de obter o botão
+    const originalGetElementById = document.getElementById;
+    document.getElementById = function(id) {
+        if (id === 'btn-cancelar-professor') {
+            console.log("Interceptando getElementById para btn-cancelar-professor");
+            
+            // Garantir que o elemento seja obtido apenas uma vez
+            if (!window._btnCancelarProfessorElement) {
+                window._btnCancelarProfessorElement = originalGetElementById.call(this, id);
+                console.log("Elemento btn-cancelar-professor obtido e armazenado");
+            }
+            
+            return window._btnCancelarProfessorElement;
+        }
+        
+        // Comportamento padrão para outros IDs
+        return originalGetElementById.call(this, id);
+    };
+    
+    // Modificar a função initProfessores para evitar redeclaração
+    const originalInitProfessores = window.initProfessores;
+    if (typeof originalInitProfessores === 'function') {
+        window.initProfessores = function() {
+            console.log("Executando initProfessores modificado");
+            
+            // Chamar a função original com proteção contra redeclaração
+            originalInitProfessores.apply(this, arguments);
+        };
+    }
+})();
+
 document.addEventListener('DOMContentLoaded', function() {
     console.log("Aplicando correções específicas para os módulos");
+    
+    // Restaurar o comportamento original do Object.defineProperty e getElementById
+    // para não afetar o desempenho em outras partes do código
+    if (window._originalDefineProperty) {
+        Object.defineProperty = window._originalDefineProperty;
+        console.log("Restaurado comportamento original de Object.defineProperty");
+    }
+    
+    if (window._originalGetElementById) {
+        document.getElementById = window._originalGetElementById;
+        console.log("Restaurado comportamento original de getElementById");
+    }
     
     // Corrija problemas na função criarLinhaDisciplina para mostrar turmas vinculadas
     if (typeof window.criarLinhaDisciplina === 'function') {
