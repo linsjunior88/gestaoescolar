@@ -30,22 +30,30 @@ document.addEventListener('click', function(e) {
     if (e.target.matches('#notas-link') || e.target.closest('#notas-link')) {
         console.log("Clique no link de notas detectado");
         
+        // Usar um temporizador maior para garantir que os elementos estejam disponíveis
         setTimeout(function() {
             const conteudoNotas = document.querySelector('#conteudo-notas');
-            if (conteudoNotas && conteudoNotas.classList.contains('active')) {
-                console.log("Seção de notas ativada, verificando filtros");
+            console.log("Verificando se a seção de notas está ativa:", !!conteudoNotas, conteudoNotas ? conteudoNotas.classList.contains('active') : false);
+            
+            if (conteudoNotas && (conteudoNotas.classList.contains('active') || getComputedStyle(conteudoNotas).display !== 'none')) {
+                console.log("Seção de notas ativada, inicializando filtros");
                 inicializarFiltrosNotas();
                 
-                // Verificar novamente após um tempo maior para garantir
-                setTimeout(verificarCarregamentoFiltros, 1500);
+                // Verificar novamente após intervalos maiores para garantir o carregamento
+                setTimeout(verificarCarregamentoFiltros, 500);
+                setTimeout(verificarCarregamentoFiltros, 1000);
+                setTimeout(verificarCarregamentoFiltros, 2000);
             }
-        }, 100);
+        }, 200);
     }
 });
 
 // Função principal para inicializar todos os filtros
 function inicializarFiltrosNotas() {
-    console.log("Inicializando filtros do módulo de notas");
+    console.log("Inicializando filtros do módulo de notas", new Date().toISOString());
+    
+    // Corrigir o formulário para evitar submit padrão
+    corrigirFormularioNotas();
     
     // Carregar os filtros
     carregarFiltroAnos();
@@ -116,6 +124,12 @@ function carregarFiltroTurmas() {
     console.log("Carregando turmas para filtro");
     filtroTurma.innerHTML = '<option value="">Todas as turmas</option>';
     
+    // Adicionar indicador de carregamento
+    const optionCarregando = document.createElement('option');
+    optionCarregando.disabled = true;
+    optionCarregando.textContent = "Carregando...";
+    filtroTurma.appendChild(optionCarregando);
+    
     fetch(CONFIG.getApiUrl('/turmas'))
         .then(response => {
             if (!response.ok) {
@@ -124,6 +138,9 @@ function carregarFiltroTurmas() {
             return response.json();
         })
         .then(turmas => {
+            // Remover opção "Carregando..."
+            filtroTurma.removeChild(optionCarregando);
+            
             console.log("Turmas carregadas para filtro:", turmas.length);
             
             turmas.forEach(turma => {
@@ -132,6 +149,13 @@ function carregarFiltroTurmas() {
                 option.textContent = `${turma.id_turma} - ${turma.serie || 'Sem nome'}`;
                 filtroTurma.appendChild(option);
             });
+            
+            // Forçar carregamento de disciplinas e alunos também
+            if (turmas.length > 0) {
+                const primeiraTurma = turmas[0].id_turma;
+                carregarFiltroDisciplinas(primeiraTurma);
+                carregarFiltroAlunos(primeiraTurma, null);
+            }
         })
         .catch(error => {
             console.error("Erro ao carregar turmas para filtro:", error);
@@ -597,15 +621,22 @@ function adicionarEventosFormulario() {
 
 // Função para verificar o carregamento dos filtros e forçar a inicialização se necessário
 function verificarCarregamentoFiltros() {
-    console.log("Verificando se os filtros de notas foram carregados corretamente");
+    console.log("Verificando se os filtros de notas foram carregados corretamente", new Date().toISOString());
     
+    // Obter referências atualizadas aos elementos
     const filtroTurma = document.getElementById('filtro-turma');
     const filtroDisciplina = document.getElementById('filtro-disciplina');
     const filtroAluno = document.getElementById('filtro-aluno');
     
-    // Verificar combobox de turma
+    console.log("Estado atual dos comboboxes de filtro:", {
+        filtroTurma: filtroTurma ? `encontrado, ${filtroTurma.options ? filtroTurma.options.length : 0} opções` : "não encontrado",
+        filtroDisciplina: filtroDisciplina ? `encontrado, ${filtroDisciplina.options ? filtroDisciplina.options.length : 0} opções` : "não encontrado",
+        filtroAluno: filtroAluno ? `encontrado, ${filtroAluno.options ? filtroAluno.options.length : 0} opções` : "não encontrado"
+    });
+    
+    // Verificar combobox de turma e recarregar se necessário
     if (filtroTurma && (!filtroTurma.options || filtroTurma.options.length <= 1)) {
-        console.log("Combobox de turma vazio, tentando carregar novamente");
+        console.log("Combobox de turma vazio, carregando");
         carregarFiltroTurmas();
     }
     
@@ -614,18 +645,139 @@ function verificarCarregamentoFiltros() {
     const selectAnoNota = document.getElementById('ano_nota');
     const selectBimestreNota = document.getElementById('bimestre');
     
+    console.log("Estado atual dos comboboxes do formulário:", {
+        selectAnoNota: selectAnoNota ? `encontrado, ${selectAnoNota.options ? selectAnoNota.options.length : 0} opções` : "não encontrado",
+        selectBimestreNota: selectBimestreNota ? `encontrado, ${selectBimestreNota.options ? selectBimestreNota.options.length : 0} opções` : "não encontrado",
+        selectTurmaNota: selectTurmaNota ? `encontrado, ${selectTurmaNota.options ? selectTurmaNota.options.length : 0} opções` : "não encontrado"
+    });
+    
     if (selectAnoNota && (!selectAnoNota.options || selectAnoNota.options.length <= 1)) {
-        console.log("Combobox de ano no formulário vazio, tentando carregar novamente");
+        console.log("Combobox de ano no formulário vazio, carregando");
         carregarFormularioAnos();
     }
     
     if (selectBimestreNota && (!selectBimestreNota.options || selectBimestreNota.options.length <= 1)) {
-        console.log("Combobox de bimestre no formulário vazio, tentando carregar novamente");
+        console.log("Combobox de bimestre no formulário vazio, carregando");
         carregarFormularioBimestres();
     }
     
     if (selectTurmaNota && (!selectTurmaNota.options || selectTurmaNota.options.length <= 1)) {
-        console.log("Combobox de turma no formulário vazio, tentando carregar novamente");
+        console.log("Combobox de turma no formulário vazio, carregando");
         carregarFormularioTurmas();
     }
-} 
+}
+
+// Nova função para corrigir o comportamento do formulário de notas
+function corrigirFormularioNotas() {
+    const formNota = document.getElementById('form-nota');
+    if (!formNota) {
+        console.error("Formulário de notas não encontrado");
+        return;
+    }
+    
+    console.log("Corrigindo comportamento do formulário de notas");
+    
+    // Remover event listeners existentes
+    const novoForm = formNota.cloneNode(true);
+    formNota.parentNode.replaceChild(novoForm, formNota);
+    
+    // Adicionar novo event listener para prevenir o comportamento padrão
+    novoForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        console.log("Submit do formulário de notas interceptado");
+        
+        // Buscar a função salvarNota no escopo global
+        if (typeof window.salvarNota === 'function') {
+            console.log("Chamando função salvarNota");
+            window.salvarNota();
+        } else if (typeof salvarNota === 'function') {
+            console.log("Chamando função salvarNota local");
+            salvarNota();
+        } else {
+            console.error("Função salvarNota não encontrada");
+            alert("Erro: Função de salvamento não encontrada");
+            
+            // Criar nossa própria função básica de salvamento
+            salvarNotaManualmente();
+        }
+        
+        return false;
+    });
+}
+
+// Função de backup para salvar notas caso a original não seja encontrada
+function salvarNotaManualmente() {
+    console.log("Tentando salvar nota manualmente");
+    
+    // Obter os valores do formulário
+    const anoNota = document.getElementById('ano_nota').value;
+    const bimestre = document.getElementById('bimestre').value;
+    const turmaNota = document.getElementById('turma_nota').value;
+    const disciplinaNota = document.getElementById('disciplina_nota').value;
+    const alunoNota = document.getElementById('aluno_nota').value;
+    const valorNota = document.getElementById('valor_nota').value;
+    const descricaoNota = document.getElementById('descricao_nota') ? document.getElementById('descricao_nota').value : '';
+    
+    if (!anoNota || !bimestre || !turmaNota || !disciplinaNota || !alunoNota || !valorNota) {
+        alert("Por favor, preencha todos os campos obrigatórios");
+        return;
+    }
+    
+    // Criar objeto da nota
+    const nota = {
+        ano: anoNota,
+        bimestre: bimestre,
+        id_turma: turmaNota,
+        id_disciplina: disciplinaNota,
+        id_aluno: alunoNota,
+        valor: valorNota,
+        descricao: descricaoNota,
+        id_nota: `${alunoNota}-${disciplinaNota}-${bimestre}-${anoNota}`
+    };
+    
+    console.log("Dados da nota a serem salvos:", nota);
+    
+    // Enviar para a API
+    fetch(CONFIG.getApiUrl('/notas'), {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(nota)
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`Erro ao salvar nota: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log("Nota salva com sucesso:", data);
+        alert("Nota salva com sucesso!");
+        
+        // Limpar formulário
+        document.getElementById('form-nota').reset();
+        
+        // Recarregar lista de notas
+        if (typeof carregarNotas === 'function') {
+            carregarNotas();
+        }
+    })
+    .catch(error => {
+        console.error("Erro ao salvar nota:", error);
+        alert(`Erro ao salvar nota: ${error.message}`);
+    });
+}
+
+// Adicionar inicialização imediata ao carregar o script
+console.log("Script filtro-notas.js carregado");
+inicializarFiltrosNotas();
+
+// Adicionar verificação periódica em intervalos regulares
+setInterval(function() {
+    const conteudoNotas = document.querySelector('#conteudo-notas');
+    if (conteudoNotas && (conteudoNotas.classList.contains('active') || getComputedStyle(conteudoNotas).display !== 'none')) {
+        console.log("Verificação periódica: seção de notas ativa");
+        verificarCarregamentoFiltros();
+    }
+}, 5000); // Verificar a cada 5 segundos 
