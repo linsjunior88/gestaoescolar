@@ -1,822 +1,389 @@
 // Funções para gerenciamento de filtros no módulo de notas
 // Este arquivo deve ser incluído após dashboard.js
 
-// Inicializar filtros assim que o documento for carregado
+// URL base da API
+const BASE_API_URL = 'http://localhost:3000';
+
+// Detectar quando a seção de notas está ativa e inicializar os filtros
 document.addEventListener('DOMContentLoaded', function() {
-    console.log("Verificando presença da seção de notas");
+    console.log("Script de filtro-notas.js carregado");
     
-    // Verificar se estamos na página de notas
-    if (document.querySelector('#conteudo-notas')) {
-        console.log("Seção de notas encontrada, inicializando filtros");
+    // Verificar se estamos na página do dashboard
+    if (!document.querySelector('.main-content')) {
+        console.log("Não estamos na página do dashboard, script de filtros de notas não será inicializado");
+        return;
+    }
+    
+    // Função para verificar se a seção de notas está ativa
+    function verificarSecaoNotasAtiva() {
+        // Verificar se a seção de notas está ativa pelo link do menu
+        const linkNotas = document.querySelector('a[href="#notas"]');
+        const secaoNotasAtiva = linkNotas && linkNotas.classList.contains('active');
+        
+        // Verificar também pelo conteúdo visível
+        const secaoNotas = document.getElementById('notas');
+        const secaoNotasVisivel = secaoNotas && (window.getComputedStyle(secaoNotas).display !== 'none');
+        
+        return secaoNotasAtiva || secaoNotasVisivel;
+    }
+    
+    // Inicializar filtros se a seção de notas estiver ativa ao carregar a página
+    if (verificarSecaoNotasAtiva()) {
+        console.log("Seção de notas ativa no carregamento da página");
         inicializarFiltrosNotas();
     }
-});
-
-// Se a página já estiver carregada, executar imediatamente
-if (document.readyState === 'complete' || document.readyState === 'interactive') {
-    setTimeout(function() {
-        console.log("Verificando presença da seção de notas (documento já carregado)");
-        
-        // Verificar se estamos na página de notas
-        if (document.querySelector('#conteudo-notas')) {
-            console.log("Seção de notas encontrada, inicializando filtros");
-            inicializarFiltrosNotas();
-        }
-    }, 500);
-}
-
-// Adicionar event listener para capturar quando a seção de notas é ativada
-document.addEventListener('click', function(e) {
-    if (e.target.matches('#notas-link') || e.target.closest('#notas-link')) {
-        console.log("Clique no link de notas detectado");
-        
-        // Usar um temporizador maior para garantir que os elementos estejam disponíveis
-        setTimeout(function() {
-            const conteudoNotas = document.querySelector('#conteudo-notas');
-            console.log("Verificando se a seção de notas está ativa:", !!conteudoNotas, conteudoNotas ? conteudoNotas.classList.contains('active') : false);
-            
-            if (conteudoNotas && (conteudoNotas.classList.contains('active') || getComputedStyle(conteudoNotas).display !== 'none')) {
-                console.log("Seção de notas ativada, inicializando filtros");
-                inicializarFiltrosNotas();
-                
-                // Verificar novamente após intervalos maiores para garantir o carregamento
-                setTimeout(verificarCarregamentoFiltros, 500);
-                setTimeout(verificarCarregamentoFiltros, 1000);
-                setTimeout(verificarCarregamentoFiltros, 2000);
-            }
-        }, 200);
-    }
-});
-
-// Função principal para inicializar todos os filtros
-function inicializarFiltrosNotas() {
-    console.log("Inicializando filtros do módulo de notas", new Date().toISOString());
     
-    // Corrigir o formulário para evitar submit padrão
+    // Adicionar ouvinte para os links da navegação
+    document.querySelectorAll('.nav-link').forEach(link => {
+        link.addEventListener('click', function() {
+            // Verificar após um pequeno atraso para garantir que as classes foram atualizadas
+            setTimeout(() => {
+                if (this.getAttribute('href') === '#notas' || verificarSecaoNotasAtiva()) {
+                    console.log("Navegado para a seção de notas");
+                    inicializarFiltrosNotas();
+                }
+            }, 100);
+        });
+    });
+    
+    // Verificação periódica (a cada 3 segundos) para garantir que os filtros sejam inicializados
+    setInterval(() => {
+        if (verificarSecaoNotasAtiva()) {
+            const filtroTurma = document.getElementById('filtro-turma');
+            // Se o filtro de turmas estiver vazio, reinicializar
+            if (filtroTurma && (!filtroTurma.options || filtroTurma.options.length <= 1)) {
+                console.log("Detectada seção de notas ativa com filtros não inicializados");
+                inicializarFiltrosNotas();
+            }
+        }
+    }, 3000);
+});
+
+// Função para inicializar os filtros na seção de notas
+function inicializarFiltrosNotas() {
+    console.log("Inicializando filtros de notas");
+    
+    // Inicializar os selectboxes com os valores padrão
+    // Desabilitar disciplinas e alunos até que uma turma seja selecionada
+    document.getElementById('filtro-disciplina').disabled = true;
+    document.getElementById('filtro-disciplina').innerHTML = '<option value="">Selecione uma turma primeiro</option>';
+    
+    document.getElementById('filtro-aluno').disabled = true;
+    document.getElementById('filtro-aluno').innerHTML = '<option value="">Selecione uma turma primeiro</option>';
+    
+    // Carregar anos letivos
+    carregarAnosLetivos();
+    
+    // Carregar bimestres
+    carregarBimestres();
+    
+    // Carregar turmas
+    carregarTurmas();
+    
+    // Adicionar evento de change para a seleção de turma
+    document.getElementById('filtro-turma').addEventListener('change', function() {
+        // Quando a turma mudar, carregar disciplinas e alunos associados
+        const turmaId = this.value;
+        carregarDisciplinas(turmaId);
+        carregarAlunos(turmaId);
+    });
+    
+    // Corrigir o comportamento do formulário de notas
     corrigirFormularioNotas();
     
-    // Carregar os filtros
-    carregarFiltroAnos();
-    carregarFiltroBimestres();
-    carregarFiltroTurmas();
-    
-    // Inicializar selects de formulário
-    carregarFormularioAnos();
-    carregarFormularioBimestres();
-    carregarFormularioTurmas();
-    
-    // Adicionar eventos para os filtros e botões
-    adicionarEventosFiltros();
-    adicionarEventosFormulario();
-    
-    // Verificar carregamento após um tempo
-    setTimeout(verificarCarregamentoFiltros, 1000);
-    
-    // CORREÇÃO: Aplicar filtros após a inicialização completa
-    setTimeout(function() {
-        // Verificar se há filtros salvos na sessão e aplicá-los
-        const turma = sessionStorage.getItem('filtroNotas_turma');
-        const disciplina = sessionStorage.getItem('filtroNotas_disciplina');
-        
-        if (turma || disciplina) {
-            console.log("Aplicando filtros salvos na sessão");
-            aplicarFiltros();
-        }
-    }, 2000);
-}
-
-// Carregar anos nos filtros (2025 a 2030)
-function carregarFiltroAnos() {
-    const filtroAno = document.getElementById('filtro-ano');
-    if (!filtroAno) {
-        console.error("Elemento filtro-ano não encontrado");
-        return;
+    // Configurar o botão de aplicar filtros
+    const btnAplicarFiltros = document.getElementById('btn-aplicar-filtros');
+    if (btnAplicarFiltros) {
+        btnAplicarFiltros.addEventListener('click', aplicarFiltros);
+        console.log("Evento adicionado ao botão de aplicar filtros");
+    } else {
+        console.warn("Botão de aplicar filtros não encontrado");
     }
     
-    console.log("Carregando anos para filtro");
-    filtroAno.innerHTML = '<option value="">Todos os anos</option>';
+    console.log("Filtros de notas inicializados - aguardando usuário aplicar filtros");
     
-    // Adicionar anos de 2025 a 2030
-    for (let ano = 2025; ano <= 2030; ano++) {
+    // Exibir mensagem inicial no local das notas
+    const notasContainer = document.querySelector('.notas-container');
+    if (notasContainer) {
+        notasContainer.innerHTML = '<div class="alert alert-info mt-3">Selecione pelo menos um filtro e clique em "Aplicar Filtros" para visualizar as notas.</div>';
+    }
+}
+
+// Função para carregar anos letivos
+function carregarAnosLetivos() {
+    const anoSelect = document.getElementById('filtro-ano');
+    anoSelect.innerHTML = '<option value="">Carregando anos...</option>';
+    
+    console.log("Carregando anos letivos");
+    
+    // Gerar anos de 2020 até o ano atual + 1
+    const anoAtual = new Date().getFullYear();
+    const anos = [];
+    
+    for (let ano = 2020; ano <= anoAtual + 1; ano++) {
+        anos.push(ano);
+    }
+    
+    // Limpar e adicionar opção padrão
+    anoSelect.innerHTML = '<option value="">Todos os Anos</option>';
+    
+    // Adicionar os anos ao select
+    anos.forEach(ano => {
         const option = document.createElement('option');
-        option.value = ano.toString();
-        option.textContent = ano.toString();
-        filtroAno.appendChild(option);
-    }
+        option.value = ano;
+        option.textContent = ano;
+        anoSelect.appendChild(option);
+    });
+    
+    console.log(`${anos.length} anos letivos carregados`);
 }
 
-// Carregar bimestres nos filtros (1 a 4)
-function carregarFiltroBimestres() {
-    const filtroBimestre = document.getElementById('filtro-bimestre');
-    if (!filtroBimestre) {
-        console.error("Elemento filtro-bimestre não encontrado");
-        return;
-    }
+// Função para carregar bimestres
+function carregarBimestres() {
+    const bimestreSelect = document.getElementById('filtro-bimestre');
+    bimestreSelect.innerHTML = '<option value="">Carregando bimestres...</option>';
     
-    console.log("Carregando bimestres para filtro");
-    filtroBimestre.innerHTML = '<option value="">Todos os bimestres</option>';
+    console.log("Carregando bimestres");
     
-    // Adicionar bimestres de 1 a 4
-    for (let bimestre = 1; bimestre <= 4; bimestre++) {
+    // Definir os bimestres
+    const bimestres = [
+        { id: "1", nome: "1º Bimestre" },
+        { id: "2", nome: "2º Bimestre" },
+        { id: "3", nome: "3º Bimestre" },
+        { id: "4", nome: "4º Bimestre" }
+    ];
+    
+    // Limpar e adicionar opção padrão
+    bimestreSelect.innerHTML = '<option value="">Todos os Bimestres</option>';
+    
+    // Adicionar os bimestres ao select
+    bimestres.forEach(bimestre => {
         const option = document.createElement('option');
-        option.value = bimestre.toString();
-        option.textContent = `${bimestre}º Bimestre`;
-        filtroBimestre.appendChild(option);
-    }
+        option.value = bimestre.id;
+        option.textContent = bimestre.nome;
+        bimestreSelect.appendChild(option);
+    });
+    
+    console.log(`${bimestres.length} bimestres carregados`);
 }
 
-// Carregar turmas nos filtros
-function carregarFiltroTurmas() {
-    const filtroTurma = document.getElementById('filtro-turma');
-    if (!filtroTurma) {
-        console.error("Elemento filtro-turma não encontrado");
-        return;
-    }
+// Função para carregar turmas
+function carregarTurmas() {
+    const turmaSelect = document.getElementById('filtro-turma');
+    turmaSelect.innerHTML = '<option value="">Carregando turmas...</option>';
     
-    console.log("Carregando turmas para filtro");
-    filtroTurma.innerHTML = '<option value="">Todas as turmas</option>';
+    console.log("Carregando turmas");
     
-    // Adicionar indicador de carregamento
-    const optionCarregando = document.createElement('option');
-    optionCarregando.disabled = true;
-    optionCarregando.textContent = "Carregando...";
-    filtroTurma.appendChild(optionCarregando);
-    
-    fetch(CONFIG.getApiUrl('/turmas'))
+    fetch(`${BASE_API_URL}/turmas`)
         .then(response => {
             if (!response.ok) {
-                throw new Error(`Erro ao carregar turmas: ${response.status}`);
+                throw new Error('Falha ao buscar turmas');
             }
             return response.json();
         })
         .then(turmas => {
-            // Remover opção "Carregando..."
-            filtroTurma.removeChild(optionCarregando);
+            console.log(`${turmas.length} turmas carregadas`);
             
-            console.log("Turmas carregadas para filtro:", turmas.length);
+            // Limpar e adicionar opção padrão
+            turmaSelect.innerHTML = '<option value="">Todas as Turmas</option>';
             
+            // Adicionar as turmas ao select
             turmas.forEach(turma => {
                 const option = document.createElement('option');
-                option.value = turma.id_turma;
-                option.textContent = `${turma.id_turma} - ${turma.serie || 'Sem nome'}`;
-                filtroTurma.appendChild(option);
+                option.value = turma.id;
+                option.textContent = turma.nome;
+                turmaSelect.appendChild(option);
             });
-            
-            // Forçar carregamento de disciplinas e alunos também
-            if (turmas.length > 0) {
-                const primeiraTurma = turmas[0].id_turma;
-                carregarFiltroDisciplinas(primeiraTurma);
-                carregarFiltroAlunos(primeiraTurma, null);
-            }
         })
         .catch(error => {
-            console.error("Erro ao carregar turmas para filtro:", error);
-            filtroTurma.innerHTML = '<option value="">Erro ao carregar turmas</option>';
+            console.error("Erro ao carregar turmas:", error);
+            turmaSelect.innerHTML = '<option value="">Erro ao carregar turmas</option>';
         });
 }
 
-// Carregar disciplinas nos filtros com base na turma selecionada
-function carregarFiltroDisciplinas(idTurma) {
-    const filtroDisciplina = document.getElementById('filtro-disciplina');
-    if (!filtroDisciplina) {
-        console.error("Elemento filtro-disciplina não encontrado");
-        return;
-    }
-    
-    console.log("Carregando disciplinas para filtro", idTurma ? `da turma ${idTurma}` : "");
-    filtroDisciplina.innerHTML = '<option value="">Todas as disciplinas</option>';
-    
-    if (!idTurma) {
-        // Se não há turma selecionada, carrega todas as disciplinas
-        fetch(CONFIG.getApiUrl('/disciplinas'))
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`Erro ao carregar disciplinas: ${response.status}`);
-                }
-                return response.json();
-            })
-            .then(disciplinas => {
-                disciplinas.forEach(disciplina => {
-                    const option = document.createElement('option');
-                    option.value = disciplina.id_disciplina;
-                    option.textContent = disciplina.nome_disciplina;
-                    filtroDisciplina.appendChild(option);
-                });
-            })
-            .catch(error => {
-                console.error("Erro ao carregar disciplinas para filtro:", error);
-                filtroDisciplina.innerHTML = '<option value="">Erro ao carregar disciplinas</option>';
-            });
-    } else {
-        // Método mais direto para buscar disciplinas por turma
-        console.log(`Buscando disciplinas vinculadas à turma ${idTurma}`);
-        
-        // Primeiro tentar buscar disciplinas-turmas diretamente
-        fetch(CONFIG.getApiUrl('/disciplinas-turmas'))
-            .then(response => {
-                // Se esse endpoint não existir, vamos tentar outra abordagem
-                if (!response.ok && response.status === 404) {
-                    console.log("Endpoint /disciplinas-turmas não encontrado, tentando método alternativo");
-                    return Promise.reject("endpoint_not_found");
-                }
-                return response.json();
-            })
-            .then(vinculos => {
-                console.log("Vínculos disciplinas-turmas encontrados:", vinculos.length);
-                
-                // Filtrar vínculos pela turma selecionada
-                const vinculosDaTurma = vinculos.filter(v => 
-                    v.id_turma === idTurma || 
-                    (v.turma && v.turma.id_turma === idTurma)
-                );
-                
-                console.log(`Vínculos para a turma ${idTurma}:`, vinculosDaTurma.length);
-                
-                // Se encontrou vínculos, buscar detalhes das disciplinas
-                if (vinculosDaTurma.length > 0) {
-                    // Extrair IDs das disciplinas
-                    const idsDisciplinas = vinculosDaTurma.map(v => 
-                        v.id_disciplina || (v.disciplina && v.disciplina.id_disciplina)
-                    ).filter(id => id); // Remover valores undefined/null
-                    
-                    // Buscar detalhes de todas as disciplinas e filtrar
-                    return fetch(CONFIG.getApiUrl('/disciplinas'))
-                        .then(response => response.json())
-                        .then(disciplinas => {
-                            return disciplinas.filter(d => idsDisciplinas.includes(d.id_disciplina));
-                        });
-                }
-                return [];
-            })
-            .catch(error => {
-                // Se o primeiro método falhou, tentar o método alternativo
-                if (error === "endpoint_not_found") {
-                    console.log("Tentando buscar todas as disciplinas e filtrar");
-                    
-                    return fetch(CONFIG.getApiUrl('/disciplinas'))
-                        .then(response => {
-                            if (!response.ok) {
-                                throw new Error(`Erro ao carregar disciplinas: ${response.status}`);
-                            }
-                            return response.json();
-                        })
-                        .then(disciplinas => {
-                            console.log(`Total de disciplinas encontradas: ${disciplinas.length}`);
-                            
-                            // Método detalhado para verificar turmas vinculadas
-                            const disciplinasFiltradas = disciplinas.filter(disciplina => {
-                                if (!disciplina) return false;
-                                
-                                // Verificar se a disciplina tem turmas
-                                if (disciplina.turmas) {
-                                    // Verificar formato array
-                                    if (Array.isArray(disciplina.turmas)) {
-                                        for (const turma of disciplina.turmas) {
-                                            if (turma === idTurma || (turma && turma.id_turma === idTurma)) {
-                                                return true;
-                                            }
-                                        }
-                                    } 
-                                    // Verificar formato objeto
-                                    else if (typeof disciplina.turmas === 'object') {
-                                        for (const key in disciplina.turmas) {
-                                            const turma = disciplina.turmas[key];
-                                            if (turma === idTurma || (turma && turma.id_turma === idTurma)) {
-                                                return true;
-                                            }
-                                        }
-                                    }
-                                }
-                                
-                                // Verificar outro formato possível
-                                if (disciplina.id_turma && disciplina.id_turma === idTurma) {
-                                    return true;
-                                }
-                                
-                                return false;
-                            });
-                            
-                            return disciplinasFiltradas;
-                        });
-                } else {
-                    throw error;
-                }
-            })
-            .then(disciplinasFiltradas => {
-                console.log(`Disciplinas filtradas para turma ${idTurma}:`, disciplinasFiltradas ? disciplinasFiltradas.length : 0);
-                
-                // Se não encontrou disciplinas pelo método automático, tentar associação manual
-                if (!disciplinasFiltradas || disciplinasFiltradas.length === 0) {
-                    console.log("Nenhuma disciplina encontrada para esta turma via API, tentando mapeamento manual");
-                    
-                    // CORREÇÃO: Mapeamento manual corrigido - removido CIE da turma 3A conforme relatado
-                    const mapeamentoTurmaDisciplina = {
-                        '1A': ['PORT', 'MAT', 'CIE', 'HIST', 'GEO'],
-                        '2A': ['PORT', 'MAT', 'CIE', 'HIST', 'GEO'],
-                        '3A': ['PORT', 'MAT', 'HIST', 'GEO', 'ING'], // Removido 'CIE' conforme relatado
-                        '1B': ['PORT', 'MAT', 'CIE', 'HIST'],
-                        '2B': ['PORT', 'MAT', 'CIE', 'HIST'],
-                        '13CM': ['PORT', 'MAT', 'ING', 'ART', 'REL']
-                    };
-                    
-                    // Se a turma estiver no mapeamento, usar estas disciplinas
-                    if (mapeamentoTurmaDisciplina[idTurma]) {
-                        const idsDisciplinas = mapeamentoTurmaDisciplina[idTurma];
-                        console.log(`Usando mapeamento manual para turma ${idTurma}:`, idsDisciplinas);
-                        
-                        return fetch(CONFIG.getApiUrl('/disciplinas'))
-                            .then(response => response.json())
-                            .then(disciplinas => {
-                                return disciplinas.filter(d => 
-                                    idsDisciplinas.includes(d.id_disciplina)
-                                );
-                            });
-                    }
-                    
-                    return disciplinasFiltradas || [];
-                }
-                
-                return disciplinasFiltradas;
-            })
-            .then(disciplinasFiltradas => {
-                if (!disciplinasFiltradas || disciplinasFiltradas.length === 0) {
-                    console.log(`Nenhuma disciplina encontrada para turma ${idTurma}`);
-                    return;
-                }
-                
-                // Ordenar disciplinas por nome
-                disciplinasFiltradas.sort((a, b) => {
-                    return (a.nome_disciplina || "").localeCompare(b.nome_disciplina || "");
-                });
-                
-                disciplinasFiltradas.forEach(disciplina => {
-                    const option = document.createElement('option');
-                    option.value = disciplina.id_disciplina;
-                    option.textContent = disciplina.nome_disciplina;
-                    filtroDisciplina.appendChild(option);
-                });
-            })
-            .catch(error => {
-                console.error(`Erro ao carregar disciplinas para turma ${idTurma}:`, error);
-                filtroDisciplina.innerHTML = '<option value="">Erro ao carregar disciplinas</option>';
-            });
-    }
-}
-
-// Carregar alunos nos filtros com base na turma e/ou disciplina selecionada
-function carregarFiltroAlunos(idTurma, idDisciplina) {
-    const filtroAluno = document.getElementById('filtro-aluno');
-    if (!filtroAluno) {
-        console.error("Elemento filtro-aluno não encontrado");
-        return;
-    }
-    
-    console.log("Carregando alunos para filtro", 
-               idTurma ? `da turma ${idTurma}` : "", 
-               idDisciplina ? `e disciplina ${idDisciplina}` : "");
-    
-    filtroAluno.innerHTML = '<option value="">Todos os alunos</option>';
-    
-    if (!idTurma) {
-        // Se não há turma selecionada, carrega todos os alunos
-        fetch(CONFIG.getApiUrl('/alunos'))
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`Erro ao carregar alunos: ${response.status}`);
-                }
-                return response.json();
-            })
-            .then(alunos => {
-                // Remover duplicados pelo ID
-                const idsAlunos = new Set();
-                const alunosSemDuplicatas = alunos.filter(aluno => {
-                    if (idsAlunos.has(aluno.id_aluno)) {
-                        return false;
-                    }
-                    idsAlunos.add(aluno.id_aluno);
-                    return true;
-                });
-                
-                // Ordenar alunos por nome
-                alunosSemDuplicatas.sort((a, b) => (a.nome_aluno || "").localeCompare(b.nome_aluno || ""));
-                
-                alunosSemDuplicatas.forEach(aluno => {
-                    const option = document.createElement('option');
-                    option.value = aluno.id_aluno;
-                    option.textContent = `${aluno.nome_aluno} (${aluno.id_turma})`;
-                    filtroAluno.appendChild(option);
-                });
-            })
-            .catch(error => {
-                console.error("Erro ao carregar alunos para filtro:", error);
-                filtroAluno.innerHTML = '<option value="">Erro ao carregar alunos</option>';
-            });
-    } else {
-        // Buscar alunos da turma específica
-        fetch(CONFIG.getApiUrl('/alunos'))
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`Erro ao carregar alunos: ${response.status}`);
-                }
-                return response.json();
-            })
-            .then(alunos => {
-                // Filtrar alunos pela turma e remover duplicados
-                const alunosFiltrados = alunos.filter(aluno => aluno.id_turma === idTurma);
-                
-                // Criar um conjunto de IDs para identificar duplicatas
-                const idsAlunos = new Set();
-                const alunosSemDuplicatas = alunosFiltrados.filter(aluno => {
-                    if (idsAlunos.has(aluno.id_aluno)) {
-                        return false; // Aluno já encontrado, não adicionar novamente
-                    }
-                    idsAlunos.add(aluno.id_aluno);
-                    return true;
-                });
-                
-                console.log(`Alunos filtrados para turma ${idTurma}:`, alunosSemDuplicatas.length);
-                
-                // Ordenar alunos por nome
-                alunosSemDuplicatas.sort((a, b) => (a.nome_aluno || "").localeCompare(b.nome_aluno || ""));
-                
-                alunosSemDuplicatas.forEach(aluno => {
-                    const option = document.createElement('option');
-                    option.value = aluno.id_aluno;
-                    option.textContent = aluno.nome_aluno;
-                    filtroAluno.appendChild(option);
-                });
-            })
-            .catch(error => {
-                console.error(`Erro ao carregar alunos da turma ${idTurma} para filtro:`, error);
-                filtroAluno.innerHTML = '<option value="">Erro ao carregar alunos</option>';
-            });
-    }
-}
-
-// Adicionar eventos para os filtros
-function adicionarEventosFiltros() {
-    const filtroTurma = document.getElementById('filtro-turma');
-    const filtroDisciplina = document.getElementById('filtro-disciplina');
-    const btnFiltrar = document.getElementById('btn-filtrar');
-    const btnCalcularMedias = document.getElementById('btn-calcular-medias');
-    
-    // Eventos para os filtros relacionados
-    if (filtroTurma) {
-        filtroTurma.addEventListener('change', function() {
-            carregarFiltroDisciplinas(this.value);
-            carregarFiltroAlunos(this.value, null);
-            
-            // CORREÇÃO: Aplica o filtro automaticamente quando a turma é alterada
-            // Isso garante que o valor da turma seja sempre respeitado
-            setTimeout(() => aplicarFiltros(), 500);
-        });
-    }
-    
-    if (filtroDisciplina) {
-        filtroDisciplina.addEventListener('change', function() {
-            if (filtroTurma && filtroTurma.value) {
-                carregarFiltroAlunos(filtroTurma.value, this.value);
-                
-                // CORREÇÃO: Aplica o filtro automaticamente quando a disciplina é alterada
-                setTimeout(() => aplicarFiltros(), 500);
-            }
-        });
-    }
-    
-    // Evento para o botão de filtrar
-    if (btnFiltrar) {
-        btnFiltrar.addEventListener('click', function() {
-            aplicarFiltros();
-        });
-    }
-    
-    // Evento para o botão de calcular médias
-    if (btnCalcularMedias) {
-        btnCalcularMedias.addEventListener('click', function() {
-            calcularMediasFinais();
-        });
-    }
-}
-
-// Função para aplicar filtros e buscar notas - versão aprimorada
+// Função para aplicar filtros e buscar notas
 function aplicarFiltros() {
-    console.log("Aplicando filtros de notas");
+    console.log("Aplicando filtros");
     
     // Obter valores dos filtros
-    const filtroAno = document.getElementById('filtro-ano');
-    const filtroBimestre = document.getElementById('filtro-bimestre');
-    const filtroTurma = document.getElementById('filtro-turma');
-    const filtroDisciplina = document.getElementById('filtro-disciplina');
-    const filtroAluno = document.getElementById('filtro-aluno');
+    const anoLetivo = document.getElementById('filtro-ano').value;
+    const bimestre = document.getElementById('filtro-bimestre').value;
+    const turmaId = document.getElementById('filtro-turma').value;
+    const disciplinaId = document.getElementById('filtro-disciplina').value;
+    const alunoId = document.getElementById('filtro-aluno').value;
     
-    // CORREÇÃO: Armazenar valores de filtro selecionados em variáveis de sessão
-    // para preservar o estado entre interações
-    const ano = filtroAno ? filtroAno.value : '';
-    const bimestre = filtroBimestre ? filtroBimestre.value : '';
-    const turma = filtroTurma ? filtroTurma.value : '';
-    const disciplina = filtroDisciplina ? filtroDisciplina.value : '';
-    const aluno = filtroAluno ? filtroAluno.value : '';
+    console.log("Filtros selecionados:", {
+        anoLetivo,
+        bimestre,
+        turmaId,
+        disciplinaId,
+        alunoId
+    });
     
-    // Armazenar filtros aplicados na sessão
-    sessionStorage.setItem('filtroNotas_ano', ano);
-    sessionStorage.setItem('filtroNotas_bimestre', bimestre);
-    sessionStorage.setItem('filtroNotas_turma', turma);
-    sessionStorage.setItem('filtroNotas_disciplina', disciplina);
-    sessionStorage.setItem('filtroNotas_aluno', aluno);
+    // Verificar se pelo menos um filtro foi preenchido
+    if (!anoLetivo && !bimestre && !turmaId && !disciplinaId && !alunoId) {
+        // Exibir mensagem de alerta
+        Swal.fire({
+            title: 'Atenção!',
+            text: 'Selecione pelo menos um filtro para buscar notas.',
+            icon: 'warning',
+            confirmButtonText: 'OK'
+        });
+        
+        // Mostrar mensagem na área de notas
+        const notasContainer = document.querySelector('.notas-container');
+        if (notasContainer) {
+            notasContainer.innerHTML = `
+                <div class="alert alert-warning mt-3">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Por favor, selecione pelo menos um filtro para buscar notas.
+                </div>
+            `;
+        }
+        
+        return;
+    }
     
-    console.log("Filtros aplicados:", { ano, bimestre, turma, disciplina, aluno });
+    // Mostrar indicador de carregamento
+    const notasContainer = document.querySelector('.notas-container');
+    if (notasContainer) {
+        notasContainer.innerHTML = `
+            <div class="text-center mt-4 mb-4">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Carregando...</span>
+                </div>
+                <p class="mt-2">Buscando notas...</p>
+            </div>
+        `;
+    }
     
-    // Primeiro buscar todas as notas e filtrar manualmente
-    fetch(CONFIG.getApiUrl('/notas'))
+    // Construir a URL com os parâmetros de filtro
+    let url = `${BASE_API_URL}/notas?`;
+    const params = [];
+    
+    if (anoLetivo) params.push(`anoLetivo=${anoLetivo}`);
+    if (bimestre) params.push(`bimestre=${bimestre}`);
+    if (turmaId) params.push(`turmaId=${turmaId}`);
+    if (disciplinaId) params.push(`disciplinaId=${disciplinaId}`);
+    if (alunoId) params.push(`alunoId=${alunoId}`);
+    
+    url += params.join('&');
+    
+    console.log("URL da busca:", url);
+    
+    // Buscar notas com os filtros aplicados
+    fetch(url)
         .then(response => {
             if (!response.ok) {
-                throw new Error(`Erro ao carregar notas: ${response.status}`);
+                throw new Error('Falha ao buscar notas');
             }
             return response.json();
         })
         .then(notas => {
-            console.log("Total de notas recebidas:", notas.length);
+            console.log(`${notas.length} notas encontradas`);
             
-            // Garantir que todos os valores de comparação sejam strings
-            const anoStr = String(ano);
-            const bimestreStr = String(bimestre);
-            const turmaStr = String(turma);
-            const disciplinaStr = String(disciplina);
-            const alunoStr = String(aluno);
-            
-            // CORREÇÃO: Log detalhado para ajudar no debug
-            console.log("Valores de filtro em formato string:", {
-                anoStr, bimestreStr, turmaStr, disciplinaStr, alunoStr
-            });
-            
-            // Filtrar notas manualmente baseado nos critérios selecionados
-            const notasFiltradas = notas.filter(nota => {
-                // Converter valores da nota para string para garantir comparação consistente
-                const notaAnoStr = String(nota.ano || '');
-                const notaBimestreStr = String(nota.bimestre || '');
-                const notaTurmaStr = String(nota.id_turma || '');
-                const notaDisciplinaStr = String(nota.id_disciplina || '');
-                const notaAlunoStr = String(nota.id_aluno || '');
-                
-                // CORREÇÃO: Log para debug quando a turma não corresponde
-                if (turmaStr && notaTurmaStr !== turmaStr) {
-                    console.log(`Nota removida do filtro - turma esperada: ${turmaStr}, turma da nota: ${notaTurmaStr}`, nota);
-                    return false;
-                }
-                
-                // Verificar cada critério
-                if (anoStr && notaAnoStr !== anoStr) {
-                    return false;
-                }
-                
-                if (bimestreStr && notaBimestreStr !== bimestreStr) {
-                    return false;
-                }
-                
-                // CORREÇÃO: A verificação de turma agora está no início, mais importante
-                
-                if (disciplinaStr && notaDisciplinaStr !== disciplinaStr) {
-                    return false;
-                }
-                
-                if (alunoStr && notaAlunoStr !== alunoStr) {
-                    return false;
-                }
-                
-                return true;
-            });
-            
-            console.log("Notas após filtragem:", notasFiltradas.length);
-            
-            // Exibir as notas filtradas
-            mostrarNotasFiltradas(notasFiltradas);
+            // Exibir as notas na tabela
+            exibirNotas(notas);
         })
         .catch(error => {
-            console.error("Erro ao aplicar filtros:", error);
-            alert(`Erro ao aplicar filtros: ${error.message}`);
+            console.error("Erro ao buscar notas:", error);
+            
+            if (notasContainer) {
+                notasContainer.innerHTML = `
+                    <div class="alert alert-danger mt-3">
+                        <i class="fas fa-exclamation-circle me-2"></i>
+                        Ocorreu um erro ao buscar notas: ${error.message}
+                    </div>
+                `;
+            }
         });
 }
 
-// Função para mostrar as notas filtradas
-function mostrarNotasFiltradas(notas) {
-    const tabelaNotas = document.getElementById('notas-lista') || document.querySelector('.notas-table tbody');
-    if (!tabelaNotas) {
-        console.error("Tabela de notas não encontrada!");
+// Função para exibir as notas na tabela
+function exibirNotas(notas) {
+    const notasContainer = document.querySelector('.notas-container');
+    
+    if (!notasContainer) {
+        console.error("Container de notas não encontrado");
         return;
     }
     
-    // Limpar tabela
-    tabelaNotas.innerHTML = '';
-    
     if (notas.length === 0) {
-        tabelaNotas.innerHTML = `
-            <tr class="text-center">
-                <td colspan="10">Nenhuma nota encontrada com os filtros aplicados</td>
-            </tr>
+        notasContainer.innerHTML = `
+            <div class="alert alert-info mt-3">
+                <i class="fas fa-info-circle me-2"></i>
+                Nenhuma nota encontrada com os filtros selecionados.
+            </div>
         `;
         return;
     }
     
-    // Precisamos buscar informações adicionais
-    Promise.all([
-        fetch(CONFIG.getApiUrl('/alunos')).then(r => r.ok ? r.json() : []),
-        fetch(CONFIG.getApiUrl('/disciplinas')).then(r => r.ok ? r.json() : []),
-        fetch(CONFIG.getApiUrl('/turmas')).then(r => r.ok ? r.json() : [])
-    ])
-    .then(([alunos, disciplinas, turmas]) => {
-        console.log("Dados auxiliares carregados:", {
-            alunos: alunos.length,
-            disciplinas: disciplinas.length,
-            turmas: turmas.length
-        });
-        
-        // Funções auxiliares para obter nomes e verificar dados
-        const getNomeAluno = (id) => {
-            const idStr = String(id || '');
-            const aluno = alunos.find(a => String(a.id_aluno) === idStr);
-            return aluno ? aluno.nome_aluno : `Aluno ${id}`;
-        };
-        
-        const getNomeDisciplina = (id) => {
-            const idStr = String(id || '');
-            const disciplina = disciplinas.find(d => String(d.id_disciplina) === idStr);
-            return disciplina ? disciplina.nome_disciplina : `Disciplina ${id}`;
-        };
-        
-        const getNomeTurma = (id) => {
-            const idStr = String(id || '');
-            const turma = turmas.find(t => String(t.id_turma) === idStr);
-            return turma ? `${turma.id_turma} - ${turma.serie || ''}` : id;
-        };
-        
-        const getTurmaPorAluno = (idAluno) => {
-            const idStr = String(idAluno || '');
-            const aluno = alunos.find(a => String(a.id_aluno) === idStr);
-            return aluno ? aluno.id_turma : null;
-        };
-        
-        // CORREÇÃO: Sistema melhorado de detecção de duplicatas
-        // Eliminar duplicatas baseadas na combinação de aluno, disciplina, bimestre e ano
-        const notasUnicas = [];
-        const jaAdicionadas = new Set();
-        
-        console.log("Processando notas para remover duplicatas:", notas.length);
-        
-        // Primeiro passo: corrigir as turmas das notas
-        const notasCorrigidas = notas.map(nota => {
-            // Criar uma cópia para não modificar o objeto original
-            const notaCorrigida = { ...nota };
-            
-            // Verificar se a nota está consistente com a turma do aluno
-            const turmaAluno = getTurmaPorAluno(notaCorrigida.id_aluno);
-            
-            // Se temos a turma do aluno e ela não bate com a turma da nota, corrigir
-            if (turmaAluno && (!notaCorrigida.id_turma || notaCorrigida.id_turma !== turmaAluno)) {
-                console.log(`Corrigindo turma da nota: aluno ${notaCorrigida.id_aluno} (${getNomeAluno(notaCorrigida.id_aluno)}) está na turma ${turmaAluno}, mas a nota indica turma ${notaCorrigida.id_turma}`);
-                notaCorrigida.id_turma = turmaAluno;
-            }
-            
-            return notaCorrigida;
-        });
-        
-        // Segundo passo: remover duplicatas com chave única mais específica
-        notasCorrigidas.forEach(nota => {
-            // CORREÇÃO: Criar uma chave única mais específica para cada nota
-            const chaveUnica = `${nota.id_aluno}-${nota.id_disciplina}-${nota.bimestre}-${nota.ano}-${nota.id_turma}`;
-            
-            if (!jaAdicionadas.has(chaveUnica)) {
-                notasUnicas.push(nota);
-                jaAdicionadas.add(chaveUnica);
-            } else {
-                console.log(`Nota duplicada removida: ${chaveUnica}`);
-            }
-        });
-        
-        console.log(`Removidas ${notas.length - notasUnicas.length} notas duplicadas`);
-        
-        // Obter os filtros aplicados
-        const filtroTurma = document.getElementById('filtro-turma');
-        const filtroDisciplina = document.getElementById('filtro-disciplina');
-        const turmaFiltrada = filtroTurma && filtroTurma.value ? String(filtroTurma.value) : '';
-        const disciplinaFiltrada = filtroDisciplina && filtroDisciplina.value ? String(filtroDisciplina.value) : '';
-        
-        // CORREÇÃO: Verificação de consistência dos filtros
-        console.log(`Verificando consistência com filtros - Turma: ${turmaFiltrada}, Disciplina: ${disciplinaFiltrada}`);
-        
-        // Aplicar filtro adicional para garantir que estamos exibindo apenas notas da turma selecionada
-        const notasFiltradas = notasUnicas.filter(nota => {
-            if (turmaFiltrada && String(nota.id_turma) !== turmaFiltrada) {
-                console.log(`Nota excluída por filtro adicional - turma esperada: ${turmaFiltrada}, turma da nota: ${nota.id_turma}`);
-                return false;
-            }
-            
-            if (disciplinaFiltrada && String(nota.id_disciplina) !== disciplinaFiltrada) {
-                console.log(`Nota excluída por filtro adicional - disciplina esperada: ${disciplinaFiltrada}, disciplina da nota: ${nota.id_disciplina}`);
-                return false;
-            }
-            
-            return true;
-        });
-        
-        if (turmaFiltrada || disciplinaFiltrada) {
-            console.log(`Filtro adicional aplicado - turma: ${turmaFiltrada}, disciplina: ${disciplinaFiltrada}`);
-            console.log(`Notas após filtro adicional: ${notasFiltradas.length} (de ${notasUnicas.length})`);
-        }
-        
-        // Ordenar notas
-        notasFiltradas.sort((a, b) => {
-            const nomeAlunoA = getNomeAluno(a.id_aluno);
-            const nomeAlunoB = getNomeAluno(b.id_aluno);
-            
-            if (nomeAlunoA !== nomeAlunoB) {
-                return nomeAlunoA.localeCompare(nomeAlunoB);
-            }
-            
-            if (a.id_disciplina !== b.id_disciplina) {
-                return getNomeDisciplina(a.id_disciplina).localeCompare(getNomeDisciplina(b.id_disciplina));
-            }
-            
-            if (a.bimestre !== b.bimestre) {
-                return parseInt(a.bimestre) - parseInt(b.bimestre);
-            }
-            
-            return 0;
-        });
-        
-        // CORREÇÃO: Log de sanidade para garantir que as notas estão corretas
-        console.log("Notas após processamento completo:", notasFiltradas.length);
-        
-        // Adicionar cada nota à tabela
-        notasFiltradas.forEach(nota => {
-            const tr = document.createElement('tr');
-            
-            // Determinar classe CSS para colorir a linha baseado na nota
-            const valor = parseFloat(nota.valor || nota.media || 0);
-            if (valor >= 6.0) {
-                tr.classList.add('table-success');
-            } else if (valor >= 4.0) {
-                tr.classList.add('table-warning');
-            } else {
-                tr.classList.add('table-danger');
-            }
-            
-            // CORREÇÃO: Garantir que os dados estejam nas colunas corretas
-            tr.innerHTML = `
-                <td>${nota.ano || '-'}</td>
+    // Criar tabela para exibir as notas
+    let html = `
+        <div class="table-responsive mt-3">
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Aluno</th>
+                        <th>Turma</th>
+                        <th>Disciplina</th>
+                        <th>Ano</th>
+                        <th>Bimestre</th>
+                        <th>Nota</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+    
+    // Adicionar linhas para cada nota
+    notas.forEach(nota => {
+        html += `
+            <tr>
+                <td>${nota.id}</td>
+                <td>${nota.aluno?.nome || 'N/A'}</td>
+                <td>${nota.turma?.nome || 'N/A'}</td>
+                <td>${nota.disciplina?.nome || 'N/A'}</td>
+                <td>${nota.anoLetivo || 'N/A'}</td>
                 <td>${nota.bimestre}º Bimestre</td>
-                <td>${getNomeTurma(nota.id_turma)}</td>
-                <td>${getNomeDisciplina(nota.id_disciplina)}</td>
-                <td>${getNomeAluno(nota.id_aluno)}</td>
-                <td>${nota.nota_mensal || '-'}</td>
-                <td>${nota.nota_bimestral || '-'}</td>
-                <td>${nota.recuperacao || '-'}</td>
-                <td>${nota.valor || nota.media || '-'}</td>
+                <td>${nota.valor}</td>
                 <td>
-                    <button class="btn btn-sm btn-primary editar-nota me-1" data-id="${nota.id_nota || `${nota.id_aluno}-${nota.id_disciplina}-${nota.bimestre}-${nota.ano}`}">
+                    <button class="btn btn-sm btn-primary btn-editar-nota" data-id="${nota.id}">
                         <i class="fas fa-edit"></i>
                     </button>
-                    <button class="btn btn-sm btn-danger excluir-nota" data-id="${nota.id_nota || `${nota.id_aluno}-${nota.id_disciplina}-${nota.bimestre}-${nota.ano}`}">
+                    <button class="btn btn-sm btn-danger btn-excluir-nota" data-id="${nota.id}">
                         <i class="fas fa-trash"></i>
                     </button>
                 </td>
-            `;
-            
-            tabelaNotas.appendChild(tr);
-        });
-        
-        // Adicionar eventos aos botões
-        document.querySelectorAll('.editar-nota').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const idNota = this.getAttribute('data-id');
-                if (typeof editarNota === 'function') {
-                    editarNota(idNota);
-                } else {
-                    console.error("Função editarNota não encontrada");
-                    alert("Edição de notas não implementada");
-                }
-            });
-        });
-        
-        document.querySelectorAll('.excluir-nota').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const idNota = this.getAttribute('data-id');
-                if (typeof excluirNota === 'function') {
-                    excluirNota(idNota);
-                } else {
-                    console.error("Função excluirNota não encontrada");
-                    alert("Exclusão de notas não implementada");
-                }
-            });
-        });
-    })
-    .catch(error => {
-        console.error("Erro ao mostrar notas filtradas:", error);
-        tabelaNotas.innerHTML = `
-            <tr class="text-center">
-                <td colspan="10">Erro ao mostrar notas: ${error.message}</td>
             </tr>
         `;
     });
+    
+    html += `
+                </tbody>
+            </table>
+        </div>
+    `;
+    
+    notasContainer.innerHTML = html;
+    
+    // Adicionar event listeners para os botões de editar e excluir
+    document.querySelectorAll('.btn-editar-nota').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const notaId = this.getAttribute('data-id');
+            editarNota(notaId);
+        });
+    });
+    
+    document.querySelectorAll('.btn-excluir-nota').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const notaId = this.getAttribute('data-id');
+            excluirNota(notaId);
+        });
+    });
+    
+    console.log("Tabela de notas atualizada com sucesso");
 }
 
 // Função para calcular médias finais
@@ -1057,7 +624,7 @@ function verificarCarregamentoFiltros() {
     // Isso evita resets desnecessários
     if (filtroTurma && (!filtroTurma.options || filtroTurma.options.length <= 1)) {
         console.log("Combobox de turma vazio, carregando");
-        carregarFiltroTurmas();
+        carregarTurmas();
     }
     
     // Verificar formulários também
@@ -1178,9 +745,9 @@ function restaurarFiltrosSalvos() {
     if (filtroTurma && turma) {
         filtroTurma.value = turma;
         // Carregar disciplinas para a turma selecionada
-        carregarFiltroDisciplinas(turma);
+        carregarDisciplinas(turma);
         // Carregar alunos para a turma selecionada
-        carregarFiltroAlunos(turma);
+        carregarAlunos(turma);
         
         // Depois de um tempo para carregar as opções, aplicar os filtros salvos
         setTimeout(() => {
@@ -1190,57 +757,358 @@ function restaurarFiltrosSalvos() {
     }
 }
 
-// Nova função para corrigir o comportamento do formulário de notas
+// Função para corrigir o comportamento do formulário de notas
 function corrigirFormularioNotas() {
-    const formNota = document.getElementById('form-nota');
-    if (!formNota) {
-        console.error("Formulário de notas não encontrado");
+    // Encontrar o formulário de notas
+    const formNotas = document.querySelector('form#form-nota');
+    
+    if (!formNotas) {
+        console.log("Formulário de notas não encontrado");
+        
+        // Tentar encontrar novamente após um pequeno atraso
+        setTimeout(() => {
+            const formRetry = document.querySelector('form#form-nota');
+            if (formRetry) {
+                console.log("Formulário de notas encontrado após atraso");
+                aplicarCorrecaoFormulario(formRetry);
+            }
+        }, 1000);
+        
         return;
     }
     
-    console.log("Corrigindo comportamento do formulário de notas");
+    aplicarCorrecaoFormulario(formNotas);
+}
+
+// Função auxiliar para aplicar a correção no formulário
+function aplicarCorrecaoFormulario(form) {
+    console.log("Aplicando correção ao formulário de notas");
     
-    // Remover event listeners existentes
-    const novoForm = formNota.cloneNode(true);
-    formNota.parentNode.replaceChild(novoForm, formNota);
+    // Remover qualquer event listener anterior para evitar duplicação
+    const novoForm = form.cloneNode(true);
+    form.parentNode.replaceChild(novoForm, form);
     
     // Adicionar novo event listener para prevenir o comportamento padrão
     novoForm.addEventListener('submit', function(e) {
         e.preventDefault();
-        console.log("Submit do formulário de notas interceptado");
+        console.log("Formulário de notas submetido - prevenindo redirecionamento");
         
-        // Buscar a função salvarNota no escopo global
-        if (typeof window.salvarNota === 'function') {
-            console.log("Chamando função salvarNota");
-            window.salvarNota();
-        } else if (typeof salvarNota === 'function') {
-            console.log("Chamando função salvarNota local");
-            salvarNota();
-        } else {
-            console.error("Função salvarNota não encontrada");
-            alert("Erro: Função de salvamento não encontrada");
-            
-            // Criar nossa própria função básica de salvamento
-            salvarNotaManualmente();
+        // Pegar todos os dados do formulário
+        const formData = new FormData(this);
+        const notaData = {};
+        
+        // Converter FormData para objeto
+        for (const [key, value] of formData.entries()) {
+            notaData[key] = value;
         }
         
-        return false;
+        console.log("Dados do formulário:", notaData);
+        
+        // Verificar se temos um ID (caso seja edição)
+        const notaId = notaData.id || '';
+        
+        // Definir URL e método baseado em se é uma nova nota ou edição
+        const url = notaId 
+            ? `${BASE_API_URL}/notas/${notaId}` 
+            : `${BASE_API_URL}/notas`;
+        
+        const method = notaId ? 'PUT' : 'POST';
+        
+        // Enviar os dados para o servidor
+        fetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(notaData)
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Erro ao ${notaId ? 'atualizar' : 'salvar'} nota: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log(`Nota ${notaId ? 'atualizada' : 'salva'} com sucesso:`, data);
+            
+            // Mostrar mensagem de sucesso
+            Swal.fire({
+                icon: 'success',
+                title: 'Sucesso!',
+                text: `Nota ${notaId ? 'atualizada' : 'salva'} com sucesso.`,
+                confirmButtonText: 'OK'
+            }).then(() => {
+                // Fechar o modal se estiver aberto
+                const modal = bootstrap.Modal.getInstance(document.getElementById('modalNota'));
+                if (modal) {
+                    modal.hide();
+                }
+                
+                // Recarregar as notas se os filtros estiverem aplicados
+                const anoLetivo = document.getElementById('filtro-ano').value;
+                const bimestre = document.getElementById('filtro-bimestre').value;
+                const turmaId = document.getElementById('filtro-turma').value;
+                const disciplinaId = document.getElementById('filtro-disciplina').value;
+                const alunoId = document.getElementById('filtro-aluno').value;
+                
+                if (anoLetivo || bimestre || turmaId || disciplinaId || alunoId) {
+                    aplicarFiltros();
+                }
+            });
+        })
+        .catch(error => {
+            console.error("Erro ao salvar nota:", error);
+            
+            // Mostrar mensagem de erro
+            Swal.fire({
+                icon: 'error',
+                title: 'Erro!',
+                text: `Falha ao ${notaId ? 'atualizar' : 'salvar'} nota: ${error.message}`,
+                confirmButtonText: 'OK'
+            });
+        });
     });
+    
+    console.log("Correção aplicada ao formulário de notas");
 }
 
-// Modifica a verificação periódica para rodar apenas uma vez
-// Remover todo o código de verificação periódica excessiva
-let verificacaoInterval = null;
-
-// Adicionar inicialização imediata ao carregar o script
-console.log("Script filtro-notas.js carregado");
-inicializarFiltrosNotas();
-
-// Substituir a verificação periódica por uma única verificação adicional após o carregamento
-setTimeout(function() {
-    const conteudoNotas = document.querySelector('#conteudo-notas');
-    if (conteudoNotas && (conteudoNotas.classList.contains('active') || getComputedStyle(conteudoNotas).display !== 'none')) {
-        console.log("Verificação final dos filtros");
-        verificarCarregamentoFiltros();
+// Função para carregar opções de disciplinas com base na turma selecionada
+function carregarDisciplinas(turmaId) {
+    const disciplinaSelect = document.getElementById('filtro-disciplina');
+    
+    // Desabilitar o select de disciplina se nenhuma turma for selecionada
+    if (!turmaId) {
+        disciplinaSelect.disabled = true;
+        disciplinaSelect.innerHTML = '<option value="">Selecione uma turma primeiro</option>';
+        return;
     }
-}, 3000); // Verificação única após 3 segundos 
+    
+    // Habilitar o select e mostrar opção de carregamento
+    disciplinaSelect.disabled = false;
+    disciplinaSelect.innerHTML = '<option value="">Carregando disciplinas...</option>';
+    
+    console.log(`Carregando disciplinas para a turma ${turmaId}`);
+    
+    fetch(`${BASE_API_URL}/disciplinas?turmaId=${turmaId}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Falha ao buscar disciplinas');
+            }
+            return response.json();
+        })
+        .then(disciplinas => {
+            console.log(`${disciplinas.length} disciplinas carregadas`);
+            
+            // Adicionar opção padrão
+            disciplinaSelect.innerHTML = '<option value="">Todas as Disciplinas</option>';
+            
+            // Adicionar as disciplinas ao select
+            disciplinas.forEach(disciplina => {
+                const option = document.createElement('option');
+                option.value = disciplina.id;
+                option.textContent = disciplina.nome;
+                disciplinaSelect.appendChild(option);
+            });
+        })
+        .catch(error => {
+            console.error("Erro ao carregar disciplinas:", error);
+            disciplinaSelect.innerHTML = '<option value="">Erro ao carregar disciplinas</option>';
+        });
+}
+
+// Função para carregar opções de alunos com base na turma selecionada
+function carregarAlunos(turmaId) {
+    const alunoSelect = document.getElementById('filtro-aluno');
+    
+    // Desabilitar o select de aluno se nenhuma turma for selecionada
+    if (!turmaId) {
+        alunoSelect.disabled = true;
+        alunoSelect.innerHTML = '<option value="">Selecione uma turma primeiro</option>';
+        return;
+    }
+    
+    // Habilitar o select e mostrar opção de carregamento
+    alunoSelect.disabled = false;
+    alunoSelect.innerHTML = '<option value="">Carregando alunos...</option>';
+    
+    console.log(`Carregando alunos para a turma ${turmaId}`);
+    
+    fetch(`${BASE_API_URL}/alunos?turmaId=${turmaId}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Falha ao buscar alunos');
+            }
+            return response.json();
+        })
+        .then(alunos => {
+            console.log(`${alunos.length} alunos carregados`);
+            
+            // Usar Set para evitar duplicatas
+            const alunosUnicos = new Set();
+            
+            // Adicionar opção padrão
+            alunoSelect.innerHTML = '<option value="">Todos os Alunos</option>';
+            
+            // Adicionar os alunos ao select, evitando duplicatas
+            alunos.forEach(aluno => {
+                // Verificar se o aluno já foi adicionado pelo ID
+                if (!alunosUnicos.has(aluno.id)) {
+                    alunosUnicos.add(aluno.id);
+                    
+                    const option = document.createElement('option');
+                    option.value = aluno.id;
+                    option.textContent = aluno.nome;
+                    alunoSelect.appendChild(option);
+                }
+            });
+        })
+        .catch(error => {
+            console.error("Erro ao carregar alunos:", error);
+            alunoSelect.innerHTML = '<option value="">Erro ao carregar alunos</option>';
+        });
+}
+
+// Função para editar uma nota
+function editarNota(notaId) {
+    console.log(`Editando nota com ID: ${notaId}`);
+    
+    // Mostrar indicador de carregamento
+    Swal.fire({
+        title: 'Carregando...',
+        text: 'Buscando detalhes da nota',
+        allowOutsideClick: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    });
+    
+    // Buscar detalhes da nota pelo ID
+    fetch(`${BASE_API_URL}/notas/${notaId}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Falha ao buscar detalhes da nota');
+            }
+            return response.json();
+        })
+        .then(nota => {
+            console.log("Detalhes da nota carregados:", nota);
+            Swal.close();
+            
+            // Abrir o modal de edição
+            const modal = new bootstrap.Modal(document.getElementById('modalNota'));
+            modal.show();
+            
+            // Preencher o formulário com os dados da nota
+            const form = document.getElementById('form-nota');
+            if (form) {
+                form.reset();
+                
+                // Preencher campos do formulário
+                form.id.value = nota.id;
+                
+                // Preencher campos de seleção
+                setTimeout(() => {
+                    if (form.anoLetivo) form.anoLetivo.value = nota.anoLetivo;
+                    if (form.bimestre) form.bimestre.value = nota.bimestre;
+                    if (form.turmaId) {
+                        form.turmaId.value = nota.turmaId;
+                        
+                        // Disparar evento de change para carregar disciplinas e alunos
+                        const event = new Event('change');
+                        form.turmaId.dispatchEvent(event);
+                        
+                        // Depois de um tempo para carregar disciplinas e alunos, selecionar os valores corretos
+                        setTimeout(() => {
+                            if (form.disciplinaId) form.disciplinaId.value = nota.disciplinaId;
+                            if (form.alunoId) form.alunoId.value = nota.alunoId;
+                        }, 500);
+                    }
+                }, 100);
+                
+                // Preencher o valor da nota
+                if (form.valor) form.valor.value = nota.valor;
+                
+                // Atualizar título do modal
+                const modalTitle = document.querySelector('#modalNota .modal-title');
+                if (modalTitle) {
+                    modalTitle.textContent = 'Editar Nota';
+                }
+            } else {
+                console.error("Formulário de nota não encontrado");
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Erro',
+                    text: 'Formulário de nota não encontrado'
+                });
+            }
+        })
+        .catch(error => {
+            console.error("Erro ao carregar detalhes da nota:", error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Erro',
+                text: `Falha ao carregar detalhes da nota: ${error.message}`
+            });
+        });
+}
+
+// Função para excluir uma nota
+function excluirNota(notaId) {
+    console.log(`Solicitação para excluir nota com ID: ${notaId}`);
+    
+    // Confirmar exclusão
+    Swal.fire({
+        title: 'Confirmação',
+        text: 'Tem certeza que deseja excluir esta nota?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Sim, excluir',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Mostrar indicador de carregamento
+            Swal.fire({
+                title: 'Excluindo...',
+                text: 'Excluindo a nota',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+            
+            // Excluir a nota
+            fetch(`${BASE_API_URL}/notas/${notaId}`, {
+                method: 'DELETE'
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Falha ao excluir nota');
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log("Nota excluída com sucesso:", data);
+                
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Sucesso',
+                    text: 'Nota excluída com sucesso'
+                }).then(() => {
+                    // Recarregar as notas
+                    aplicarFiltros();
+                });
+            })
+            .catch(error => {
+                console.error("Erro ao excluir nota:", error);
+                
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Erro',
+                    text: `Falha ao excluir nota: ${error.message}`
+                });
+            });
+        }
+    });
+} 
