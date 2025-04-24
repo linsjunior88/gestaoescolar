@@ -12,7 +12,11 @@ const AlunosModule = {
         alunos: [],
         alunoSelecionado: null,
         modoEdicao: false,
-        turmas: [] // Para o select de turmas
+        turmas: [], // Para o select de turmas
+        ordenacao: {
+            coluna: 'serie', // Ordenação padrão por série
+            direcao: 'asc' // Direção ascendente
+        }
     },
     
     // Elementos DOM
@@ -78,6 +82,23 @@ const AlunosModule = {
                 this.filtrarAlunos();
             });
         }
+        
+        // Adicionar ordenação aos cabeçalhos da tabela
+        document.querySelectorAll('#lista-alunos-cabecalho th[data-ordenavel="true"]').forEach(th => {
+            th.addEventListener('click', () => {
+                const coluna = th.dataset.coluna;
+                this.ordenarAlunos(coluna);
+            });
+            
+            // Adicionar cursor pointer para indicar que é clicável
+            th.style.cursor = 'pointer';
+            
+            // Adicionar ícone de ordenação
+            const icone = document.createElement('i');
+            icone.className = 'fas fa-sort ms-1';
+            icone.style.opacity = '0.3';
+            th.appendChild(icone);
+        });
     },
     
     // Carregar turmas para o select
@@ -139,6 +160,85 @@ const AlunosModule = {
         this.carregarAlunos(turmaId);
     },
     
+    // Ordenar alunos
+    ordenarAlunos: function(coluna) {
+        // Se clicar na mesma coluna, inverte a direção
+        if (coluna === this.state.ordenacao.coluna) {
+            this.state.ordenacao.direcao = this.state.ordenacao.direcao === 'asc' ? 'desc' : 'asc';
+        } else {
+            // Se clicar em uma coluna diferente, usa essa coluna com direção ascendente
+            this.state.ordenacao.coluna = coluna;
+            this.state.ordenacao.direcao = 'asc';
+        }
+        
+        // Atualizar ícones de ordenação
+        this.atualizarIconesOrdenacao();
+        
+        // Renderizar alunos ordenados
+        this.renderizarAlunos();
+    },
+    
+    // Atualizar ícones de ordenação
+    atualizarIconesOrdenacao: function() {
+        document.querySelectorAll('#lista-alunos-cabecalho th[data-ordenavel="true"]').forEach(th => {
+            const icone = th.querySelector('i');
+            if (icone) {
+                // Resetar todos os ícones primeiro
+                icone.className = 'fas fa-sort ms-1';
+                icone.style.opacity = '0.3';
+                
+                // Definir o ícone apropriado para a coluna de ordenação atual
+                if (th.dataset.coluna === this.state.ordenacao.coluna) {
+                    icone.className = this.state.ordenacao.direcao === 'asc' ? 
+                        'fas fa-sort-up ms-1' : 'fas fa-sort-down ms-1';
+                    icone.style.opacity = '1';
+                }
+            }
+        });
+    },
+    
+    // Aplicar ordenação à lista de alunos
+    aplicarOrdenacao: function(alunos) {
+        const coluna = this.state.ordenacao.coluna;
+        const direcao = this.state.ordenacao.direcao;
+        
+        return [...alunos].sort((a, b) => {
+            let valorA, valorB;
+            
+            if (coluna === 'id') {
+                valorA = a.id_aluno || a.id || '';
+                valorB = b.id_aluno || b.id || '';
+            } else if (coluna === 'nome') {
+                valorA = a.nome_aluno || a.nome || '';
+                valorB = b.nome_aluno || b.nome || '';
+            } else if (coluna === 'matricula') {
+                valorA = a.matricula || '';
+                valorB = b.matricula || '';
+            } else if (coluna === 'serie') {
+                // Para ordenar por série, precisamos encontrar a turma do aluno
+                const turmaA = this.state.turmas.find(t => 
+                    (t.id_turma && t.id_turma === a.turma_id) || t.id === a.turma_id
+                ) || { serie: '' };
+                
+                const turmaB = this.state.turmas.find(t => 
+                    (t.id_turma && t.id_turma === b.turma_id) || t.id === b.turma_id
+                ) || { serie: '' };
+                
+                valorA = turmaA.serie || '';
+                valorB = turmaB.serie || '';
+            }
+            
+            // Converter para minúsculas para comparação case-insensitive
+            if (typeof valorA === 'string') valorA = valorA.toLowerCase();
+            if (typeof valorB === 'string') valorB = valorB.toLowerCase();
+            
+            // Ordenar
+            if (valorA < valorB) return direcao === 'asc' ? -1 : 1;
+            if (valorA > valorB) return direcao === 'asc' ? 1 : -1;
+            return 0;
+        });
+    },
+    
     // Renderizar lista de alunos
     renderizarAlunos: function() {
         if (!this.elements.listaAlunos) return;
@@ -150,7 +250,13 @@ const AlunosModule = {
             return;
         }
         
-        this.state.alunos.forEach(aluno => {
+        // Aplicar ordenação
+        const alunosOrdenados = this.aplicarOrdenacao(this.state.alunos);
+        
+        // Atualizar ícones de ordenação
+        this.atualizarIconesOrdenacao();
+        
+        alunosOrdenados.forEach(aluno => {
             // Encontrar nome da turma
             const turma = this.state.turmas.find(t => 
                 (t.id_turma && t.id_turma === aluno.turma_id) || 
@@ -201,17 +307,20 @@ const AlunosModule = {
     
     // Editar aluno existente
     editarAluno: function(id) {
-        const aluno = this.state.alunos.find(a => a.id === id);
-        if (!aluno) return;
+        const aluno = this.state.alunos.find(a => (a.id_aluno === id) || (a.id === id));
+        if (!aluno) {
+            console.error("Aluno não encontrado com ID:", id);
+            return;
+        }
         
         this.state.modoEdicao = true;
         this.state.alunoSelecionado = aluno;
         
         if (this.elements.formAluno) {
             this.elements.formAluno.classList.remove('d-none');
-            this.elements.inputNomeAluno.value = aluno.nome;
-            this.elements.inputMatricula.value = aluno.matricula;
-            this.elements.selectTurma.value = aluno.turma_id;
+            this.elements.inputNomeAluno.value = aluno.nome_aluno || aluno.nome || '';
+            this.elements.inputMatricula.value = aluno.matricula || aluno.id_aluno || '';
+            this.elements.selectTurma.value = aluno.turma_id || '';
             this.elements.inputNomeAluno.focus();
         }
     },
@@ -220,22 +329,35 @@ const AlunosModule = {
     salvarAluno: async function() {
         try {
             const alunoDados = {
-                nome: this.elements.inputNomeAluno.value,
+                nome_aluno: this.elements.inputNomeAluno.value,
                 matricula: this.elements.inputMatricula.value,
-                turma_id: parseInt(this.elements.selectTurma.value)
+                turma_id: this.elements.selectTurma.value
             };
+            
+            // Adicionar id_aluno se estivermos editando
+            if (this.state.modoEdicao && this.state.alunoSelecionado) {
+                alunoDados.id_aluno = this.state.alunoSelecionado.id_aluno || this.state.alunoSelecionado.id;
+            }
+            
+            console.log("Salvando aluno com dados:", alunoDados);
             
             let response;
             
             if (this.state.modoEdicao && this.state.alunoSelecionado) {
+                // Identificador para a API
+                const alunoId = this.state.alunoSelecionado.id_aluno || this.state.alunoSelecionado.id;
+                
                 // Atualizar aluno existente
-                response = await ConfigModule.fetchApi(`/alunos/${this.state.alunoSelecionado.id}`, {
+                response = await ConfigModule.fetchApi(`/alunos/${alunoId}`, {
                     method: 'PUT',
                     body: JSON.stringify(alunoDados)
                 });
                 
                 // Atualizar aluno na lista local
-                const index = this.state.alunos.findIndex(a => a.id === this.state.alunoSelecionado.id);
+                const index = this.state.alunos.findIndex(a => 
+                    (a.id_aluno === alunoId) || (a.id === alunoId)
+                );
+                
                 if (index !== -1) {
                     this.state.alunos[index] = { ...this.state.alunos[index], ...alunoDados };
                 }
@@ -287,12 +409,16 @@ const AlunosModule = {
     // Excluir aluno
     excluirAluno: async function(id) {
         try {
-            await ConfigModule.fetchApi(`/alunos/${id}`, {
+            const alunoId = id;
+            
+            await ConfigModule.fetchApi(`/alunos/${alunoId}`, {
                 method: 'DELETE'
             });
             
             // Remover aluno da lista local
-            this.state.alunos = this.state.alunos.filter(a => a.id !== id);
+            this.state.alunos = this.state.alunos.filter(a => 
+                (a.id_aluno !== alunoId) && (a.id !== alunoId)
+            );
             
             // Atualizar lista de alunos
             this.renderizarAlunos();

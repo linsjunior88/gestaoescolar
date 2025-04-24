@@ -104,7 +104,7 @@ const TurmasModule = {
                 <td>${turma.id_turma || turma.id || 'N/A'}</td>
                 <td>${turma.serie || 'N/A'}</td>
                 <td>${turnoExibicao}</td>
-                <td>${turma.tipo || 'Regular'}</td>
+                <td>${turma.tipo_turma || 'Regular'}</td>
                 <td>${turma.coordenador || 'N/A'}</td>
                 <td>
                     <button class="btn btn-sm btn-primary editar-turma" data-id="${turma.id_turma || turma.id}">
@@ -199,7 +199,7 @@ const TurmasModule = {
             
             // Se temos os novos campos, preenchê-los também
             if (this.elements.inputTipo) {
-                this.elements.inputTipo.value = turma.tipo || 'Regular';
+                this.elements.inputTipo.value = turma.tipo_turma || 'Regular';
             }
             if (this.elements.inputCoordenador) {
                 this.elements.inputCoordenador.value = turma.coordenador || '';
@@ -216,7 +216,7 @@ const TurmasModule = {
                 id_turma: this.elements.inputIdTurma.value,
                 serie: this.elements.inputNomeTurma.value,
                 turno: this.elements.inputTurno.value,
-                tipo: this.elements.inputTipo ? this.elements.inputTipo.value : 'Regular',
+                tipo_turma: this.elements.inputTipo ? this.elements.inputTipo.value : 'Regular',
                 coordenador: this.elements.inputCoordenador ? this.elements.inputCoordenador.value : ''
             };
             
