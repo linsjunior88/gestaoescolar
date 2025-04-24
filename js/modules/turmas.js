@@ -18,8 +18,8 @@ const TurmasModule = {
     elements: {
         listaTurmas: null,
         formTurma: null,
+        inputIdTurma: null,
         inputNomeTurma: null,
-        inputAnoTurma: null,
         inputTurno: null,
         inputTipo: null,
         inputCoordenador: null,
@@ -39,8 +39,8 @@ const TurmasModule = {
     cachearElementos: function() {
         this.elements.listaTurmas = document.getElementById('lista-turmas');
         this.elements.formTurma = document.getElementById('form-turma');
+        this.elements.inputIdTurma = document.getElementById('id-turma');
         this.elements.inputNomeTurma = document.getElementById('nome-turma');
-        this.elements.inputAnoTurma = document.getElementById('ano-turma');
         this.elements.inputTurno = document.getElementById('turno');
         this.elements.inputTipo = document.getElementById('tipo-turma');
         this.elements.inputCoordenador = document.getElementById('coordenador-turma');
@@ -177,16 +177,6 @@ const TurmasModule = {
         if (this.elements.formTurma) {
             this.elements.formTurma.classList.remove('d-none');
             
-            // Extrair ano e nome da série
-            let anoTurma = '';
-            let nomeTurma = turma.serie || '';
-            
-            if (nomeTurma.includes('º Ano')) {
-                const partes = nomeTurma.split('º Ano');
-                anoTurma = partes[0];
-                nomeTurma = partes[1].trim();
-            }
-            
             // Normalizar o valor do turno para o select
             let turnoValue = '';
             if (turma.turno) {
@@ -203,8 +193,8 @@ const TurmasModule = {
             }
             
             // Preencher o formulário com os valores da turma
-            this.elements.inputNomeTurma.value = nomeTurma || turma.serie || '';
-            this.elements.inputAnoTurma.value = anoTurma ? anoTurma.replace('º', '') : '';
+            this.elements.inputIdTurma.value = turma.id_turma || '';
+            this.elements.inputNomeTurma.value = turma.serie || '';
             this.elements.inputTurno.value = turnoValue;
             
             // Se temos os novos campos, preenchê-los também
@@ -215,22 +205,16 @@ const TurmasModule = {
                 this.elements.inputCoordenador.value = turma.coordenador || '';
             }
             
-            this.elements.inputNomeTurma.focus();
+            this.elements.inputIdTurma.focus();
         }
     },
     
     // Salvar turma (criar nova ou atualizar existente)
     salvarTurma: async function() {
         try {
-            // Formatar a série corretamente
-            let serie = this.elements.inputNomeTurma.value;
-            if (!serie.includes('º') && this.elements.inputAnoTurma.value) {
-                serie = this.elements.inputAnoTurma.value + 'º Ano ' + serie;
-            }
-            
             const turmaDados = {
-                id_turma: this.state.modoEdicao ? (this.state.turmaSelecionada.id_turma || this.state.turmaSelecionada.id) : null,
-                serie: serie,
+                id_turma: this.elements.inputIdTurma.value,
+                serie: this.elements.inputNomeTurma.value,
                 turno: this.elements.inputTurno.value,
                 tipo: this.elements.inputTipo ? this.elements.inputTipo.value : 'Regular',
                 coordenador: this.elements.inputCoordenador ? this.elements.inputCoordenador.value : ''
