@@ -93,14 +93,14 @@ const DisciplinasModule = {
         this.state.disciplinas.forEach(disciplina => {
             const row = document.createElement('tr');
             row.innerHTML = `
-                <td>${disciplina.id}</td>
-                <td>${disciplina.nome}</td>
-                <td>${disciplina.carga_horaria}</td>
+                <td>${disciplina.id_disciplina || disciplina.id || 'N/A'}</td>
+                <td>${disciplina.nome_disciplina || disciplina.nome || 'N/A'}</td>
+                <td>${disciplina.carga_horaria || 'N/A'}</td>
                 <td>
-                    <button class="btn btn-sm btn-primary editar-disciplina" data-id="${disciplina.id}">
+                    <button class="btn btn-sm btn-primary editar-disciplina" data-id="${disciplina.id_disciplina || disciplina.id}">
                         <i class="fas fa-edit"></i>
                     </button>
-                    <button class="btn btn-sm btn-danger excluir-disciplina" data-id="${disciplina.id}">
+                    <button class="btn btn-sm btn-danger excluir-disciplina" data-id="${disciplina.id_disciplina || disciplina.id}">
                         <i class="fas fa-trash"></i>
                     </button>
                 </td>
@@ -110,8 +110,8 @@ const DisciplinasModule = {
             const btnEditar = row.querySelector('.editar-disciplina');
             const btnExcluir = row.querySelector('.excluir-disciplina');
             
-            btnEditar.addEventListener('click', () => this.editarDisciplina(disciplina.id));
-            btnExcluir.addEventListener('click', () => this.confirmarExclusao(disciplina.id));
+            btnEditar.addEventListener('click', () => this.editarDisciplina(disciplina.id_disciplina || disciplina.id));
+            btnExcluir.addEventListener('click', () => this.confirmarExclusao(disciplina.id_disciplina || disciplina.id));
             
             this.elements.listaDisciplinas.appendChild(row);
         });

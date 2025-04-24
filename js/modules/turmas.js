@@ -94,15 +94,15 @@ const TurmasModule = {
         this.state.turmas.forEach(turma => {
             const row = document.createElement('tr');
             row.innerHTML = `
-                <td>${turma.id}</td>
-                <td>${turma.nome}</td>
-                <td>${turma.ano}</td>
-                <td>${turma.turno}</td>
+                <td>${turma.id_turma || turma.id || 'N/A'}</td>
+                <td>${turma.serie || 'N/A'}</td>
+                <td>${turma.serie ? turma.serie.split(' ')[0] : 'N/A'}</td>
+                <td>${turma.turno || 'N/A'}</td>
                 <td>
-                    <button class="btn btn-sm btn-primary editar-turma" data-id="${turma.id}">
+                    <button class="btn btn-sm btn-primary editar-turma" data-id="${turma.id_turma || turma.id}">
                         <i class="fas fa-edit"></i>
                     </button>
-                    <button class="btn btn-sm btn-danger excluir-turma" data-id="${turma.id}">
+                    <button class="btn btn-sm btn-danger excluir-turma" data-id="${turma.id_turma || turma.id}">
                         <i class="fas fa-trash"></i>
                     </button>
                 </td>
@@ -112,8 +112,8 @@ const TurmasModule = {
             const btnEditar = row.querySelector('.editar-turma');
             const btnExcluir = row.querySelector('.excluir-turma');
             
-            btnEditar.addEventListener('click', () => this.editarTurma(turma.id));
-            btnExcluir.addEventListener('click', () => this.confirmarExclusao(turma.id));
+            btnEditar.addEventListener('click', () => this.editarTurma(turma.id_turma || turma.id));
+            btnExcluir.addEventListener('click', () => this.confirmarExclusao(turma.id_turma || turma.id));
             
             this.elements.listaTurmas.appendChild(row);
         });

@@ -95,8 +95,8 @@ const ProfessoresModule = {
         // Adicionar opções
         this.state.disciplinas.forEach(disciplina => {
             const option = document.createElement('option');
-            option.value = disciplina.id;
-            option.textContent = disciplina.nome;
+            option.value = disciplina.id_disciplina || disciplina.id;
+            option.textContent = disciplina.nome_disciplina || disciplina.nome;
             this.elements.selectDisciplinas.appendChild(option);
         });
     },
@@ -129,26 +129,27 @@ const ProfessoresModule = {
             const row = document.createElement('tr');
             
             // Encontrar disciplinas do professor
-            let disciplinasTexto = 'Nenhuma';
+            let disciplinasTexto = 'Desconhecida';
             if (professor.disciplinas && professor.disciplinas.length > 0) {
                 const disciplinasNomes = professor.disciplinas.map(id => {
-                    const disciplina = this.state.disciplinas.find(d => d.id === id);
-                    return disciplina ? disciplina.nome : 'Desconhecida';
+                    const disciplina = this.state.disciplinas.find(d => 
+                        (d.id_disciplina && d.id_disciplina === id) || d.id === id);
+                    return disciplina ? (disciplina.nome_disciplina || disciplina.nome) : 'Desconhecida';
                 });
                 disciplinasTexto = disciplinasNomes.join(', ');
             }
             
             row.innerHTML = `
-                <td>${professor.id}</td>
-                <td>${professor.nome}</td>
+                <td>${professor.id_professor || professor.id || 'N/A'}</td>
+                <td>${professor.nome_professor || professor.nome || 'N/A'}</td>
                 <td>${professor.email || 'N/A'}</td>
                 <td>${professor.formacao || 'N/A'}</td>
                 <td>${disciplinasTexto}</td>
                 <td>
-                    <button class="btn btn-sm btn-primary editar-professor" data-id="${professor.id}">
+                    <button class="btn btn-sm btn-primary editar-professor" data-id="${professor.id_professor || professor.id}">
                         <i class="fas fa-edit"></i>
                     </button>
-                    <button class="btn btn-sm btn-danger excluir-professor" data-id="${professor.id}">
+                    <button class="btn btn-sm btn-danger excluir-professor" data-id="${professor.id_professor || professor.id}">
                         <i class="fas fa-trash"></i>
                     </button>
                 </td>
@@ -158,8 +159,8 @@ const ProfessoresModule = {
             const btnEditar = row.querySelector('.editar-professor');
             const btnExcluir = row.querySelector('.excluir-professor');
             
-            btnEditar.addEventListener('click', () => this.editarProfessor(professor.id));
-            btnExcluir.addEventListener('click', () => this.confirmarExclusao(professor.id));
+            btnEditar.addEventListener('click', () => this.editarProfessor(professor.id_professor || professor.id));
+            btnExcluir.addEventListener('click', () => this.confirmarExclusao(professor.id_professor || professor.id));
             
             this.elements.listaProfessores.appendChild(row);
         });

@@ -104,13 +104,13 @@ const AlunosModule = {
         // Adicionar opções
         this.state.turmas.forEach(turma => {
             const option1 = document.createElement('option');
-            option1.value = turma.id;
-            option1.textContent = `${turma.nome} (${turma.ano} - ${turma.turno})`;
+            option1.value = turma.id_turma || turma.id;
+            option1.textContent = `${turma.serie || turma.nome || 'N/A'} (${turma.turno || 'N/A'})`;
             this.elements.selectTurma.appendChild(option1);
             
             const option2 = document.createElement('option');
-            option2.value = turma.id;
-            option2.textContent = `${turma.nome} (${turma.ano} - ${turma.turno})`;
+            option2.value = turma.id_turma || turma.id;
+            option2.textContent = `${turma.serie || turma.nome || 'N/A'} (${turma.turno || 'N/A'})`;
             this.elements.filtroTurma.appendChild(option2);
         });
     },
@@ -152,19 +152,22 @@ const AlunosModule = {
         
         this.state.alunos.forEach(aluno => {
             // Encontrar nome da turma
-            const turma = this.state.turmas.find(t => t.id === aluno.turma_id) || { nome: 'N/A', ano: 'N/A', turno: 'N/A' };
+            const turma = this.state.turmas.find(t => 
+                (t.id_turma && t.id_turma === aluno.turma_id) || 
+                t.id === aluno.turma_id
+            ) || { serie: 'N/A', turno: 'N/A' };
             
             const row = document.createElement('tr');
             row.innerHTML = `
-                <td>${aluno.id}</td>
-                <td>${aluno.nome}</td>
-                <td>${aluno.matricula}</td>
-                <td>${turma.nome} (${turma.ano} - ${turma.turno})</td>
+                <td>${aluno.id_aluno || aluno.id || 'N/A'}</td>
+                <td>${aluno.nome_aluno || aluno.nome || 'N/A'}</td>
+                <td>${aluno.matricula || aluno.id_aluno || 'N/A'}</td>
+                <td>${turma.serie || 'N/A'} (${turma.turno || 'N/A'})</td>
                 <td>
-                    <button class="btn btn-sm btn-primary editar-aluno" data-id="${aluno.id}">
+                    <button class="btn btn-sm btn-primary editar-aluno" data-id="${aluno.id_aluno || aluno.id}">
                         <i class="fas fa-edit"></i>
                     </button>
-                    <button class="btn btn-sm btn-danger excluir-aluno" data-id="${aluno.id}">
+                    <button class="btn btn-sm btn-danger excluir-aluno" data-id="${aluno.id_aluno || aluno.id}">
                         <i class="fas fa-trash"></i>
                     </button>
                 </td>
@@ -174,8 +177,8 @@ const AlunosModule = {
             const btnEditar = row.querySelector('.editar-aluno');
             const btnExcluir = row.querySelector('.excluir-aluno');
             
-            btnEditar.addEventListener('click', () => this.editarAluno(aluno.id));
-            btnExcluir.addEventListener('click', () => this.confirmarExclusao(aluno.id));
+            btnEditar.addEventListener('click', () => this.editarAluno(aluno.id_aluno || aluno.id));
+            btnExcluir.addEventListener('click', () => this.confirmarExclusao(aluno.id_aluno || aluno.id));
             
             this.elements.listaAlunos.appendChild(row);
         });

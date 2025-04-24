@@ -203,13 +203,13 @@ const NotasModule = {
         // Adicionar opções
         this.state.turmas.forEach(turma => {
             const option1 = document.createElement('option');
-            option1.value = turma.id;
-            option1.textContent = `${turma.nome} (${turma.ano} - ${turma.turno})`;
+            option1.value = turma.id_turma || turma.id;
+            option1.textContent = `${turma.serie || turma.nome || 'N/A'} (${turma.turno || 'N/A'})`;
             this.elements.selectTurma.appendChild(option1);
             
             const option2 = document.createElement('option');
-            option2.value = turma.id;
-            option2.textContent = `${turma.nome} (${turma.ano} - ${turma.turno})`;
+            option2.value = turma.id_turma || turma.id;
+            option2.textContent = `${turma.serie || turma.nome || 'N/A'} (${turma.turno || 'N/A'})`;
             this.elements.filtroTurma.appendChild(option2);
         });
     },
@@ -225,13 +225,13 @@ const NotasModule = {
         // Adicionar opções
         this.state.disciplinas.forEach(disciplina => {
             const option1 = document.createElement('option');
-            option1.value = disciplina.id;
-            option1.textContent = disciplina.nome;
+            option1.value = disciplina.id_disciplina || disciplina.id;
+            option1.textContent = disciplina.nome_disciplina || disciplina.nome;
             this.elements.selectDisciplina.appendChild(option1);
             
             const option2 = document.createElement('option');
-            option2.value = disciplina.id;
-            option2.textContent = disciplina.nome;
+            option2.value = disciplina.id_disciplina || disciplina.id;
+            option2.textContent = disciplina.nome_disciplina || disciplina.nome;
             this.elements.filtroDisciplina.appendChild(option2);
         });
     },
@@ -246,8 +246,8 @@ const NotasModule = {
         // Adicionar opções
         this.state.alunos.forEach(aluno => {
             const option = document.createElement('option');
-            option.value = aluno.id;
-            option.textContent = aluno.nome;
+            option.value = aluno.id_aluno || aluno.id;
+            option.textContent = aluno.nome_aluno || aluno.nome;
             this.elements.selectAluno.appendChild(option);
         });
     },
@@ -262,8 +262,8 @@ const NotasModule = {
         // Adicionar opções
         this.state.alunosFiltrados.forEach(aluno => {
             const option = document.createElement('option');
-            option.value = aluno.id;
-            option.textContent = aluno.nome;
+            option.value = aluno.id_aluno || aluno.id;
+            option.textContent = aluno.nome_aluno || aluno.nome;
             this.elements.filtroAluno.appendChild(option);
         });
     },
@@ -316,37 +316,58 @@ const NotasModule = {
         this.elements.listaNotas.innerHTML = '';
         
         if (this.state.notas.length === 0) {
-            this.elements.listaNotas.innerHTML = '<tr><td colspan="9" class="text-center">Nenhuma nota cadastrada</td></tr>';
+            this.elements.listaNotas.innerHTML = '<tr><td colspan="11" class="text-center">Nenhuma nota cadastrada</td></tr>';
             return;
         }
         
         this.state.notas.forEach(nota => {
             // Encontrar nomes de turma, disciplina e aluno
-            const turma = this.state.turmas.find(t => t.id === nota.turma_id) || { nome: 'N/A' };
-            const disciplina = this.state.disciplinas.find(d => d.id === nota.disciplina_id) || { nome: 'N/A' };
+            const turma = this.state.turmas.find(t => 
+                (t.id_turma && t.id_turma === nota.turma_id) || t.id === nota.turma_id
+            ) || { serie: 'N/A', turno: 'N/A' };
+            
+            const disciplina = this.state.disciplinas.find(d => 
+                (d.id_disciplina && d.id_disciplina === nota.disciplina_id) || d.id === nota.disciplina_id
+            ) || { nome_disciplina: 'N/A' };
             
             // Buscar aluno na lista de alunos ou alunosFiltrados
-            let aluno = { nome: 'N/A' };
+            let aluno = { nome_aluno: 'N/A', nome: 'N/A' };
             const todosAlunos = [...this.state.alunos, ...this.state.alunosFiltrados];
             if (todosAlunos.length > 0) {
-                const alunoEncontrado = todosAlunos.find(a => a.id === nota.aluno_id);
+                const alunoEncontrado = todosAlunos.find(a => 
+                    (a.id_aluno && a.id_aluno === nota.aluno_id) || a.id === nota.aluno_id
+                );
                 if (alunoEncontrado) {
                     aluno = alunoEncontrado;
                 }
             }
             
+            // Garantir que todas as propriedades numéricas existam para evitar erros
+            const notaMensal = nota.nota_mensal !== undefined ? nota.nota_mensal : 0;
+            const notaBimestral = nota.nota_bimestral !== undefined ? nota.nota_bimestral : 0;
+            const notaRecuperacao = nota.nota_recuperacao !== undefined ? nota.nota_recuperacao : null;
+            
+            // Calcular a média final se não estiver definida
+            let mediaFinal = nota.media_final;
+            if (mediaFinal === undefined) {
+                mediaFinal = (notaMensal + notaBimestral) / 2;
+                if (notaRecuperacao !== null && notaRecuperacao > mediaFinal) {
+                    mediaFinal = notaRecuperacao;
+                }
+            }
+            
             const row = document.createElement('tr');
             row.innerHTML = `
-                <td>${nota.id}</td>
-                <td>${turma.nome}</td>
-                <td>${disciplina.nome}</td>
-                <td>${aluno.nome}</td>
-                <td>${nota.bimestre}º</td>
-                <td>${nota.ano}</td>
-                <td>${nota.nota_mensal.toFixed(1)}</td>
-                <td>${nota.nota_bimestral.toFixed(1)}</td>
-                <td>${nota.nota_recuperacao ? nota.nota_recuperacao.toFixed(1) : 'N/A'}</td>
-                <td>${nota.media_final.toFixed(1)}</td>
+                <td>${nota.id || 'N/A'}</td>
+                <td>${turma.serie || 'N/A'}</td>
+                <td>${disciplina.nome_disciplina || disciplina.nome || 'N/A'}</td>
+                <td>${aluno.nome_aluno || aluno.nome || 'N/A'}</td>
+                <td>${nota.bimestre || 'N/A'}º</td>
+                <td>${nota.ano || 'N/A'}</td>
+                <td>${typeof notaMensal === 'number' ? notaMensal.toFixed(1) : '0.0'}</td>
+                <td>${typeof notaBimestral === 'number' ? notaBimestral.toFixed(1) : '0.0'}</td>
+                <td>${notaRecuperacao !== null ? (typeof notaRecuperacao === 'number' ? notaRecuperacao.toFixed(1) : '0.0') : 'N/A'}</td>
+                <td>${typeof mediaFinal === 'number' ? mediaFinal.toFixed(1) : '0.0'}</td>
                 <td>
                     <button class="btn btn-sm btn-primary editar-nota" data-id="${nota.id}">
                         <i class="fas fa-edit"></i>
