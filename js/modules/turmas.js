@@ -21,6 +21,8 @@ const TurmasModule = {
         inputNomeTurma: null,
         inputAnoTurma: null,
         inputTurno: null,
+        inputTipo: null,
+        inputCoordenador: null,
         btnSalvarTurma: null,
         btnCancelarTurma: null
     },
@@ -40,6 +42,8 @@ const TurmasModule = {
         this.elements.inputNomeTurma = document.getElementById('nome-turma');
         this.elements.inputAnoTurma = document.getElementById('ano-turma');
         this.elements.inputTurno = document.getElementById('turno');
+        this.elements.inputTipo = document.getElementById('tipo-turma');
+        this.elements.inputCoordenador = document.getElementById('coordenador-turma');
         this.elements.btnSalvarTurma = document.getElementById('btn-salvar-turma');
         this.elements.btnCancelarTurma = document.getElementById('btn-cancelar-turma');
         this.elements.btnNovaTurma = document.getElementById('btn-nova-turma');
@@ -87,17 +91,21 @@ const TurmasModule = {
         this.elements.listaTurmas.innerHTML = '';
         
         if (this.state.turmas.length === 0) {
-            this.elements.listaTurmas.innerHTML = '<tr><td colspan="5" class="text-center">Nenhuma turma cadastrada</td></tr>';
+            this.elements.listaTurmas.innerHTML = '<tr><td colspan="6" class="text-center">Nenhuma turma cadastrada</td></tr>';
             return;
         }
         
         this.state.turmas.forEach(turma => {
+            // Normalizar o turno para exibição
+            const turnoExibicao = this.normalizarTurno(turma.turno);
+            
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td>${turma.id_turma || turma.id || 'N/A'}</td>
                 <td>${turma.serie || 'N/A'}</td>
-                <td>${turma.serie ? turma.serie.split(' ')[0] : 'N/A'}</td>
-                <td>${turma.turno || 'N/A'}</td>
+                <td>${turnoExibicao}</td>
+                <td>${turma.tipo || 'Regular'}</td>
+                <td>${turma.coordenador || 'N/A'}</td>
                 <td>
                     <button class="btn btn-sm btn-primary editar-turma" data-id="${turma.id_turma || turma.id}">
                         <i class="fas fa-edit"></i>
@@ -119,6 +127,24 @@ const TurmasModule = {
         });
     },
     
+    // Normalizar valores de turno para exibição
+    normalizarTurno: function(turno) {
+        if (!turno) return 'N/A';
+        
+        turno = turno.toLowerCase();
+        
+        if (turno === 'manha' || turno === 'manhã') {
+            return 'Manhã';
+        } else if (turno === 'tarde') {
+            return 'Tarde';
+        } else if (turno === 'noite') {
+            return 'Noite';
+        }
+        
+        // Primeira letra maiúscula como fallback
+        return turno.charAt(0).toUpperCase() + turno.slice(1);
+    },
+    
     // Criar nova turma
     novaTurma: function() {
         this.state.modoEdicao = false;
@@ -136,17 +162,59 @@ const TurmasModule = {
     
     // Editar turma existente
     editarTurma: function(id) {
-        const turma = this.state.turmas.find(t => t.id === id);
-        if (!turma) return;
+        // Encontrar a turma pelo id ou id_turma
+        const turma = this.state.turmas.find(t => (t.id_turma === id) || (t.id === id));
+        if (!turma) {
+            console.error("Turma não encontrada com ID:", id);
+            return;
+        }
+        
+        console.log("Editando turma:", turma);
         
         this.state.modoEdicao = true;
         this.state.turmaSelecionada = turma;
         
         if (this.elements.formTurma) {
             this.elements.formTurma.classList.remove('d-none');
-            this.elements.inputNomeTurma.value = turma.nome;
-            this.elements.inputAnoTurma.value = turma.ano;
-            this.elements.inputTurno.value = turma.turno;
+            
+            // Extrair ano e nome da série
+            let anoTurma = '';
+            let nomeTurma = turma.serie || '';
+            
+            if (nomeTurma.includes('º Ano')) {
+                const partes = nomeTurma.split('º Ano');
+                anoTurma = partes[0];
+                nomeTurma = partes[1].trim();
+            }
+            
+            // Normalizar o valor do turno para o select
+            let turnoValue = '';
+            if (turma.turno) {
+                const turnoLower = turma.turno.toLowerCase();
+                if (turnoLower.includes('manha') || turnoLower.includes('manhã')) {
+                    turnoValue = 'manha';
+                } else if (turnoLower.includes('tarde')) {
+                    turnoValue = 'tarde';
+                } else if (turnoLower.includes('noite')) {
+                    turnoValue = 'noite';
+                } else {
+                    turnoValue = turma.turno;
+                }
+            }
+            
+            // Preencher o formulário com os valores da turma
+            this.elements.inputNomeTurma.value = nomeTurma || turma.serie || '';
+            this.elements.inputAnoTurma.value = anoTurma ? anoTurma.replace('º', '') : '';
+            this.elements.inputTurno.value = turnoValue;
+            
+            // Se temos os novos campos, preenchê-los também
+            if (this.elements.inputTipo) {
+                this.elements.inputTipo.value = turma.tipo || 'Regular';
+            }
+            if (this.elements.inputCoordenador) {
+                this.elements.inputCoordenador.value = turma.coordenador || '';
+            }
+            
             this.elements.inputNomeTurma.focus();
         }
     },
@@ -154,23 +222,39 @@ const TurmasModule = {
     // Salvar turma (criar nova ou atualizar existente)
     salvarTurma: async function() {
         try {
+            // Formatar a série corretamente
+            let serie = this.elements.inputNomeTurma.value;
+            if (!serie.includes('º') && this.elements.inputAnoTurma.value) {
+                serie = this.elements.inputAnoTurma.value + 'º Ano ' + serie;
+            }
+            
             const turmaDados = {
-                nome: this.elements.inputNomeTurma.value,
-                ano: this.elements.inputAnoTurma.value,
-                turno: this.elements.inputTurno.value
+                id_turma: this.state.modoEdicao ? (this.state.turmaSelecionada.id_turma || this.state.turmaSelecionada.id) : null,
+                serie: serie,
+                turno: this.elements.inputTurno.value,
+                tipo: this.elements.inputTipo ? this.elements.inputTipo.value : 'Regular',
+                coordenador: this.elements.inputCoordenador ? this.elements.inputCoordenador.value : ''
             };
+            
+            console.log("Salvando turma com dados:", turmaDados);
             
             let response;
             
             if (this.state.modoEdicao && this.state.turmaSelecionada) {
+                // Identificador para a API
+                const turmaId = this.state.turmaSelecionada.id_turma || this.state.turmaSelecionada.id;
+                
                 // Atualizar turma existente
-                response = await ConfigModule.fetchApi(`/turmas/${this.state.turmaSelecionada.id}`, {
+                response = await ConfigModule.fetchApi(`/turmas/${turmaId}`, {
                     method: 'PUT',
                     body: JSON.stringify(turmaDados)
                 });
                 
                 // Atualizar turma na lista local
-                const index = this.state.turmas.findIndex(t => t.id === this.state.turmaSelecionada.id);
+                const index = this.state.turmas.findIndex(t => 
+                    (t.id_turma === turmaId) || (t.id === turmaId)
+                );
+                
                 if (index !== -1) {
                     this.state.turmas[index] = { ...this.state.turmas[index], ...turmaDados };
                 }
@@ -189,10 +273,8 @@ const TurmasModule = {
                 this.mostrarSucesso("Turma criada com sucesso!");
             }
             
-            // Resetar formulário e estado
             this.cancelarEdicao();
             
-            // Atualizar lista de turmas
             this.renderizarTurmas();
             
         } catch (error) {
@@ -222,12 +304,16 @@ const TurmasModule = {
     // Excluir turma
     excluirTurma: async function(id) {
         try {
-            await ConfigModule.fetchApi(`/turmas/${id}`, {
+            const turmaId = id;
+            
+            await ConfigModule.fetchApi(`/turmas/${turmaId}`, {
                 method: 'DELETE'
             });
             
             // Remover turma da lista local
-            this.state.turmas = this.state.turmas.filter(t => t.id !== id);
+            this.state.turmas = this.state.turmas.filter(t => 
+                (t.id_turma !== turmaId) && (t.id !== turmaId)
+            );
             
             // Atualizar lista de turmas
             this.renderizarTurmas();
