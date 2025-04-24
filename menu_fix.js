@@ -122,7 +122,7 @@ document.addEventListener('DOMContentLoaded', function() {
     mostrarSecao('dashboard');
     
     // Ativar o link do dashboard por padrão
-    const dashboardLink = document.querySelector('.navbar-nav .nav-link[data-section="dashboard"], .navbar-nav .nav-link:contains("Dashboard")');
+    const dashboardLink = document.querySelector('.navbar-nav .nav-link[data-section="dashboard"], .navbar-nav .nav-link[id="dashboard-link"]');
     if (dashboardLink) {
         dashboardLink.classList.add('active');
     }

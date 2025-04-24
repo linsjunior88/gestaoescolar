@@ -12,10 +12,10 @@ const ConfigModule = {
     apiUrl: function() {
         // Para ambiente de produção no Render
         if (this.isProd) {
-            return 'https://gestao-escolar-api.onrender.com';
+            return 'https://gestao-escolar-api.onrender.com/api';
         }
         // Para desenvolvimento local
-        return 'http://localhost:8000';
+        return 'http://localhost:8000/api';
     },
     
     // Método para obter URL completa da API
