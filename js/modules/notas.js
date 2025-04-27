@@ -319,6 +319,19 @@ const NotasModule = {
                     this.elements.filtroAluno.appendChild(option);
                 });
             }
+            
+            // Preencher os anos nos filtros (de 2025 a 2030)
+            if (this.elements.filtroAno && this.elements.filtroAno.tagName === "SELECT") {
+                this.elements.filtroAno.innerHTML = '<option value="">Todos os anos</option>';
+                const anoAtual = new Date().getFullYear();
+                for (let ano = 2025; ano <= 2030; ano++) {
+                    const option = document.createElement('option');
+                    option.value = ano;
+                    option.textContent = ano;
+                    if (ano === anoAtual) option.selected = true;
+                    this.elements.filtroAno.appendChild(option);
+                }
+            }
         } catch (error) {
             console.error("Erro ao carregar dependências do filtro:", error);
         }
@@ -347,10 +360,54 @@ const NotasModule = {
                 endpoint += `?${queryString}`;
             }
             
+            console.log("Buscando notas com endpoint:", endpoint);
             const notas = await ConfigModule.fetchApi(endpoint);
-            this.state.notas = notas;
+            console.log("Notas recebidas da API:", notas);
+            
+            if (Array.isArray(notas) && notas.length > 0) {
+                // Se a API retornou dados que não respeitam os filtros, precisamos filtrar localmente
+                let notasFiltradas = notas;
+                
+                if (filtros.turma_id) {
+                    notasFiltradas = notasFiltradas.filter(nota => {
+                        const notaTurmaId = nota.turma_id || nota.id_turma;
+                        return String(notaTurmaId) === String(filtros.turma_id);
+                    });
+                }
+                
+                if (filtros.disciplina_id) {
+                    notasFiltradas = notasFiltradas.filter(nota => {
+                        const notaDisciplinaId = nota.disciplina_id || nota.id_disciplina;
+                        return String(notaDisciplinaId) === String(filtros.disciplina_id);
+                    });
+                }
+                
+                if (filtros.aluno_id) {
+                    notasFiltradas = notasFiltradas.filter(nota => {
+                        const notaAlunoId = nota.aluno_id || nota.id_aluno;
+                        return String(notaAlunoId) === String(filtros.aluno_id);
+                    });
+                }
+                
+                if (filtros.bimestre) {
+                    notasFiltradas = notasFiltradas.filter(nota => {
+                        return String(nota.bimestre) === String(filtros.bimestre);
+                    });
+                }
+                
+                if (filtros.ano) {
+                    notasFiltradas = notasFiltradas.filter(nota => {
+                        return String(nota.ano) === String(filtros.ano);
+                    });
+                }
+                
+                console.log("Notas após filtro local:", notasFiltradas);
+                this.state.notas = notasFiltradas;
+            } else {
+                this.state.notas = [];
+            }
+            
             this.renderizarNotas();
-            console.log("Notas carregadas com sucesso:", notas);
         } catch (error) {
             console.error("Erro ao carregar notas:", error);
             this.mostrarErro("Não foi possível carregar as notas. Tente novamente mais tarde.");
@@ -367,6 +424,7 @@ const NotasModule = {
             ano: this.elements.filtroAno.value
         };
         
+        console.log("Aplicando filtros:", filtros);
         this.carregarNotas(filtros);
     },
     
@@ -380,51 +438,90 @@ const NotasModule = {
             this.elements.listaNotas.innerHTML = '<tr><td colspan="11" class="text-center">Nenhuma nota encontrada. Use os filtros acima para buscar notas.</td></tr>';
             return;
         }
+
+        console.log("Renderizando notas:", this.state.notas);
         
         this.state.notas.forEach(nota => {
+            // Logs para depuração
+            console.log("Processando nota:", nota);
+            
             // Encontrar nomes de turma, disciplina e aluno
+            const turmaId = nota.turma_id || nota.id_turma;
+            const disciplinaId = nota.disciplina_id || nota.id_disciplina;
+            const alunoId = nota.aluno_id || nota.id_aluno;
+            
+            console.log("IDs: Turma=", turmaId, "Disciplina=", disciplinaId, "Aluno=", alunoId);
+            
+            // Buscar turma por ID (procurar tanto id_turma quanto id)
             const turma = this.state.turmas.find(t => 
-                (t.id_turma && (t.id_turma === nota.turma_id || t.id_turma === nota.id_turma)) || 
-                (t.id && (t.id === nota.turma_id || t.id === nota.id_turma))
-            ) || { serie: 'N/A', turno: 'N/A' };
+                String(t.id_turma) === String(turmaId) || 
+                String(t.id) === String(turmaId)
+            );
+            console.log("Turma encontrada:", turma);
             
-            const disciplina = this.state.disciplinasTurma.find(d => 
-                (d.id_disciplina && (d.id_disciplina === nota.disciplina_id || d.id_disciplina === nota.id_disciplina)) || 
-                (d.id && (d.id === nota.disciplina_id || d.id === nota.id_disciplina))
-            ) || this.state.disciplinas.find(d => 
-                (d.id_disciplina && (d.id_disciplina === nota.disciplina_id || d.id_disciplina === nota.id_disciplina)) || 
-                (d.id && (d.id === nota.disciplina_id || d.id === nota.id_disciplina))
-            ) || { nome_disciplina: 'N/A', nome: 'N/A' };
+            // Buscar disciplina nas listas disponíveis
+            let disciplina = null;
+            // Primeiro tentar na lista de disciplinas da turma
+            if (this.state.disciplinasTurma.length > 0) {
+                disciplina = this.state.disciplinasTurma.find(d => 
+                    String(d.id_disciplina) === String(disciplinaId) || 
+                    String(d.id) === String(disciplinaId)
+                );
+            }
+            // Se não encontrar, buscar na lista global de disciplinas
+            if (!disciplina && this.state.disciplinas && this.state.disciplinas.length > 0) {
+                disciplina = this.state.disciplinas.find(d => 
+                    String(d.id_disciplina) === String(disciplinaId) || 
+                    String(d.id) === String(disciplinaId)
+                );
+            }
+            console.log("Disciplina encontrada:", disciplina);
             
-            // Buscar aluno combinando as listas
-            const aluno = this.state.alunosTurma.find(a => 
-                (a.id_aluno && (a.id_aluno === nota.aluno_id || a.id_aluno === nota.id_aluno)) || 
-                (a.id && (a.id === nota.aluno_id || a.id === nota.id_aluno))
-            ) || this.state.alunos.find(a => 
-                (a.id_aluno && (a.id_aluno === nota.aluno_id || a.id_aluno === nota.id_aluno)) || 
-                (a.id && (a.id === nota.aluno_id || a.id === nota.id_aluno))
-            ) || { nome_aluno: 'N/A', nome: 'N/A' };
+            // Buscar aluno nas listas disponíveis
+            let aluno = null;
+            // Primeiro tentar na lista de alunos da turma
+            if (this.state.alunosTurma.length > 0) {
+                aluno = this.state.alunosTurma.find(a => 
+                    String(a.id_aluno) === String(alunoId) || 
+                    String(a.id) === String(alunoId)
+                );
+            }
+            // Se não encontrar, buscar na lista global de alunos
+            if (!aluno && this.state.alunos && this.state.alunos.length > 0) {
+                aluno = this.state.alunos.find(a => 
+                    String(a.id_aluno) === String(alunoId) || 
+                    String(a.id) === String(alunoId)
+                );
+            }
+            console.log("Aluno encontrado:", aluno);
             
             // Garantir que todas as propriedades numéricas existam para evitar erros
-            const notaMensal = nota.nota_mensal !== undefined ? nota.nota_mensal : 0;
-            const notaBimestral = nota.nota_bimestral !== undefined ? nota.nota_bimestral : 0;
-            const notaRecuperacao = nota.nota_recuperacao !== undefined ? nota.nota_recuperacao : null;
+            const notaMensal = nota.nota_mensal !== undefined ? parseFloat(nota.nota_mensal) : 0;
+            const notaBimestral = nota.nota_bimestral !== undefined ? parseFloat(nota.nota_bimestral) : 0;
+            const notaRecuperacao = nota.nota_recuperacao !== undefined && nota.nota_recuperacao !== null 
+                ? parseFloat(nota.nota_recuperacao) 
+                : null;
             
             // Calcular a média final se não estiver definida
-            let mediaFinal = nota.media_final;
-            if (mediaFinal === undefined) {
+            let mediaFinal = nota.media_final !== undefined ? parseFloat(nota.media_final) : null;
+            if (mediaFinal === null) {
                 mediaFinal = (notaMensal + notaBimestral) / 2;
                 if (notaRecuperacao !== null && notaRecuperacao > mediaFinal) {
                     mediaFinal = notaRecuperacao;
                 }
             }
             
+            // Se não conseguirmos encontrar os objetos relacionados, usamos os IDs diretamente
+            const turmaInfo = turma ? `${turma.serie || turma.nome || 'N/A'} (${turma.turno || 'N/A'})` : turmaId || 'N/A';
+            const disciplinaInfo = disciplina ? (disciplina.nome_disciplina || disciplina.nome || 'N/A') : disciplinaId || 'N/A';
+            const alunoInfo = aluno ? (aluno.nome_aluno || aluno.nome || 'N/A') : alunoId || 'N/A';
+            
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td>${nota.id || 'N/A'}</td>
-                <td>${turma.serie || 'N/A'}</td>
-                <td>${disciplina.nome_disciplina || disciplina.nome || 'N/A'}</td>
-                <td>${aluno.nome_aluno || aluno.nome || 'N/A'}</td>
+                <td>${turmaInfo}</td>
+                <td>${disciplinaInfo}</td>
+                <td>${alunoInfo}</td>
                 <td>${nota.bimestre || 'N/A'}º</td>
                 <td>${nota.ano || 'N/A'}</td>
                 <td>${typeof notaMensal === 'number' ? notaMensal.toFixed(1) : '0.0'}</td>
