@@ -15,6 +15,8 @@ const NotasModule = {
         turmas: [],
         disciplinas: [],
         alunos: [],
+        disciplinasTurma: [], // Para armazenar disciplinas de uma turma específica
+        alunosTurma: [], // Para armazenar alunos de uma turma específica
         filtros: {
             turma: '',
             disciplina: '',
@@ -54,11 +56,13 @@ const NotasModule = {
         console.log("Inicializando módulo de notas");
         this.cachearElementos();
         this.adicionarEventListeners();
-        await Promise.all([
-            this.carregarTurmas(),
-            this.carregarDisciplinas()
-        ]);
-        this.carregarNotas();
+        await this.carregarTurmas();
+        // Não carregaremos as notas no início, apenas quando um filtro for aplicado
+        
+        // Definir ano padrão no filtro
+        if (this.elements.filtroAno) {
+            this.elements.filtroAno.value = new Date().getFullYear();
+        }
     },
     
     // Cachear elementos DOM para melhor performance
@@ -134,10 +138,17 @@ const NotasModule = {
             this.elements.inputNotaRecuperacao.addEventListener('input', () => this.calcularMediaForm());
         }
         
-        // Listener para o select de turma para atualizar a lista de alunos
+        // Listeners para selects de turma
         if (this.elements.selectTurma) {
             this.elements.selectTurma.addEventListener('change', () => {
-                this.carregarAlunosPorTurma(this.elements.selectTurma.value);
+                this.carregarDependenciasFormulario(this.elements.selectTurma.value);
+            });
+        }
+        
+        // Listener para filtro de turma
+        if (this.elements.filtroTurma) {
+            this.elements.filtroTurma.addEventListener('change', () => {
+                this.carregarDependenciasFiltro(this.elements.filtroTurma.value);
             });
         }
     },
@@ -155,26 +166,13 @@ const NotasModule = {
         }
     },
     
-    // Carregar disciplinas para os selects
-    carregarDisciplinas: async function() {
-        try {
-            const disciplinas = await ConfigModule.fetchApi('/disciplinas');
-            this.state.disciplinas = disciplinas;
-            this.popularSelectDisciplinas();
-            console.log("Disciplinas carregadas com sucesso para o módulo de notas:", disciplinas);
-        } catch (error) {
-            console.error("Erro ao carregar disciplinas para o módulo de notas:", error);
-            this.mostrarErro("Não foi possível carregar as disciplinas. Tente novamente mais tarde.");
-        }
-    },
-    
     // Popular select de turmas
     popularSelectTurmas: function() {
         if (!this.elements.selectTurma || !this.elements.filtroTurma) return;
         
         // Limpar selects
         this.elements.selectTurma.innerHTML = '<option value="">Selecione uma turma</option>';
-        this.elements.filtroTurma.innerHTML = '<option value="">Todas as turmas</option>';
+        this.elements.filtroTurma.innerHTML = '<option value="">Selecione uma turma</option>';
         
         // Adicionar opções
         this.state.turmas.forEach(turma => {
@@ -188,80 +186,152 @@ const NotasModule = {
             option2.textContent = `${turma.serie || turma.nome || 'N/A'} (${turma.turno || 'N/A'})`;
             this.elements.filtroTurma.appendChild(option2);
         });
+        
+        // Desabilitar selects de disciplina e aluno até que uma turma seja selecionada
+        if (this.elements.selectDisciplina) this.elements.selectDisciplina.disabled = true;
+        if (this.elements.selectAluno) this.elements.selectAluno.disabled = true;
+        if (this.elements.filtroDisciplina) this.elements.filtroDisciplina.disabled = true;
+        if (this.elements.filtroAluno) this.elements.filtroAluno.disabled = true;
     },
     
-    // Popular select de disciplinas
-    popularSelectDisciplinas: function() {
-        if (!this.elements.selectDisciplina || !this.elements.filtroDisciplina) return;
-        
-        // Limpar selects
-        this.elements.selectDisciplina.innerHTML = '<option value="">Selecione uma disciplina</option>';
-        this.elements.filtroDisciplina.innerHTML = '<option value="">Todas as disciplinas</option>';
-        
-        // Adicionar opções
-        this.state.disciplinas.forEach(disciplina => {
-            const option1 = document.createElement('option');
-            option1.value = disciplina.id_disciplina || disciplina.id;
-            option1.textContent = disciplina.nome_disciplina || disciplina.nome || 'N/A';
-            this.elements.selectDisciplina.appendChild(option1);
-            
-            const option2 = document.createElement('option');
-            option2.value = disciplina.id_disciplina || disciplina.id;
-            option2.textContent = disciplina.nome_disciplina || disciplina.nome || 'N/A';
-            this.elements.filtroDisciplina.appendChild(option2);
-        });
-    },
-    
-    // Carregar alunos por turma
-    carregarAlunosPorTurma: async function(turmaId) {
+    // Carregar disciplinas de uma turma específica
+    carregarDisciplinasDaTurma: async function(turmaId) {
         if (!turmaId) {
-            this.state.alunos = [];
-            this.popularSelectAlunos();
-            return;
+            this.state.disciplinasTurma = [];
+            return [];
         }
         
         try {
-            const alunos = await ConfigModule.fetchApi(`/alunos?turma_id=${turmaId}`);
-            this.state.alunos = alunos;
-            this.popularSelectAlunos();
-            console.log("Alunos carregados com sucesso para a turma:", turmaId);
+            const disciplinas = await ConfigModule.fetchApi(`/turmas/${turmaId}/disciplinas`);
+            this.state.disciplinasTurma = disciplinas;
+            console.log(`Disciplinas da turma ${turmaId} carregadas:`, disciplinas);
+            return disciplinas;
         } catch (error) {
-            console.error("Erro ao carregar alunos para a turma:", turmaId, error);
-            this.mostrarErro("Não foi possível carregar os alunos. Tente novamente mais tarde.");
+            console.error(`Erro ao carregar disciplinas da turma ${turmaId}:`, error);
+            this.mostrarErro("Não foi possível carregar as disciplinas da turma.");
+            return [];
         }
     },
     
-    // Popular select de alunos
-    popularSelectAlunos: function() {
-        if (!this.elements.selectAluno || !this.elements.filtroAluno) return;
-        
-        // Limpar selects
-        this.elements.selectAluno.innerHTML = '<option value="">Selecione um aluno</option>';
-        
-        // Também atualizar filtro de alunos, mantendo a opção todos
-        if (this.elements.filtroAluno) {
-            this.elements.filtroAluno.innerHTML = '<option value="">Todos os alunos</option>';
+    // Carregar alunos de uma turma específica
+    carregarAlunosDaTurma: async function(turmaId) {
+        if (!turmaId) {
+            this.state.alunosTurma = [];
+            return [];
         }
         
-        // Adicionar opções
-        this.state.alunos.forEach(aluno => {
-            const option1 = document.createElement('option');
-            option1.value = aluno.id_aluno || aluno.id;
-            option1.textContent = aluno.nome_aluno || aluno.nome || 'N/A';
-            this.elements.selectAluno.appendChild(option1);
+        try {
+            const alunos = await ConfigModule.fetchApi(`/turmas/${turmaId}/alunos`);
+            this.state.alunosTurma = alunos;
+            console.log(`Alunos da turma ${turmaId} carregados:`, alunos);
+            return alunos;
+        } catch (error) {
+            console.error(`Erro ao carregar alunos da turma ${turmaId}:`, error);
+            this.mostrarErro("Não foi possível carregar os alunos da turma.");
+            return [];
+        }
+    },
+    
+    // Carregar dependências para o formulário (disciplinas e alunos de uma turma)
+    carregarDependenciasFormulario: async function(turmaId) {
+        // Limpar e desabilitar selects de disciplina e aluno
+        if (this.elements.selectDisciplina) {
+            this.elements.selectDisciplina.innerHTML = '<option value="">Selecione uma disciplina</option>';
+            this.elements.selectDisciplina.disabled = !turmaId;
+        }
+        
+        if (this.elements.selectAluno) {
+            this.elements.selectAluno.innerHTML = '<option value="">Selecione um aluno</option>';
+            this.elements.selectAluno.disabled = !turmaId;
+        }
+        
+        if (!turmaId) return;
+        
+        try {
+            // Carregar disciplinas e alunos em paralelo
+            const [disciplinas, alunos] = await Promise.all([
+                this.carregarDisciplinasDaTurma(turmaId),
+                this.carregarAlunosDaTurma(turmaId)
+            ]);
             
-            if (this.elements.filtroAluno) {
-                const option2 = document.createElement('option');
-                option2.value = aluno.id_aluno || aluno.id;
-                option2.textContent = aluno.nome_aluno || aluno.nome || 'N/A';
-                this.elements.filtroAluno.appendChild(option2);
+            // Popular select de disciplinas
+            if (disciplinas.length > 0 && this.elements.selectDisciplina) {
+                disciplinas.forEach(disciplina => {
+                    const option = document.createElement('option');
+                    option.value = disciplina.id_disciplina || disciplina.id;
+                    option.textContent = disciplina.nome_disciplina || disciplina.nome || 'N/A';
+                    this.elements.selectDisciplina.appendChild(option);
+                });
             }
-        });
+            
+            // Popular select de alunos
+            if (alunos.length > 0 && this.elements.selectAluno) {
+                alunos.forEach(aluno => {
+                    const option = document.createElement('option');
+                    option.value = aluno.id_aluno || aluno.id;
+                    option.textContent = aluno.nome_aluno || aluno.nome || 'N/A';
+                    this.elements.selectAluno.appendChild(option);
+                });
+            }
+        } catch (error) {
+            console.error("Erro ao carregar dependências do formulário:", error);
+        }
+    },
+    
+    // Carregar dependências para o filtro (disciplinas e alunos de uma turma)
+    carregarDependenciasFiltro: async function(turmaId) {
+        // Limpar e desabilitar selects de disciplina e aluno
+        if (this.elements.filtroDisciplina) {
+            this.elements.filtroDisciplina.innerHTML = '<option value="">Todas as disciplinas</option>';
+            this.elements.filtroDisciplina.disabled = !turmaId;
+        }
+        
+        if (this.elements.filtroAluno) {
+            this.elements.filtroAluno.innerHTML = '<option value="">Todos os alunos</option>';
+            this.elements.filtroAluno.disabled = !turmaId;
+        }
+        
+        if (!turmaId) return;
+        
+        try {
+            // Carregar disciplinas e alunos em paralelo
+            const [disciplinas, alunos] = await Promise.all([
+                this.carregarDisciplinasDaTurma(turmaId),
+                this.carregarAlunosDaTurma(turmaId)
+            ]);
+            
+            // Popular select de disciplinas
+            if (disciplinas.length > 0 && this.elements.filtroDisciplina) {
+                disciplinas.forEach(disciplina => {
+                    const option = document.createElement('option');
+                    option.value = disciplina.id_disciplina || disciplina.id;
+                    option.textContent = disciplina.nome_disciplina || disciplina.nome || 'N/A';
+                    this.elements.filtroDisciplina.appendChild(option);
+                });
+            }
+            
+            // Popular select de alunos
+            if (alunos.length > 0 && this.elements.filtroAluno) {
+                alunos.forEach(aluno => {
+                    const option = document.createElement('option');
+                    option.value = aluno.id_aluno || aluno.id;
+                    option.textContent = aluno.nome_aluno || aluno.nome || 'N/A';
+                    this.elements.filtroAluno.appendChild(option);
+                });
+            }
+        } catch (error) {
+            console.error("Erro ao carregar dependências do filtro:", error);
+        }
     },
     
     // Carregar notas da API
     carregarNotas: async function(filtros = {}) {
         try {
+            if (!filtros.turma_id) {
+                this.mostrarErro("Selecione uma turma para filtrar as notas");
+                return;
+            }
+            
             let endpoint = '/notas';
             
             // Adicionar filtros à URL
@@ -307,30 +377,33 @@ const NotasModule = {
         this.elements.listaNotas.innerHTML = '';
         
         if (this.state.notas.length === 0) {
-            this.elements.listaNotas.innerHTML = '<tr><td colspan="11" class="text-center">Nenhuma nota cadastrada</td></tr>';
+            this.elements.listaNotas.innerHTML = '<tr><td colspan="11" class="text-center">Nenhuma nota encontrada. Use os filtros acima para buscar notas.</td></tr>';
             return;
         }
         
         this.state.notas.forEach(nota => {
             // Encontrar nomes de turma, disciplina e aluno
             const turma = this.state.turmas.find(t => 
-                (t.id_turma && t.id_turma === nota.turma_id) || t.id === nota.turma_id
+                (t.id_turma && (t.id_turma === nota.turma_id || t.id_turma === nota.id_turma)) || 
+                (t.id && (t.id === nota.turma_id || t.id === nota.id_turma))
             ) || { serie: 'N/A', turno: 'N/A' };
             
-            const disciplina = this.state.disciplinas.find(d => 
-                (d.id_disciplina && d.id_disciplina === nota.disciplina_id) || d.id === nota.disciplina_id
-            ) || { nome_disciplina: 'N/A' };
+            const disciplina = this.state.disciplinasTurma.find(d => 
+                (d.id_disciplina && (d.id_disciplina === nota.disciplina_id || d.id_disciplina === nota.id_disciplina)) || 
+                (d.id && (d.id === nota.disciplina_id || d.id === nota.id_disciplina))
+            ) || this.state.disciplinas.find(d => 
+                (d.id_disciplina && (d.id_disciplina === nota.disciplina_id || d.id_disciplina === nota.id_disciplina)) || 
+                (d.id && (d.id === nota.disciplina_id || d.id === nota.id_disciplina))
+            ) || { nome_disciplina: 'N/A', nome: 'N/A' };
             
-            // Buscar aluno na lista de alunos
-            let aluno = { nome_aluno: 'N/A', nome: 'N/A' };
-            if (this.state.alunos.length > 0) {
-                const alunoEncontrado = this.state.alunos.find(a => 
-                    (a.id_aluno && a.id_aluno === nota.aluno_id) || a.id === nota.aluno_id
-                );
-                if (alunoEncontrado) {
-                    aluno = alunoEncontrado;
-                }
-            }
+            // Buscar aluno combinando as listas
+            const aluno = this.state.alunosTurma.find(a => 
+                (a.id_aluno && (a.id_aluno === nota.aluno_id || a.id_aluno === nota.id_aluno)) || 
+                (a.id && (a.id === nota.aluno_id || a.id === nota.id_aluno))
+            ) || this.state.alunos.find(a => 
+                (a.id_aluno && (a.id_aluno === nota.aluno_id || a.id_aluno === nota.id_aluno)) || 
+                (a.id && (a.id === nota.aluno_id || a.id === nota.id_aluno))
+            ) || { nome_aluno: 'N/A', nome: 'N/A' };
             
             // Garantir que todas as propriedades numéricas existam para evitar erros
             const notaMensal = nota.nota_mensal !== undefined ? nota.nota_mensal : 0;
@@ -423,6 +496,17 @@ const NotasModule = {
             this.elements.formNota.reset();
             this.elements.formNota.classList.remove('d-none');
             this.elements.inputMediaFinal.textContent = '0.0';
+            
+            // Limpar e desabilitar selects de disciplina e aluno
+            if (this.elements.selectDisciplina) {
+                this.elements.selectDisciplina.innerHTML = '<option value="">Selecione uma disciplina</option>';
+                this.elements.selectDisciplina.disabled = true;
+            }
+            
+            if (this.elements.selectAluno) {
+                this.elements.selectAluno.innerHTML = '<option value="">Selecione um aluno</option>';
+                this.elements.selectAluno.disabled = true;
+            }
         }
         
         // Definir ano atual como padrão
@@ -436,43 +520,114 @@ const NotasModule = {
     },
     
     // Editar nota existente
-    editarNota: function(id) {
-        const nota = this.state.notas.find(n => n.id === id);
-        if (!nota) return;
-        
-        this.state.modoEdicao = true;
-        this.state.notaSelecionada = nota;
-        
-        // Carregar alunos da turma primeiro
-        this.carregarAlunosPorTurma(nota.turma_id).then(() => {
+    editarNota: async function(id) {
+        try {
+            // Buscar informações detalhadas da nota
+            const nota = await ConfigModule.fetchApi(`/notas/${id}`);
+            
+            if (!nota) {
+                this.mostrarErro("Nota não encontrada.");
+                return;
+            }
+            
+            this.state.modoEdicao = true;
+            this.state.notaSelecionada = nota;
+            
+            const turmaId = nota.turma_id || nota.id_turma;
+            
+            // Carregar dependências primeiro (disciplinas e alunos da turma)
+            await this.carregarDependenciasFormulario(turmaId);
+            
             if (this.elements.formNota) {
                 this.elements.formNota.classList.remove('d-none');
-                this.elements.selectTurma.value = nota.turma_id;
-                this.elements.selectDisciplina.value = nota.disciplina_id;
-                this.elements.selectAluno.value = nota.aluno_id;
+                this.elements.selectTurma.value = turmaId;
+                this.elements.selectDisciplina.value = nota.disciplina_id || nota.id_disciplina;
+                this.elements.selectAluno.value = nota.aluno_id || nota.id_aluno;
                 this.elements.selectBimestre.value = nota.bimestre;
                 this.elements.inputAno.value = nota.ano;
                 this.elements.inputNotaMensal.value = nota.nota_mensal;
                 this.elements.inputNotaBimestral.value = nota.nota_bimestral;
                 this.elements.inputNotaRecuperacao.value = nota.nota_recuperacao || '';
-                this.elements.inputMediaFinal.textContent = nota.media_final.toFixed(1);
+                
+                // Calcular e mostrar a média
+                let mediaFinal = nota.media_final;
+                if (mediaFinal === undefined) {
+                    mediaFinal = (parseFloat(nota.nota_mensal) + parseFloat(nota.nota_bimestral)) / 2;
+                    if (nota.nota_recuperacao && parseFloat(nota.nota_recuperacao) > mediaFinal) {
+                        mediaFinal = parseFloat(nota.nota_recuperacao);
+                    }
+                }
+                this.elements.inputMediaFinal.textContent = (mediaFinal || 0).toFixed(1);
+                
                 this.elements.selectTurma.focus();
             }
-        });
+        } catch (error) {
+            console.error("Erro ao editar nota:", error);
+            this.mostrarErro("Não foi possível carregar os dados da nota para edição.");
+        }
     },
     
     // Salvar nota (criar nova ou atualizar existente)
     salvarNota: async function() {
         try {
+            // Verificar se todos os campos obrigatórios estão preenchidos
+            if (!this.elements.selectTurma.value) {
+                this.mostrarErro("Selecione uma turma.");
+                return;
+            }
+            
+            if (!this.elements.selectDisciplina.value) {
+                this.mostrarErro("Selecione uma disciplina.");
+                return;
+            }
+            
+            if (!this.elements.selectAluno.value) {
+                this.mostrarErro("Selecione um aluno.");
+                return;
+            }
+            
+            if (!this.elements.selectBimestre.value) {
+                this.mostrarErro("Selecione um bimestre.");
+                return;
+            }
+            
+            if (!this.elements.inputAno.value) {
+                this.mostrarErro("Informe o ano letivo.");
+                return;
+            }
+            
+            // Verificar se as notas são números válidos
+            const notaMensal = parseFloat(this.elements.inputNotaMensal.value);
+            const notaBimestral = parseFloat(this.elements.inputNotaBimestral.value);
+            let notaRecuperacao = this.elements.inputNotaRecuperacao.value 
+                ? parseFloat(this.elements.inputNotaRecuperacao.value) 
+                : null;
+            
+            if (isNaN(notaMensal) || notaMensal < 0 || notaMensal > 10) {
+                this.mostrarErro("A nota mensal deve ser um número entre 0 e 10.");
+                return;
+            }
+            
+            if (isNaN(notaBimestral) || notaBimestral < 0 || notaBimestral > 10) {
+                this.mostrarErro("A nota bimestral deve ser um número entre 0 e 10.");
+                return;
+            }
+            
+            if (notaRecuperacao !== null && (isNaN(notaRecuperacao) || notaRecuperacao < 0 || notaRecuperacao > 10)) {
+                this.mostrarErro("A nota de recuperação deve ser um número entre 0 e 10.");
+                return;
+            }
+            
+            // Para a API, usamos os nomes corretos esperados pelo backend
             const notaDados = {
-                turma_id: parseInt(this.elements.selectTurma.value),
-                disciplina_id: parseInt(this.elements.selectDisciplina.value),
-                aluno_id: parseInt(this.elements.selectAluno.value),
+                id_turma: this.elements.selectTurma.value,
+                id_disciplina: this.elements.selectDisciplina.value,
+                id_aluno: this.elements.selectAluno.value,
                 bimestre: parseInt(this.elements.selectBimestre.value),
                 ano: parseInt(this.elements.inputAno.value),
-                nota_mensal: parseFloat(this.elements.inputNotaMensal.value),
-                nota_bimestral: parseFloat(this.elements.inputNotaBimestral.value),
-                nota_recuperacao: this.elements.inputNotaRecuperacao.value ? parseFloat(this.elements.inputNotaRecuperacao.value) : null
+                nota_mensal: notaMensal,
+                nota_bimestral: notaBimestral,
+                nota_recuperacao: notaRecuperacao
             };
             
             // Calcular média final
@@ -481,6 +636,8 @@ const NotasModule = {
                 mediaFinal = notaDados.nota_recuperacao;
             }
             notaDados.media_final = mediaFinal;
+            
+            console.log("Salvando nota com dados:", notaDados);
             
             let response;
             
@@ -491,35 +648,53 @@ const NotasModule = {
                     body: JSON.stringify(notaDados)
                 });
                 
-                // Atualizar nota na lista local
-                const index = this.state.notas.findIndex(n => n.id === this.state.notaSelecionada.id);
-                if (index !== -1) {
-                    this.state.notas[index] = { ...this.state.notas[index], ...notaDados };
-                }
-                
                 this.mostrarSucesso("Nota atualizada com sucesso!");
             } else {
-                // Criar nova nota
-                response = await ConfigModule.fetchApi('/notas', {
-                    method: 'POST',
-                    body: JSON.stringify(notaDados)
-                });
-                
-                // Adicionar nova nota à lista local
-                this.state.notas.push(response);
-                
-                this.mostrarSucesso("Nota criada com sucesso!");
+                // Verificar se já existe nota para este aluno, disciplina, bimestre e ano
+                try {
+                    // Criar nova nota
+                    response = await ConfigModule.fetchApi('/notas', {
+                        method: 'POST',
+                        body: JSON.stringify(notaDados)
+                    });
+                    
+                    this.mostrarSucesso("Nota criada com sucesso!");
+                } catch (error) {
+                    if (error.message && error.message.includes('422')) {
+                        this.mostrarErro("Já existe uma nota para este aluno, disciplina, bimestre e ano.");
+                    } else {
+                        throw error; // Propagar outros erros
+                    }
+                    return; // Não limpar o formulário em caso de erro
+                }
             }
             
             // Resetar formulário e estado
             this.cancelarEdicao();
             
-            // Atualizar lista de notas
-            this.renderizarNotas();
+            // Recarregar notas se os filtros estiverem ativos
+            if (this.elements.filtroTurma.value) {
+                this.filtrarNotas();
+            }
             
         } catch (error) {
             console.error("Erro ao salvar nota:", error);
-            this.mostrarErro("Não foi possível salvar a nota. Tente novamente mais tarde.");
+            
+            // Extrair detalhes do erro, se disponíveis
+            let mensagemErro = "Não foi possível salvar a nota.";
+            if (error.message) {
+                if (error.message.includes('422')) {
+                    mensagemErro = "Os dados da nota não foram aceitos pelo servidor. Verifique se os campos estão preenchidos corretamente.";
+                } else if (error.message.includes('404')) {
+                    mensagemErro = "Recurso não encontrado no servidor.";
+                } else if (error.message.includes('403')) {
+                    mensagemErro = "Você não tem permissão para realizar esta operação.";
+                } else if (error.message.includes('500')) {
+                    mensagemErro = "Erro interno do servidor. Tente novamente mais tarde.";
+                }
+            }
+            
+            this.mostrarErro(mensagemErro);
         }
     },
     
@@ -532,6 +707,10 @@ const NotasModule = {
             this.elements.formNota.reset();
             this.elements.formNota.classList.add('d-none');
             this.elements.inputMediaFinal.textContent = '0.0';
+            
+            // Desabilitar selects dependentes
+            if (this.elements.selectDisciplina) this.elements.selectDisciplina.disabled = true;
+            if (this.elements.selectAluno) this.elements.selectAluno.disabled = true;
         }
     },
     
