@@ -43,7 +43,27 @@ const ConfigModule = {
                 throw new Error(`Erro ${response.status}: ${response.statusText}`);
             }
             
-            return await response.json();
+            // Para métodos DELETE, geralmente não há resposta em JSON
+            if (options.method === 'DELETE') {
+                // Verificar se há conteúdo na resposta
+                const text = await response.text();
+                // Se há texto, tentar converter para JSON
+                if (text) {
+                    try {
+                        return JSON.parse(text);
+                    } catch (e) {
+                        // Se não conseguir converter, retornar um objeto simples
+                        return { success: true, message: text || "Operação realizada com sucesso" };
+                    }
+                } else {
+                    // Se não tem texto, retornar um objeto simples indicando sucesso
+                    return { success: true, message: "Operação realizada com sucesso" };
+                }
+            }
+            
+            // Para outros métodos, tentar converter para JSON normalmente
+            const text = await response.text();
+            return text ? JSON.parse(text) : {};
         } catch (error) {
             console.error(`Erro na requisição para ${endpoint}:`, error);
             throw error;

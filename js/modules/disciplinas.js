@@ -164,13 +164,24 @@ const DisciplinasModule = {
     // Carregar turmas vinculadas a uma disciplina
     carregarTurmasVinculadas: async function(disciplinaId) {
         try {
+            console.log(`Carregando turmas vinculadas para disciplina ${disciplinaId}`);
             const turmasVinculadas = await ConfigModule.fetchApi(`/disciplinas/${disciplinaId}/turmas`);
+            
+            // Verificar se é um array
+            if (!Array.isArray(turmasVinculadas)) {
+                console.warn(`Resposta inesperada ao carregar turmas vinculadas para ${disciplinaId}:`, turmasVinculadas);
+                // Se não for um array, tratar como array vazio
+                this.state.turmasVinculadas = [];
+                return [];
+            }
+            
             this.state.turmasVinculadas = turmasVinculadas;
             console.log("Turmas vinculadas carregadas com sucesso:", turmasVinculadas);
             return turmasVinculadas;
         } catch (error) {
-            console.error("Erro ao carregar turmas vinculadas:", error);
-            this.mostrarErro("Não foi possível carregar as turmas vinculadas. Tente novamente mais tarde.");
+            console.error(`Erro ao carregar turmas vinculadas para disciplina ${disciplinaId}:`, error);
+            this.mostrarErro(`Não foi possível carregar as turmas vinculadas: ${error.message}`);
+            this.state.turmasVinculadas = [];
             return [];
         }
     },
@@ -194,20 +205,34 @@ const DisciplinasModule = {
             console.log(`Salvando turmas vinculadas para disciplina ${disciplinaId}:`, turmasIds);
             
             // Primeiro remover todos os vínculos existentes
-            await ConfigModule.fetchApi(`/disciplinas/${disciplinaId}/turmas`, {
-                method: 'DELETE'
-            });
+            try {
+                const resultadoDelete = await ConfigModule.fetchApi(`/disciplinas/${disciplinaId}/turmas`, {
+                    method: 'DELETE'
+                });
+                console.log("Vínculos removidos com sucesso:", resultadoDelete);
+            } catch (deleteError) {
+                console.error("Erro ao remover vínculos existentes:", deleteError);
+                // Continuar de qualquer forma, pois talvez não haja vínculos existentes
+            }
             
             // Depois adicionar os novos vínculos
             if (turmasIds.length > 0) {
-                await ConfigModule.fetchApi(`/disciplinas/${disciplinaId}/turmas`, {
-                    method: 'POST',
-                    body: JSON.stringify({ turmas_ids: turmasIds })
-                });
+                try {
+                    const resultadoPost = await ConfigModule.fetchApi(`/disciplinas/${disciplinaId}/turmas`, {
+                        method: 'POST',
+                        body: JSON.stringify({ turmas_ids: turmasIds })
+                    });
+                    console.log("Novos vínculos adicionados com sucesso:", resultadoPost);
+                } catch (postError) {
+                    console.error("Erro ao adicionar novos vínculos:", postError);
+                    this.mostrarErro(`Erro ao adicionar turmas: ${postError.message}`);
+                    return;
+                }
             }
             
             // Atualizar a lista de turmas vinculadas
-            await this.carregarTurmasVinculadas(disciplinaId);
+            const turmasAtualizadas = await this.carregarTurmasVinculadas(disciplinaId);
+            console.log("Lista de turmas vinculadas atualizada:", turmasAtualizadas);
             
             // Atualizar a lista de disciplinas para mostrar as turmas vinculadas
             await this.carregarDisciplinas();
@@ -220,7 +245,7 @@ const DisciplinasModule = {
             this.mostrarSucesso("Turmas vinculadas atualizadas com sucesso!");
         } catch (error) {
             console.error("Erro ao salvar turmas vinculadas:", error);
-            this.mostrarErro("Não foi possível salvar as turmas vinculadas. Tente novamente mais tarde.");
+            this.mostrarErro(`Não foi possível salvar as turmas vinculadas: ${error.message}`);
         }
     },
     
