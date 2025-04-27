@@ -532,26 +532,49 @@ const NotasModule = {
                     notaRecuperacao = parseFloat(nota.rec);
                 }
                 
-                // Verificar se a média deve ser alterada baseado na recuperação
-                // A média é calculada como a média das notas mensais e bimestrais,
-                // mas se a nota de recuperação for maior que a média, então a média é substituída
+                // Calcular a média base: (mensal + bimestral) / 2
                 const mediaBase = (notaMensal + notaBimestral) / 2;
                 
-                // Obter a média final, primeiro do campo específico, senão calcular
-                let mediaFinal = nota.media_final !== undefined && nota.media_final !== null ? 
-                    parseFloat(nota.media_final) : mediaBase;
+                // Determinar a situação do aluno com base na média
+                let situacao = '';
+                let corFundo = '';
+                let mediaFinal = mediaBase;
                 
-                // Se a nota de recuperação existir e for maior que a média, substituir
-                if (notaRecuperacao !== null && !isNaN(notaRecuperacao) && notaRecuperacao > mediaBase) {
-                    mediaFinal = notaRecuperacao;
+                if (mediaBase >= 6.0) {
+                    // Aprovado no bimestre - fundo verde claro
+                    situacao = 'Aprovado';
+                    corFundo = 'bg-success bg-opacity-10';
+                } else if (mediaBase >= 4.0 && mediaBase < 6.0) {
+                    // Recuperação - fundo amarelo claro
+                    situacao = 'Recuperação';
+                    corFundo = 'bg-warning bg-opacity-10';
+                    
+                    // Se tem nota de recuperação, calcular nova média: (mediaBase + recuperacao) / 2
+                    if (notaRecuperacao !== null && !isNaN(notaRecuperacao)) {
+                        mediaFinal = (mediaBase + notaRecuperacao) / 2;
+                    }
+                } else if (mediaBase < 4.0) {
+                    // Recuperação (caso crítico) - fundo vermelho claro
+                    situacao = 'Recuperação';
+                    corFundo = 'bg-danger bg-opacity-10';
+                    
+                    // Se tem nota de recuperação, calcular nova média: (mediaBase + recuperacao) / 2
+                    if (notaRecuperacao !== null && !isNaN(notaRecuperacao)) {
+                        mediaFinal = (mediaBase + notaRecuperacao) / 2;
+                    }
                 }
+                
+                // Arredondar para uma casa decimal - .toFixed(1) já faz isso, mas vamos garantir
+                // Exemplo: 5.25 deve virar 5.3
+                mediaFinal = Math.round(mediaFinal * 10) / 10;
                 
                 console.log("Notas processadas:", {
                     mensal: notaMensal, 
                     bimestral: notaBimestral, 
                     recuperacao: notaRecuperacao, 
                     mediaBase: mediaBase,
-                    mediaFinal: mediaFinal
+                    mediaFinal: mediaFinal,
+                    situacao: situacao
                 });
                 
                 // Se não conseguirmos encontrar os objetos relacionados, usamos os IDs diretamente
@@ -561,6 +584,12 @@ const NotasModule = {
                 
                 // Criar a linha da tabela
                 const row = document.createElement('tr');
+                
+                // Adicionar classe para cor de fundo baseada na situação
+                if (corFundo) {
+                    row.className = corFundo;
+                }
+                
                 row.innerHTML = `
                     <td>${nota.id || 'N/A'}</td>
                     <td>${turmaInfo}</td>
@@ -608,12 +637,18 @@ const NotasModule = {
         const notaBimestral = parseFloat(this.elements.inputNotaBimestral.value) || 0;
         const notaRecuperacao = parseFloat(this.elements.inputNotaRecuperacao.value) || 0;
         
-        let mediaFinal = (notaMensal + notaBimestral) / 2;
+        // Calcular média base (mensal + bimestral) / 2
+        let mediaBase = (notaMensal + notaBimestral) / 2;
+        let mediaFinal = mediaBase;
         
-        // Se houver nota de recuperação e for maior que a média, substituir
-        if (notaRecuperacao > 0 && notaRecuperacao > mediaFinal) {
-            mediaFinal = notaRecuperacao;
+        // Verificar situação com base na média
+        if (mediaBase < 6.0 && notaRecuperacao > 0) {
+            // Se média < 6.0 e tem nota de recuperação, calcular (média + recuperação) / 2
+            mediaFinal = (mediaBase + notaRecuperacao) / 2;
         }
+        
+        // Arredondar para uma casa decimal
+        mediaFinal = Math.round(mediaFinal * 10) / 10;
         
         this.elements.inputMediaFinal.textContent = mediaFinal.toFixed(1);
     },
