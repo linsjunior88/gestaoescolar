@@ -713,6 +713,8 @@ const NotasModule = {
                 return;
             }
             
+            console.log("Editando nota:", nota);
+            
             this.state.modoEdicao = true;
             this.state.notaSelecionada = nota;
             
@@ -730,17 +732,27 @@ const NotasModule = {
                 this.elements.inputAno.value = nota.ano;
                 this.elements.inputNotaMensal.value = nota.nota_mensal;
                 this.elements.inputNotaBimestral.value = nota.nota_bimestral;
-                this.elements.inputNotaRecuperacao.value = nota.nota_recuperacao || '';
+                
+                // Melhorar a detecção da nota de recuperação verificando todas as variações possíveis
+                let notaRecuperacao = null;
+                // Verificar todos os possíveis nomes para o campo de recuperação
+                if (nota.nota_recuperacao !== undefined && nota.nota_recuperacao !== null && nota.nota_recuperacao !== "") {
+                    notaRecuperacao = parseFloat(nota.nota_recuperacao);
+                } else if (nota.recuperacao !== undefined && nota.recuperacao !== null && nota.recuperacao !== "") {
+                    notaRecuperacao = parseFloat(nota.recuperacao);
+                } else if (nota.rec !== undefined && nota.rec !== null && nota.rec !== "") {
+                    notaRecuperacao = parseFloat(nota.rec);
+                }
+                
+                // Preencher o campo de recuperação se existir valor
+                if (notaRecuperacao !== null && !isNaN(notaRecuperacao)) {
+                    this.elements.inputNotaRecuperacao.value = notaRecuperacao;
+                } else {
+                    this.elements.inputNotaRecuperacao.value = '';
+                }
                 
                 // Calcular e mostrar a média
-                let mediaFinal = nota.media_final;
-                if (mediaFinal === undefined) {
-                    mediaFinal = (parseFloat(nota.nota_mensal) + parseFloat(nota.nota_bimestral)) / 2;
-                    if (nota.nota_recuperacao && parseFloat(nota.nota_recuperacao) > mediaFinal) {
-                        mediaFinal = parseFloat(nota.nota_recuperacao);
-                    }
-                }
-                this.elements.inputMediaFinal.textContent = (mediaFinal || 0).toFixed(1);
+                this.calcularMediaForm();
                 
                 this.elements.selectTurma.focus();
             }
