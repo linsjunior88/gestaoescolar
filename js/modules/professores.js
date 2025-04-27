@@ -195,7 +195,7 @@ const ProfessoresModule = {
                 turmas.forEach(turma => {
                     html += `<li>
                         <span class="badge bg-info">${turma.id_turma}</span> 
-                        ${turma.serie} - ${this.traduzirTurno(turma.turno)}
+                        ${turma.serie}
                     </li>`;
                 });
                 html += '</ul>';
