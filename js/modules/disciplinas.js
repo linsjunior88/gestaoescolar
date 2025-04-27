@@ -27,7 +27,9 @@ const DisciplinasModule = {
         btnSalvarDisciplina: null,
         btnCancelarDisciplina: null,
         btnNovaDisciplina: null,
-        btnSalvarTurmas: null
+        btnSalvarTurmas: null,
+        btnCancelarTurmas: null,
+        formTurmasVinculadas: null
     },
     
     // Inicializar módulo
@@ -43,6 +45,7 @@ const DisciplinasModule = {
     cachearElementos: function() {
         this.elements.listaDisciplinas = document.getElementById('lista-disciplinas');
         this.elements.formDisciplina = document.getElementById('form-disciplina');
+        this.elements.formTurmasVinculadas = document.getElementById('form-turmas-vinculadas');
         this.elements.inputIdDisciplina = document.getElementById('id-disciplina');
         this.elements.inputNomeDisciplina = document.getElementById('nome-disciplina');
         this.elements.inputCargaHoraria = document.getElementById('carga-horaria');
@@ -51,6 +54,18 @@ const DisciplinasModule = {
         this.elements.btnCancelarDisciplina = document.getElementById('btn-cancelar-disciplina');
         this.elements.btnNovaDisciplina = document.getElementById('btn-nova-disciplina');
         this.elements.btnSalvarTurmas = document.getElementById('btn-salvar-turmas');
+        this.elements.btnCancelarTurmas = document.getElementById('btn-cancelar-turmas');
+        
+        // Verificar se os elementos críticos foram encontrados
+        if (!this.elements.btnSalvarTurmas) {
+            console.warn('Botão "Salvar Turmas" não encontrado no DOM');
+        }
+        if (!this.elements.btnCancelarTurmas) {
+            console.warn('Botão "Cancelar Turmas" não encontrado no DOM');
+        }
+        if (!this.elements.formTurmasVinculadas) {
+            console.warn('Formulário de turmas vinculadas não encontrado no DOM');
+        }
     },
     
     // Adicionar event listeners
@@ -79,6 +94,12 @@ const DisciplinasModule = {
                 this.salvarTurmasVinculadas();
             });
         }
+        
+        if (this.elements.btnCancelarTurmas) {
+            this.elements.btnCancelarTurmas.addEventListener('click', () => {
+                this.cancelarEdicao();
+            });
+        }
     },
     
     // Carregar turmas da API
@@ -95,19 +116,36 @@ const DisciplinasModule = {
     
     // Popular select de turmas
     popularSelectTurmas: function() {
-        if (!this.elements.selectTurmas) return;
+        if (!this.elements.selectTurmas) {
+            console.error("Elemento select de turmas não encontrado");
+            return;
+        }
         
         // Limpar select
         this.elements.selectTurmas.innerHTML = '';
         
+        // Debug para verificar o conteúdo das turmas e turmas vinculadas
+        console.log("Turmas disponíveis:", this.state.turmas);
+        console.log("Turmas vinculadas:", this.state.turmasVinculadas);
+        
+        // Criar uma lista de IDs de turmas vinculadas para comparação fácil
+        const turmasVinculadasIds = this.state.turmasVinculadas.map(t => {
+            if (typeof t === 'object') {
+                return t.id_turma || t.id;
+            }
+            return t;
+        });
+        
         // Adicionar opções
         this.state.turmas.forEach(turma => {
+            const turmaId = turma.id_turma || turma.id;
             const option = document.createElement('option');
-            option.value = turma.id_turma || turma.id;
+            option.value = turmaId;
             option.textContent = `${turma.serie || 'N/A'} (${this.traduzirTurno(turma.turno) || 'N/A'})`;
-            option.selected = this.state.turmasVinculadas.some(
-                t => t.id_turma === (turma.id_turma || turma.id) || t === (turma.id_turma || turma.id)
-            );
+            
+            // Verificar se esta turma está vinculada
+            option.selected = turmasVinculadasIds.includes(turmaId);
+            
             this.elements.selectTurmas.appendChild(option);
         });
     },
@@ -139,11 +177,21 @@ const DisciplinasModule = {
     
     // Salvar turmas vinculadas
     salvarTurmasVinculadas: async function() {
-        if (!this.state.disciplinaSelecionada) return;
+        if (!this.state.disciplinaSelecionada) {
+            this.mostrarErro("Nenhuma disciplina selecionada para vincular turmas.");
+            return;
+        }
+        
+        if (!this.elements.selectTurmas) {
+            this.mostrarErro("Elemento de seleção de turmas não encontrado.");
+            return;
+        }
         
         try {
             const disciplinaId = this.state.disciplinaSelecionada.id_disciplina || this.state.disciplinaSelecionada.id;
             const turmasIds = Array.from(this.elements.selectTurmas.selectedOptions).map(option => option.value);
+            
+            console.log(`Salvando turmas vinculadas para disciplina ${disciplinaId}:`, turmasIds);
             
             // Primeiro remover todos os vínculos existentes
             await ConfigModule.fetchApi(`/disciplinas/${disciplinaId}/turmas`, {
@@ -163,6 +211,11 @@ const DisciplinasModule = {
             
             // Atualizar a lista de disciplinas para mostrar as turmas vinculadas
             await this.carregarDisciplinas();
+            
+            // Fechar o formulário
+            if (this.elements.formTurmasVinculadas) {
+                this.elements.formTurmasVinculadas.classList.add('d-none');
+            }
             
             this.mostrarSucesso("Turmas vinculadas atualizadas com sucesso!");
         } catch (error) {
@@ -319,7 +372,13 @@ const DisciplinasModule = {
         this.state.disciplinaSelecionada = disciplina;
         
         // Mostrar modal ou formulário de vínculo
-        document.getElementById('form-turmas-vinculadas').classList.remove('d-none');
+        if (this.elements.formTurmasVinculadas) {
+            this.elements.formTurmasVinculadas.classList.remove('d-none');
+        } else {
+            console.error("Formulário de vinculação de turmas não encontrado");
+            this.mostrarErro("Erro ao abrir o formulário de vinculação de turmas");
+            return;
+        }
         
         // Carregar e mostrar turmas vinculadas
         this.carregarTurmasVinculadas(id).then(() => {
@@ -402,9 +461,8 @@ const DisciplinasModule = {
         }
         
         // Esconder formulário de vínculo de turmas
-        const formTurmasVinculadas = document.getElementById('form-turmas-vinculadas');
-        if (formTurmasVinculadas) {
-            formTurmasVinculadas.classList.add('d-none');
+        if (this.elements.formTurmasVinculadas) {
+            this.elements.formTurmasVinculadas.classList.add('d-none');
         }
     },
     
