@@ -76,9 +76,23 @@ const ProfessoresModule = {
     carregarDisciplinas: async function() {
         try {
             const disciplinas = await ConfigModule.fetchApi('/disciplinas');
-            this.state.disciplinas = disciplinas;
+            console.log("Disciplinas brutas da API:", disciplinas);
+            
+            // Normalizar os dados para garantir consistência
+            this.state.disciplinas = disciplinas.map(d => {
+                // Garantir que temos um objeto com estrutura consistente
+                return {
+                    id: d.id,
+                    id_disciplina: d.id_disciplina || d.id,
+                    nome: d.nome_disciplina || d.nome || 'Sem nome',
+                    nome_disciplina: d.nome_disciplina || d.nome || 'Sem nome',
+                    carga_horaria: d.carga_horaria
+                };
+            });
+            
+            console.log("Disciplinas normalizadas:", this.state.disciplinas);
             this.popularSelectDisciplinas();
-            console.log("Disciplinas carregadas com sucesso para o módulo de professores:", disciplinas);
+            console.log("Disciplinas carregadas com sucesso para o módulo de professores");
         } catch (error) {
             console.error("Erro ao carregar disciplinas para o módulo de professores:", error);
             this.mostrarErro("Não foi possível carregar as disciplinas. Tente novamente mais tarde.");
@@ -95,10 +109,18 @@ const ProfessoresModule = {
         // Adicionar opções
         this.state.disciplinas.forEach(disciplina => {
             const option = document.createElement('option');
-            option.value = disciplina.id || '';
+            // Usamos id_disciplina como valor, pois é o que a API espera
+            option.value = disciplina.id_disciplina || '';
+            // Usamos o nome normalizado para exibição
             option.textContent = disciplina.nome || 'N/A';
+            
+            // DEBUG: Logar os valores das opções para verificação
+            console.log(`Criando option para disciplina: valor=${option.value}, texto=${option.textContent}`);
+            
             this.elements.selectDisciplinas.appendChild(option);
         });
+        
+        console.log("Select de disciplinas populado com", this.state.disciplinas.length, "opções");
     },
     
     // Carregar professores da API
@@ -168,8 +190,17 @@ const ProfessoresModule = {
         // Se disciplinas são IDs, buscar nomes no array de disciplinas
         if (typeof disciplinas[0] === 'string' || typeof disciplinas[0] === 'number') {
             const nomes = disciplinas.map(id => {
-                const disc = this.state.disciplinas.find(d => (d.id === id || d.id === parseInt(id)));
-                return disc ? disc.nome : 'Desconhecida';
+                // Procuramos a disciplina tanto pelo id quanto pelo id_disciplina
+                const disc = this.state.disciplinas.find(d => 
+                    d.id === id || 
+                    d.id === parseInt(id) || 
+                    d.id_disciplina === id
+                );
+                
+                // Debug para verificar as correspondências
+                console.log(`Procurando disciplina com ID: ${id}`, disc);
+                
+                return disc ? (disc.nome || disc.nome_disciplina) : `ID: ${id}`;
             });
             return nomes.join(', ');
         }
@@ -197,6 +228,8 @@ const ProfessoresModule = {
         const professor = this.state.professores.find(p => p.id === id);
         if (!professor) return;
         
+        console.log("Editando professor:", professor);
+        
         this.state.modoEdicao = true;
         this.state.professorSelecionado = professor;
         
@@ -208,6 +241,9 @@ const ProfessoresModule = {
             
             // Selecionar disciplinas do professor
             if (professor.disciplinas && Array.isArray(professor.disciplinas)) {
+                console.log("Disciplinas do professor:", professor.disciplinas);
+                console.log("Opções disponíveis:", Array.from(this.elements.selectDisciplinas.options).map(o => ({ value: o.value, text: o.textContent })));
+                
                 // Limpar seleções anteriores
                 Array.from(this.elements.selectDisciplinas.options).forEach(option => {
                     option.selected = false;
@@ -215,11 +251,22 @@ const ProfessoresModule = {
                 
                 // Selecionar disciplinas do professor
                 professor.disciplinas.forEach(disc => {
-                    const disciplinaId = typeof disc === 'object' ? disc.id : disc;
+                    // Normalizar o valor da disciplina para comparação
+                    const disciplinaId = typeof disc === 'object' ? (disc.id_disciplina || disc.id) : disc;
+                    
+                    console.log(`Procurando option para disciplina: ${disciplinaId}`);
+                    
+                    // Encontrar a opção correspondente
                     const option = Array.from(this.elements.selectDisciplinas.options).find(
                         opt => opt.value === disciplinaId.toString()
                     );
-                    if (option) option.selected = true;
+                    
+                    if (option) {
+                        console.log(`Marcando disciplina ${disciplinaId} como selecionada`);
+                        option.selected = true;
+                    } else {
+                        console.warn(`Disciplina ${disciplinaId} não encontrada nas opções disponíveis`);
+                    }
                 });
             }
             
@@ -235,6 +282,15 @@ const ProfessoresModule = {
                 option => option.value
             );
             
+            console.log("Disciplinas selecionadas:", disciplinasSelecionadas);
+            
+            // Se estivermos em modo de edição, precisamos identificar o campo correto para o ID do professor
+            let professorId = '';
+            if (this.state.modoEdicao && this.state.professorSelecionado) {
+                professorId = this.state.professorSelecionado.id_professor || this.state.professorSelecionado.id;
+                console.log(`Editando professor ID: ${professorId}`);
+            }
+            
             const professorDados = {
                 nome: this.elements.inputNomeProfessor.value,
                 email: this.elements.inputEmailProfessor.value,
@@ -242,14 +298,23 @@ const ProfessoresModule = {
                 disciplinas: disciplinasSelecionadas
             };
             
+            // Para modo de edição, podemos precisar adicionar mais campos
+            if (this.state.modoEdicao && this.state.professorSelecionado) {
+                professorDados.id_professor = professorId;
+            }
+            
+            console.log("Dados a serem enviados:", professorDados);
+            
             let response;
             
             if (this.state.modoEdicao && this.state.professorSelecionado) {
                 // Atualizar professor existente
-                response = await ConfigModule.fetchApi(`/professores/${this.state.professorSelecionado.id}`, {
+                response = await ConfigModule.fetchApi(`/professores/${professorId}`, {
                     method: 'PUT',
                     body: JSON.stringify(professorDados)
                 });
+                
+                console.log("Resposta da API (PUT):", response);
                 
                 // Atualizar professor na lista local
                 const index = this.state.professores.findIndex(p => p.id === this.state.professorSelecionado.id);
@@ -266,6 +331,8 @@ const ProfessoresModule = {
                     body: JSON.stringify(professorDados)
                 });
                 
+                console.log("Resposta da API (POST):", response);
+                
                 // Adicionar novo professor à lista local
                 this.state.professores.push(response);
                 
@@ -276,11 +343,11 @@ const ProfessoresModule = {
             this.cancelarEdicao();
             
             // Atualizar lista de professores
-            this.renderizarProfessores();
+            await this.carregarProfessores();
             
         } catch (error) {
             console.error("Erro ao salvar professor:", error);
-            this.mostrarErro("Não foi possível salvar o professor. Tente novamente mais tarde.");
+            this.mostrarErro(`Não foi possível salvar o professor: ${error.message || 'Erro desconhecido'}`);
         }
     },
     
