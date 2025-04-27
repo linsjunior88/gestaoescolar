@@ -520,18 +520,39 @@ const NotasModule = {
                 // Garantir que todas as propriedades numéricas existam para evitar erros
                 const notaMensal = nota.nota_mensal !== undefined ? parseFloat(nota.nota_mensal) : 0;
                 const notaBimestral = nota.nota_bimestral !== undefined ? parseFloat(nota.nota_bimestral) : 0;
-                const notaRecuperacao = nota.nota_recuperacao !== undefined && nota.nota_recuperacao !== null 
-                    ? parseFloat(nota.nota_recuperacao) 
-                    : null;
                 
-                // Calcular a média final se não estiver definida
-                let mediaFinal = nota.media_final !== undefined ? parseFloat(nota.media_final) : null;
-                if (mediaFinal === null) {
-                    mediaFinal = (notaMensal + notaBimestral) / 2;
-                    if (notaRecuperacao !== null && notaRecuperacao > mediaFinal) {
-                        mediaFinal = notaRecuperacao;
-                    }
+                // Melhorar a detecção da nota de recuperação verificando todas as variações possíveis
+                let notaRecuperacao = null;
+                // Verificar todos os possíveis nomes para o campo de recuperação
+                if (nota.nota_recuperacao !== undefined && nota.nota_recuperacao !== null && nota.nota_recuperacao !== "") {
+                    notaRecuperacao = parseFloat(nota.nota_recuperacao);
+                } else if (nota.recuperacao !== undefined && nota.recuperacao !== null && nota.recuperacao !== "") {
+                    notaRecuperacao = parseFloat(nota.recuperacao);
+                } else if (nota.rec !== undefined && nota.rec !== null && nota.rec !== "") {
+                    notaRecuperacao = parseFloat(nota.rec);
                 }
+                
+                // Verificar se a média deve ser alterada baseado na recuperação
+                // A média é calculada como a média das notas mensais e bimestrais,
+                // mas se a nota de recuperação for maior que a média, então a média é substituída
+                const mediaBase = (notaMensal + notaBimestral) / 2;
+                
+                // Obter a média final, primeiro do campo específico, senão calcular
+                let mediaFinal = nota.media_final !== undefined && nota.media_final !== null ? 
+                    parseFloat(nota.media_final) : mediaBase;
+                
+                // Se a nota de recuperação existir e for maior que a média, substituir
+                if (notaRecuperacao !== null && !isNaN(notaRecuperacao) && notaRecuperacao > mediaBase) {
+                    mediaFinal = notaRecuperacao;
+                }
+                
+                console.log("Notas processadas:", {
+                    mensal: notaMensal, 
+                    bimestral: notaBimestral, 
+                    recuperacao: notaRecuperacao, 
+                    mediaBase: mediaBase,
+                    mediaFinal: mediaFinal
+                });
                 
                 // Se não conseguirmos encontrar os objetos relacionados, usamos os IDs diretamente
                 const turmaInfo = turma ? `${turma.serie || turma.nome || 'N/A'} (${turma.turno || 'N/A'})` : turmaId || 'N/A';
@@ -549,8 +570,8 @@ const NotasModule = {
                     <td>${nota.ano || 'N/A'}</td>
                     <td>${typeof notaMensal === 'number' ? notaMensal.toFixed(1) : '0.0'}</td>
                     <td>${typeof notaBimestral === 'number' ? notaBimestral.toFixed(1) : '0.0'}</td>
-                    <td>${notaRecuperacao !== null ? (typeof notaRecuperacao === 'number' ? notaRecuperacao.toFixed(1) : '0.0') : 'N/A'}</td>
-                    <td>${typeof mediaFinal === 'number' ? mediaFinal.toFixed(1) : '0.0'}</td>
+                    <td>${notaRecuperacao !== null && !isNaN(notaRecuperacao) ? notaRecuperacao.toFixed(1) : 'N/A'}</td>
+                    <td>${typeof mediaFinal === 'number' && !isNaN(mediaFinal) ? mediaFinal.toFixed(1) : '0.0'}</td>
                     <td>
                         <button class="btn btn-sm btn-primary editar-nota" data-id="${nota.id}">
                             <i class="fas fa-edit"></i>
