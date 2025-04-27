@@ -321,11 +321,10 @@ const NotasModule = {
                 (d.id_disciplina && d.id_disciplina === nota.disciplina_id) || d.id === nota.disciplina_id
             ) || { nome_disciplina: 'N/A' };
             
-            // Buscar aluno na lista de alunos ou alunosFiltrados
+            // Buscar aluno na lista de alunos
             let aluno = { nome_aluno: 'N/A', nome: 'N/A' };
-            const todosAlunos = [...this.state.alunos, ...this.state.alunosFiltrados];
-            if (todosAlunos.length > 0) {
-                const alunoEncontrado = todosAlunos.find(a => 
+            if (this.state.alunos.length > 0) {
+                const alunoEncontrado = this.state.alunos.find(a => 
                     (a.id_aluno && a.id_aluno === nota.aluno_id) || a.id === nota.aluno_id
                 );
                 if (alunoEncontrado) {
@@ -381,8 +380,8 @@ const NotasModule = {
     },
     
     // Calcular média local (no formulário)
-    calcularMediaLocal: function() {
-        if (!this.elements.inputNotaMensal || !this.elements.inputNotaBimestral || !this.elements.spanMediaFinal) return;
+    calcularMediaForm: function() {
+        if (!this.elements.inputNotaMensal || !this.elements.inputNotaBimestral || !this.elements.inputMediaFinal) return;
         
         const notaMensal = parseFloat(this.elements.inputNotaMensal.value) || 0;
         const notaBimestral = parseFloat(this.elements.inputNotaBimestral.value) || 0;
@@ -395,7 +394,7 @@ const NotasModule = {
             mediaFinal = notaRecuperacao;
         }
         
-        this.elements.spanMediaFinal.textContent = mediaFinal.toFixed(1);
+        this.elements.inputMediaFinal.textContent = mediaFinal.toFixed(1);
     },
     
     // Calcular médias de todos os alunos
@@ -423,7 +422,7 @@ const NotasModule = {
         if (this.elements.formNota) {
             this.elements.formNota.reset();
             this.elements.formNota.classList.remove('d-none');
-            this.elements.spanMediaFinal.textContent = '0.0';
+            this.elements.inputMediaFinal.textContent = '0.0';
         }
         
         // Definir ano atual como padrão
@@ -456,7 +455,7 @@ const NotasModule = {
                 this.elements.inputNotaMensal.value = nota.nota_mensal;
                 this.elements.inputNotaBimestral.value = nota.nota_bimestral;
                 this.elements.inputNotaRecuperacao.value = nota.nota_recuperacao || '';
-                this.elements.spanMediaFinal.textContent = nota.media_final.toFixed(1);
+                this.elements.inputMediaFinal.textContent = nota.media_final.toFixed(1);
                 this.elements.selectTurma.focus();
             }
         });
@@ -532,7 +531,7 @@ const NotasModule = {
         if (this.elements.formNota) {
             this.elements.formNota.reset();
             this.elements.formNota.classList.add('d-none');
-            this.elements.spanMediaFinal.textContent = '0.0';
+            this.elements.inputMediaFinal.textContent = '0.0';
         }
     },
     

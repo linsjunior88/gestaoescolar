@@ -19,7 +19,7 @@ const TurmasModule = {
         listaTurmas: null,
         formTurma: null,
         inputIdTurma: null,
-        inputSerie: null,
+        inputNomeTurma: null,
         selectTurno: null,
         inputTipoTurma: null,
         inputCoordenador: null,
@@ -38,13 +38,13 @@ const TurmasModule = {
     
     // Cachear elementos DOM para melhor performance
     cachearElementos: function() {
-        this.elements.listaTurmas = document.getElementById('turmas-lista');
+        this.elements.listaTurmas = document.getElementById('lista-turmas');
         this.elements.formTurma = document.getElementById('form-turma');
-        this.elements.inputIdTurma = document.getElementById('id_turma_input');
-        this.elements.inputSerie = document.getElementById('serie');
+        this.elements.inputIdTurma = document.getElementById('id-turma');
+        this.elements.inputNomeTurma = document.getElementById('nome-turma');
         this.elements.selectTurno = document.getElementById('turno');
-        this.elements.inputTipoTurma = document.getElementById('tipo_turma');
-        this.elements.inputCoordenador = document.getElementById('coordenador');
+        this.elements.inputTipoTurma = document.getElementById('tipo-turma');
+        this.elements.inputCoordenador = document.getElementById('coordenador-turma');
         this.elements.btnSalvarTurma = document.getElementById('btn-salvar-turma');
         this.elements.btnCancelarTurma = document.getElementById('btn-cancelar-turma');
         this.elements.btnNovaTurma = document.getElementById('btn-nova-turma');
@@ -162,7 +162,7 @@ const TurmasModule = {
         if (this.elements.formTurma) {
             this.elements.formTurma.classList.remove('d-none');
             this.elements.inputIdTurma.value = turma.id_turma || turma.id || '';
-            this.elements.inputSerie.value = turma.serie || '';
+            this.elements.inputNomeTurma.value = turma.serie || '';
             this.elements.selectTurno.value = turma.turno || '';
             this.elements.inputTipoTurma.value = turma.tipo_turma || 'Regular';
             this.elements.inputCoordenador.value = turma.coordenador || '';
@@ -175,7 +175,7 @@ const TurmasModule = {
         try {
             const turmaDados = {
                 id_turma: this.elements.inputIdTurma.value,
-                serie: this.elements.inputSerie.value,
+                serie: this.elements.inputNomeTurma.value,
                 turno: this.elements.selectTurno.value,
                 tipo_turma: this.elements.inputTipoTurma.value,
                 coordenador: this.elements.inputCoordenador.value
