@@ -23,6 +23,10 @@ const NotasModule = {
             aluno: '',
             bimestre: '',
             ano: new Date().getFullYear()
+        },
+        ordenacao: {
+            coluna: 'id',
+            direcao: 'asc'
         }
     },
     
@@ -63,6 +67,9 @@ const NotasModule = {
         if (this.elements.filtroAno) {
             this.elements.filtroAno.value = new Date().getFullYear();
         }
+        
+        // Inicializar cabecalhos de ordenação
+        this.inicializarCabecalhosOrdenacao();
     },
     
     // Cachear elementos DOM para melhor performance
@@ -151,6 +158,15 @@ const NotasModule = {
                 this.carregarDependenciasFiltro(this.elements.filtroTurma.value);
             });
         }
+        
+        // Adicionar event listeners para cabeçalhos da tabela para ordenação
+        const cabecalhos = document.querySelectorAll('#tabela-notas th[data-ordenavel]');
+        cabecalhos.forEach(cabecalho => {
+            cabecalho.addEventListener('click', () => {
+                const coluna = cabecalho.dataset.coluna;
+                this.ordenarNotas(coluna);
+            });
+        });
     },
     
     // Carregar turmas para os selects
@@ -430,8 +446,12 @@ const NotasModule = {
     
     // Renderizar lista de notas
     renderizarNotas: function() {
-        if (!this.elements.listaNotas) return;
+        if (!this.elements.listaNotas) {
+            console.error("Elemento listaNotas não encontrado");
+            return;
+        }
         
+        // Limpar a tabela atual
         this.elements.listaNotas.innerHTML = '';
         
         if (this.state.notas.length === 0) {
@@ -441,112 +461,122 @@ const NotasModule = {
 
         console.log("Renderizando notas:", this.state.notas);
         
+        // Para cada nota, criar uma linha na tabela
         this.state.notas.forEach(nota => {
-            // Logs para depuração
-            console.log("Processando nota:", nota);
-            
-            // Encontrar nomes de turma, disciplina e aluno
-            const turmaId = nota.turma_id || nota.id_turma;
-            const disciplinaId = nota.disciplina_id || nota.id_disciplina;
-            const alunoId = nota.aluno_id || nota.id_aluno;
-            
-            console.log("IDs: Turma=", turmaId, "Disciplina=", disciplinaId, "Aluno=", alunoId);
-            
-            // Buscar turma por ID (procurar tanto id_turma quanto id)
-            const turma = this.state.turmas.find(t => 
-                String(t.id_turma) === String(turmaId) || 
-                String(t.id) === String(turmaId)
-            );
-            console.log("Turma encontrada:", turma);
-            
-            // Buscar disciplina nas listas disponíveis
-            let disciplina = null;
-            // Primeiro tentar na lista de disciplinas da turma
-            if (this.state.disciplinasTurma.length > 0) {
-                disciplina = this.state.disciplinasTurma.find(d => 
-                    String(d.id_disciplina) === String(disciplinaId) || 
-                    String(d.id) === String(disciplinaId)
+            try {
+                // Logs para depuração
+                console.log("Processando nota:", nota);
+                
+                // Encontrar nomes de turma, disciplina e aluno
+                const turmaId = nota.turma_id || nota.id_turma;
+                const disciplinaId = nota.disciplina_id || nota.id_disciplina;
+                const alunoId = nota.aluno_id || nota.id_aluno;
+                
+                console.log("IDs: Turma=", turmaId, "Disciplina=", disciplinaId, "Aluno=", alunoId);
+                
+                // Buscar turma por ID (procurar tanto id_turma quanto id)
+                const turma = this.state.turmas.find(t => 
+                    String(t.id_turma) === String(turmaId) || 
+                    String(t.id) === String(turmaId)
                 );
-            }
-            // Se não encontrar, buscar na lista global de disciplinas
-            if (!disciplina && this.state.disciplinas && this.state.disciplinas.length > 0) {
-                disciplina = this.state.disciplinas.find(d => 
-                    String(d.id_disciplina) === String(disciplinaId) || 
-                    String(d.id) === String(disciplinaId)
-                );
-            }
-            console.log("Disciplina encontrada:", disciplina);
-            
-            // Buscar aluno nas listas disponíveis
-            let aluno = null;
-            // Primeiro tentar na lista de alunos da turma
-            if (this.state.alunosTurma.length > 0) {
-                aluno = this.state.alunosTurma.find(a => 
-                    String(a.id_aluno) === String(alunoId) || 
-                    String(a.id) === String(alunoId)
-                );
-            }
-            // Se não encontrar, buscar na lista global de alunos
-            if (!aluno && this.state.alunos && this.state.alunos.length > 0) {
-                aluno = this.state.alunos.find(a => 
-                    String(a.id_aluno) === String(alunoId) || 
-                    String(a.id) === String(alunoId)
-                );
-            }
-            console.log("Aluno encontrado:", aluno);
-            
-            // Garantir que todas as propriedades numéricas existam para evitar erros
-            const notaMensal = nota.nota_mensal !== undefined ? parseFloat(nota.nota_mensal) : 0;
-            const notaBimestral = nota.nota_bimestral !== undefined ? parseFloat(nota.nota_bimestral) : 0;
-            const notaRecuperacao = nota.nota_recuperacao !== undefined && nota.nota_recuperacao !== null 
-                ? parseFloat(nota.nota_recuperacao) 
-                : null;
-            
-            // Calcular a média final se não estiver definida
-            let mediaFinal = nota.media_final !== undefined ? parseFloat(nota.media_final) : null;
-            if (mediaFinal === null) {
-                mediaFinal = (notaMensal + notaBimestral) / 2;
-                if (notaRecuperacao !== null && notaRecuperacao > mediaFinal) {
-                    mediaFinal = notaRecuperacao;
+                console.log("Turma encontrada:", turma);
+                
+                // Buscar disciplina nas listas disponíveis
+                let disciplina = null;
+                // Primeiro tentar na lista de disciplinas da turma
+                if (this.state.disciplinasTurma.length > 0) {
+                    disciplina = this.state.disciplinasTurma.find(d => 
+                        String(d.id_disciplina) === String(disciplinaId) || 
+                        String(d.id) === String(disciplinaId)
+                    );
                 }
+                // Se não encontrar, buscar na lista global de disciplinas
+                if (!disciplina && this.state.disciplinas && this.state.disciplinas.length > 0) {
+                    disciplina = this.state.disciplinas.find(d => 
+                        String(d.id_disciplina) === String(disciplinaId) || 
+                        String(d.id) === String(disciplinaId)
+                    );
+                }
+                console.log("Disciplina encontrada:", disciplina);
+                
+                // Buscar aluno nas listas disponíveis
+                let aluno = null;
+                // Primeiro tentar na lista de alunos da turma
+                if (this.state.alunosTurma.length > 0) {
+                    aluno = this.state.alunosTurma.find(a => 
+                        String(a.id_aluno) === String(alunoId) || 
+                        String(a.id) === String(alunoId)
+                    );
+                }
+                // Se não encontrar, buscar na lista global de alunos
+                if (!aluno && this.state.alunos && this.state.alunos.length > 0) {
+                    aluno = this.state.alunos.find(a => 
+                        String(a.id_aluno) === String(alunoId) || 
+                        String(a.id) === String(alunoId)
+                    );
+                }
+                console.log("Aluno encontrado:", aluno);
+                
+                // Garantir que todas as propriedades numéricas existam para evitar erros
+                const notaMensal = nota.nota_mensal !== undefined ? parseFloat(nota.nota_mensal) : 0;
+                const notaBimestral = nota.nota_bimestral !== undefined ? parseFloat(nota.nota_bimestral) : 0;
+                const notaRecuperacao = nota.nota_recuperacao !== undefined && nota.nota_recuperacao !== null 
+                    ? parseFloat(nota.nota_recuperacao) 
+                    : null;
+                
+                // Calcular a média final se não estiver definida
+                let mediaFinal = nota.media_final !== undefined ? parseFloat(nota.media_final) : null;
+                if (mediaFinal === null) {
+                    mediaFinal = (notaMensal + notaBimestral) / 2;
+                    if (notaRecuperacao !== null && notaRecuperacao > mediaFinal) {
+                        mediaFinal = notaRecuperacao;
+                    }
+                }
+                
+                // Se não conseguirmos encontrar os objetos relacionados, usamos os IDs diretamente
+                const turmaInfo = turma ? `${turma.serie || turma.nome || 'N/A'} (${turma.turno || 'N/A'})` : turmaId || 'N/A';
+                const disciplinaInfo = disciplina ? (disciplina.nome_disciplina || disciplina.nome || 'N/A') : disciplinaId || 'N/A';
+                const alunoInfo = aluno ? (aluno.nome_aluno || aluno.nome || 'N/A') : alunoId || 'N/A';
+                
+                // Criar a linha da tabela
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${nota.id || 'N/A'}</td>
+                    <td>${turmaInfo}</td>
+                    <td>${disciplinaInfo}</td>
+                    <td>${alunoInfo}</td>
+                    <td>${nota.bimestre || 'N/A'}º</td>
+                    <td>${nota.ano || 'N/A'}</td>
+                    <td>${typeof notaMensal === 'number' ? notaMensal.toFixed(1) : '0.0'}</td>
+                    <td>${typeof notaBimestral === 'number' ? notaBimestral.toFixed(1) : '0.0'}</td>
+                    <td>${notaRecuperacao !== null ? (typeof notaRecuperacao === 'number' ? notaRecuperacao.toFixed(1) : '0.0') : 'N/A'}</td>
+                    <td>${typeof mediaFinal === 'number' ? mediaFinal.toFixed(1) : '0.0'}</td>
+                    <td>
+                        <button class="btn btn-sm btn-primary editar-nota" data-id="${nota.id}">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-sm btn-danger excluir-nota" data-id="${nota.id}">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+                
+                // Adicionar event listeners para os botões
+                const btnEditar = row.querySelector('.editar-nota');
+                const btnExcluir = row.querySelector('.excluir-nota');
+                
+                if (btnEditar) btnEditar.addEventListener('click', () => this.editarNota(nota.id));
+                if (btnExcluir) btnExcluir.addEventListener('click', () => this.confirmarExclusao(nota.id));
+                
+                // Adicionar a linha à tabela
+                this.elements.listaNotas.appendChild(row);
+            } catch (error) {
+                console.error("Erro ao renderizar nota:", error, nota);
             }
-            
-            // Se não conseguirmos encontrar os objetos relacionados, usamos os IDs diretamente
-            const turmaInfo = turma ? `${turma.serie || turma.nome || 'N/A'} (${turma.turno || 'N/A'})` : turmaId || 'N/A';
-            const disciplinaInfo = disciplina ? (disciplina.nome_disciplina || disciplina.nome || 'N/A') : disciplinaId || 'N/A';
-            const alunoInfo = aluno ? (aluno.nome_aluno || aluno.nome || 'N/A') : alunoId || 'N/A';
-            
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${nota.id || 'N/A'}</td>
-                <td>${turmaInfo}</td>
-                <td>${disciplinaInfo}</td>
-                <td>${alunoInfo}</td>
-                <td>${nota.bimestre || 'N/A'}º</td>
-                <td>${nota.ano || 'N/A'}</td>
-                <td>${typeof notaMensal === 'number' ? notaMensal.toFixed(1) : '0.0'}</td>
-                <td>${typeof notaBimestral === 'number' ? notaBimestral.toFixed(1) : '0.0'}</td>
-                <td>${notaRecuperacao !== null ? (typeof notaRecuperacao === 'number' ? notaRecuperacao.toFixed(1) : '0.0') : 'N/A'}</td>
-                <td>${typeof mediaFinal === 'number' ? mediaFinal.toFixed(1) : '0.0'}</td>
-                <td>
-                    <button class="btn btn-sm btn-primary editar-nota" data-id="${nota.id}">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn btn-sm btn-danger excluir-nota" data-id="${nota.id}">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </td>
-            `;
-            
-            // Adicionar event listeners para os botões
-            const btnEditar = row.querySelector('.editar-nota');
-            const btnExcluir = row.querySelector('.excluir-nota');
-            
-            btnEditar.addEventListener('click', () => this.editarNota(nota.id));
-            btnExcluir.addEventListener('click', () => this.confirmarExclusao(nota.id));
-            
-            this.elements.listaNotas.appendChild(row);
         });
+        
+        // Atualizar ícones de ordenação
+        this.atualizarIconesOrdenacao();
     },
     
     // Calcular média local (no formulário)
@@ -870,6 +900,127 @@ const NotasModule = {
         setTimeout(() => {
             alertContainer.remove();
         }, 5000);
+    },
+    
+    // Inicializar cabeçalhos de ordenação
+    inicializarCabecalhosOrdenacao: function() {
+        // Adicionar ícones de ordenação aos cabeçalhos da tabela
+        const cabecalhos = document.querySelectorAll('#tabela-notas th[data-ordenavel]');
+        cabecalhos.forEach(cabecalho => {
+            const span = document.createElement('span');
+            span.className = 'ms-1';
+            span.innerHTML = '<i class="fas fa-sort text-muted"></i>';
+            cabecalho.appendChild(span);
+            
+            // Adicionar classe para indicar que é ordenável
+            cabecalho.classList.add('ordenavel');
+            
+            // Adicionar estilo de cursor pointer
+            cabecalho.style.cursor = 'pointer';
+        });
+    },
+    
+    // Ordenar notas por coluna
+    ordenarNotas: function(coluna) {
+        // Atualizar estado de ordenação
+        if (this.state.ordenacao.coluna === coluna) {
+            // Inverter direção se já estiver ordenando por esta coluna
+            this.state.ordenacao.direcao = this.state.ordenacao.direcao === 'asc' ? 'desc' : 'asc';
+        } else {
+            // Nova coluna, começar com ascendente
+            this.state.ordenacao.coluna = coluna;
+            this.state.ordenacao.direcao = 'asc';
+        }
+        
+        // Ordenar os dados
+        this.state.notas.sort((a, b) => {
+            let valorA, valorB;
+            
+            // Extrair valores baseados na coluna selecionada
+            switch (coluna) {
+                case 'id':
+                    valorA = a.id || 0;
+                    valorB = b.id || 0;
+                    break;
+                case 'turma':
+                    valorA = a.turma_id || a.id_turma || '';
+                    valorB = b.turma_id || b.id_turma || '';
+                    break;
+                case 'disciplina':
+                    valorA = a.disciplina_id || a.id_disciplina || '';
+                    valorB = b.disciplina_id || b.id_disciplina || '';
+                    break;
+                case 'aluno':
+                    valorA = a.aluno_id || a.id_aluno || '';
+                    valorB = b.aluno_id || b.id_aluno || '';
+                    break;
+                case 'bimestre':
+                    valorA = parseInt(a.bimestre) || 0;
+                    valorB = parseInt(b.bimestre) || 0;
+                    break;
+                case 'ano':
+                    valorA = parseInt(a.ano) || 0;
+                    valorB = parseInt(b.ano) || 0;
+                    break;
+                case 'nota_mensal':
+                    valorA = parseFloat(a.nota_mensal) || 0;
+                    valorB = parseFloat(b.nota_mensal) || 0;
+                    break;
+                case 'nota_bimestral':
+                    valorA = parseFloat(a.nota_bimestral) || 0;
+                    valorB = parseFloat(b.nota_bimestral) || 0;
+                    break;
+                case 'nota_recuperacao':
+                    valorA = a.nota_recuperacao !== null ? parseFloat(a.nota_recuperacao) || 0 : -1;
+                    valorB = b.nota_recuperacao !== null ? parseFloat(b.nota_recuperacao) || 0 : -1;
+                    break;
+                case 'media_final':
+                    const mediaA = a.media_final !== undefined ? parseFloat(a.media_final) : 
+                        ((parseFloat(a.nota_mensal) || 0) + (parseFloat(a.nota_bimestral) || 0)) / 2;
+                    const mediaB = b.media_final !== undefined ? parseFloat(b.media_final) : 
+                        ((parseFloat(b.nota_mensal) || 0) + (parseFloat(b.nota_bimestral) || 0)) / 2;
+                    valorA = mediaA;
+                    valorB = mediaB;
+                    break;
+                default:
+                    valorA = a[coluna];
+                    valorB = b[coluna];
+            }
+            
+            // Comparar valores baseado na direção
+            if (this.state.ordenacao.direcao === 'asc') {
+                return valorA > valorB ? 1 : -1;
+            } else {
+                return valorA < valorB ? 1 : -1;
+            }
+        });
+        
+        // Atualizar ícones de ordenação
+        this.atualizarIconesOrdenacao();
+        
+        // Renderizar notas ordenadas
+        this.renderizarNotas();
+    },
+    
+    // Atualizar ícones de ordenação nos cabeçalhos
+    atualizarIconesOrdenacao: function() {
+        const cabecalhos = document.querySelectorAll('#tabela-notas th[data-ordenavel]');
+        cabecalhos.forEach(cabecalho => {
+            const coluna = cabecalho.dataset.coluna;
+            const span = cabecalho.querySelector('span');
+            
+            if (coluna === this.state.ordenacao.coluna) {
+                // Coluna atualmente ordenada
+                if (this.state.ordenacao.direcao === 'asc') {
+                    span.innerHTML = '<i class="fas fa-sort-up"></i>';
+                } else {
+                    span.innerHTML = '<i class="fas fa-sort-down"></i>';
+                }
+            } else {
+                // Coluna não ordenada
+                span.innerHTML = '<i class="fas fa-sort text-muted"></i>';
+            }
+        });
     }
 };
 
