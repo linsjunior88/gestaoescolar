@@ -361,20 +361,35 @@ const ProfessoresModule = {
             modalElement.innerHTML = modalHtml;
             document.body.appendChild(modalElement.firstElementChild);
             
-            // Mostrar modal usando Bootstrap
+            // Buscar o elemento modal no DOM
             const modalElement2 = document.getElementById('vinculosModal');
+            
+            // Configurar e mostrar o modal usando Bootstrap
             const modal = new bootstrap.Modal(modalElement2, {
-                backdrop: 'static',
-                keyboard: true,
-                focus: true
+                backdrop: true, // Permite clicar fora para fechar
+                keyboard: true, // Permite usar ESC para fechar
+                focus: true     // Foca o modal quando abrir
             });
             
-            // Garantir que o modal possa ser fechado
+            // Garantir que o modal tenha foco quando abrir
+            modalElement2.addEventListener('shown.bs.modal', function() {
+                // Focar no botão de fechar
+                const closeButton = modalElement2.querySelector('.btn-close');
+                if (closeButton) {
+                    closeButton.focus();
+                }
+                
+                // Adicionar uma classe para garantir que o modal fique acima de outros elementos
+                modalElement2.style.zIndex = "1060";
+            });
+            
+            // Garantir que o modal possa ser fechado e removido do DOM quando fechado
             modalElement2.addEventListener('hidden.bs.modal', function() {
                 // Remover o modal do DOM quando for fechado
                 modalElement2.remove();
             });
             
+            // Mostrar o modal
             modal.show();
             
         } catch (error) {
