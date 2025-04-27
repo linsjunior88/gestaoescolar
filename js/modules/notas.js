@@ -1,6 +1,6 @@
 /**
  * Módulo de Notas
- * Contém todas as funções relacionadas à gestão de notas e avaliações
+ * Contém todas as funções relacionadas à gestão de notas dos alunos
  */
 
 import ConfigModule from './config.js';
@@ -15,7 +15,13 @@ const NotasModule = {
         turmas: [],
         disciplinas: [],
         alunos: [],
-        alunosFiltrados: []
+        filtros: {
+            turma: '',
+            disciplina: '',
+            aluno: '',
+            bimestre: '',
+            ano: new Date().getFullYear()
+        }
     },
     
     // Elementos DOM
@@ -30,7 +36,7 @@ const NotasModule = {
         inputNotaMensal: null,
         inputNotaBimestral: null,
         inputNotaRecuperacao: null,
-        spanMediaFinal: null,
+        inputMediaFinal: null,
         btnSalvarNota: null,
         btnCancelarNota: null,
         btnNovaNota: null,
@@ -57,8 +63,11 @@ const NotasModule = {
     
     // Cachear elementos DOM para melhor performance
     cachearElementos: function() {
-        this.elements.listaNotas = document.getElementById('lista-notas');
+        // Form e lista principal
+        this.elements.listaNotas = document.getElementById('notas-lista');
         this.elements.formNota = document.getElementById('form-nota');
+        
+        // Elementos do form
         this.elements.selectTurma = document.getElementById('turma-nota');
         this.elements.selectDisciplina = document.getElementById('disciplina-nota');
         this.elements.selectAluno = document.getElementById('aluno-nota');
@@ -67,17 +76,21 @@ const NotasModule = {
         this.elements.inputNotaMensal = document.getElementById('nota-mensal');
         this.elements.inputNotaBimestral = document.getElementById('nota-bimestral');
         this.elements.inputNotaRecuperacao = document.getElementById('nota-recuperacao');
-        this.elements.spanMediaFinal = document.getElementById('media-final');
+        this.elements.inputMediaFinal = document.getElementById('media-final');
+        
+        // Botões principais
         this.elements.btnSalvarNota = document.getElementById('btn-salvar-nota');
         this.elements.btnCancelarNota = document.getElementById('btn-cancelar-nota');
         this.elements.btnNovaNota = document.getElementById('btn-nova-nota');
+        this.elements.btnCalcularMedias = document.getElementById('btn-calcular-medias');
+        
+        // Filtros
         this.elements.filtroTurma = document.getElementById('filtro-turma-nota');
         this.elements.filtroDisciplina = document.getElementById('filtro-disciplina-nota');
         this.elements.filtroAluno = document.getElementById('filtro-aluno-nota');
         this.elements.filtroBimestre = document.getElementById('filtro-bimestre-nota');
         this.elements.filtroAno = document.getElementById('filtro-ano-nota');
         this.elements.btnFiltrar = document.getElementById('btn-filtrar-notas');
-        this.elements.btnCalcularMedias = document.getElementById('btn-calcular-medias');
     },
     
     // Adicionar event listeners
@@ -107,32 +120,24 @@ const NotasModule = {
             });
         }
         
+        // Listener para o botão de calcular médias
         if (this.elements.btnCalcularMedias) {
             this.elements.btnCalcularMedias.addEventListener('click', () => {
                 this.calcularMedias();
             });
         }
         
-        // Event listeners para calcular média em tempo real
-        if (this.elements.inputNotaMensal && this.elements.inputNotaBimestral && this.elements.inputNotaRecuperacao) {
-            [this.elements.inputNotaMensal, this.elements.inputNotaBimestral, this.elements.inputNotaRecuperacao].forEach(input => {
-                input.addEventListener('input', () => {
-                    this.calcularMediaLocal();
-                });
-            });
+        // Listeners para os inputs de notas para atualizar a média automaticamente
+        if (this.elements.inputNotaMensal && this.elements.inputNotaBimestral) {
+            this.elements.inputNotaMensal.addEventListener('input', () => this.calcularMediaForm());
+            this.elements.inputNotaBimestral.addEventListener('input', () => this.calcularMediaForm());
+            this.elements.inputNotaRecuperacao.addEventListener('input', () => this.calcularMediaForm());
         }
         
-        // Event listener para carregar alunos quando a turma for selecionada
+        // Listener para o select de turma para atualizar a lista de alunos
         if (this.elements.selectTurma) {
             this.elements.selectTurma.addEventListener('change', () => {
                 this.carregarAlunosPorTurma(this.elements.selectTurma.value);
-            });
-        }
-        
-        // Event listener para carregar alunos quando a turma for selecionada no filtro
-        if (this.elements.filtroTurma) {
-            this.elements.filtroTurma.addEventListener('change', () => {
-                this.carregarAlunosPorTurma(this.elements.filtroTurma.value, true);
             });
         }
     },
@@ -160,35 +165,6 @@ const NotasModule = {
         } catch (error) {
             console.error("Erro ao carregar disciplinas para o módulo de notas:", error);
             this.mostrarErro("Não foi possível carregar as disciplinas. Tente novamente mais tarde.");
-        }
-    },
-    
-    // Carregar alunos por turma
-    carregarAlunosPorTurma: async function(turmaId, paraFiltro = false) {
-        if (!turmaId) {
-            // Se não houver turma selecionada, limpar o select de alunos
-            const selectAluno = paraFiltro ? this.elements.filtroAluno : this.elements.selectAluno;
-            if (selectAluno) {
-                selectAluno.innerHTML = '<option value="">Selecione um aluno</option>';
-            }
-            return;
-        }
-        
-        try {
-            const alunos = await ConfigModule.fetchApi(`/alunos?turma_id=${turmaId}`);
-            
-            if (paraFiltro) {
-                this.state.alunosFiltrados = alunos;
-                this.popularSelectAlunosFiltro();
-            } else {
-                this.state.alunos = alunos;
-                this.popularSelectAlunos();
-            }
-            
-            console.log("Alunos carregados com sucesso para a turma:", turmaId);
-        } catch (error) {
-            console.error("Erro ao carregar alunos para a turma:", error);
-            this.mostrarErro("Não foi possível carregar os alunos. Tente novamente mais tarde.");
         }
     },
     
@@ -226,45 +202,60 @@ const NotasModule = {
         this.state.disciplinas.forEach(disciplina => {
             const option1 = document.createElement('option');
             option1.value = disciplina.id_disciplina || disciplina.id;
-            option1.textContent = disciplina.nome_disciplina || disciplina.nome;
+            option1.textContent = disciplina.nome_disciplina || disciplina.nome || 'N/A';
             this.elements.selectDisciplina.appendChild(option1);
             
             const option2 = document.createElement('option');
             option2.value = disciplina.id_disciplina || disciplina.id;
-            option2.textContent = disciplina.nome_disciplina || disciplina.nome;
+            option2.textContent = disciplina.nome_disciplina || disciplina.nome || 'N/A';
             this.elements.filtroDisciplina.appendChild(option2);
         });
     },
     
+    // Carregar alunos por turma
+    carregarAlunosPorTurma: async function(turmaId) {
+        if (!turmaId) {
+            this.state.alunos = [];
+            this.popularSelectAlunos();
+            return;
+        }
+        
+        try {
+            const alunos = await ConfigModule.fetchApi(`/alunos?turma_id=${turmaId}`);
+            this.state.alunos = alunos;
+            this.popularSelectAlunos();
+            console.log("Alunos carregados com sucesso para a turma:", turmaId);
+        } catch (error) {
+            console.error("Erro ao carregar alunos para a turma:", turmaId, error);
+            this.mostrarErro("Não foi possível carregar os alunos. Tente novamente mais tarde.");
+        }
+    },
+    
     // Popular select de alunos
     popularSelectAlunos: function() {
-        if (!this.elements.selectAluno) return;
+        if (!this.elements.selectAluno || !this.elements.filtroAluno) return;
         
-        // Limpar select
+        // Limpar selects
         this.elements.selectAluno.innerHTML = '<option value="">Selecione um aluno</option>';
+        
+        // Também atualizar filtro de alunos, mantendo a opção todos
+        if (this.elements.filtroAluno) {
+            this.elements.filtroAluno.innerHTML = '<option value="">Todos os alunos</option>';
+        }
         
         // Adicionar opções
         this.state.alunos.forEach(aluno => {
-            const option = document.createElement('option');
-            option.value = aluno.id_aluno || aluno.id;
-            option.textContent = aluno.nome_aluno || aluno.nome;
-            this.elements.selectAluno.appendChild(option);
-        });
-    },
-    
-    // Popular select de alunos para filtro
-    popularSelectAlunosFiltro: function() {
-        if (!this.elements.filtroAluno) return;
-        
-        // Limpar select
-        this.elements.filtroAluno.innerHTML = '<option value="">Todos os alunos</option>';
-        
-        // Adicionar opções
-        this.state.alunosFiltrados.forEach(aluno => {
-            const option = document.createElement('option');
-            option.value = aluno.id_aluno || aluno.id;
-            option.textContent = aluno.nome_aluno || aluno.nome;
-            this.elements.filtroAluno.appendChild(option);
+            const option1 = document.createElement('option');
+            option1.value = aluno.id_aluno || aluno.id;
+            option1.textContent = aluno.nome_aluno || aluno.nome || 'N/A';
+            this.elements.selectAluno.appendChild(option1);
+            
+            if (this.elements.filtroAluno) {
+                const option2 = document.createElement('option');
+                option2.value = aluno.id_aluno || aluno.id;
+                option2.textContent = aluno.nome_aluno || aluno.nome || 'N/A';
+                this.elements.filtroAluno.appendChild(option2);
+            }
         });
     },
     

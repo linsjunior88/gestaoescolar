@@ -12,7 +12,7 @@ const ProfessoresModule = {
         professores: [],
         professorSelecionado: null,
         modoEdicao: false,
-        disciplinas: [] // Para o select de disciplinas
+        disciplinas: [] // Para vincular disciplinas aos professores
     },
     
     // Elementos DOM
@@ -20,9 +20,9 @@ const ProfessoresModule = {
         listaProfessores: null,
         formProfessor: null,
         inputNomeProfessor: null,
-        inputEmail: null,
-        inputFormacao: null,
-        selectDisciplinas: null,
+        inputEmailProfessor: null,
+        inputFormacaoProfessor: null,
+        selectDisciplinasProfessor: null,
         btnSalvarProfessor: null,
         btnCancelarProfessor: null,
         btnNovoProfessor: null
@@ -42,9 +42,9 @@ const ProfessoresModule = {
         this.elements.listaProfessores = document.getElementById('lista-professores');
         this.elements.formProfessor = document.getElementById('form-professor');
         this.elements.inputNomeProfessor = document.getElementById('nome-professor');
-        this.elements.inputEmail = document.getElementById('email-professor');
-        this.elements.inputFormacao = document.getElementById('formacao-professor');
-        this.elements.selectDisciplinas = document.getElementById('disciplinas-professor');
+        this.elements.inputEmailProfessor = document.getElementById('email-professor');
+        this.elements.inputFormacaoProfessor = document.getElementById('formacao-professor');
+        this.elements.selectDisciplinasProfessor = document.getElementById('disciplinas-professor');
         this.elements.btnSalvarProfessor = document.getElementById('btn-salvar-professor');
         this.elements.btnCancelarProfessor = document.getElementById('btn-cancelar-professor');
         this.elements.btnNovoProfessor = document.getElementById('btn-novo-professor');
@@ -87,17 +87,17 @@ const ProfessoresModule = {
     
     // Popular select de disciplinas
     popularSelectDisciplinas: function() {
-        if (!this.elements.selectDisciplinas) return;
+        if (!this.elements.selectDisciplinasProfessor) return;
         
         // Limpar select
-        this.elements.selectDisciplinas.innerHTML = '';
+        this.elements.selectDisciplinasProfessor.innerHTML = '';
         
         // Adicionar opções
         this.state.disciplinas.forEach(disciplina => {
             const option = document.createElement('option');
             option.value = disciplina.id_disciplina || disciplina.id;
-            option.textContent = disciplina.nome_disciplina || disciplina.nome;
-            this.elements.selectDisciplinas.appendChild(option);
+            option.textContent = disciplina.nome_disciplina || disciplina.nome || 'N/A';
+            this.elements.selectDisciplinasProfessor.appendChild(option);
         });
     },
     
@@ -121,30 +121,21 @@ const ProfessoresModule = {
         this.elements.listaProfessores.innerHTML = '';
         
         if (this.state.professores.length === 0) {
-            this.elements.listaProfessores.innerHTML = '<tr><td colspan="5" class="text-center">Nenhum professor cadastrado</td></tr>';
+            this.elements.listaProfessores.innerHTML = '<tr><td colspan="6" class="text-center">Nenhum professor cadastrado</td></tr>';
             return;
         }
         
         this.state.professores.forEach(professor => {
+            // Obter nomes das disciplinas
+            const disciplinasNomes = this.obterNomesDisciplinas(professor.disciplinas || []);
+            
             const row = document.createElement('tr');
-            
-            // Encontrar disciplinas do professor
-            let disciplinasTexto = 'Desconhecida';
-            if (professor.disciplinas && professor.disciplinas.length > 0) {
-                const disciplinasNomes = professor.disciplinas.map(id => {
-                    const disciplina = this.state.disciplinas.find(d => 
-                        (d.id_disciplina && d.id_disciplina === id) || d.id === id);
-                    return disciplina ? (disciplina.nome_disciplina || disciplina.nome) : 'Desconhecida';
-                });
-                disciplinasTexto = disciplinasNomes.join(', ');
-            }
-            
             row.innerHTML = `
                 <td>${professor.id_professor || professor.id || 'N/A'}</td>
                 <td>${professor.nome_professor || professor.nome || 'N/A'}</td>
                 <td>${professor.email || 'N/A'}</td>
                 <td>${professor.formacao || 'N/A'}</td>
-                <td>${disciplinasTexto}</td>
+                <td>${disciplinasNomes}</td>
                 <td>
                     <button class="btn btn-sm btn-primary editar-professor" data-id="${professor.id_professor || professor.id}">
                         <i class="fas fa-edit"></i>
@@ -166,6 +157,22 @@ const ProfessoresModule = {
         });
     },
     
+    // Obter nomes das disciplinas a partir dos IDs
+    obterNomesDisciplinas: function(disciplinasIds) {
+        if (!disciplinasIds || !Array.isArray(disciplinasIds) || disciplinasIds.length === 0) {
+            return 'N/A';
+        }
+        
+        const disciplinasNomes = disciplinasIds.map(id => {
+            const disciplina = this.state.disciplinas.find(d => 
+                (d.id_disciplina === id) || (d.id === id)
+            );
+            return disciplina ? (disciplina.nome_disciplina || disciplina.nome) : id;
+        });
+        
+        return disciplinasNomes.join(', ');
+    },
+    
     // Criar novo professor
     novoProfessor: function() {
         this.state.modoEdicao = false;
@@ -183,7 +190,10 @@ const ProfessoresModule = {
     
     // Editar professor existente
     editarProfessor: function(id) {
-        const professor = this.state.professores.find(p => p.id === id);
+        const professor = this.state.professores.find(p => 
+            (p.id_professor === id) || (p.id === id)
+        );
+        
         if (!professor) return;
         
         this.state.modoEdicao = true;
@@ -191,14 +201,15 @@ const ProfessoresModule = {
         
         if (this.elements.formProfessor) {
             this.elements.formProfessor.classList.remove('d-none');
-            this.elements.inputNomeProfessor.value = professor.nome;
-            this.elements.inputEmail.value = professor.email || '';
-            this.elements.inputFormacao.value = professor.formacao || '';
+            this.elements.inputNomeProfessor.value = professor.nome_professor || professor.nome || '';
+            this.elements.inputEmailProfessor.value = professor.email || '';
+            this.elements.inputFormacaoProfessor.value = professor.formacao || '';
             
             // Selecionar disciplinas
-            if (this.elements.selectDisciplinas) {
-                Array.from(this.elements.selectDisciplinas.options).forEach(option => {
-                    option.selected = professor.disciplinas && professor.disciplinas.includes(parseInt(option.value));
+            if (this.elements.selectDisciplinasProfessor && professor.disciplinas) {
+                // Limpar seleções anteriores
+                Array.from(this.elements.selectDisciplinasProfessor.options).forEach(option => {
+                    option.selected = professor.disciplinas.includes(option.value);
                 });
             }
             
@@ -209,27 +220,33 @@ const ProfessoresModule = {
     // Salvar professor (criar novo ou atualizar existente)
     salvarProfessor: async function() {
         try {
-            // Obter disciplinas selecionadas
-            const disciplinasSelecionadas = Array.from(this.elements.selectDisciplinas.selectedOptions).map(option => parseInt(option.value));
+            // Obter IDs das disciplinas selecionadas
+            const disciplinasSelecionadas = Array.from(this.elements.selectDisciplinasProfessor.selectedOptions).map(option => option.value);
             
             const professorDados = {
-                nome: this.elements.inputNomeProfessor.value,
-                email: this.elements.inputEmail.value,
-                formacao: this.elements.inputFormacao.value,
+                nome_professor: this.elements.inputNomeProfessor.value,
+                email: this.elements.inputEmailProfessor.value,
+                formacao: this.elements.inputFormacaoProfessor.value,
                 disciplinas: disciplinasSelecionadas
             };
             
             let response;
             
             if (this.state.modoEdicao && this.state.professorSelecionado) {
+                // Identificador para a API
+                const professorId = this.state.professorSelecionado.id_professor || this.state.professorSelecionado.id;
+                
                 // Atualizar professor existente
-                response = await ConfigModule.fetchApi(`/professores/${this.state.professorSelecionado.id}`, {
+                response = await ConfigModule.fetchApi(`/professores/${professorId}`, {
                     method: 'PUT',
                     body: JSON.stringify(professorDados)
                 });
                 
                 // Atualizar professor na lista local
-                const index = this.state.professores.findIndex(p => p.id === this.state.professorSelecionado.id);
+                const index = this.state.professores.findIndex(p => 
+                    (p.id_professor === professorId) || (p.id === professorId)
+                );
+                
                 if (index !== -1) {
                     this.state.professores[index] = { ...this.state.professores[index], ...professorDados };
                 }
@@ -281,12 +298,16 @@ const ProfessoresModule = {
     // Excluir professor
     excluirProfessor: async function(id) {
         try {
-            await ConfigModule.fetchApi(`/professores/${id}`, {
+            const professorId = id;
+            
+            await ConfigModule.fetchApi(`/professores/${professorId}`, {
                 method: 'DELETE'
             });
             
             // Remover professor da lista local
-            this.state.professores = this.state.professores.filter(p => p.id !== id);
+            this.state.professores = this.state.professores.filter(p => 
+                (p.id_professor !== professorId) && (p.id !== professorId)
+            );
             
             // Atualizar lista de professores
             this.renderizarProfessores();

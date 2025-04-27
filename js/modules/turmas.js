@@ -19,12 +19,13 @@ const TurmasModule = {
         listaTurmas: null,
         formTurma: null,
         inputIdTurma: null,
-        inputNomeTurma: null,
-        inputTurno: null,
-        inputTipo: null,
+        inputSerie: null,
+        selectTurno: null,
+        inputTipoTurma: null,
         inputCoordenador: null,
         btnSalvarTurma: null,
-        btnCancelarTurma: null
+        btnCancelarTurma: null,
+        btnNovaTurma: null
     },
     
     // Inicializar módulo
@@ -37,13 +38,13 @@ const TurmasModule = {
     
     // Cachear elementos DOM para melhor performance
     cachearElementos: function() {
-        this.elements.listaTurmas = document.getElementById('lista-turmas');
+        this.elements.listaTurmas = document.getElementById('turmas-lista');
         this.elements.formTurma = document.getElementById('form-turma');
-        this.elements.inputIdTurma = document.getElementById('id-turma');
-        this.elements.inputNomeTurma = document.getElementById('nome-turma');
-        this.elements.inputTurno = document.getElementById('turno');
-        this.elements.inputTipo = document.getElementById('tipo-turma');
-        this.elements.inputCoordenador = document.getElementById('coordenador-turma');
+        this.elements.inputIdTurma = document.getElementById('id_turma_input');
+        this.elements.inputSerie = document.getElementById('serie');
+        this.elements.selectTurno = document.getElementById('turno');
+        this.elements.inputTipoTurma = document.getElementById('tipo_turma');
+        this.elements.inputCoordenador = document.getElementById('coordenador');
         this.elements.btnSalvarTurma = document.getElementById('btn-salvar-turma');
         this.elements.btnCancelarTurma = document.getElementById('btn-cancelar-turma');
         this.elements.btnNovaTurma = document.getElementById('btn-nova-turma');
@@ -96,14 +97,11 @@ const TurmasModule = {
         }
         
         this.state.turmas.forEach(turma => {
-            // Normalizar o turno para exibição
-            const turnoExibicao = this.normalizarTurno(turma.turno);
-            
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td>${turma.id_turma || turma.id || 'N/A'}</td>
                 <td>${turma.serie || 'N/A'}</td>
-                <td>${turnoExibicao}</td>
+                <td>${this.traduzirTurno(turma.turno) || 'N/A'}</td>
                 <td>${turma.tipo_turma || 'Regular'}</td>
                 <td>${turma.coordenador || 'N/A'}</td>
                 <td>
@@ -127,22 +125,15 @@ const TurmasModule = {
         });
     },
     
-    // Normalizar valores de turno para exibição
-    normalizarTurno: function(turno) {
-        if (!turno) return 'N/A';
+    // Traduzir o valor do turno para texto legível
+    traduzirTurno: function(turno) {
+        const turnos = {
+            'manha': 'Manhã',
+            'tarde': 'Tarde',
+            'noite': 'Noite'
+        };
         
-        turno = turno.toLowerCase();
-        
-        if (turno === 'manha' || turno === 'manhã') {
-            return 'Manhã';
-        } else if (turno === 'tarde') {
-            return 'Tarde';
-        } else if (turno === 'noite') {
-            return 'Noite';
-        }
-        
-        // Primeira letra maiúscula como fallback
-        return turno.charAt(0).toUpperCase() + turno.slice(1);
+        return turnos[turno] || turno;
     },
     
     // Criar nova turma
@@ -155,56 +146,26 @@ const TurmasModule = {
             this.elements.formTurma.classList.remove('d-none');
         }
         
-        if (this.elements.inputNomeTurma) {
-            this.elements.inputNomeTurma.focus();
+        if (this.elements.inputIdTurma) {
+            this.elements.inputIdTurma.focus();
         }
     },
     
     // Editar turma existente
     editarTurma: function(id) {
-        // Encontrar a turma pelo id ou id_turma
         const turma = this.state.turmas.find(t => (t.id_turma === id) || (t.id === id));
-        if (!turma) {
-            console.error("Turma não encontrada com ID:", id);
-            return;
-        }
-        
-        console.log("Editando turma:", turma);
+        if (!turma) return;
         
         this.state.modoEdicao = true;
         this.state.turmaSelecionada = turma;
         
         if (this.elements.formTurma) {
             this.elements.formTurma.classList.remove('d-none');
-            
-            // Normalizar o valor do turno para o select
-            let turnoValue = '';
-            if (turma.turno) {
-                const turnoLower = turma.turno.toLowerCase();
-                if (turnoLower.includes('manha') || turnoLower.includes('manhã')) {
-                    turnoValue = 'manha';
-                } else if (turnoLower.includes('tarde')) {
-                    turnoValue = 'tarde';
-                } else if (turnoLower.includes('noite')) {
-                    turnoValue = 'noite';
-                } else {
-                    turnoValue = turma.turno;
-                }
-            }
-            
-            // Preencher o formulário com os valores da turma
-            this.elements.inputIdTurma.value = turma.id_turma || '';
-            this.elements.inputNomeTurma.value = turma.serie || '';
-            this.elements.inputTurno.value = turnoValue;
-            
-            // Se temos os novos campos, preenchê-los também
-            if (this.elements.inputTipo) {
-                this.elements.inputTipo.value = turma.tipo_turma || 'Regular';
-            }
-            if (this.elements.inputCoordenador) {
-                this.elements.inputCoordenador.value = turma.coordenador || '';
-            }
-            
+            this.elements.inputIdTurma.value = turma.id_turma || turma.id || '';
+            this.elements.inputSerie.value = turma.serie || '';
+            this.elements.selectTurno.value = turma.turno || '';
+            this.elements.inputTipoTurma.value = turma.tipo_turma || 'Regular';
+            this.elements.inputCoordenador.value = turma.coordenador || '';
             this.elements.inputIdTurma.focus();
         }
     },
@@ -214,13 +175,11 @@ const TurmasModule = {
         try {
             const turmaDados = {
                 id_turma: this.elements.inputIdTurma.value,
-                serie: this.elements.inputNomeTurma.value,
-                turno: this.elements.inputTurno.value,
-                tipo_turma: this.elements.inputTipo ? this.elements.inputTipo.value : 'Regular',
-                coordenador: this.elements.inputCoordenador ? this.elements.inputCoordenador.value : ''
+                serie: this.elements.inputSerie.value,
+                turno: this.elements.selectTurno.value,
+                tipo_turma: this.elements.inputTipoTurma.value,
+                coordenador: this.elements.inputCoordenador.value
             };
-            
-            console.log("Salvando turma com dados:", turmaDados);
             
             let response;
             
@@ -257,8 +216,10 @@ const TurmasModule = {
                 this.mostrarSucesso("Turma criada com sucesso!");
             }
             
+            // Resetar formulário e estado
             this.cancelarEdicao();
             
+            // Atualizar lista de turmas
             this.renderizarTurmas();
             
         } catch (error) {
