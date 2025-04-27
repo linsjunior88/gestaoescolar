@@ -320,11 +320,13 @@ const AlunosModule = {
             
             if (coluna === 'turma') {
                 const turmaA = this.state.turmas.find(t => 
-                    (t.id_turma && t.id_turma === a.turma_id) || t.id === a.turma_id
+                    (t.id_turma && (t.id_turma === a.id_turma || t.id_turma === a.turma_id)) || 
+                    (t.id && (t.id === a.id_turma || t.id === a.turma_id))
                 ) || { id_turma: '', serie: '' };
                 
                 const turmaB = this.state.turmas.find(t => 
-                    (t.id_turma && t.id_turma === b.turma_id) || t.id === b.turma_id
+                    (t.id_turma && (t.id_turma === b.id_turma || t.id_turma === b.turma_id)) || 
+                    (t.id && (t.id === b.id_turma || t.id === b.turma_id))
                 ) || { id_turma: '', serie: '' };
                 
                 valorA = turmaA.id_turma || '';
@@ -377,8 +379,8 @@ const AlunosModule = {
         alunosOrdenados.forEach(aluno => {
             // Encontrar informações da turma - verificando todas as possibilidades de IDs
             const turma = this.state.turmas.find(t => 
-                (t.id_turma && (t.id_turma === aluno.turma_id || t.id_turma === aluno.id_turma)) || 
-                (t.id && (t.id === aluno.turma_id || t.id === aluno.id_turma))
+                (t.id_turma && (t.id_turma === aluno.id_turma || t.id_turma === aluno.turma_id)) || 
+                (t.id && (t.id === aluno.id_turma || t.id === aluno.turma_id))
             ) || { id_turma: 'N/A', serie: 'N/A' };
             
             // Formatar data de nascimento para exibição corretamente (evitando problema de fuso horário)
@@ -499,7 +501,8 @@ const AlunosModule = {
                 }
                 
                 this.elements.inputMaeAluno.value = aluno.mae || '';
-                this.elements.selectTurma.value = aluno.turma_id || aluno.id_turma || '';
+                // Usar id_turma em vez de turma_id para corresponder ao esperado pela API
+                this.elements.selectTurma.value = aluno.id_turma || aluno.turma_id || '';
                 this.elements.inputNomeAluno.focus();
             }
         } catch (error) {
@@ -543,7 +546,7 @@ const AlunosModule = {
                 sexo: this.elements.selectSexoAluno.value,
                 data_nasc: dataNasc, // Formato YYYY-MM-DD é aceito pela API
                 mae: this.elements.inputMaeAluno.value,
-                turma_id: turmaId
+                id_turma: turmaId // Usar id_turma em vez de turma_id como esperado pela API
             };
             
             console.log("Salvando aluno com dados:", alunoDados);
@@ -562,10 +565,9 @@ const AlunosModule = {
                 
                 this.mostrarSucesso("Aluno atualizado com sucesso!");
             } else {
-                // Para novos alunos, pode ser necessário adaptar o formato esperado pela API
-                // Algumas APIs não aceitam que o cliente defina o ID diretamente em uma operação POST
+                // Para novos alunos, verificar primeiro se já existe
                 try {
-                    // Primeiro, verificar se já existe um aluno com este ID
+                    // Verificar se já existe um aluno com este ID
                     const alunoExistente = await ConfigModule.fetchApi(`/alunos/${idAluno}`, {
                         method: 'GET',
                         catchError: true // Configurar para não lançar erro se o aluno não existir
@@ -576,44 +578,39 @@ const AlunosModule = {
                         return;
                     }
                     
-                    // Criar novo aluno com o payload correto
+                    // Tentar criar o aluno com o endpoint padrão
                     response = await ConfigModule.fetchApi('/alunos', {
                         method: 'POST',
                         body: JSON.stringify(alunoDados)
                     });
                     
                     this.mostrarSucesso("Aluno criado com sucesso!");
-                } catch (innerError) {
-                    console.error("Erro detalhado ao criar aluno:", innerError);
+                } catch (error) {
+                    console.error("Erro ao criar aluno:", error);
                     
-                    // Tentar alternativa com ID no path em vez de no body
-                    if (innerError.message && innerError.message.includes('422')) {
-                        try {
-                            response = await ConfigModule.fetchApi(`/alunos/${idAluno}`, {
-                                method: 'POST',
-                                body: JSON.stringify({
-                                    nome_aluno: alunoDados.nome_aluno,
-                                    sexo: alunoDados.sexo,
-                                    data_nasc: alunoDados.data_nasc,
-                                    mae: alunoDados.mae,
-                                    turma_id: alunoDados.turma_id
-                                })
-                            });
+                    // Extrair a mensagem de erro
+                    let mensagemErro = "Não foi possível criar o aluno.";
+                    if (error.message) {
+                        if (error.message.includes('422')) {
+                            mensagemErro = "Os dados do aluno não foram aceitos pelo servidor. Verifique se os campos estão preenchidos corretamente.";
                             
-                            this.mostrarSucesso("Aluno criado com sucesso!");
-                            // Se chegou aqui, conseguiu criar
-                            this.cancelarEdicao();
-                            if (this.elements.filtroTurma.value) {
-                                this.filtrarAlunos();
+                            // Se o erro contém detalhes da API, tentar extrair
+                            const match = error.message.match(/Erro \d+: (.+)/);
+                            if (match && match[1]) {
+                                try {
+                                    const errorDetails = JSON.parse(match[1]);
+                                    if (errorDetails.detail) {
+                                        mensagemErro += " Detalhes: " + JSON.stringify(errorDetails.detail);
+                                    }
+                                } catch(e) {
+                                    // Não conseguiu parsear os detalhes, usar mensagem genérica
+                                }
                             }
-                            return;
-                        } catch (finalError) {
-                            console.error("Erro final ao tentar criar aluno:", finalError);
-                            throw finalError; // Propagar o erro para o catch externo
                         }
-                    } else {
-                        throw innerError; // Propagar outros erros para o catch externo
                     }
+                    
+                    this.mostrarErro(mensagemErro);
+                    return; // Sair da função sem limpar o formulário
                 }
             }
             
