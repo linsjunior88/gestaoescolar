@@ -75,7 +75,7 @@ const NotasModule = {
     // Cachear elementos DOM para melhor performance
     cachearElementos: function() {
         // Form e lista principal
-        this.elements.listaNotas = document.getElementById('notas-lista');
+        this.elements.listaNotas = document.getElementById('lista-notas');
         this.elements.formNota = document.getElementById('form-nota');
         
         // Elementos do form
