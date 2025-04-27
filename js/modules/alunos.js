@@ -13,8 +13,11 @@ const AlunosModule = {
         alunoSelecionado: null,
         modoEdicao: false,
         turmas: [], // Para o select de turmas
+        disciplinas: [], // Para o select de disciplinas
+        alunosFiltrados: [], // Para armazenar os alunos de uma turma específica
+        disciplinasTurma: [], // Disciplinas de uma turma específica
         ordenacao: {
-            coluna: 'serie', // Ordenação padrão por série
+            coluna: 'nome', // Ordenação padrão por nome
             direcao: 'asc' // Direção ascendente
         }
     },
@@ -24,12 +27,16 @@ const AlunosModule = {
         listaAlunos: null,
         formAluno: null,
         inputNomeAluno: null,
-        inputMatricula: null,
+        selectSexoAluno: null,
+        inputDataNasc: null,
+        inputMaeAluno: null,
         selectTurma: null,
         btnSalvarAluno: null,
         btnCancelarAluno: null,
         btnNovoAluno: null,
         filtroTurma: null,
+        filtroDisciplina: null,
+        filtroAlunoNome: null,
         btnFiltrar: null
     },
     
@@ -39,7 +46,7 @@ const AlunosModule = {
         this.cachearElementos();
         this.adicionarEventListeners();
         await this.carregarTurmas();
-        this.carregarAlunos();
+        // Não carregaremos todos os alunos no início, apenas quando um filtro for aplicado
     },
     
     // Cachear elementos DOM para melhor performance
@@ -47,12 +54,16 @@ const AlunosModule = {
         this.elements.listaAlunos = document.getElementById('lista-alunos');
         this.elements.formAluno = document.getElementById('form-aluno');
         this.elements.inputNomeAluno = document.getElementById('nome-aluno');
-        this.elements.inputMatricula = document.getElementById('matricula');
+        this.elements.selectSexoAluno = document.getElementById('sexo-aluno');
+        this.elements.inputDataNasc = document.getElementById('data-nasc');
+        this.elements.inputMaeAluno = document.getElementById('mae-aluno');
         this.elements.selectTurma = document.getElementById('turma-aluno');
         this.elements.btnSalvarAluno = document.getElementById('btn-salvar-aluno');
         this.elements.btnCancelarAluno = document.getElementById('btn-cancelar-aluno');
         this.elements.btnNovoAluno = document.getElementById('btn-novo-aluno');
         this.elements.filtroTurma = document.getElementById('filtro-turma');
+        this.elements.filtroDisciplina = document.getElementById('filtro-disciplina');
+        this.elements.filtroAlunoNome = document.getElementById('filtro-aluno-nome');
         this.elements.btnFiltrar = document.getElementById('btn-filtrar-alunos');
     },
     
@@ -80,6 +91,13 @@ const AlunosModule = {
         if (this.elements.btnFiltrar) {
             this.elements.btnFiltrar.addEventListener('click', () => {
                 this.filtrarAlunos();
+            });
+        }
+        
+        // Evento para quando selecionar uma turma no filtro
+        if (this.elements.filtroTurma) {
+            this.elements.filtroTurma.addEventListener('change', () => {
+                this.carregarDependenciasDoFiltro();
             });
         }
         
@@ -120,7 +138,7 @@ const AlunosModule = {
         
         // Limpar selects
         this.elements.selectTurma.innerHTML = '<option value="">Selecione uma turma</option>';
-        this.elements.filtroTurma.innerHTML = '<option value="">Todas as turmas</option>';
+        this.elements.filtroTurma.innerHTML = '<option value="">Selecione uma turma</option>';
         
         // Adicionar opções
         this.state.turmas.forEach(turma => {
@@ -136,28 +154,121 @@ const AlunosModule = {
         });
     },
     
-    // Carregar alunos da API
-    carregarAlunos: async function(filtroTurmaId = '') {
+    // Carregar disciplinas de uma turma específica
+    carregarDisciplinasDaTurma: async function(turmaId) {
         try {
-            let endpoint = '/alunos';
-            if (filtroTurmaId) {
-                endpoint += `?turma_id=${filtroTurmaId}`;
+            const disciplinas = await ConfigModule.fetchApi(`/turmas/${turmaId}/disciplinas`);
+            this.state.disciplinasTurma = disciplinas;
+            console.log(`Disciplinas da turma ${turmaId} carregadas:`, disciplinas);
+            
+            // Popular select de disciplinas
+            this.elements.filtroDisciplina.innerHTML = '<option value="">Selecione uma disciplina</option>';
+            
+            disciplinas.forEach(disciplina => {
+                const option = document.createElement('option');
+                option.value = disciplina.id_disciplina;
+                option.textContent = disciplina.nome_disciplina || disciplina.nome || disciplina.id_disciplina;
+                this.elements.filtroDisciplina.appendChild(option);
+            });
+            
+            // Habilitar o select de disciplinas
+            this.elements.filtroDisciplina.disabled = false;
+            
+            return disciplinas;
+        } catch (error) {
+            console.error(`Erro ao carregar disciplinas da turma ${turmaId}:`, error);
+            this.elements.filtroDisciplina.innerHTML = '<option value="">Erro ao carregar disciplinas</option>';
+            this.elements.filtroDisciplina.disabled = true;
+            return [];
+        }
+    },
+    
+    // Carregar alunos de uma turma específica
+    carregarAlunosDaTurma: async function(turmaId) {
+        try {
+            const alunos = await ConfigModule.fetchApi(`/turmas/${turmaId}/alunos`);
+            this.state.alunosFiltrados = alunos;
+            console.log(`Alunos da turma ${turmaId} carregados:`, alunos);
+            
+            // Popular select de alunos para filtro
+            this.elements.filtroAlunoNome.innerHTML = '<option value="">Selecione um aluno</option>';
+            
+            alunos.forEach(aluno => {
+                const option = document.createElement('option');
+                option.value = aluno.id_aluno;
+                option.textContent = aluno.nome_aluno || aluno.nome;
+                this.elements.filtroAlunoNome.appendChild(option);
+            });
+            
+            // Habilitar o select de alunos
+            this.elements.filtroAlunoNome.disabled = false;
+            
+            return alunos;
+        } catch (error) {
+            console.error(`Erro ao carregar alunos da turma ${turmaId}:`, error);
+            this.elements.filtroAlunoNome.innerHTML = '<option value="">Erro ao carregar alunos</option>';
+            this.elements.filtroAlunoNome.disabled = true;
+            return [];
+        }
+    },
+    
+    // Carregar dependências quando uma turma é selecionada no filtro
+    carregarDependenciasDoFiltro: async function() {
+        const turmaId = this.elements.filtroTurma.value;
+        
+        if (!turmaId) {
+            // Se nenhuma turma for selecionada, desabilitar os outros filtros
+            this.elements.filtroDisciplina.disabled = true;
+            this.elements.filtroDisciplina.innerHTML = '<option value="">Selecione uma disciplina</option>';
+            
+            this.elements.filtroAlunoNome.disabled = true;
+            this.elements.filtroAlunoNome.innerHTML = '<option value="">Selecione um aluno</option>';
+            
+            return;
+        }
+        
+        // Carregar disciplinas e alunos da turma selecionada
+        await Promise.all([
+            this.carregarDisciplinasDaTurma(turmaId),
+            this.carregarAlunosDaTurma(turmaId)
+        ]);
+    },
+    
+    // Filtrar alunos conforme os critérios selecionados
+    filtrarAlunos: async function() {
+        const turmaId = this.elements.filtroTurma.value;
+        if (!turmaId) {
+            this.mostrarErro("Selecione uma turma para filtrar os alunos.");
+            return;
+        }
+        
+        const disciplinaId = this.elements.filtroDisciplina.value;
+        const alunoId = this.elements.filtroAlunoNome.value;
+        
+        try {
+            let endpoint = `/turmas/${turmaId}/alunos`;
+            let params = [];
+            
+            if (disciplinaId) {
+                params.push(`disciplina_id=${disciplinaId}`);
+            }
+            
+            if (alunoId) {
+                params.push(`aluno_id=${alunoId}`);
+            }
+            
+            if (params.length > 0) {
+                endpoint += `?${params.join('&')}`;
             }
             
             const alunos = await ConfigModule.fetchApi(endpoint);
             this.state.alunos = alunos;
             this.renderizarAlunos();
-            console.log("Alunos carregados com sucesso:", alunos);
+            console.log("Alunos filtrados carregados com sucesso:", alunos);
         } catch (error) {
-            console.error("Erro ao carregar alunos:", error);
-            this.mostrarErro("Não foi possível carregar os alunos. Tente novamente mais tarde.");
+            console.error("Erro ao filtrar alunos:", error);
+            this.mostrarErro("Não foi possível filtrar os alunos. Tente novamente mais tarde.");
         }
-    },
-    
-    // Filtrar alunos por turma
-    filtrarAlunos: function() {
-        const turmaId = this.elements.filtroTurma.value;
-        this.carregarAlunos(turmaId);
     },
     
     // Ordenar alunos
@@ -205,27 +316,32 @@ const AlunosModule = {
         return [...alunos].sort((a, b) => {
             let valorA, valorB;
             
-            if (coluna === 'id') {
+            if (coluna === 'turma') {
+                const turmaA = this.state.turmas.find(t => 
+                    (t.id_turma && t.id_turma === a.turma_id) || t.id === a.turma_id
+                ) || { id_turma: '', serie: '' };
+                
+                const turmaB = this.state.turmas.find(t => 
+                    (t.id_turma && t.id_turma === b.turma_id) || t.id === b.turma_id
+                ) || { id_turma: '', serie: '' };
+                
+                valorA = turmaA.id_turma || '';
+                valorB = turmaB.id_turma || '';
+            } else if (coluna === 'id') {
                 valorA = a.id_aluno || a.id || '';
                 valorB = b.id_aluno || b.id || '';
             } else if (coluna === 'nome') {
                 valorA = a.nome_aluno || a.nome || '';
                 valorB = b.nome_aluno || b.nome || '';
-            } else if (coluna === 'matricula') {
-                valorA = a.matricula || '';
-                valorB = b.matricula || '';
-            } else if (coluna === 'serie') {
-                // Para ordenar por série, precisamos encontrar a turma do aluno
-                const turmaA = this.state.turmas.find(t => 
-                    (t.id_turma && t.id_turma === a.turma_id) || t.id === a.turma_id
-                ) || { serie: '' };
-                
-                const turmaB = this.state.turmas.find(t => 
-                    (t.id_turma && t.id_turma === b.turma_id) || t.id === b.turma_id
-                ) || { serie: '' };
-                
-                valorA = turmaA.serie || '';
-                valorB = turmaB.serie || '';
+            } else if (coluna === 'sexo') {
+                valorA = a.sexo || '';
+                valorB = b.sexo || '';
+            } else if (coluna === 'data_nasc') {
+                valorA = a.data_nasc || '';
+                valorB = b.data_nasc || '';
+            } else if (coluna === 'mae') {
+                valorA = a.mae || '';
+                valorB = b.mae || '';
             }
             
             // Converter para minúsculas para comparação case-insensitive
@@ -246,7 +362,7 @@ const AlunosModule = {
         this.elements.listaAlunos.innerHTML = '';
         
         if (this.state.alunos.length === 0) {
-            this.elements.listaAlunos.innerHTML = '<tr><td colspan="5" class="text-center">Nenhum aluno cadastrado</td></tr>';
+            this.elements.listaAlunos.innerHTML = '<tr><td colspan="7" class="text-center">Nenhum aluno encontrado. Use os filtros acima para buscar alunos.</td></tr>';
             return;
         }
         
@@ -257,18 +373,31 @@ const AlunosModule = {
         this.atualizarIconesOrdenacao();
         
         alunosOrdenados.forEach(aluno => {
-            // Encontrar nome da turma
+            // Encontrar informações da turma
             const turma = this.state.turmas.find(t => 
                 (t.id_turma && t.id_turma === aluno.turma_id) || 
                 t.id === aluno.turma_id
-            ) || { serie: 'N/A', turno: 'N/A' };
+            ) || { id_turma: 'N/A' };
+            
+            // Formatar data de nascimento para exibição
+            let dataNascFormatada = 'N/A';
+            if (aluno.data_nasc) {
+                try {
+                    const dataNasc = new Date(aluno.data_nasc);
+                    dataNascFormatada = dataNasc.toLocaleDateString('pt-BR');
+                } catch (e) {
+                    console.error("Erro ao formatar data:", e);
+                }
+            }
             
             const row = document.createElement('tr');
             row.innerHTML = `
+                <td>${turma.id_turma || 'N/A'}</td>
                 <td>${aluno.id_aluno || aluno.id || 'N/A'}</td>
                 <td>${aluno.nome_aluno || aluno.nome || 'N/A'}</td>
-                <td>${aluno.matricula || aluno.id_aluno || 'N/A'}</td>
-                <td>${turma.serie || 'N/A'} (${turma.turno || 'N/A'})</td>
+                <td>${aluno.sexo === 'M' ? 'Masculino' : (aluno.sexo === 'F' ? 'Feminino' : 'N/A')}</td>
+                <td>${dataNascFormatada}</td>
+                <td>${aluno.mae || 'N/A'}</td>
                 <td>
                     <button class="btn btn-sm btn-primary editar-aluno" data-id="${aluno.id_aluno || aluno.id}">
                         <i class="fas fa-edit"></i>
@@ -306,31 +435,63 @@ const AlunosModule = {
     },
     
     // Editar aluno existente
-    editarAluno: function(id) {
-        const aluno = this.state.alunos.find(a => (a.id_aluno === id) || (a.id === id));
-        if (!aluno) {
-            console.error("Aluno não encontrado com ID:", id);
-            return;
-        }
-        
-        this.state.modoEdicao = true;
-        this.state.alunoSelecionado = aluno;
-        
-        if (this.elements.formAluno) {
-            this.elements.formAluno.classList.remove('d-none');
-            this.elements.inputNomeAluno.value = aluno.nome_aluno || aluno.nome || '';
-            this.elements.inputMatricula.value = aluno.matricula || aluno.id_aluno || '';
-            this.elements.selectTurma.value = aluno.turma_id || '';
-            this.elements.inputNomeAluno.focus();
+    editarAluno: async function(id) {
+        try {
+            // Buscar informações detalhadas do aluno
+            const aluno = await ConfigModule.fetchApi(`/alunos/${id}`);
+            
+            if (!aluno) {
+                this.mostrarErro("Aluno não encontrado.");
+                return;
+            }
+            
+            this.state.modoEdicao = true;
+            this.state.alunoSelecionado = aluno;
+            
+            if (this.elements.formAluno) {
+                this.elements.formAluno.classList.remove('d-none');
+                this.elements.inputNomeAluno.value = aluno.nome_aluno || aluno.nome || '';
+                this.elements.selectSexoAluno.value = aluno.sexo || '';
+                
+                // Formatar data para o input do tipo date (YYYY-MM-DD)
+                if (aluno.data_nasc) {
+                    const dataNasc = new Date(aluno.data_nasc);
+                    const dataFormatada = dataNasc.toISOString().split('T')[0]; // Formato YYYY-MM-DD
+                    this.elements.inputDataNasc.value = dataFormatada;
+                } else {
+                    this.elements.inputDataNasc.value = '';
+                }
+                
+                this.elements.inputMaeAluno.value = aluno.mae || '';
+                this.elements.selectTurma.value = aluno.turma_id || '';
+                this.elements.inputNomeAluno.focus();
+            }
+        } catch (error) {
+            console.error("Erro ao editar aluno:", error);
+            this.mostrarErro("Não foi possível carregar os dados do aluno para edição.");
         }
     },
     
     // Salvar aluno (criar novo ou atualizar existente)
     salvarAluno: async function() {
         try {
+            // Verificar se a data de nascimento está em formato válido
+            const dataNasc = this.elements.inputDataNasc.value;
+            let dataFormatada = null;
+            
+            if (dataNasc) {
+                dataFormatada = new Date(dataNasc);
+                if (isNaN(dataFormatada.getTime())) {
+                    this.mostrarErro("Data de nascimento inválida.");
+                    return;
+                }
+            }
+            
             const alunoDados = {
                 nome_aluno: this.elements.inputNomeAluno.value,
-                matricula: this.elements.inputMatricula.value,
+                sexo: this.elements.selectSexoAluno.value,
+                data_nasc: dataNasc, // Formato YYYY-MM-DD é aceito pela API
+                mae: this.elements.inputMaeAluno.value,
                 turma_id: this.elements.selectTurma.value
             };
             
@@ -353,15 +514,6 @@ const AlunosModule = {
                     body: JSON.stringify(alunoDados)
                 });
                 
-                // Atualizar aluno na lista local
-                const index = this.state.alunos.findIndex(a => 
-                    (a.id_aluno === alunoId) || (a.id === alunoId)
-                );
-                
-                if (index !== -1) {
-                    this.state.alunos[index] = { ...this.state.alunos[index], ...alunoDados };
-                }
-                
                 this.mostrarSucesso("Aluno atualizado com sucesso!");
             } else {
                 // Criar novo aluno
@@ -370,17 +522,16 @@ const AlunosModule = {
                     body: JSON.stringify(alunoDados)
                 });
                 
-                // Adicionar novo aluno à lista local
-                this.state.alunos.push(response);
-                
                 this.mostrarSucesso("Aluno criado com sucesso!");
             }
             
             // Resetar formulário e estado
             this.cancelarEdicao();
             
-            // Atualizar lista de alunos
-            this.renderizarAlunos();
+            // Recarregar lista de alunos se algum filtro estiver ativo
+            if (this.elements.filtroTurma.value) {
+                this.filtrarAlunos();
+            }
             
         } catch (error) {
             console.error("Erro ao salvar aluno:", error);
