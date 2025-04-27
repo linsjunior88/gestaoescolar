@@ -266,6 +266,7 @@
                                             <th>ID</th>
                                             <th>Nome</th>
                                             <th>Carga Horária</th>
+                                            <th>Turmas Vinculadas</th>
                                             <th>Ações</th>
                                         </tr>
                                     </thead>
@@ -287,6 +288,11 @@
                         </div>
                         <div class="card-body">
                             <div class="mb-3">
+                                <label for="id-disciplina" class="form-label">ID da Disciplina</label>
+                                <input type="text" class="form-control" id="id-disciplina" placeholder="Ex: MAT, PORT, CIE" required>
+                                <div class="form-text">Código curto para a disciplina (ex: MAT para Matemática)</div>
+                            </div>
+                            <div class="mb-3">
                                 <label for="nome-disciplina" class="form-label">Nome da Disciplina</label>
                                 <input type="text" class="form-control" id="nome-disciplina" required>
                             </div>
@@ -298,6 +304,27 @@
                         <div class="card-footer">
                             <button type="submit" class="btn btn-primary" id="btn-salvar-disciplina">Salvar</button>
                             <button type="button" class="btn btn-secondary" id="btn-cancelar-disciplina">Cancelar</button>
+                        </div>
+                    </form>
+                </div>
+                
+                <div class="col-md-6">
+                    <form id="form-turmas-vinculadas" class="card d-none">
+                        <div class="card-header">
+                            <h5 class="card-title">Vincular Turmas à Disciplina</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label for="turmas-disciplina" class="form-label">Selecione as Turmas</label>
+                                <select class="form-select" id="turmas-disciplina" multiple size="10">
+                                    <!-- Opções serão carregadas dinamicamente -->
+                                </select>
+                                <div class="form-text">Segure Ctrl para selecionar múltiplas turmas</div>
+                            </div>
+                        </div>
+                        <div class="card-footer">
+                            <button type="button" class="btn btn-primary" id="btn-salvar-turmas">Salvar</button>
+                            <button type="button" class="btn btn-secondary" id="btn-cancelar-turmas" onclick="DisciplinasModule.cancelarEdicao()">Cancelar</button>
                         </div>
                     </form>
                 </div>
