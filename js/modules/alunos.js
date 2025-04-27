@@ -441,6 +441,20 @@ const AlunosModule = {
         if (this.elements.formAluno) {
             this.elements.formAluno.reset();
             this.elements.formAluno.classList.remove('d-none');
+            
+            // Gerar um ID sugerido para o novo aluno (A + próximo número sequencial)
+            let maxNum = 0;
+            this.state.alunos.forEach(aluno => {
+                const id = aluno.id_aluno || aluno.id || '';
+                if (id.startsWith('A') && !isNaN(parseInt(id.substring(1)))) {
+                    const num = parseInt(id.substring(1));
+                    if (num > maxNum) maxNum = num;
+                }
+            });
+            
+            // Formatar o próximo ID com zeros à esquerda (A001, A002, etc.)
+            const nextId = `A${String(maxNum + 1).padStart(3, '0')}`;
+            this.elements.inputIdAluno.value = nextId;
         }
         
         if (this.elements.inputNomeAluno) {
@@ -499,7 +513,6 @@ const AlunosModule = {
         try {
             // Verificar se a data de nascimento está em formato válido
             const dataNasc = this.elements.inputDataNasc.value;
-            let dataFormatada = null;
             
             if (dataNasc) {
                 // Validar a data sem conversão de fuso horário
@@ -510,13 +523,27 @@ const AlunosModule = {
                 }
             }
             
+            // Verificar se o ID do aluno foi preenchido
+            const idAluno = this.elements.inputIdAluno.value.trim();
+            if (!idAluno) {
+                this.mostrarErro("ID do Aluno é obrigatório.");
+                return;
+            }
+            
+            // Verificar se a turma foi selecionada
+            const turmaId = this.elements.selectTurma.value;
+            if (!turmaId) {
+                this.mostrarErro("Selecione uma turma para o aluno.");
+                return;
+            }
+            
             const alunoDados = {
-                id_aluno: this.elements.inputIdAluno.value,
+                id_aluno: idAluno,
                 nome_aluno: this.elements.inputNomeAluno.value,
                 sexo: this.elements.selectSexoAluno.value,
                 data_nasc: dataNasc, // Formato YYYY-MM-DD é aceito pela API
                 mae: this.elements.inputMaeAluno.value,
-                turma_id: this.elements.selectTurma.value
+                turma_id: turmaId
             };
             
             console.log("Salvando aluno com dados:", alunoDados);
@@ -535,13 +562,59 @@ const AlunosModule = {
                 
                 this.mostrarSucesso("Aluno atualizado com sucesso!");
             } else {
-                // Criar novo aluno
-                response = await ConfigModule.fetchApi('/alunos', {
-                    method: 'POST',
-                    body: JSON.stringify(alunoDados)
-                });
-                
-                this.mostrarSucesso("Aluno criado com sucesso!");
+                // Para novos alunos, pode ser necessário adaptar o formato esperado pela API
+                // Algumas APIs não aceitam que o cliente defina o ID diretamente em uma operação POST
+                try {
+                    // Primeiro, verificar se já existe um aluno com este ID
+                    const alunoExistente = await ConfigModule.fetchApi(`/alunos/${idAluno}`, {
+                        method: 'GET',
+                        catchError: true // Configurar para não lançar erro se o aluno não existir
+                    });
+                    
+                    if (alunoExistente && !alunoExistente.error) {
+                        this.mostrarErro(`Já existe um aluno com o ID ${idAluno}. Por favor, escolha outro ID.`);
+                        return;
+                    }
+                    
+                    // Criar novo aluno com o payload correto
+                    response = await ConfigModule.fetchApi('/alunos', {
+                        method: 'POST',
+                        body: JSON.stringify(alunoDados)
+                    });
+                    
+                    this.mostrarSucesso("Aluno criado com sucesso!");
+                } catch (innerError) {
+                    console.error("Erro detalhado ao criar aluno:", innerError);
+                    
+                    // Tentar alternativa com ID no path em vez de no body
+                    if (innerError.message && innerError.message.includes('422')) {
+                        try {
+                            response = await ConfigModule.fetchApi(`/alunos/${idAluno}`, {
+                                method: 'POST',
+                                body: JSON.stringify({
+                                    nome_aluno: alunoDados.nome_aluno,
+                                    sexo: alunoDados.sexo,
+                                    data_nasc: alunoDados.data_nasc,
+                                    mae: alunoDados.mae,
+                                    turma_id: alunoDados.turma_id
+                                })
+                            });
+                            
+                            this.mostrarSucesso("Aluno criado com sucesso!");
+                            // Se chegou aqui, conseguiu criar
+                            this.cancelarEdicao();
+                            if (this.elements.filtroTurma.value) {
+                                this.filtrarAlunos();
+                            }
+                            return;
+                        } catch (finalError) {
+                            console.error("Erro final ao tentar criar aluno:", finalError);
+                            throw finalError; // Propagar o erro para o catch externo
+                        }
+                    } else {
+                        throw innerError; // Propagar outros erros para o catch externo
+                    }
+                }
             }
             
             // Resetar formulário e estado
@@ -554,7 +627,22 @@ const AlunosModule = {
             
         } catch (error) {
             console.error("Erro ao salvar aluno:", error);
-            this.mostrarErro("Não foi possível salvar o aluno. Tente novamente mais tarde.");
+            
+            // Extrair detalhes do erro, se disponíveis
+            let mensagemErro = "Não foi possível salvar o aluno.";
+            if (error.message) {
+                if (error.message.includes('422')) {
+                    mensagemErro = "Os dados do aluno não foram aceitos pelo servidor. Verifique se os campos estão preenchidos corretamente.";
+                } else if (error.message.includes('404')) {
+                    mensagemErro = "Recurso não encontrado no servidor.";
+                } else if (error.message.includes('403')) {
+                    mensagemErro = "Você não tem permissão para realizar esta operação.";
+                } else if (error.message.includes('500')) {
+                    mensagemErro = "Erro interno do servidor. Tente novamente mais tarde.";
+                }
+            }
+            
+            this.mostrarErro(mensagemErro);
         }
     },
     

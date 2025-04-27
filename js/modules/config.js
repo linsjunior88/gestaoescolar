@@ -27,6 +27,16 @@ const ConfigModule = {
     // Função para fazer requisições à API com tratamento de erros
     fetchApi: async function(endpoint, options = {}) {
         try {
+            // Verificar se deve capturar erros em vez de lançá-los
+            const catchError = options.catchError === true;
+            
+            // Remover propriedade catchError para não interferir no fetch
+            if (options.catchError !== undefined) {
+                const optionsCopy = {...options};
+                delete optionsCopy.catchError;
+                options = optionsCopy;
+            }
+            
             // Adicionar cabeçalhos padrão se não foram fornecidos
             const requestOptions = { 
                 ...options,
@@ -39,8 +49,8 @@ const ConfigModule = {
             // Fazer requisição à API
             const response = await fetch(this.getApiUrl(endpoint), requestOptions);
             
-            if (!response.ok) {
-                throw new Error(`Erro ${response.status}: ${response.statusText}`);
+            if (!response.ok && !catchError) {
+                throw new Error(`Erro ${response.status}: ${await response.text()}`);
             }
             
             // Para métodos DELETE, geralmente não há resposta em JSON
@@ -63,9 +73,29 @@ const ConfigModule = {
             
             // Para outros métodos, tentar converter para JSON normalmente
             const text = await response.text();
+            
+            // Se a resposta não for OK e estamos capturando erros
+            if (!response.ok && catchError) {
+                return {
+                    error: true,
+                    status: response.status,
+                    message: text
+                };
+            }
+            
             return text ? JSON.parse(text) : {};
+            
         } catch (error) {
             console.error(`Erro na requisição para ${endpoint}:`, error);
+            
+            // Se configurado para capturar erros, retorna objeto com erro em vez de lançar exceção
+            if (options.catchError) {
+                return { 
+                    error: true, 
+                    message: error.message 
+                };
+            }
+            
             throw error;
         }
     },
@@ -75,6 +105,35 @@ const ConfigModule = {
         console.log("Módulo de configuração inicializado");
         console.log("Ambiente:", this.isProd ? "Produção" : "Desenvolvimento");
         console.log("URL da API:", this.apiUrl());
+    },
+    
+    /**
+     * Formata um valor monetário em reais
+     * @param {number} valor - Valor a ser formatado
+     * @returns {string} Valor formatado em BRL
+     */
+    formatarMoeda: function(valor) {
+        return new Intl.NumberFormat('pt-BR', { 
+            style: 'currency', 
+            currency: 'BRL' 
+        }).format(valor);
+    },
+    
+    /**
+     * Formata uma data no padrão brasileiro (dd/mm/yyyy)
+     * @param {string} data - Data em formato ISO ou similar
+     * @returns {string} Data formatada
+     */
+    formatarData: function(data) {
+        if (!data) return '';
+        
+        try {
+            const dataObj = new Date(data);
+            return dataObj.toLocaleDateString('pt-BR');
+        } catch (e) {
+            console.error("Erro ao formatar data:", e);
+            return data; // Retorna a data original em caso de erro
+        }
     }
 };
 
