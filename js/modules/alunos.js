@@ -27,6 +27,7 @@ const AlunosModule = {
         listaAlunos: null,
         formAluno: null,
         inputNomeAluno: null,
+        inputIdAluno: null,
         selectSexoAluno: null,
         inputDataNasc: null,
         inputMaeAluno: null,
@@ -54,6 +55,7 @@ const AlunosModule = {
         this.elements.listaAlunos = document.getElementById('lista-alunos');
         this.elements.formAluno = document.getElementById('form-aluno');
         this.elements.inputNomeAluno = document.getElementById('nome-aluno');
+        this.elements.inputIdAluno = document.getElementById('id-aluno');
         this.elements.selectSexoAluno = document.getElementById('sexo-aluno');
         this.elements.inputDataNasc = document.getElementById('data-nasc');
         this.elements.inputMaeAluno = document.getElementById('mae-aluno');
@@ -373,18 +375,30 @@ const AlunosModule = {
         this.atualizarIconesOrdenacao();
         
         alunosOrdenados.forEach(aluno => {
-            // Encontrar informações da turma
+            // Encontrar informações da turma - verificando todas as possibilidades de IDs
             const turma = this.state.turmas.find(t => 
-                (t.id_turma && t.id_turma === aluno.turma_id) || 
-                t.id === aluno.turma_id
-            ) || { id_turma: 'N/A' };
+                (t.id_turma && (t.id_turma === aluno.turma_id || t.id_turma === aluno.id_turma)) || 
+                (t.id && (t.id === aluno.turma_id || t.id === aluno.id_turma))
+            ) || { id_turma: 'N/A', serie: 'N/A' };
             
-            // Formatar data de nascimento para exibição
+            // Formatar data de nascimento para exibição corretamente (evitando problema de fuso horário)
             let dataNascFormatada = 'N/A';
             if (aluno.data_nasc) {
                 try {
-                    const dataNasc = new Date(aluno.data_nasc);
-                    dataNascFormatada = dataNasc.toLocaleDateString('pt-BR');
+                    // Separar a data em partes para evitar problemas de fuso horário
+                    const partesData = aluno.data_nasc.split('-');
+                    if (partesData.length === 3) {
+                        // Usar as partes para construir a data no formato local (sem conversão UTC)
+                        const ano = parseInt(partesData[0]);
+                        const mes = parseInt(partesData[1]) - 1; // mês em JavaScript é 0-indexed
+                        const dia = parseInt(partesData[2]);
+                        
+                        const dataNasc = new Date(ano, mes, dia);
+                        dataNascFormatada = dataNasc.toLocaleDateString('pt-BR');
+                    } else {
+                        // Fallback para o método anterior
+                        dataNascFormatada = new Date(aluno.data_nasc).toLocaleDateString('pt-BR');
+                    }
                 } catch (e) {
                     console.error("Erro ao formatar data:", e);
                 }
@@ -392,7 +406,7 @@ const AlunosModule = {
             
             const row = document.createElement('tr');
             row.innerHTML = `
-                <td>${turma.id_turma || 'N/A'}</td>
+                <td>${turma.id_turma !== 'N/A' ? turma.id_turma : (turma.serie || 'N/A')}</td>
                 <td>${aluno.id_aluno || aluno.id || 'N/A'}</td>
                 <td>${aluno.nome_aluno || aluno.nome || 'N/A'}</td>
                 <td>${aluno.sexo === 'M' ? 'Masculino' : (aluno.sexo === 'F' ? 'Feminino' : 'N/A')}</td>
@@ -450,20 +464,28 @@ const AlunosModule = {
             
             if (this.elements.formAluno) {
                 this.elements.formAluno.classList.remove('d-none');
+                this.elements.inputIdAluno.value = aluno.id_aluno || aluno.id || '';
                 this.elements.inputNomeAluno.value = aluno.nome_aluno || aluno.nome || '';
                 this.elements.selectSexoAluno.value = aluno.sexo || '';
                 
                 // Formatar data para o input do tipo date (YYYY-MM-DD)
                 if (aluno.data_nasc) {
-                    const dataNasc = new Date(aluno.data_nasc);
-                    const dataFormatada = dataNasc.toISOString().split('T')[0]; // Formato YYYY-MM-DD
-                    this.elements.inputDataNasc.value = dataFormatada;
+                    // Garantir que a data está no formato YYYY-MM-DD sem ajuste de fuso horário
+                    if (aluno.data_nasc.includes('T')) {
+                        // Se a data incluir hora (formato ISO completo)
+                        const dataNasc = new Date(aluno.data_nasc);
+                        const dataFormatada = `${dataNasc.getFullYear()}-${String(dataNasc.getMonth() + 1).padStart(2, '0')}-${String(dataNasc.getDate()).padStart(2, '0')}`;
+                        this.elements.inputDataNasc.value = dataFormatada;
+                    } else {
+                        // Se já estiver no formato YYYY-MM-DD
+                        this.elements.inputDataNasc.value = aluno.data_nasc;
+                    }
                 } else {
                     this.elements.inputDataNasc.value = '';
                 }
                 
                 this.elements.inputMaeAluno.value = aluno.mae || '';
-                this.elements.selectTurma.value = aluno.turma_id || '';
+                this.elements.selectTurma.value = aluno.turma_id || aluno.id_turma || '';
                 this.elements.inputNomeAluno.focus();
             }
         } catch (error) {
@@ -480,25 +502,22 @@ const AlunosModule = {
             let dataFormatada = null;
             
             if (dataNasc) {
-                dataFormatada = new Date(dataNasc);
-                if (isNaN(dataFormatada.getTime())) {
+                // Validar a data sem conversão de fuso horário
+                const [ano, mes, dia] = dataNasc.split('-').map(num => parseInt(num, 10));
+                if (isNaN(ano) || isNaN(mes) || isNaN(dia)) {
                     this.mostrarErro("Data de nascimento inválida.");
                     return;
                 }
             }
             
             const alunoDados = {
+                id_aluno: this.elements.inputIdAluno.value,
                 nome_aluno: this.elements.inputNomeAluno.value,
                 sexo: this.elements.selectSexoAluno.value,
                 data_nasc: dataNasc, // Formato YYYY-MM-DD é aceito pela API
                 mae: this.elements.inputMaeAluno.value,
                 turma_id: this.elements.selectTurma.value
             };
-            
-            // Adicionar id_aluno se estivermos editando
-            if (this.state.modoEdicao && this.state.alunoSelecionado) {
-                alunoDados.id_aluno = this.state.alunoSelecionado.id_aluno || this.state.alunoSelecionado.id;
-            }
             
             console.log("Salvando aluno com dados:", alunoDados);
             
