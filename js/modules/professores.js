@@ -25,7 +25,6 @@ const ProfessoresModule = {
         inputNomeProfessor: null,
         inputEmailProfessor: null,
         inputSenhaProfessor: null,
-        inputFormacaoProfessor: null,
         selectDisciplinas: null,
         vinculosContainer: null,
         btnSalvarProfessor: null,
@@ -52,7 +51,6 @@ const ProfessoresModule = {
         this.elements.inputNomeProfessor = document.getElementById('nome-professor');
         this.elements.inputEmailProfessor = document.getElementById('email-professor');
         this.elements.inputSenhaProfessor = document.getElementById('senha-professor');
-        this.elements.inputFormacaoProfessor = document.getElementById('formacao-professor');
         this.elements.selectDisciplinas = document.getElementById('disciplinas-professor');
         this.elements.vinculosContainer = document.getElementById('vinculos-professor-container');
         this.elements.tabelaVinculos = document.getElementById('tabela-vinculos-professor');
@@ -88,6 +86,19 @@ const ProfessoresModule = {
                 this.atualizarTurmasVinculadas();
             });
         }
+        
+        // Adicionar tecla ESC para fechar modais
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const modal = document.getElementById('vinculosModal');
+                if (modal) {
+                    const bootstrapModal = bootstrap.Modal.getInstance(modal);
+                    if (bootstrapModal) {
+                        bootstrapModal.hide();
+                    }
+                }
+            }
+        });
     },
     
     // Carregar disciplinas e turmas vinculadas
@@ -241,7 +252,7 @@ const ProfessoresModule = {
         this.elements.listaProfessores.innerHTML = '';
         
         if (this.state.professores.length === 0) {
-            this.elements.listaProfessores.innerHTML = '<tr><td colspan="6" class="text-center">Nenhum professor cadastrado</td></tr>';
+            this.elements.listaProfessores.innerHTML = '<tr><td colspan="5" class="text-center">Nenhum professor cadastrado</td></tr>';
             return;
         }
         
@@ -305,13 +316,19 @@ const ProfessoresModule = {
             
             const nomeProfessor = professor.nome_professor || professor.nome;
             
+            // Remover qualquer modal existente antes
+            const existingModal = document.getElementById('vinculosModal');
+            if (existingModal) {
+                existingModal.remove();
+            }
+            
             // Criar modal para mostrar os vínculos
             const modalHtml = `
-                <div class="modal fade" id="vinculosModal" tabindex="-1" aria-hidden="true">
+                <div class="modal fade" id="vinculosModal" tabindex="-1" aria-labelledby="vinculosModalLabel" aria-hidden="true">
                     <div class="modal-dialog modal-lg">
                         <div class="modal-content">
                             <div class="modal-header">
-                                <h5 class="modal-title">Vínculos do Professor: ${nomeProfessor}</h5>
+                                <h5 class="modal-title" id="vinculosModalLabel">Vínculos do Professor: ${nomeProfessor}</h5>
                                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
                             </div>
                             <div class="modal-body">
@@ -342,16 +359,23 @@ const ProfessoresModule = {
             // Adicionar modal ao body
             const modalElement = document.createElement('div');
             modalElement.innerHTML = modalHtml;
-            document.body.appendChild(modalElement);
+            document.body.appendChild(modalElement.firstElementChild);
             
-            // Mostrar modal
-            const modal = new bootstrap.Modal(document.getElementById('vinculosModal'));
-            modal.show();
-            
-            // Remover modal quando for fechado
-            document.getElementById('vinculosModal').addEventListener('hidden.bs.modal', function() {
-                document.body.removeChild(modalElement);
+            // Mostrar modal usando Bootstrap
+            const modalElement2 = document.getElementById('vinculosModal');
+            const modal = new bootstrap.Modal(modalElement2, {
+                backdrop: 'static',
+                keyboard: true,
+                focus: true
             });
+            
+            // Garantir que o modal possa ser fechado
+            modalElement2.addEventListener('hidden.bs.modal', function() {
+                // Remover o modal do DOM quando for fechado
+                modalElement2.remove();
+            });
+            
+            modal.show();
             
         } catch (error) {
             console.error("Erro ao mostrar vínculos:", error);
@@ -446,7 +470,6 @@ const ProfessoresModule = {
                 
                 this.elements.inputNomeProfessor.value = professor.nome_professor || professor.nome || '';
                 this.elements.inputEmailProfessor.value = professor.email_professor || professor.email || '';
-                this.elements.inputFormacaoProfessor.value = professor.formacao || '';
                 
                 // Campo de senha não é obrigatório na edição
                 if (this.elements.inputSenhaProfessor) {
@@ -497,7 +520,6 @@ const ProfessoresModule = {
             const professorDados = {
                 nome_professor: this.elements.inputNomeProfessor.value,
                 email_professor: this.elements.inputEmailProfessor.value,
-                formacao: this.elements.inputFormacaoProfessor.value,
                 disciplinas: disciplinasSelecionadas
             };
             
