@@ -357,8 +357,7 @@
                                             <th>ID</th>
                                             <th>Nome</th>
                                             <th>Email</th>
-                                            <th>Formação</th>
-                                            <th>Disciplinas</th>
+                                            <th>Vínculos</th>
                                             <th>Ações</th>
                                         </tr>
                                     </thead>
@@ -380,12 +379,22 @@
                         </div>
                         <div class="card-body">
                             <div class="mb-3">
+                                <label for="id-professor" class="form-label">ID do Professor</label>
+                                <input type="text" class="form-control" id="id-professor" placeholder="Ex: PROF001" required>
+                                <div class="form-text">Código único do professor no sistema</div>
+                            </div>
+                            <div class="mb-3">
                                 <label for="nome-professor" class="form-label">Nome do Professor</label>
                                 <input type="text" class="form-control" id="nome-professor" required>
                             </div>
                             <div class="mb-3">
                                 <label for="email-professor" class="form-label">Email</label>
                                 <input type="email" class="form-control" id="email-professor">
+                            </div>
+                            <div class="mb-3">
+                                <label for="senha-professor" class="form-label">Senha</label>
+                                <input type="password" class="form-control" id="senha-professor">
+                                <div class="form-text">A senha é necessária apenas para novos professores ou se desejar alterá-la</div>
                             </div>
                             <div class="mb-3">
                                 <label for="formacao-professor" class="form-label">Formação</label>
@@ -398,12 +407,28 @@
                                 </select>
                                 <div class="form-text">Segure Ctrl para selecionar múltiplas disciplinas</div>
                             </div>
+                            <div class="mb-3">
+                                <label class="form-label">Turmas Vinculadas às Disciplinas Selecionadas</label>
+                                <div id="vinculos-professor-container">
+                                    <!-- Turmas vinculadas serão carregadas dinamicamente -->
+                                </div>
+                            </div>
                         </div>
                         <div class="card-footer">
                             <button type="submit" class="btn btn-primary" id="btn-salvar-professor">Salvar</button>
                             <button type="button" class="btn btn-secondary" id="btn-cancelar-professor">Cancelar</button>
                         </div>
                     </form>
+                </div>
+                <div class="col-md-6">
+                    <div id="tabela-vinculos-professor" class="card d-none">
+                        <div class="card-header">
+                            <h5 class="card-title">Vínculos Atuais</h5>
+                        </div>
+                        <div class="card-body">
+                            <!-- Vínculos do professor selecionado serão exibidos aqui -->
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

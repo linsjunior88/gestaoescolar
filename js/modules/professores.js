@@ -12,20 +12,27 @@ const ProfessoresModule = {
         professores: [],
         professorSelecionado: null,
         modoEdicao: false,
-        disciplinas: [] // Para o select de disciplinas
+        disciplinas: [], // Para o select de disciplinas
+        disciplinasTurmas: [], // Relacionamento entre disciplinas e turmas
+        vinculos: [] // Vínculos de professor-disciplina-turma
     },
     
     // Elementos DOM
     elements: {
         listaProfessores: null,
         formProfessor: null,
+        inputIdProfessor: null,
         inputNomeProfessor: null,
         inputEmailProfessor: null,
+        inputSenhaProfessor: null,
         inputFormacaoProfessor: null,
         selectDisciplinas: null,
+        vinculosContainer: null,
         btnSalvarProfessor: null,
         btnCancelarProfessor: null,
-        btnNovoProfessor: null
+        btnNovoProfessor: null,
+        btnVerVinculos: null,
+        tabelaVinculos: null
     },
     
     // Inicializar módulo
@@ -33,7 +40,7 @@ const ProfessoresModule = {
         console.log("Inicializando módulo de professores");
         this.cachearElementos();
         this.adicionarEventListeners();
-        await this.carregarDisciplinas();
+        await this.carregarDisciplinasTurmas();
         this.carregarProfessores();
     },
     
@@ -41,10 +48,14 @@ const ProfessoresModule = {
     cachearElementos: function() {
         this.elements.listaProfessores = document.getElementById('lista-professores');
         this.elements.formProfessor = document.getElementById('form-professor');
+        this.elements.inputIdProfessor = document.getElementById('id-professor');
         this.elements.inputNomeProfessor = document.getElementById('nome-professor');
         this.elements.inputEmailProfessor = document.getElementById('email-professor');
+        this.elements.inputSenhaProfessor = document.getElementById('senha-professor');
         this.elements.inputFormacaoProfessor = document.getElementById('formacao-professor');
         this.elements.selectDisciplinas = document.getElementById('disciplinas-professor');
+        this.elements.vinculosContainer = document.getElementById('vinculos-professor-container');
+        this.elements.tabelaVinculos = document.getElementById('tabela-vinculos-professor');
         this.elements.btnSalvarProfessor = document.getElementById('btn-salvar-professor');
         this.elements.btnCancelarProfessor = document.getElementById('btn-cancelar-professor');
         this.elements.btnNovoProfessor = document.getElementById('btn-novo-professor');
@@ -70,32 +81,51 @@ const ProfessoresModule = {
                 this.novoProfessor();
             });
         }
+        
+        // Adicionar listener para seleção de disciplinas para mostrar as turmas vinculadas
+        if (this.elements.selectDisciplinas) {
+            this.elements.selectDisciplinas.addEventListener('change', () => {
+                this.atualizarTurmasVinculadas();
+            });
+        }
     },
     
-    // Carregar disciplinas para o select
-    carregarDisciplinas: async function() {
+    // Carregar disciplinas e turmas vinculadas
+    carregarDisciplinasTurmas: async function() {
         try {
+            // Carregar disciplinas
             const disciplinas = await ConfigModule.fetchApi('/disciplinas');
-            console.log("Disciplinas brutas da API:", disciplinas);
+            console.log("Disciplinas carregadas:", disciplinas);
             
-            // Normalizar os dados para garantir consistência
-            this.state.disciplinas = disciplinas.map(d => {
-                // Garantir que temos um objeto com estrutura consistente
-                return {
-                    id: d.id,
-                    id_disciplina: d.id_disciplina || d.id,
-                    nome: d.nome_disciplina || d.nome || 'Sem nome',
-                    nome_disciplina: d.nome_disciplina || d.nome || 'Sem nome',
-                    carga_horaria: d.carga_horaria
-                };
-            });
+            // Normalizar os dados de disciplinas
+            this.state.disciplinas = disciplinas.map(d => ({
+                id: d.id,
+                id_disciplina: d.id_disciplina,
+                nome: d.nome_disciplina || d.nome,
+                carga_horaria: d.carga_horaria
+            }));
             
-            console.log("Disciplinas normalizadas:", this.state.disciplinas);
+            // Carregar relacionamentos disciplina-turma para cada disciplina
+            for (const disciplina of this.state.disciplinas) {
+                try {
+                    const turmas = await ConfigModule.fetchApi(`/disciplinas/${disciplina.id_disciplina}/turmas`);
+                    if (Array.isArray(turmas) && turmas.length > 0) {
+                        this.state.disciplinasTurmas.push({
+                            disciplina: disciplina.id_disciplina,
+                            turmas: turmas
+                        });
+                    }
+                } catch (err) {
+                    console.warn(`Não foi possível carregar turmas para a disciplina ${disciplina.id_disciplina}:`, err);
+                }
+            }
+            
+            console.log("Disciplinas e turmas carregadas:", this.state.disciplinasTurmas);
             this.popularSelectDisciplinas();
-            console.log("Disciplinas carregadas com sucesso para o módulo de professores");
+            
         } catch (error) {
-            console.error("Erro ao carregar disciplinas para o módulo de professores:", error);
-            this.mostrarErro("Não foi possível carregar as disciplinas. Tente novamente mais tarde.");
+            console.error("Erro ao carregar disciplinas e turmas:", error);
+            this.mostrarErro("Não foi possível carregar as disciplinas e turmas vinculadas.");
         }
     },
     
@@ -109,18 +139,74 @@ const ProfessoresModule = {
         // Adicionar opções
         this.state.disciplinas.forEach(disciplina => {
             const option = document.createElement('option');
-            // Usamos id_disciplina como valor, pois é o que a API espera
-            option.value = disciplina.id_disciplina || '';
-            // Usamos o nome normalizado para exibição
-            option.textContent = disciplina.nome || 'N/A';
+            option.value = disciplina.id_disciplina;
             
-            // DEBUG: Logar os valores das opções para verificação
-            console.log(`Criando option para disciplina: valor=${option.value}, texto=${option.textContent}`);
+            // Buscar quantas turmas estão vinculadas a esta disciplina
+            const disciplinaTurmas = this.state.disciplinasTurmas.find(dt => dt.disciplina === disciplina.id_disciplina);
+            const numTurmas = disciplinaTurmas && disciplinaTurmas.turmas ? disciplinaTurmas.turmas.length : 0;
             
+            option.textContent = `${disciplina.nome} (${numTurmas} turmas)`;
             this.elements.selectDisciplinas.appendChild(option);
         });
+    },
+    
+    // Atualizar visualização das turmas vinculadas à disciplina selecionada
+    atualizarTurmasVinculadas: function() {
+        if (!this.elements.vinculosContainer) return;
         
-        console.log("Select de disciplinas populado com", this.state.disciplinas.length, "opções");
+        const disciplinasSelecionadas = Array.from(this.elements.selectDisciplinas.selectedOptions).map(opt => opt.value);
+        
+        if (disciplinasSelecionadas.length === 0) {
+            this.elements.vinculosContainer.innerHTML = '<p class="text-muted">Nenhuma disciplina selecionada</p>';
+            return;
+        }
+        
+        let html = '<div class="table-responsive mt-3">';
+        html += '<table class="table table-sm table-bordered">';
+        html += '<thead><tr><th>Disciplina</th><th>Turmas Vinculadas</th></tr></thead>';
+        html += '<tbody>';
+        
+        disciplinasSelecionadas.forEach(disciplinaId => {
+            const disciplina = this.state.disciplinas.find(d => d.id_disciplina === disciplinaId);
+            if (!disciplina) return;
+            
+            const disciplinaTurmas = this.state.disciplinasTurmas.find(dt => dt.disciplina === disciplinaId);
+            const turmas = disciplinaTurmas && disciplinaTurmas.turmas ? disciplinaTurmas.turmas : [];
+            
+            html += '<tr>';
+            html += `<td>${disciplina.nome}</td>`;
+            
+            if (turmas.length === 0) {
+                html += '<td><span class="text-warning">Nenhuma turma vinculada</span></td>';
+            } else {
+                html += '<td>';
+                html += '<ul class="list-unstyled mb-0">';
+                turmas.forEach(turma => {
+                    html += `<li>
+                        <span class="badge bg-info">${turma.id_turma}</span> 
+                        ${turma.serie} - ${this.traduzirTurno(turma.turno)}
+                    </li>`;
+                });
+                html += '</ul>';
+                html += '</td>';
+            }
+            
+            html += '</tr>';
+        });
+        
+        html += '</tbody></table></div>';
+        
+        this.elements.vinculosContainer.innerHTML = html;
+    },
+    
+    // Traduzir turno para formato legível
+    traduzirTurno: function(turno) {
+        const turnos = {
+            'manha': 'Manhã',
+            'tarde': 'Tarde',
+            'noite': 'Noite'
+        };
+        return turnos[turno] || turno;
     },
     
     // Carregar professores da API
@@ -133,6 +219,18 @@ const ProfessoresModule = {
         } catch (error) {
             console.error("Erro ao carregar professores:", error);
             this.mostrarErro("Não foi possível carregar os professores. Tente novamente mais tarde.");
+        }
+    },
+    
+    // Carregar vínculos de um professor específico
+    carregarVinculosProfessor: async function(idProfessor) {
+        try {
+            const vinculos = await ConfigModule.fetchApi(`/professores/vinculos/${idProfessor}`);
+            console.log(`Vínculos do professor ${idProfessor}:`, vinculos);
+            return vinculos;
+        } catch (error) {
+            console.error(`Erro ao carregar vínculos do professor ${idProfessor}:`, error);
+            return [];
         }
     },
     
@@ -149,17 +247,24 @@ const ProfessoresModule = {
         
         this.state.professores.forEach(professor => {
             const row = document.createElement('tr');
+            
+            // Determinar o campo de ID correto
+            const professorId = professor.id_professor || professor.id;
+            
             row.innerHTML = `
-                <td>${professor.id || 'N/A'}</td>
-                <td>${professor.nome || 'N/A'}</td>
-                <td>${professor.email || 'N/A'}</td>
-                <td>${professor.formacao || 'N/A'}</td>
-                <td>${this.formatarDisciplinas(professor.disciplinas)}</td>
+                <td>${professorId || 'N/A'}</td>
+                <td>${professor.nome_professor || professor.nome || 'N/A'}</td>
+                <td>${professor.email_professor || professor.email || 'N/A'}</td>
                 <td>
-                    <button class="btn btn-sm btn-primary editar-professor" data-id="${professor.id}">
+                    <button class="btn btn-sm btn-info ver-vinculos" data-id="${professorId}">
+                        <i class="fas fa-list"></i> Ver Vínculos
+                    </button>
+                </td>
+                <td>
+                    <button class="btn btn-sm btn-primary editar-professor" data-id="${professorId}">
                         <i class="fas fa-edit"></i>
                     </button>
-                    <button class="btn btn-sm btn-danger excluir-professor" data-id="${professor.id}">
+                    <button class="btn btn-sm btn-danger excluir-professor" data-id="${professorId}">
                         <i class="fas fa-trash"></i>
                     </button>
                 </td>
@@ -168,44 +273,114 @@ const ProfessoresModule = {
             // Adicionar event listeners para os botões
             const btnEditar = row.querySelector('.editar-professor');
             const btnExcluir = row.querySelector('.excluir-professor');
+            const btnVerVinculos = row.querySelector('.ver-vinculos');
             
-            btnEditar.addEventListener('click', () => this.editarProfessor(professor.id));
-            btnExcluir.addEventListener('click', () => this.confirmarExclusao(professor.id));
+            btnEditar.addEventListener('click', () => this.editarProfessor(professorId));
+            btnExcluir.addEventListener('click', () => this.confirmarExclusao(professorId));
+            btnVerVinculos.addEventListener('click', () => this.mostrarVinculos(professorId));
             
             this.elements.listaProfessores.appendChild(row);
         });
     },
     
-    // Formatar lista de disciplinas para exibição
-    formatarDisciplinas: function(disciplinas) {
-        if (!disciplinas || !Array.isArray(disciplinas) || disciplinas.length === 0) {
-            return 'Nenhuma';
-        }
-        
-        // Se disciplinas são objetos com nome
-        if (typeof disciplinas[0] === 'object' && disciplinas[0].nome) {
-            return disciplinas.map(d => d.nome).join(', ');
-        }
-        
-        // Se disciplinas são IDs, buscar nomes no array de disciplinas
-        if (typeof disciplinas[0] === 'string' || typeof disciplinas[0] === 'number') {
-            const nomes = disciplinas.map(id => {
-                // Procuramos a disciplina tanto pelo id quanto pelo id_disciplina
-                const disc = this.state.disciplinas.find(d => 
-                    d.id === id || 
-                    d.id === parseInt(id) || 
-                    d.id_disciplina === id
-                );
-                
-                // Debug para verificar as correspondências
-                console.log(`Procurando disciplina com ID: ${id}`, disc);
-                
-                return disc ? (disc.nome || disc.nome_disciplina) : `ID: ${id}`;
+    // Mostrar vínculos de um professor
+    mostrarVinculos: async function(idProfessor) {
+        try {
+            const vinculos = await this.carregarVinculosProfessor(idProfessor);
+            
+            if (!vinculos || vinculos.length === 0) {
+                alert("Este professor não possui vínculos com disciplinas e turmas.");
+                return;
+            }
+            
+            // Encontrar o professor
+            const professor = this.state.professores.find(p => 
+                p.id_professor === idProfessor || p.id === idProfessor
+            );
+            
+            if (!professor) {
+                console.error("Professor não encontrado:", idProfessor);
+                return;
+            }
+            
+            const nomeProfessor = professor.nome_professor || professor.nome;
+            
+            // Criar modal para mostrar os vínculos
+            const modalHtml = `
+                <div class="modal fade" id="vinculosModal" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Vínculos do Professor: ${nomeProfessor}</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="table-responsive">
+                                    <table class="table table-striped">
+                                        <thead>
+                                            <tr>
+                                                <th>Disciplina</th>
+                                                <th>Turma</th>
+                                                <th>Série</th>
+                                                <th>Turno</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${this.renderizarLinhasVinculos(vinculos)}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Adicionar modal ao body
+            const modalElement = document.createElement('div');
+            modalElement.innerHTML = modalHtml;
+            document.body.appendChild(modalElement);
+            
+            // Mostrar modal
+            const modal = new bootstrap.Modal(document.getElementById('vinculosModal'));
+            modal.show();
+            
+            // Remover modal quando for fechado
+            document.getElementById('vinculosModal').addEventListener('hidden.bs.modal', function() {
+                document.body.removeChild(modalElement);
             });
-            return nomes.join(', ');
+            
+        } catch (error) {
+            console.error("Erro ao mostrar vínculos:", error);
+            this.mostrarErro("Não foi possível carregar os vínculos do professor.");
+        }
+    },
+    
+    // Renderizar linhas da tabela de vínculos
+    renderizarLinhasVinculos: function(vinculos) {
+        if (!vinculos || vinculos.length === 0) {
+            return '<tr><td colspan="4" class="text-center">Nenhum vínculo encontrado</td></tr>';
         }
         
-        return 'Formato desconhecido';
+        return vinculos.map(vinculo => {
+            // Buscar nome da disciplina
+            const disciplina = this.state.disciplinas.find(d => 
+                d.id_disciplina === vinculo.id_disciplina
+            );
+            const nomeDisciplina = disciplina ? disciplina.nome : vinculo.id_disciplina;
+            
+            return `
+                <tr>
+                    <td>${nomeDisciplina}</td>
+                    <td>${vinculo.id_turma}</td>
+                    <td>${vinculo.serie || 'N/A'}</td>
+                    <td>${this.traduzirTurno(vinculo.turno)}</td>
+                </tr>
+            `;
+        }).join('');
     },
     
     // Criar novo professor
@@ -216,61 +391,98 @@ const ProfessoresModule = {
         if (this.elements.formProfessor) {
             this.elements.formProfessor.reset();
             this.elements.formProfessor.classList.remove('d-none');
+            
+            // Mostrar campo de senha e torná-lo obrigatório
+            if (this.elements.inputSenhaProfessor) {
+                this.elements.inputSenhaProfessor.required = true;
+                this.elements.inputSenhaProfessor.closest('.mb-3').classList.remove('d-none');
+            }
+            
+            // Mostrar campo de ID do professor
+            if (this.elements.inputIdProfessor) {
+                this.elements.inputIdProfessor.disabled = false;
+                this.elements.inputIdProfessor.required = true;
+            }
         }
         
-        if (this.elements.inputNomeProfessor) {
+        // Limpar seleção de disciplinas
+        if (this.elements.selectDisciplinas) {
+            Array.from(this.elements.selectDisciplinas.options).forEach(option => {
+                option.selected = false;
+            });
+            this.atualizarTurmasVinculadas();
+        }
+        
+        if (this.elements.inputIdProfessor) {
+            this.elements.inputIdProfessor.focus();
+        } else if (this.elements.inputNomeProfessor) {
             this.elements.inputNomeProfessor.focus();
         }
     },
     
     // Editar professor existente
-    editarProfessor: function(id) {
-        const professor = this.state.professores.find(p => p.id === id);
-        if (!professor) return;
-        
-        console.log("Editando professor:", professor);
-        
-        this.state.modoEdicao = true;
-        this.state.professorSelecionado = professor;
-        
-        if (this.elements.formProfessor) {
-            this.elements.formProfessor.classList.remove('d-none');
-            this.elements.inputNomeProfessor.value = professor.nome || '';
-            this.elements.inputEmailProfessor.value = professor.email || '';
-            this.elements.inputFormacaoProfessor.value = professor.formacao || '';
-            
-            // Selecionar disciplinas do professor
-            if (professor.disciplinas && Array.isArray(professor.disciplinas)) {
-                console.log("Disciplinas do professor:", professor.disciplinas);
-                console.log("Opções disponíveis:", Array.from(this.elements.selectDisciplinas.options).map(o => ({ value: o.value, text: o.textContent })));
-                
-                // Limpar seleções anteriores
-                Array.from(this.elements.selectDisciplinas.options).forEach(option => {
-                    option.selected = false;
-                });
-                
-                // Selecionar disciplinas do professor
-                professor.disciplinas.forEach(disc => {
-                    // Normalizar o valor da disciplina para comparação
-                    const disciplinaId = typeof disc === 'object' ? (disc.id_disciplina || disc.id) : disc;
-                    
-                    console.log(`Procurando option para disciplina: ${disciplinaId}`);
-                    
-                    // Encontrar a opção correspondente
-                    const option = Array.from(this.elements.selectDisciplinas.options).find(
-                        opt => opt.value === disciplinaId.toString()
-                    );
-                    
-                    if (option) {
-                        console.log(`Marcando disciplina ${disciplinaId} como selecionada`);
-                        option.selected = true;
-                    } else {
-                        console.warn(`Disciplina ${disciplinaId} não encontrada nas opções disponíveis`);
-                    }
-                });
+    editarProfessor: async function(id) {
+        try {
+            // Carregar detalhes completos do professor
+            const professor = await ConfigModule.fetchApi(`/professores/${id}`);
+            if (!professor) {
+                this.mostrarErro("Professor não encontrado.");
+                return;
             }
             
-            this.elements.inputNomeProfessor.focus();
+            console.log("Editando professor:", professor);
+            
+            this.state.modoEdicao = true;
+            this.state.professorSelecionado = professor;
+            
+            if (this.elements.formProfessor) {
+                this.elements.formProfessor.classList.remove('d-none');
+                
+                // Preencher campos
+                if (this.elements.inputIdProfessor) {
+                    this.elements.inputIdProfessor.value = professor.id_professor || '';
+                    this.elements.inputIdProfessor.disabled = true; // Não permitir alterar o ID
+                }
+                
+                this.elements.inputNomeProfessor.value = professor.nome_professor || professor.nome || '';
+                this.elements.inputEmailProfessor.value = professor.email_professor || professor.email || '';
+                this.elements.inputFormacaoProfessor.value = professor.formacao || '';
+                
+                // Campo de senha não é obrigatório na edição
+                if (this.elements.inputSenhaProfessor) {
+                    this.elements.inputSenhaProfessor.required = false;
+                    this.elements.inputSenhaProfessor.value = '';
+                    this.elements.inputSenhaProfessor.closest('.mb-3').classList.add('d-none');
+                }
+                
+                // Selecionar disciplinas do professor
+                if (professor.disciplinas && Array.isArray(professor.disciplinas) && this.elements.selectDisciplinas) {
+                    console.log("Disciplinas do professor:", professor.disciplinas);
+                    
+                    // Limpar seleções anteriores
+                    Array.from(this.elements.selectDisciplinas.options).forEach(option => {
+                        option.selected = false;
+                    });
+                    
+                    // Selecionar disciplinas
+                    professor.disciplinas.forEach(disc => {
+                        const disciplinaId = typeof disc === 'object' ? (disc.id_disciplina || disc.id) : disc;
+                        const option = Array.from(this.elements.selectDisciplinas.options).find(
+                            opt => opt.value === disciplinaId.toString()
+                        );
+                        
+                        if (option) option.selected = true;
+                    });
+                    
+                    // Atualizar visualização de turmas
+                    this.atualizarTurmasVinculadas();
+                }
+                
+                this.elements.inputNomeProfessor.focus();
+            }
+        } catch (error) {
+            console.error("Erro ao editar professor:", error);
+            this.mostrarErro("Não foi possível carregar os dados do professor para edição.");
         }
     },
     
@@ -278,50 +490,39 @@ const ProfessoresModule = {
     salvarProfessor: async function() {
         try {
             // Obter disciplinas selecionadas
-            const disciplinasSelecionadas = Array.from(this.elements.selectDisciplinas.selectedOptions).map(
-                option => option.value
-            );
+            const disciplinasSelecionadas = this.elements.selectDisciplinas ? 
+                Array.from(this.elements.selectDisciplinas.selectedOptions).map(opt => opt.value) : [];
             
-            console.log("Disciplinas selecionadas:", disciplinasSelecionadas);
-            
-            // Se estivermos em modo de edição, precisamos identificar o campo correto para o ID do professor
-            let professorId = '';
-            if (this.state.modoEdicao && this.state.professorSelecionado) {
-                professorId = this.state.professorSelecionado.id_professor || this.state.professorSelecionado.id;
-                console.log(`Editando professor ID: ${professorId}`);
-            }
-            
+            // Preparar dados do professor
             const professorDados = {
-                nome: this.elements.inputNomeProfessor.value,
-                email: this.elements.inputEmailProfessor.value,
+                nome_professor: this.elements.inputNomeProfessor.value,
+                email_professor: this.elements.inputEmailProfessor.value,
                 formacao: this.elements.inputFormacaoProfessor.value,
                 disciplinas: disciplinasSelecionadas
             };
             
-            // Para modo de edição, podemos precisar adicionar mais campos
-            if (this.state.modoEdicao && this.state.professorSelecionado) {
-                professorDados.id_professor = professorId;
+            if (this.elements.inputIdProfessor) {
+                professorDados.id_professor = this.elements.inputIdProfessor.value;
             }
             
-            console.log("Dados a serem enviados:", professorDados);
+            // Adicionar senha apenas se for um novo professor ou se foi preenchida
+            if (this.elements.inputSenhaProfessor && this.elements.inputSenhaProfessor.value) {
+                professorDados.senha_professor = this.elements.inputSenhaProfessor.value;
+            }
+            
+            console.log("Dados do professor a serem salvos:", professorDados);
             
             let response;
             
             if (this.state.modoEdicao && this.state.professorSelecionado) {
+                // ID para atualização
+                const professorId = this.state.professorSelecionado.id_professor || this.state.professorSelecionado.id;
+                
                 // Atualizar professor existente
                 response = await ConfigModule.fetchApi(`/professores/${professorId}`, {
                     method: 'PUT',
                     body: JSON.stringify(professorDados)
                 });
-                
-                console.log("Resposta da API (PUT):", response);
-                
-                // Atualizar professor na lista local
-                const index = this.state.professores.findIndex(p => p.id === this.state.professorSelecionado.id);
-                
-                if (index !== -1) {
-                    this.state.professores[index] = { ...this.state.professores[index], ...professorDados };
-                }
                 
                 this.mostrarSucesso("Professor atualizado com sucesso!");
             } else {
@@ -331,18 +532,15 @@ const ProfessoresModule = {
                     body: JSON.stringify(professorDados)
                 });
                 
-                console.log("Resposta da API (POST):", response);
-                
-                // Adicionar novo professor à lista local
-                this.state.professores.push(response);
-                
                 this.mostrarSucesso("Professor criado com sucesso!");
             }
+            
+            console.log("Resposta da API:", response);
             
             // Resetar formulário e estado
             this.cancelarEdicao();
             
-            // Atualizar lista de professores
+            // Recarregar lista de professores
             await this.carregarProfessores();
             
         } catch (error) {
@@ -360,11 +558,16 @@ const ProfessoresModule = {
             this.elements.formProfessor.reset();
             this.elements.formProfessor.classList.add('d-none');
         }
+        
+        // Limpar turmas vinculadas
+        if (this.elements.vinculosContainer) {
+            this.elements.vinculosContainer.innerHTML = '';
+        }
     },
     
     // Confirmar exclusão de professor
     confirmarExclusao: function(id) {
-        if (confirm("Tem certeza que deseja excluir este professor? Esta ação não pode ser desfeita.")) {
+        if (confirm("Tem certeza que deseja excluir este professor? Esta ação não pode ser desfeita e removerá todos os vínculos com disciplinas e turmas.")) {
             this.excluirProfessor(id);
         }
     },
@@ -376,13 +579,11 @@ const ProfessoresModule = {
                 method: 'DELETE'
             });
             
-            // Remover professor da lista local
-            this.state.professores = this.state.professores.filter(p => p.id !== id);
-            
-            // Atualizar lista de professores
-            this.renderizarProfessores();
-            
             this.mostrarSucesso("Professor excluído com sucesso!");
+            
+            // Recarregar lista de professores
+            await this.carregarProfessores();
+            
         } catch (error) {
             console.error("Erro ao excluir professor:", error);
             this.mostrarErro("Não foi possível excluir o professor. Tente novamente mais tarde.");
