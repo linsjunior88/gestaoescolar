@@ -116,6 +116,8 @@ const NotasModule = {
     
     // Cachear elementos DOM para melhor performance
     cachearElementos: function() {
+        console.log("Cacheando elementos DOM do módulo de notas");
+        
         // Form e lista principal
         this.elements.listaNotas = document.getElementById('lista-notas');
         this.elements.formNota = document.getElementById('form-nota');
@@ -156,6 +158,48 @@ const NotasModule = {
         this.elements.gradeNotasCorpo = document.getElementById('grade-notas-corpo');
         this.elements.gradeLoader = document.getElementById('grade-loader');
         this.elements.gradeNotas = document.getElementById('grade-notas');
+        
+        // Verificar e criar o elemento gradeNotas se necessário
+        if (!this.elements.gradeNotas) {
+            console.warn("Elemento grade-notas não encontrado inicialmente");
+            
+            // Procurar por um elemento wrapper para conter a grade
+            const gradeNotasWrapper = this.elements.gradeNotasWrapper || 
+                                      document.querySelector('#grade-notas-wrapper') || 
+                                      document.querySelector('#conteudo-notas');
+            
+            if (gradeNotasWrapper) {
+                // Verificar se já existe um elemento com ID grade-notas dentro do wrapper
+                let gradeNotasExistente = gradeNotasWrapper.querySelector('#grade-notas');
+                
+                if (gradeNotasExistente) {
+                    console.log("Elemento grade-notas encontrado dentro do wrapper");
+                    this.elements.gradeNotas = gradeNotasExistente;
+                } else {
+                    // Criar o elemento se não existir
+                    console.log("Criando elemento grade-notas dinâmicamente durante inicialização");
+                    const novoGradeNotas = document.createElement('div');
+                    novoGradeNotas.id = 'grade-notas';
+                    novoGradeNotas.className = 'mt-4';
+                    gradeNotasWrapper.appendChild(novoGradeNotas);
+                    this.elements.gradeNotas = novoGradeNotas;
+                }
+            } else {
+                console.warn("Não foi possível encontrar um container adequado para a grade de notas");
+            }
+        }
+        
+        // Log para depuração de elementos críticos
+        console.log("Estado dos elementos críticos após cachear:", {
+            massaTurma: !!this.elements.massaTurma,
+            massaDisciplina: !!this.elements.massaDisciplina,
+            massaBimestre: !!this.elements.massaBimestre,
+            massaAno: !!this.elements.massaAno,
+            btnCarregarGrade: !!this.elements.btnCarregarGrade,
+            btnSalvarGrade: !!this.elements.btnSalvarGrade,
+            gradeNotas: !!this.elements.gradeNotas,
+            gradeNotasWrapper: !!this.elements.gradeNotasWrapper
+        });
     },
     
     // Adicionar event listeners
@@ -1387,20 +1431,34 @@ const NotasModule = {
             // Usar Set para evitar duplicatas
             const disciplinasIds = new Set();
             
-            disciplinas.forEach(disciplina => {
-                // Verificar se a disciplina já foi adicionada
-                if (disciplinasIds.has(disciplina.id)) {
-                    console.log(`Disciplina ${disciplina.id} já adicionada, ignorando duplicata`);
-                    return;
-                }
+            // Verificar se disciplinas é um array e tem elementos
+            if (Array.isArray(disciplinas) && disciplinas.length > 0) {
+                disciplinas.forEach(disciplina => {
+                    // Obter o ID da disciplina, considerando diferentes formatos de resposta
+                    const id = disciplina.id_disciplina || disciplina.id;
+                    const nome = disciplina.nome_disciplina || disciplina.nome || 'N/A';
+                    
+                    console.log(`Processando disciplina: ID=${id}, Nome=${nome}`);
+                    
+                    // Verificar se a disciplina já foi adicionada
+                    if (disciplinasIds.has(id)) {
+                        console.log(`Disciplina ${id} já adicionada, ignorando duplicata`);
+                        return;
+                    }
+                    
+                    disciplinasIds.add(id);
+                    
+                    const option = document.createElement('option');
+                    option.value = id;
+                    option.textContent = nome;
+                    this.elements.massaDisciplina.appendChild(option);
+                });
                 
-                disciplinasIds.add(disciplina.id);
-                
-                const option = document.createElement('option');
-                option.value = disciplina.id;
-                option.textContent = disciplina.nome;
-                this.elements.massaDisciplina.appendChild(option);
-            });
+                console.log(`Total de ${disciplinasIds.size} disciplinas únicas adicionadas ao select`);
+            } else {
+                console.log("Nenhuma disciplina encontrada para esta turma ou resposta em formato inesperado");
+                this.elements.massaDisciplina.innerHTML += '<option disabled>Nenhuma disciplina encontrada</option>';
+            }
 
             // Habilitar select de disciplinas
             this.elements.massaDisciplina.disabled = false;
@@ -1431,6 +1489,30 @@ const NotasModule = {
 
             console.log("Carregando grade de notas para edição em massa:", { turmaId, disciplinaId, bimestre, ano });
             
+            // Verificar se o elemento gradeNotas existe
+            if (!this.elements.gradeNotas) {
+                console.warn("Elemento gradeNotas não encontrado, tentando obter novamente");
+                this.elements.gradeNotas = document.getElementById('grade-notas');
+                
+                // Se ainda não encontrou, criar o elemento
+                if (!this.elements.gradeNotas) {
+                    console.warn("Criando elemento grade-notas dinâmicamente");
+                    const gradeNotasWrapper = document.querySelector('#grade-notas-wrapper') || document.querySelector('#conteudo-notas');
+                    
+                    if (gradeNotasWrapper) {
+                        const novoGradeNotas = document.createElement('div');
+                        novoGradeNotas.id = 'grade-notas';
+                        novoGradeNotas.className = 'mt-4';
+                        gradeNotasWrapper.appendChild(novoGradeNotas);
+                        this.elements.gradeNotas = novoGradeNotas;
+                    } else {
+                        this.mostrarErro("Não foi possível encontrar o container para exibir as notas. Por favor, recarregue a página.");
+                        console.error("Nenhum elemento #grade-notas-wrapper ou #conteudo-notas encontrado");
+                        return;
+                    }
+                }
+            }
+            
             // Adicionar classe de carregamento à página
             const conteudoNotas = document.querySelector('#conteudo-notas');
             if (conteudoNotas) {
@@ -1458,7 +1540,7 @@ const NotasModule = {
             const alunos = await ConfigModule.fetchApi(`/turmas/${turmaId}/alunos`);
             console.log("Alunos carregados:", alunos);
             
-            if (!alunos || alunos.length === 0) {
+            if (!alunos || !Array.isArray(alunos) || alunos.length === 0) {
                 this.elements.gradeNotas.innerHTML = `
                     <div class="alert alert-info">
                         <i class="fas fa-info-circle me-2"></i>
@@ -1501,7 +1583,8 @@ const NotasModule = {
             
             alunos.forEach((aluno, index) => {
                 // Encontrar nota existente para este aluno, se houver
-                const notaExistente = notasExistentes.find(nota => nota.id_aluno === aluno.id);
+                const notaExistente = Array.isArray(notasExistentes) ? 
+                    notasExistentes.find(nota => String(nota.id_aluno) === String(aluno.id)) : null;
                 
                 const tr = document.createElement('tr');
                 tr.dataset.alunoId = aluno.id;
@@ -1511,7 +1594,7 @@ const NotasModule = {
                 
                 tr.innerHTML = `
                     <td class="text-center align-middle">${index + 1}</td>
-                    <td class="align-middle">${aluno.nome}</td>
+                    <td class="align-middle">${aluno.nome || aluno.nome_aluno || 'Aluno ' + aluno.id}</td>
                     <td>
                         <div class="input-group">
                             <input type="text" 
@@ -1545,7 +1628,7 @@ const NotasModule = {
                     </div>
                     <div>
                         <span class="badge bg-primary">${alunos.length} alunos</span>
-                        <span class="badge bg-info">${notasExistentes.length} notas registradas</span>
+                        <span class="badge bg-info">${Array.isArray(notasExistentes) ? notasExistentes.length : 0} notas registradas</span>
                     </div>
                 </div>
             `;
@@ -1567,6 +1650,14 @@ const NotasModule = {
             
         } catch (error) {
             console.error("Erro ao carregar grade de notas:", error);
+            
+            // Verificar se o elemento ainda não existe
+            if (!this.elements.gradeNotas) {
+                const mensagemErro = `<strong>Erro ao carregar grade de notas.</strong> ${error.message || 'Por favor, tente novamente.'}`;
+                this.mostrarErro(mensagemErro);
+                return;
+            }
+            
             this.mostrarErro(`<strong>Erro ao carregar grade de notas.</strong> ${error.message || 'Por favor, tente novamente.'}`);
             this.elements.gradeNotas.innerHTML = `
                 <div class="alert alert-danger">
