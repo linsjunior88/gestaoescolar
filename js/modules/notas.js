@@ -1101,15 +1101,12 @@ const NotasModule = {
                     // Atualizar nota existente ou criar nova
                     if (notaId) {
                         // Atualizar nota existente
-                        response = await fetch(`${API_URL}/notas/${notaId}`, {
+                        response = await ConfigModule.fetchApi(`/notas/${notaId}`, {
                             method: 'PUT',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
                             body: JSON.stringify(dadosNota)
                         });
                         
-                        if (response.ok) {
+                        if (!response.error) {
                             // Remover qualquer classe de erro anterior
                             input.classList.remove('is-invalid');
                             linha.classList.remove('linha-erro');
@@ -1119,20 +1116,17 @@ const NotasModule = {
                             linha.querySelector('.status-cell').innerHTML = '<span class="badge bg-success"><i class="fas fa-check me-1"></i> Atualizada</span>';
                             notasAtualizadas++;
                         } else {
-                            throw new Error(`Erro ao atualizar nota: ${response.status}`);
+                            throw new Error(`Erro ao atualizar nota: ${response.message || response.status}`);
                         }
                     } else {
                         // Criar nova nota
-                        response = await fetch(`${API_URL}/notas`, {
+                        response = await ConfigModule.fetchApi('/notas', {
                             method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
                             body: JSON.stringify(dadosNota)
                         });
                         
-                        if (response.ok) {
-                            const novaNota = await response.json();
+                        if (!response.error) {
+                            const novaNota = response;
                             novaNotaId = novaNota.id;
                             
                             // Atualizar o dataset do input para futuros salvamentos
@@ -1148,7 +1142,7 @@ const NotasModule = {
                             linha.querySelector('.status-cell').innerHTML = '<span class="badge bg-primary"><i class="fas fa-plus-circle me-1"></i> Criada</span>';
                             notasCriadas++;
                         } else {
-                            throw new Error(`Erro ao criar nota: ${response.status}`);
+                            throw new Error(`Erro ao criar nota: ${response.message || response.status}`);
                         }
                     }
                 } catch (error) {
@@ -1384,12 +1378,7 @@ const NotasModule = {
             this.elements.massaDisciplina.disabled = true;
 
             // Buscar disciplinas vinculadas à turma
-            const response = await fetch(`${API_URL}/turmas/${turmaId}/disciplinas`);
-            if (!response.ok) {
-                throw new Error("Erro ao carregar disciplinas da turma");
-            }
-
-            const disciplinas = await response.json();
+            const disciplinas = await ConfigModule.fetchApi(`/turmas/${turmaId}/disciplinas`);
             console.log("Disciplinas carregadas:", disciplinas);
 
             // Preencher select de disciplinas
@@ -1466,12 +1455,7 @@ const NotasModule = {
             }
             
             // Buscar alunos da turma
-            const alunosResponse = await fetch(`${API_URL}/turmas/${turmaId}/alunos`);
-            if (!alunosResponse.ok) {
-                throw new Error("Erro ao carregar alunos da turma");
-            }
-            
-            const alunos = await alunosResponse.json();
+            const alunos = await ConfigModule.fetchApi(`/turmas/${turmaId}/alunos`);
             console.log("Alunos carregados:", alunos);
             
             if (!alunos || alunos.length === 0) {
@@ -1492,12 +1476,7 @@ const NotasModule = {
             
             // Buscar notas existentes para esta turma, disciplina, bimestre e ano
             const filtro = `?id_turma=${turmaId}&id_disciplina=${disciplinaId}&bimestre=${bimestre}&ano=${ano}`;
-            const notasResponse = await fetch(`${API_URL}/notas${filtro}`);
-            if (!notasResponse.ok) {
-                throw new Error("Erro ao carregar notas existentes");
-            }
-            
-            const notasExistentes = await notasResponse.json();
+            const notasExistentes = await ConfigModule.fetchApi(`/notas${filtro}`);
             console.log("Notas existentes:", notasExistentes);
             
             // Criar tabela para exibir os alunos e suas notas
