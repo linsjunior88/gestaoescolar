@@ -68,6 +68,13 @@ const NotasModule = {
     // Inicializar módulo
     init: async function() {
         console.log("Inicializando módulo de notas");
+        
+        // Verificar e reconstruir a estrutura HTML se necessário
+        const integridadeOk = this.verificarIntegridadeHTML();
+        if (!integridadeOk) {
+            this.reconstruirInterfaceNotas();
+        }
+        
         this.cachearElementos();
         this.adicionarEventListeners();
         
@@ -96,6 +103,315 @@ const NotasModule = {
             console.error("Erro durante a inicialização do módulo de notas:", error);
             this.mostrarErro("Ocorreu um erro ao inicializar o módulo de notas. Por favor, recarregue a página.");
         }
+    },
+    
+    // Verificar se todos os elementos HTML necessários existem
+    verificarIntegridadeHTML: function() {
+        console.log("Verificando integridade da estrutura HTML do módulo de notas");
+        
+        const conteudoNotas = document.getElementById('conteudo-notas');
+        if (!conteudoNotas) {
+            console.error("Elemento conteudo-notas não encontrado");
+            return false;
+        }
+        
+        // Verificar os elementos críticos
+        const elementosCriticos = [
+            'filtro-turma-nota',
+            'filtro-disciplina-nota',
+            'filtro-aluno-nota', 
+            'filtro-bimestre-nota',
+            'filtro-ano-nota',
+            'btn-filtrar-notas',
+            'lista-notas'
+        ];
+        
+        const elementosNaoEncontrados = elementosCriticos.filter(id => !document.getElementById(id));
+        
+        if (elementosNaoEncontrados.length > 0) {
+            console.warn("Elementos críticos não encontrados:", elementosNaoEncontrados);
+            return false;
+        }
+        
+        return true;
+    },
+    
+    // Reconstruir a interface HTML do módulo de notas
+    reconstruirInterfaceNotas: function() {
+        console.log("Reconstruindo interface do módulo de notas");
+        
+        const conteudoNotas = document.getElementById('conteudo-notas');
+        if (!conteudoNotas) {
+            console.error("Não é possível reconstruir a interface - elemento conteudo-notas não encontrado");
+            return;
+        }
+        
+        conteudoNotas.innerHTML = `
+            <h2 class="mb-4">Gestão de Notas</h2>
+            
+            <!-- Card para filtros -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-primary">Filtros</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-2">
+                            <div class="mb-3">
+                                <label for="filtro-turma-nota" class="form-label">Turma</label>
+                                <select class="form-select" id="filtro-turma-nota">
+                                    <option value="">Todas as turmas</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="mb-3">
+                                <label for="filtro-disciplina-nota" class="form-label">Disciplina</label>
+                                <select class="form-select" id="filtro-disciplina-nota">
+                                    <option value="">Todas as disciplinas</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="mb-3">
+                                <label for="filtro-aluno-nota" class="form-label">Aluno</label>
+                                <select class="form-select" id="filtro-aluno-nota">
+                                    <option value="">Todos os alunos</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="mb-3">
+                                <label for="filtro-bimestre-nota" class="form-label">Bimestre</label>
+                                <select class="form-select" id="filtro-bimestre-nota">
+                                    <option value="">Todos os bimestres</option>
+                                    <option value="1">1º Bimestre</option>
+                                    <option value="2">2º Bimestre</option>
+                                    <option value="3">3º Bimestre</option>
+                                    <option value="4">4º Bimestre</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="mb-3">
+                                <label for="filtro-ano-nota" class="form-label">Ano</label>
+                                <select class="form-select" id="filtro-ano-nota">
+                                    <option value="">Todos os anos</option>
+                                    <option value="2024">2024</option>
+                                    <option value="2023">2023</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="mb-3">
+                                <label class="form-label">&nbsp;</label>
+                                <button id="btn-filtrar-notas" class="btn btn-primary d-block">Filtrar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Card para listagem de notas -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-primary">Notas Cadastradas</h6>
+                    <button id="btn-nova-nota" class="btn btn-primary">
+                        <i class="fas fa-plus me-1"></i> Nova Nota
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover" id="tabela-notas">
+                            <thead>
+                                <tr>
+                                    <th data-ordenavel data-coluna="id">ID</th>
+                                    <th data-ordenavel data-coluna="turma">Turma</th>
+                                    <th data-ordenavel data-coluna="disciplina">Disciplina</th>
+                                    <th data-ordenavel data-coluna="aluno">Aluno</th>
+                                    <th data-ordenavel data-coluna="bimestre">Bimestre</th>
+                                    <th data-ordenavel data-coluna="ano">Ano</th>
+                                    <th data-ordenavel data-coluna="nota_mensal">Mensal</th>
+                                    <th data-ordenavel data-coluna="nota_bimestral">Bimestral</th>
+                                    <th data-ordenavel data-coluna="nota_recuperacao">Recuperação</th>
+                                    <th data-ordenavel data-coluna="media_final">Média Final</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="lista-notas">
+                                <!-- Dados serão carregados dinamicamente -->
+                                <tr class="text-center">
+                                    <td colspan="11">Use os filtros acima para buscar notas</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Form para lançamento de notas (oculto inicialmente) -->
+            <div class="row">
+                <div class="col-md-6">
+                    <form id="form-nota" class="card d-none">
+                        <div class="card-header">
+                            <h5 class="card-title">Lançamento de Nota</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label for="turma-nota" class="form-label">Turma</label>
+                                <select class="form-select" id="turma-nota" required>
+                                    <option value="">Selecione uma turma</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="disciplina-nota" class="form-label">Disciplina</label>
+                                <select class="form-select" id="disciplina-nota" required>
+                                    <option value="">Selecione uma disciplina</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="aluno-nota" class="form-label">Aluno</label>
+                                <select class="form-select" id="aluno-nota" required>
+                                    <option value="">Selecione um aluno</option>
+                                </select>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="bimestre-nota" class="form-label">Bimestre</label>
+                                        <select class="form-select" id="bimestre-nota" required>
+                                            <option value="">Selecione o bimestre</option>
+                                            <option value="1">1º Bimestre</option>
+                                            <option value="2">2º Bimestre</option>
+                                            <option value="3">3º Bimestre</option>
+                                            <option value="4">4º Bimestre</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="ano-nota" class="form-label">Ano</label>
+                                        <input type="number" class="form-control" id="ano-nota" min="2020" max="2030" required>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label for="nota-mensal" class="form-label">Nota Mensal</label>
+                                        <input type="number" class="form-control" id="nota-mensal" min="0" max="10" step="0.1">
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label for="nota-bimestral" class="form-label">Nota Bimestral</label>
+                                        <input type="number" class="form-control" id="nota-bimestral" min="0" max="10" step="0.1">
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label for="nota-recuperacao" class="form-label">Nota Recuperação</label>
+                                        <input type="number" class="form-control" id="nota-recuperacao" min="0" max="10" step="0.1">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Média Final</label>
+                                <div class="form-control bg-light">
+                                    <span id="media-final">0.0</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-footer">
+                            <button type="submit" class="btn btn-primary" id="btn-salvar-nota">Salvar</button>
+                            <button type="button" class="btn btn-secondary" id="btn-cancelar-nota">Cancelar</button>
+                        </div>
+                    </form>
+                </div>
+                
+                <!-- Área para lançamento em massa -->
+                <div class="col-md-12 mt-4">
+                    <div class="card shadow">
+                        <div class="card-header py-3">
+                            <h6 class="m-0 font-weight-bold text-primary">Lançamento em Massa</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row mb-3">
+                                <div class="col-md-3">
+                                    <div class="mb-3">
+                                        <label for="massa-turma" class="form-label">Turma</label>
+                                        <select class="form-select" id="massa-turma" required>
+                                            <option value="">Selecione uma turma</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="mb-3">
+                                        <label for="massa-disciplina" class="form-label">Disciplina</label>
+                                        <select class="form-select" id="massa-disciplina" required>
+                                            <option value="">Selecione uma disciplina</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="mb-3">
+                                        <label for="massa-bimestre" class="form-label">Bimestre</label>
+                                        <select class="form-select" id="massa-bimestre" required>
+                                            <option value="">Selecione o bimestre</option>
+                                            <option value="1">1º Bimestre</option>
+                                            <option value="2">2º Bimestre</option>
+                                            <option value="3">3º Bimestre</option>
+                                            <option value="4">4º Bimestre</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="mb-3">
+                                        <label for="massa-ano" class="form-label">Ano</label>
+                                        <input type="number" class="form-control" id="massa-ano" min="2020" max="2030" required value="2024">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-md-12">
+                                    <button id="btn-carregar-grade" class="btn btn-primary">
+                                        <i class="fas fa-sync-alt me-1"></i> Carregar Alunos
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div id="grade-notas-wrapper" class="d-none">
+                                <div class="table-responsive">
+                                    <table class="table table-striped table-hover" id="tabela-grade-notas">
+                                        <thead>
+                                            <tr>
+                                                <th>Aluno</th>
+                                                <th>Nota Mensal</th>
+                                                <th>Nota Bimestral</th>
+                                                <th>Recuperação</th>
+                                                <th>Média</th>
+                                                <th>Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="grade-notas-corpo">
+                                            <!-- Conteúdo será gerado dinamicamente -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="mt-3">
+                                    <button id="btn-salvar-grade" class="btn btn-success">
+                                        <i class="fas fa-save me-1"></i> Salvar Todas as Notas
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="grade-notas"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        console.log("Interface do módulo de notas reconstruída com sucesso");
     },
     
     // Adicionar estilos CSS para destaques de sucesso e erro
