@@ -60,7 +60,9 @@ const NotasModule = {
         btnCarregarGrade: null,
         btnSalvarGrade: null,
         gradeNotasWrapper: null,
-        gradeNotasCorpo: null
+        gradeNotasCorpo: null,
+        gradeLoader: null,
+        gradeNotas: null
     },
     
     // Inicializar módulo
@@ -82,6 +84,34 @@ const NotasModule = {
         
         // Inicializar cabecalhos de ordenação
         this.inicializarCabecalhosOrdenacao();
+        
+        // Adicionar estilos CSS para destaques
+        this.adicionarEstilosCSS();
+    },
+    
+    // Adicionar estilos CSS para destaques de sucesso e erro
+    adicionarEstilosCSS: function() {
+        const styleElement = document.createElement('style');
+        styleElement.textContent = `
+            .destaque-sucesso {
+                animation: destaque-sucesso-anim 3s;
+            }
+            
+            .destaque-erro {
+                animation: destaque-erro-anim 5s;
+            }
+            
+            @keyframes destaque-sucesso-anim {
+                0%, 70% { box-shadow: inset 0 0 0 3px #198754; }
+                100% { box-shadow: none; }
+            }
+            
+            @keyframes destaque-erro-anim {
+                0%, 70% { box-shadow: inset 0 0 0 3px #dc3545; }
+                100% { box-shadow: none; }
+            }
+        `;
+        document.head.appendChild(styleElement);
     },
     
     // Cachear elementos DOM para melhor performance
@@ -124,6 +154,8 @@ const NotasModule = {
         this.elements.btnSalvarGrade = document.getElementById('btn-salvar-grade');
         this.elements.gradeNotasWrapper = document.getElementById('grade-notas-wrapper');
         this.elements.gradeNotasCorpo = document.getElementById('grade-notas-corpo');
+        this.elements.gradeLoader = document.getElementById('grade-loader');
+        this.elements.gradeNotas = document.getElementById('grade-notas');
     },
     
     // Adicionar event listeners
@@ -193,7 +225,7 @@ const NotasModule = {
         // Novos event listeners para lançamento em massa
         if (this.elements.massaTurma) {
             this.elements.massaTurma.addEventListener('change', () => {
-                this.carregarDisciplinasGrade(this.elements.massaTurma.value);
+                this.carregarDisciplinasGrade();
             });
         }
         
@@ -977,51 +1009,603 @@ const NotasModule = {
     // Salvar notas em massa
     salvarNotasEmMassa: async function() {
         try {
-            const notas = this.state.notas.map(nota => ({
-                turma_id: nota.turma_id || nota.id_turma,
-                disciplina_id: nota.disciplina_id || nota.id_disciplina,
-                aluno_id: nota.aluno_id || nota.id_aluno,
-                nota_mensal: nota.nota_mensal,
-                nota_bimestral: nota.nota_bimestral,
-                nota_recuperacao: nota.nota_recuperacao,
-                bimestre: nota.bimestre,
-                ano: nota.ano
-            }));
+            console.log("Iniciando salvamento em massa de notas");
             
-            await ConfigModule.fetchApi('/notas/massa', {
-                method: 'POST',
-                body: JSON.stringify(notas)
+            // Obter todos os inputs de notas
+            const notaInputs = document.querySelectorAll('.nota-input');
+            
+            // Verificar se há inputs preenchidos
+            const inputsPreenchidos = Array.from(notaInputs).filter(input => input.value.trim() !== '');
+            if (inputsPreenchidos.length === 0) {
+                this.mostrarErro("Nenhuma nota foi preenchida. Por favor, insira pelo menos uma nota para salvar.");
+                return;
+            }
+            
+            // Obter dados dos filtros
+            const turmaId = this.elements.massaTurma.value;
+            const disciplinaId = this.elements.massaDisciplina.value;
+            const bimestre = this.elements.massaBimestre.value;
+            const ano = this.elements.massaAno.value;
+            
+            if (!turmaId || !disciplinaId || !bimestre || !ano) {
+                this.mostrarErro("Informações incompletas. Recarregue a página e tente novamente.");
+                return;
+            }
+            
+            // Adicionar estilos CSS para feedback visual
+            this.adicionarEstilosCSS();
+            
+            // Atualizar texto do botão e desabilitá-lo
+            const btnSalvar = this.elements.btnSalvarGrade;
+            const textoOriginal = btnSalvar.innerHTML;
+            btnSalvar.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Salvando notas...';
+            btnSalvar.disabled = true;
+            btnSalvar.classList.add('btn-loading');
+            
+            // Remover destaques anteriores
+            const linhasTabela = document.querySelectorAll('tbody tr');
+            linhasTabela.forEach(linha => {
+                linha.classList.remove('linha-sucesso', 'linha-erro', 'linha-aviso');
+                const statusCell = linha.querySelector('.status-cell');
+                if (statusCell) statusCell.innerHTML = '';
             });
             
-            this.mostrarSucesso("Notas salvas com sucesso!");
+            // Contadores para feedback
+            let notasCriadas = 0;
+            let notasAtualizadas = 0;
+            let notasComErro = 0;
             
-            // Recarregar notas
-            this.filtrarNotas();
+            // Processar cada nota
+            for (const input of notaInputs) {
+                const valor = input.value.trim();
+                if (valor === '') continue;
+                
+                // Validar valor da nota
+                const valorNumerico = parseFloat(valor);
+                if (isNaN(valorNumerico) || valorNumerico < 0 || valorNumerico > 10) {
+                    console.error(`Valor inválido para nota: ${valor}`);
+                    
+                    // Destacar linha com erro
+                    const linha = input.closest('tr');
+                    linha.classList.add('linha-erro');
+                    linha.querySelector('.status-cell').innerHTML = '<span class="badge bg-danger"><i class="fas fa-exclamation-triangle me-1"></i> Valor inválido (0-10)</span>';
+                    
+                    // Destacar o input também
+                    input.classList.add('is-invalid');
+                    
+                    notasComErro++;
+                    continue;
+                }
+                
+                const alunoId = input.dataset.alunoId;
+                const notaId = input.dataset.notaId;
+                const linha = input.closest('tr');
+                
+                try {
+                    let response;
+                    let novaNotaId = notaId;
+                    
+                    // Preparar dados para API
+                    const dadosNota = {
+                        id_turma: turmaId,
+                        id_disciplina: disciplinaId,
+                        id_aluno: alunoId,
+                        bimestre: bimestre,
+                        ano: ano,
+                        valor: valorNumerico
+                    };
+                    
+                    // Mostrar status de processamento
+                    linha.querySelector('.status-cell').innerHTML = '<span class="badge bg-secondary"><i class="fas fa-sync fa-spin me-1"></i> Processando...</span>';
+                    
+                    // Atualizar nota existente ou criar nova
+                    if (notaId) {
+                        // Atualizar nota existente
+                        response = await fetch(`${API_URL}/notas/${notaId}`, {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(dadosNota)
+                        });
+                        
+                        if (response.ok) {
+                            // Remover qualquer classe de erro anterior
+                            input.classList.remove('is-invalid');
+                            linha.classList.remove('linha-erro');
+                            
+                            // Adicionar classe de sucesso e badge
+                            linha.classList.add('linha-sucesso');
+                            linha.querySelector('.status-cell').innerHTML = '<span class="badge bg-success"><i class="fas fa-check me-1"></i> Atualizada</span>';
+                            notasAtualizadas++;
+                        } else {
+                            throw new Error(`Erro ao atualizar nota: ${response.status}`);
+                        }
+                    } else {
+                        // Criar nova nota
+                        response = await fetch(`${API_URL}/notas`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(dadosNota)
+                        });
+                        
+                        if (response.ok) {
+                            const novaNota = await response.json();
+                            novaNotaId = novaNota.id;
+                            
+                            // Atualizar o dataset do input para futuros salvamentos
+                            input.dataset.notaId = novaNotaId;
+                            linha.dataset.notaId = novaNotaId;
+                            
+                            // Remover qualquer classe de erro anterior
+                            input.classList.remove('is-invalid');
+                            linha.classList.remove('linha-erro');
+                            
+                            // Adicionar classe de sucesso e badge
+                            linha.classList.add('linha-sucesso');
+                            linha.querySelector('.status-cell').innerHTML = '<span class="badge bg-primary"><i class="fas fa-plus-circle me-1"></i> Criada</span>';
+                            notasCriadas++;
+                        } else {
+                            throw new Error(`Erro ao criar nota: ${response.status}`);
+                        }
+                    }
+                } catch (error) {
+                    console.error(`Erro ao salvar nota para aluno ${alunoId}:`, error);
+                    linha.classList.add('linha-erro');
+                    input.classList.add('is-invalid');
+                    linha.querySelector('.status-cell').innerHTML = `<span class="badge bg-danger"><i class="fas fa-times me-1"></i> Erro ao salvar</span>`;
+                    notasComErro++;
+                }
+            }
+            
+            // Restaurar botão
+            btnSalvar.innerHTML = textoOriginal;
+            btnSalvar.disabled = false;
+            btnSalvar.classList.remove('btn-loading');
+            
+            // Mostrar mensagem de sucesso com resumo
+            if (notasCriadas > 0 || notasAtualizadas > 0) {
+                let mensagem = '<strong>Notas salvas com sucesso!</strong> ';
+                const detalhes = [];
+                
+                if (notasCriadas > 0) {
+                    detalhes.push(`<span class="badge bg-primary">${notasCriadas}</span> nova${notasCriadas > 1 ? 's' : ''} criada${notasCriadas > 1 ? 's' : ''}`);
+                }
+                
+                if (notasAtualizadas > 0) {
+                    detalhes.push(`<span class="badge bg-success">${notasAtualizadas}</span> atualizada${notasAtualizadas > 1 ? 's' : ''}`);
+                }
+                
+                mensagem += detalhes.join(' e ');
+                
+                if (notasComErro > 0) {
+                    mensagem += `. <span class="badge bg-danger">${notasComErro}</span> nota${notasComErro > 1 ? 's' : ''} com erro (veja os detalhes na tabela).`;
+                } else {
+                    mensagem += '.';
+                }
+                
+                this.mostrarSucesso(mensagem);
+                
+                // Rolar para o topo da página para mostrar a mensagem
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                
+                // Piscar a mensagem para chamar atenção
+                setTimeout(() => {
+                    const alertas = document.querySelectorAll('.alert-success');
+                    alertas.forEach(alerta => {
+                        alerta.classList.add('alerta-piscante');
+                    });
+                }, 100);
+            } else if (notasComErro > 0) {
+                this.mostrarErro(`<strong>Não foi possível salvar as notas.</strong> <span class="badge bg-danger">${notasComErro}</span> nota${notasComErro > 1 ? 's' : ''} com erro.`);
+                
+                // Rolar para o topo da página para mostrar a mensagem
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+            
+            // Definir timeout para remover os destaques após algum tempo
+            setTimeout(() => {
+                document.querySelectorAll('.linha-sucesso, .linha-erro').forEach(linha => {
+                    // Manter o destaque, mas diminuir gradualmente a intensidade
+                    linha.classList.add('linha-fade');
+                });
+                // Não remover completamente para manter a referência visual
+            }, 10000); // 10 segundos
+            
         } catch (error) {
             console.error("Erro ao salvar notas em massa:", error);
-            this.mostrarErro("Não foi possível salvar as notas em massa. Tente novamente mais tarde.");
+            this.mostrarErro(`<strong>Ocorreu um erro ao tentar salvar as notas.</strong> ${error.message || 'Por favor, tente novamente.'}`);
+            
+            // Restaurar botão em caso de erro
+            if (this.elements.btnSalvarGrade) {
+                this.elements.btnSalvarGrade.innerHTML = 'Salvar Todas as Notas';
+                this.elements.btnSalvarGrade.disabled = false;
+                this.elements.btnSalvarGrade.classList.remove('btn-loading');
+            }
+            
+            // Rolar para o topo da página para mostrar a mensagem de erro
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
     },
     
-    // Carregar notas de uma turma específica
-    carregarGradeNotas: async function() {
+    // Adicionar estilos CSS para feedback visual das notas
+    adicionarEstilosCSS: function() {
+        // Verificar se os estilos já foram adicionados
+        if (document.getElementById('notas-massa-estilos')) {
+            return;
+        }
+        
+        // Criar elemento de estilo
+        const estilos = document.createElement('style');
+        estilos.id = 'notas-massa-estilos';
+        
+        // Definir estilos CSS
+        estilos.textContent = `
+            .linha-sucesso {
+                background-color: rgba(25, 135, 84, 0.15) !important;
+                box-shadow: inset 0 0 0 1px rgba(25, 135, 84, 0.25);
+                transition: all 0.3s ease;
+            }
+            
+            .linha-erro {
+                background-color: rgba(220, 53, 69, 0.15) !important;
+                box-shadow: inset 0 0 0 1px rgba(220, 53, 69, 0.25);
+                transition: all 0.3s ease;
+            }
+            
+            .linha-fade {
+                opacity: 0.8;
+                transition: opacity 1s ease;
+            }
+            
+            @keyframes fadeIn {
+                from { opacity: 0; transform: translateY(-10px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+            
+            @keyframes piscante {
+                0%, 100% { opacity: 1; }
+                50% { opacity: 0.8; }
+            }
+            
+            .alerta-piscante {
+                animation: piscante 0.5s ease-in-out 3;
+            }
+            
+            .status-cell .badge {
+                animation: fadeIn 0.3s ease-in-out;
+                font-size: 0.85rem;
+                padding: 5px 8px;
+            }
+            
+            .nota-input.is-invalid {
+                border-color: #dc3545;
+                background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' width='12' height='12' fill='none' stroke='%23dc3545'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath stroke-linejoin='round' d='M5.8 3.6h.4L6 6.5z'/%3e%3ccircle cx='6' cy='8.2' r='.6' fill='%23dc3545' stroke='none'/%3e%3c/svg%3e");
+                background-repeat: no-repeat;
+                background-position: right calc(0.375em + 0.1875rem) center;
+                background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
+            }
+            
+            .btn-loading {
+                position: relative;
+                pointer-events: none;
+            }
+            
+            #conteudo-notas .alert {
+                border-left: 5px solid transparent;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                opacity: 0.95;
+                transition: all 0.3s ease;
+            }
+            
+            #conteudo-notas .alert-success {
+                border-left-color: #198754;
+            }
+            
+            #conteudo-notas .alert-danger {
+                border-left-color: #dc3545;
+            }
+            
+            .alerta-destacado {
+                transform: translateY(2px);
+                box-shadow: 0 6px 10px rgba(0, 0, 0, 0.15) !important;
+                opacity: 1 !important;
+            }
+            
+            @keyframes fade-out {
+                from { opacity: 0.95; transform: translateY(0); }
+                to { opacity: 0; transform: translateY(-10px); }
+            }
+            
+            .fade-out {
+                animation: fade-out 0.5s ease forwards;
+            }
+            
+            .status-cell {
+                min-width: 120px;
+            }
+            
+            /* Melhorar a aparência da grade de notas */
+            #grade-notas table {
+                border-collapse: separate;
+                border-spacing: 0;
+                border-radius: 6px;
+                overflow: hidden;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            }
+            
+            #grade-notas thead th {
+                background-color: #f8f9fa;
+                border-bottom: 2px solid #dee2e6;
+                position: sticky;
+                top: 0;
+                z-index: 10;
+            }
+            
+            #grade-notas .nota-input {
+                transition: all 0.2s ease;
+                border-radius: 4px;
+            }
+            
+            #grade-notas .nota-input:focus {
+                box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+                border-color: #86b7fe;
+            }
+            
+            /* Estilos para indicar que a página está carregando */
+            .page-loading #grade-notas {
+                opacity: 0.7;
+                transition: opacity 0.3s ease;
+            }
+        `;
+        
+        // Adicionar ao cabeçalho do documento
+        document.head.appendChild(estilos);
+    },
+    
+    // Carregar disciplinas para o lançamento em massa de notas
+    carregarDisciplinasGrade: async function() {
         try {
             const turmaId = this.elements.massaTurma.value;
-            await this.carregarNotas({ turma_id: turmaId });
+
+            // Limpar e desabilitar select de disciplinas se não tiver turma selecionada
+            if (!turmaId) {
+                this.elements.massaDisciplina.innerHTML = '<option value="">Selecione uma disciplina</option>';
+                this.elements.massaDisciplina.disabled = true;
+                return;
+            }
+
+            console.log("Carregando disciplinas para a turma:", turmaId);
+            
+            // Mostrar loading
+            this.elements.massaDisciplina.innerHTML = '<option value="">Carregando...</option>';
+            this.elements.massaDisciplina.disabled = true;
+
+            // Buscar disciplinas vinculadas à turma
+            const response = await fetch(`${API_URL}/turmas/${turmaId}/disciplinas`);
+            if (!response.ok) {
+                throw new Error("Erro ao carregar disciplinas da turma");
+            }
+
+            const disciplinas = await response.json();
+            console.log("Disciplinas carregadas:", disciplinas);
+
+            // Preencher select de disciplinas
+            this.elements.massaDisciplina.innerHTML = '<option value="">Selecione uma disciplina</option>';
+            
+            // Usar Set para evitar duplicatas
+            const disciplinasIds = new Set();
+            
+            disciplinas.forEach(disciplina => {
+                // Verificar se a disciplina já foi adicionada
+                if (disciplinasIds.has(disciplina.id)) {
+                    console.log(`Disciplina ${disciplina.id} já adicionada, ignorando duplicata`);
+                    return;
+                }
+                
+                disciplinasIds.add(disciplina.id);
+                
+                const option = document.createElement('option');
+                option.value = disciplina.id;
+                option.textContent = disciplina.nome;
+                this.elements.massaDisciplina.appendChild(option);
+            });
+
+            // Habilitar select de disciplinas
+            this.elements.massaDisciplina.disabled = false;
+
         } catch (error) {
-            console.error("Erro ao carregar notas da turma:", error);
-            this.mostrarErro("Não foi possível carregar as notas da turma.");
+            console.error("Erro ao carregar disciplinas para lançamento em massa:", error);
+            this.mostrarErro("Erro ao carregar disciplinas. Por favor, tente novamente.");
+            
+            // Resetar select de disciplinas
+            this.elements.massaDisciplina.innerHTML = '<option value="">Selecione uma disciplina</option>';
+            this.elements.massaDisciplina.disabled = true;
         }
     },
     
-    // Carregar disciplinas de uma turma específica
-    carregarDisciplinasGrade: async function(turmaId) {
+    // Carregar grade de notas para edição em massa
+    carregarGradeNotas: async function() {
         try {
-            const disciplinas = await this.carregarDisciplinasDaTurma(turmaId);
-            console.log("Disciplinas da turma:", disciplinas);
+            // Validar campos obrigatórios
+            const turmaId = this.elements.massaTurma.value;
+            const disciplinaId = this.elements.massaDisciplina.value;
+            const bimestre = this.elements.massaBimestre.value;
+            const ano = this.elements.massaAno.value;
+
+            if (!turmaId || !disciplinaId || !bimestre || !ano) {
+                this.mostrarErro("Preencha todos os campos: turma, disciplina, bimestre e ano.");
+                return;
+            }
+
+            console.log("Carregando grade de notas para edição em massa:", { turmaId, disciplinaId, bimestre, ano });
+            
+            // Adicionar classe de carregamento à página
+            const conteudoNotas = document.querySelector('#conteudo-notas');
+            if (conteudoNotas) {
+                conteudoNotas.classList.add('page-loading');
+            }
+            
+            // Mostrar indicador de carregamento mais atrativo
+            this.elements.gradeNotas.innerHTML = `
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+                        <span class="visually-hidden">Carregando...</span>
+                    </div>
+                    <p class="mt-3 text-primary fw-bold">Carregando alunos e notas...</p>
+                    <p class="text-muted">Turma: ${document.querySelector('#massa-turma option:checked')?.textContent || turmaId}</p>
+                    <p class="text-muted">Disciplina: ${document.querySelector('#massa-disciplina option:checked')?.textContent || disciplinaId}</p>
+                </div>
+            `;
+            
+            // Habilitar o botão de salvar em massa
+            if (this.elements.btnSalvarGrade) {
+                this.elements.btnSalvarGrade.disabled = true;
+            }
+            
+            // Buscar alunos da turma
+            const alunosResponse = await fetch(`${API_URL}/turmas/${turmaId}/alunos`);
+            if (!alunosResponse.ok) {
+                throw new Error("Erro ao carregar alunos da turma");
+            }
+            
+            const alunos = await alunosResponse.json();
+            console.log("Alunos carregados:", alunos);
+            
+            if (!alunos || alunos.length === 0) {
+                this.elements.gradeNotas.innerHTML = `
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Não há alunos cadastrados nesta turma.
+                    </div>
+                `;
+                
+                // Remover classe de carregamento
+                if (conteudoNotas) {
+                    conteudoNotas.classList.remove('page-loading');
+                }
+                
+                return;
+            }
+            
+            // Buscar notas existentes para esta turma, disciplina, bimestre e ano
+            const filtro = `?id_turma=${turmaId}&id_disciplina=${disciplinaId}&bimestre=${bimestre}&ano=${ano}`;
+            const notasResponse = await fetch(`${API_URL}/notas${filtro}`);
+            if (!notasResponse.ok) {
+                throw new Error("Erro ao carregar notas existentes");
+            }
+            
+            const notasExistentes = await notasResponse.json();
+            console.log("Notas existentes:", notasExistentes);
+            
+            // Criar tabela para exibir os alunos e suas notas
+            const tabela = document.createElement('table');
+            tabela.className = 'table table-striped table-bordered table-hover';
+            
+            // Cabeçalho da tabela
+            const thead = document.createElement('thead');
+            thead.className = 'table-light';
+            thead.innerHTML = `
+                <tr>
+                    <th width="5%" class="text-center">#</th>
+                    <th width="40%">Aluno</th>
+                    <th width="30%" class="text-center">Nota</th>
+                    <th width="25%" class="text-center">Status</th>
+                </tr>
+            `;
+            tabela.appendChild(thead);
+            
+            // Corpo da tabela
+            const tbody = document.createElement('tbody');
+            
+            alunos.forEach((aluno, index) => {
+                // Encontrar nota existente para este aluno, se houver
+                const notaExistente = notasExistentes.find(nota => nota.id_aluno === aluno.id);
+                
+                const tr = document.createElement('tr');
+                tr.dataset.alunoId = aluno.id;
+                if (notaExistente) {
+                    tr.dataset.notaId = notaExistente.id;
+                }
+                
+                tr.innerHTML = `
+                    <td class="text-center align-middle">${index + 1}</td>
+                    <td class="align-middle">${aluno.nome}</td>
+                    <td>
+                        <div class="input-group">
+                            <input type="text" 
+                                   class="form-control nota-input" 
+                                   data-aluno-id="${aluno.id}" 
+                                   ${notaExistente ? `data-nota-id="${notaExistente.id}"` : ''}
+                                   value="${notaExistente ? notaExistente.valor : ''}" 
+                                   placeholder="0.0 a 10.0">
+                            <span class="input-group-text bg-light">/ 10</span>
+                        </div>
+                    </td>
+                    <td class="status-cell text-center"></td>
+                `;
+                
+                tbody.appendChild(tr);
+            });
+            
+            tabela.appendChild(tbody);
+            
+            // Adicionar informações resumidas acima da tabela
+            const infoDiv = document.createElement('div');
+            infoDiv.className = 'bg-light p-3 mb-3 rounded border';
+            infoDiv.innerHTML = `
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="mb-1">Lançamento de Notas - ${document.querySelector('#massa-bimestre option:checked')?.textContent || bimestre}º Bimestre ${ano}</h5>
+                        <p class="mb-0 text-muted">
+                            Turma: <strong>${document.querySelector('#massa-turma option:checked')?.textContent || turmaId}</strong> • 
+                            Disciplina: <strong>${document.querySelector('#massa-disciplina option:checked')?.textContent || disciplinaId}</strong>
+                        </p>
+                    </div>
+                    <div>
+                        <span class="badge bg-primary">${alunos.length} alunos</span>
+                        <span class="badge bg-info">${notasExistentes.length} notas registradas</span>
+                    </div>
+                </div>
+            `;
+            
+            // Substituir conteúdo da grade de notas
+            this.elements.gradeNotas.innerHTML = '';
+            this.elements.gradeNotas.appendChild(infoDiv);
+            this.elements.gradeNotas.appendChild(tabela);
+            
+            // Habilitar o botão de salvar
+            if (this.elements.btnSalvarGrade) {
+                this.elements.btnSalvarGrade.disabled = false;
+            }
+            
+            // Remover classe de carregamento
+            if (conteudoNotas) {
+                conteudoNotas.classList.remove('page-loading');
+            }
+            
         } catch (error) {
-            console.error("Erro ao carregar disciplinas da turma:", error);
-            this.mostrarErro("Não foi possível carregar as disciplinas da turma.");
+            console.error("Erro ao carregar grade de notas:", error);
+            this.mostrarErro(`<strong>Erro ao carregar grade de notas.</strong> ${error.message || 'Por favor, tente novamente.'}`);
+            this.elements.gradeNotas.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-circle me-2"></i>
+                    <strong>Erro ao carregar grade de notas.</strong> ${error.message || 'Por favor, tente novamente.'}
+                </div>
+            `;
+            
+            // Remover classe de carregamento
+            const conteudoNotas = document.querySelector('#conteudo-notas');
+            if (conteudoNotas) {
+                conteudoNotas.classList.remove('page-loading');
+            }
+            
+            // Desabilitar botão de salvar
+            if (this.elements.btnSalvarGrade) {
+                this.elements.btnSalvarGrade.disabled = true;
+            }
         }
     },
     
@@ -1079,18 +1663,40 @@ const NotasModule = {
         console.log("Sucesso:", mensagem);
         const alertContainer = document.createElement('div');
         alertContainer.className = 'alert alert-success alert-dismissible fade show';
+        alertContainer.role = 'alert';
         alertContainer.innerHTML = `
-            ${mensagem}
+            <div class="d-flex align-items-center">
+                <i class="fas fa-check-circle me-2" style="font-size: 1.25rem;"></i>
+                <div>${mensagem}</div>
+            </div>
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
         `;
         
         const conteudoNotas = document.querySelector('#conteudo-notas');
         if (conteudoNotas) {
+            // Verificar se já existe um alerta e remover
+            const alertasExistentes = conteudoNotas.querySelectorAll('.alert');
+            alertasExistentes.forEach(alerta => alerta.remove());
+            
+            // Inserir o novo alerta
             conteudoNotas.insertBefore(alertContainer, conteudoNotas.firstChild);
+            
+            // Adicionar efeito de destaque
+            setTimeout(() => {
+                alertContainer.classList.add('alerta-destacado');
+            }, 10);
             
             // Auto-remover após 5 segundos
             setTimeout(() => {
-                alertContainer.remove();
+                alertContainer.classList.remove('alerta-destacado');
+                alertContainer.classList.add('fade-out');
+                
+                // Remover após a animação terminar
+                setTimeout(() => {
+                    if (alertContainer.parentNode) {
+                        alertContainer.remove();
+                    }
+                }, 500);
             }, 5000);
         } else {
             console.warn("Elemento #conteudo-notas não encontrado para mostrar mensagem de sucesso");
@@ -1102,18 +1708,40 @@ const NotasModule = {
         console.error("Erro:", mensagem);
         const alertContainer = document.createElement('div');
         alertContainer.className = 'alert alert-danger alert-dismissible fade show';
+        alertContainer.role = 'alert';
         alertContainer.innerHTML = `
-            ${mensagem}
+            <div class="d-flex align-items-center">
+                <i class="fas fa-exclamation-circle me-2" style="font-size: 1.25rem;"></i>
+                <div>${mensagem}</div>
+            </div>
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
         `;
         
         const conteudoNotas = document.querySelector('#conteudo-notas');
         if (conteudoNotas) {
+            // Verificar se já existe um alerta de erro e remover
+            const alertasErroExistentes = conteudoNotas.querySelectorAll('.alert-danger');
+            alertasErroExistentes.forEach(alerta => alerta.remove());
+            
+            // Inserir o novo alerta
             conteudoNotas.insertBefore(alertContainer, conteudoNotas.firstChild);
+            
+            // Adicionar efeito de destaque
+            setTimeout(() => {
+                alertContainer.classList.add('alerta-destacado');
+            }, 10);
             
             // Auto-remover após 8 segundos (mais tempo para erros)
             setTimeout(() => {
-                alertContainer.remove();
+                alertContainer.classList.remove('alerta-destacado');
+                alertContainer.classList.add('fade-out');
+                
+                // Remover após a animação terminar
+                setTimeout(() => {
+                    if (alertContainer.parentNode) {
+                        alertContainer.remove();
+                    }
+                }, 500);
             }, 8000);
         } else {
             // Se não encontrar o elemento, mostrar alerta nativo
@@ -1245,3 +1873,4 @@ const NotasModule = {
 
 // Exportar módulo
 export default NotasModule;
+
