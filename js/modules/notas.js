@@ -506,56 +506,74 @@ const NotasModule = {
             }
             
             console.log("Buscando notas com endpoint:", endpoint);
-            const notas = await ConfigModule.fetchApi(endpoint);
-            console.log("Notas recebidas da API:", notas);
+            console.log("URL completa da API:", ConfigModule.getApiUrl(endpoint));
             
-            if (Array.isArray(notas) && notas.length > 0) {
-                // Se a API retornou dados que não respeitam os filtros, precisamos filtrar localmente
-                let notasFiltradas = notas;
+            try {
+                const notas = await ConfigModule.fetchApi(endpoint, { catchError: true });
                 
-                if (filtros.turma_id) {
-                    notasFiltradas = notasFiltradas.filter(nota => {
-                        const notaTurmaId = nota.turma_id || nota.id_turma;
-                        return String(notaTurmaId) === String(filtros.turma_id);
-                    });
+                // Verificar se houve erro na requisição
+                if (notas && notas.error) {
+                    console.error("Erro retornado pela API:", notas);
+                    this.mostrarErro(`Erro ao carregar notas: ${notas.message || 'Servidor indisponível'}`);
+                    this.elements.listaNotas.innerHTML = '<tr><td colspan="11" class="text-center text-danger">Erro ao carregar notas. O servidor pode estar indisponível.</td></tr>';
+                    return;
                 }
                 
-                if (filtros.disciplina_id) {
-                    notasFiltradas = notasFiltradas.filter(nota => {
-                        const notaDisciplinaId = nota.disciplina_id || nota.id_disciplina;
-                        return String(notaDisciplinaId) === String(filtros.disciplina_id);
-                    });
+                console.log("Notas recebidas da API:", notas);
+                
+                if (Array.isArray(notas) && notas.length > 0) {
+                    // Se a API retornou dados que não respeitam os filtros, precisamos filtrar localmente
+                    let notasFiltradas = notas;
+                    
+                    if (filtros.turma_id) {
+                        notasFiltradas = notasFiltradas.filter(nota => {
+                            const notaTurmaId = nota.turma_id || nota.id_turma;
+                            return String(notaTurmaId) === String(filtros.turma_id);
+                        });
+                    }
+                    
+                    if (filtros.disciplina_id) {
+                        notasFiltradas = notasFiltradas.filter(nota => {
+                            const notaDisciplinaId = nota.disciplina_id || nota.id_disciplina;
+                            return String(notaDisciplinaId) === String(filtros.disciplina_id);
+                        });
+                    }
+                    
+                    if (filtros.aluno_id) {
+                        notasFiltradas = notasFiltradas.filter(nota => {
+                            const notaAlunoId = nota.aluno_id || nota.id_aluno;
+                            return String(notaAlunoId) === String(filtros.aluno_id);
+                        });
+                    }
+                    
+                    if (filtros.bimestre) {
+                        notasFiltradas = notasFiltradas.filter(nota => {
+                            return String(nota.bimestre) === String(filtros.bimestre);
+                        });
+                    }
+                    
+                    if (filtros.ano) {
+                        notasFiltradas = notasFiltradas.filter(nota => {
+                            return String(nota.ano) === String(filtros.ano);
+                        });
+                    }
+                    
+                    console.log("Notas após filtro local:", notasFiltradas);
+                    this.state.notas = notasFiltradas;
+                } else {
+                    this.state.notas = [];
                 }
                 
-                if (filtros.aluno_id) {
-                    notasFiltradas = notasFiltradas.filter(nota => {
-                        const notaAlunoId = nota.aluno_id || nota.id_aluno;
-                        return String(notaAlunoId) === String(filtros.aluno_id);
-                    });
-                }
-                
-                if (filtros.bimestre) {
-                    notasFiltradas = notasFiltradas.filter(nota => {
-                        return String(nota.bimestre) === String(filtros.bimestre);
-                    });
-                }
-                
-                if (filtros.ano) {
-                    notasFiltradas = notasFiltradas.filter(nota => {
-                        return String(nota.ano) === String(filtros.ano);
-                    });
-                }
-                
-                console.log("Notas após filtro local:", notasFiltradas);
-                this.state.notas = notasFiltradas;
-            } else {
-                this.state.notas = [];
+                this.renderizarNotas();
+            } catch (fetchError) {
+                console.error("Erro ao buscar notas da API:", fetchError);
+                this.mostrarErro("Não foi possível conectar ao servidor. Verifique sua conexão com a internet ou tente novamente mais tarde.");
+                this.elements.listaNotas.innerHTML = '<tr><td colspan="11" class="text-center text-danger">Não foi possível conectar ao servidor. Verifique sua conexão com a internet ou tente novamente mais tarde.</td></tr>';
             }
-            
-            this.renderizarNotas();
         } catch (error) {
-            console.error("Erro ao carregar notas:", error);
-            this.mostrarErro("Não foi possível carregar as notas. Tente novamente mais tarde.");
+            console.error("Erro geral ao carregar notas:", error);
+            this.mostrarErro("Ocorreu um erro inesperado. Tente novamente mais tarde.");
+            this.elements.listaNotas.innerHTML = '<tr><td colspan="11" class="text-center text-danger">Ocorreu um erro inesperado. Tente novamente mais tarde.</td></tr>';
         }
     },
     
@@ -1058,14 +1076,50 @@ const NotasModule = {
     
     // Mostrar mensagem de sucesso
     mostrarSucesso: function(mensagem) {
-        console.log(mensagem);
-        // Implemente a lógica para exibir uma mensagem de sucesso ao usuário
+        console.log("Sucesso:", mensagem);
+        const alertContainer = document.createElement('div');
+        alertContainer.className = 'alert alert-success alert-dismissible fade show';
+        alertContainer.innerHTML = `
+            ${mensagem}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+        `;
+        
+        const conteudoNotas = document.querySelector('#conteudo-notas');
+        if (conteudoNotas) {
+            conteudoNotas.insertBefore(alertContainer, conteudoNotas.firstChild);
+            
+            // Auto-remover após 5 segundos
+            setTimeout(() => {
+                alertContainer.remove();
+            }, 5000);
+        } else {
+            console.warn("Elemento #conteudo-notas não encontrado para mostrar mensagem de sucesso");
+        }
     },
     
     // Mostrar mensagem de erro
     mostrarErro: function(mensagem) {
-        console.error(mensagem);
-        // Implemente a lógica para exibir uma mensagem de erro ao usuário
+        console.error("Erro:", mensagem);
+        const alertContainer = document.createElement('div');
+        alertContainer.className = 'alert alert-danger alert-dismissible fade show';
+        alertContainer.innerHTML = `
+            ${mensagem}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+        `;
+        
+        const conteudoNotas = document.querySelector('#conteudo-notas');
+        if (conteudoNotas) {
+            conteudoNotas.insertBefore(alertContainer, conteudoNotas.firstChild);
+            
+            // Auto-remover após 8 segundos (mais tempo para erros)
+            setTimeout(() => {
+                alertContainer.remove();
+            }, 8000);
+        } else {
+            // Se não encontrar o elemento, mostrar alerta nativo
+            console.warn("Elemento #conteudo-notas não encontrado, usando alert nativo");
+            alert(`Erro: ${mensagem}`);
+        }
     },
     
     // Salvar nota individual
@@ -1188,3 +1242,6 @@ const NotasModule = {
         }
     }
 };
+
+// Exportar módulo
+export default NotasModule;

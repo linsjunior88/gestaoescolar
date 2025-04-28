@@ -10,7 +10,6 @@ import TurmasModule from './modules/turmas.js';
 import DisciplinasModule from './modules/disciplinas.js';
 import ProfessoresModule from './modules/professores.js';
 import AlunosModule from './modules/alunos.js';
-import NotasModule from './modules/notas.js';
 
 // Objeto principal da aplicação
 const App = {
@@ -22,7 +21,7 @@ const App = {
         disciplinas: DisciplinasModule,
         professores: ProfessoresModule,
         alunos: AlunosModule,
-        notas: NotasModule
+        notas: null // Será carregado dinamicamente
     },
     
     // Links do menu
@@ -32,11 +31,58 @@ const App = {
     conteudos: {},
     
     // Inicializar aplicação
-    init: function() {
+    init: async function() {
         console.log("Inicializando aplicação...");
         
         // Inicializar módulo de configuração primeiro
         this.modules.config.init();
+        
+        // Carregar o módulo de notas dinamicamente
+        try {
+            const NotasModule = await import('./modules/notas.js')
+                .then(module => module.default)
+                .catch(error => {
+                    console.error("Erro ao carregar módulo de notas:", error);
+                    return {
+                        init: function() {
+                            console.warn("Usando módulo de notas de fallback");
+                            const notasContent = document.getElementById('conteudo-notas');
+                            if (notasContent) {
+                                notasContent.innerHTML = `
+                                    <div class="alert alert-danger">
+                                        <strong>Erro!</strong> Não foi possível carregar o módulo de notas. 
+                                        <br>Detalhes: ${error.message || 'Erro desconhecido'}
+                                        <br><br>
+                                        <button class="btn btn-primary" onclick="location.reload()">Tentar Novamente</button>
+                                    </div>
+                                `;
+                            }
+                        }
+                    };
+                });
+            
+            this.modules.notas = NotasModule;
+            console.log("Módulo de notas carregado com sucesso");
+        } catch (error) {
+            console.error("Erro ao carregar módulo de notas:", error);
+            // Criar um módulo de fallback
+            this.modules.notas = {
+                init: function() {
+                    console.warn("Usando módulo de notas de fallback após exceção");
+                    const notasContent = document.getElementById('conteudo-notas');
+                    if (notasContent) {
+                        notasContent.innerHTML = `
+                            <div class="alert alert-danger">
+                                <strong>Erro!</strong> Não foi possível carregar o módulo de notas. 
+                                <br>Detalhes: ${error.message || 'Erro desconhecido'}
+                                <br><br>
+                                <button class="btn btn-primary" onclick="location.reload()">Tentar Novamente</button>
+                            </div>
+                        `;
+                    }
+                }
+            };
+        }
         
         // Inicializar links do menu
         this.initLinks();
@@ -125,7 +171,22 @@ const App = {
         
         if (moduleName && this.modules[moduleName]) {
             console.log(`Inicializando módulo: ${moduleName}`);
-            this.modules[moduleName].init();
+            try {
+                this.modules[moduleName].init();
+            } catch (error) {
+                console.error(`Erro ao inicializar módulo ${moduleName}:`, error);
+                const conteudo = this.conteudos[linkId];
+                if (conteudo) {
+                    conteudo.innerHTML = `
+                        <div class="alert alert-danger">
+                            <strong>Erro!</strong> Ocorreu um problema ao inicializar este módulo.
+                            <br>Detalhes: ${error.message || 'Erro desconhecido'}
+                            <br><br>
+                            <button class="btn btn-primary" onclick="location.reload()">Tentar Novamente</button>
+                        </div>
+                    `;
+                }
+            }
         }
     }
 };
