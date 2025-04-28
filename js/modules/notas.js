@@ -250,6 +250,8 @@ const NotasModule = {
     
     // Carregar dependências para o formulário (disciplinas e alunos de uma turma)
     carregarDependenciasFormulario: async function(turmaId) {
+        console.log("Carregando dependências do formulário para turma:", turmaId);
+        
         // Limpar e desabilitar selects de disciplina e aluno
         if (this.elements.selectDisciplina) {
             this.elements.selectDisciplina.innerHTML = '<option value="">Selecione uma disciplina</option>';
@@ -270,24 +272,59 @@ const NotasModule = {
                 this.carregarAlunosDaTurma(turmaId)
             ]);
             
+            console.log("Disciplinas recebidas:", disciplinas);
+            console.log("Alunos recebidos:", alunos);
+            
             // Popular select de disciplinas
             if (disciplinas.length > 0 && this.elements.selectDisciplina) {
+                // Criar um conjunto para armazenar IDs de disciplinas já adicionadas
+                const disciplinasAdicionadas = new Set();
+                
                 disciplinas.forEach(disciplina => {
-                    const option = document.createElement('option');
-                    option.value = disciplina.id_disciplina || disciplina.id;
-                    option.textContent = disciplina.nome_disciplina || disciplina.nome || 'N/A';
-                    this.elements.selectDisciplina.appendChild(option);
+                    const disciplinaId = String(disciplina.id_disciplina || disciplina.id);
+                    
+                    // Verificar se esta disciplina já foi adicionada
+                    if (!disciplinasAdicionadas.has(disciplinaId)) {
+                        disciplinasAdicionadas.add(disciplinaId);
+                        
+                        const option = document.createElement('option');
+                        option.value = disciplinaId;
+                        option.textContent = disciplina.nome_disciplina || disciplina.nome || 'N/A';
+                        this.elements.selectDisciplina.appendChild(option);
+                    } else {
+                        console.log(`Disciplina ${disciplinaId} ignorada (duplicada)`);
+                    }
                 });
+                
+                console.log(`Adicionadas ${disciplinasAdicionadas.size} disciplinas únicas ao select`);
+            } else {
+                console.log("Nenhuma disciplina disponível para esta turma ou elemento select não encontrado");
             }
             
             // Popular select de alunos
             if (alunos.length > 0 && this.elements.selectAluno) {
+                // Criar um conjunto para armazenar IDs de alunos já adicionados
+                const alunosAdicionados = new Set();
+                
                 alunos.forEach(aluno => {
-                    const option = document.createElement('option');
-                    option.value = aluno.id_aluno || aluno.id;
-                    option.textContent = aluno.nome_aluno || aluno.nome || 'N/A';
-                    this.elements.selectAluno.appendChild(option);
+                    const alunoId = String(aluno.id_aluno || aluno.id);
+                    
+                    // Verificar se este aluno já foi adicionado
+                    if (!alunosAdicionados.has(alunoId)) {
+                        alunosAdicionados.add(alunoId);
+                        
+                        const option = document.createElement('option');
+                        option.value = alunoId;
+                        option.textContent = aluno.nome_aluno || aluno.nome || 'N/A';
+                        this.elements.selectAluno.appendChild(option);
+                    } else {
+                        console.log(`Aluno ${alunoId} ignorado (duplicado)`);
+                    }
                 });
+                
+                console.log(`Adicionados ${alunosAdicionados.size} alunos únicos ao select`);
+            } else {
+                console.log("Nenhum aluno disponível para esta turma ou elemento select não encontrado");
             }
         } catch (error) {
             console.error("Erro ao carregar dependências do formulário:", error);
@@ -296,6 +333,8 @@ const NotasModule = {
     
     // Carregar dependências para o filtro (disciplinas e alunos de uma turma)
     carregarDependenciasFiltro: async function(turmaId) {
+        console.log("Carregando dependências do filtro para turma:", turmaId);
+        
         // Limpar e desabilitar selects de disciplina e aluno
         if (this.elements.filtroDisciplina) {
             this.elements.filtroDisciplina.innerHTML = '<option value="">Todas as disciplinas</option>';
@@ -316,24 +355,59 @@ const NotasModule = {
                 this.carregarAlunosDaTurma(turmaId)
             ]);
             
+            console.log("Disciplinas recebidas para filtro:", disciplinas);
+            console.log("Alunos recebidos para filtro:", alunos);
+            
             // Popular select de disciplinas
             if (disciplinas.length > 0 && this.elements.filtroDisciplina) {
+                // Criar um conjunto para armazenar IDs de disciplinas já adicionadas
+                const disciplinasAdicionadas = new Set();
+                
                 disciplinas.forEach(disciplina => {
-                    const option = document.createElement('option');
-                    option.value = disciplina.id_disciplina || disciplina.id;
-                    option.textContent = disciplina.nome_disciplina || disciplina.nome || 'N/A';
-                    this.elements.filtroDisciplina.appendChild(option);
+                    const disciplinaId = String(disciplina.id_disciplina || disciplina.id);
+                    
+                    // Verificar se esta disciplina já foi adicionada
+                    if (!disciplinasAdicionadas.has(disciplinaId)) {
+                        disciplinasAdicionadas.add(disciplinaId);
+                        
+                        const option = document.createElement('option');
+                        option.value = disciplinaId;
+                        option.textContent = disciplina.nome_disciplina || disciplina.nome || 'N/A';
+                        this.elements.filtroDisciplina.appendChild(option);
+                    } else {
+                        console.log(`Disciplina ${disciplinaId} ignorada no filtro (duplicada)`);
+                    }
                 });
+                
+                console.log(`Adicionadas ${disciplinasAdicionadas.size} disciplinas únicas ao filtro`);
+            } else {
+                console.log("Nenhuma disciplina disponível para esta turma ou elemento filtro não encontrado");
             }
             
             // Popular select de alunos
             if (alunos.length > 0 && this.elements.filtroAluno) {
+                // Criar um conjunto para armazenar IDs de alunos já adicionados
+                const alunosAdicionados = new Set();
+                
                 alunos.forEach(aluno => {
-                    const option = document.createElement('option');
-                    option.value = aluno.id_aluno || aluno.id;
-                    option.textContent = aluno.nome_aluno || aluno.nome || 'N/A';
-                    this.elements.filtroAluno.appendChild(option);
+                    const alunoId = String(aluno.id_aluno || aluno.id);
+                    
+                    // Verificar se este aluno já foi adicionado
+                    if (!alunosAdicionados.has(alunoId)) {
+                        alunosAdicionados.add(alunoId);
+                        
+                        const option = document.createElement('option');
+                        option.value = alunoId;
+                        option.textContent = aluno.nome_aluno || aluno.nome || 'N/A';
+                        this.elements.filtroAluno.appendChild(option);
+                    } else {
+                        console.log(`Aluno ${alunoId} ignorado no filtro (duplicado)`);
+                    }
                 });
+                
+                console.log(`Adicionados ${alunosAdicionados.size} alunos únicos ao filtro`);
+            } else {
+                console.log("Nenhum aluno disponível para esta turma ou elemento filtro não encontrado");
             }
             
             // Preencher os anos nos filtros (de 2025 a 2030)
