@@ -197,8 +197,12 @@ const NotasModule = {
                                 <label for="filtro-ano-nota" class="form-label">Ano</label>
                                 <select class="form-select" id="filtro-ano-nota">
                                     <option value="">Todos os anos</option>
-                                    <option value="2024">2024</option>
-                                    <option value="2023">2023</option>
+                                    <option value="2025">2025</option>
+                                    <option value="2026">2026</option>
+                                    <option value="2027">2027</option>
+                                    <option value="2028">2028</option>
+                                    <option value="2029">2029</option>
+                                    <option value="2030">2030</option>
                                 </select>
                             </div>
                         </div>
@@ -2218,44 +2222,24 @@ const NotasModule = {
         const notaBimestral = notaBimestralInput.value.trim();
         const notaRecuperacao = notaRecuperacaoInput ? notaRecuperacaoInput.value.trim() : '';
         
-        // Calcular média apenas se pelo menos uma nota estiver presente
-        if (notaMensal === '' && notaBimestral === '') {
-            mediaFinalInput.value = '';
-            return;
-        }
+        // Usar a função calcularMediaAluno para manter consistência no cálculo
+        const mediaFinal = this.calcularMediaAluno(notaMensal, notaBimestral, notaRecuperacao);
         
-        // Converter para números
-        const nMensal = parseFloat(notaMensal) || 0;
-        const nBimestral = parseFloat(notaBimestral) || 0;
-        const nRecuperacao = parseFloat(notaRecuperacao) || 0;
-        
-        let mediaFinal = 0;
-        
-        // Se apenas uma nota estiver presente, usar essa nota como média
-        if (notaMensal !== '' && notaBimestral === '') {
-            mediaFinal = nMensal;
-        } else if (notaMensal === '' && notaBimestral !== '') {
-            mediaFinal = nBimestral;
-        } else {
-            // Se ambas as notas estiverem presentes, calcular média simples (média aritmética)
-            mediaFinal = (nMensal + nBimestral) / 2;
+        // Atualizar campo de média se houver um valor calculado
+        if (mediaFinal !== null) {
+            mediaFinalInput.value = mediaFinal.toFixed(1);
             
-            // Se tem recuperação e média < 6.0, considerar a recuperação
-            if (mediaFinal < 6.0 && notaRecuperacao !== '') {
-                mediaFinal = (mediaFinal + nRecuperacao) / 2;
+            // Adicionar classe para destacar visualmente o status da média
+            if (mediaFinal < 6.0) {
+                mediaFinalInput.classList.add('text-danger');
+                mediaFinalInput.classList.remove('text-success');
+            } else {
+                mediaFinalInput.classList.add('text-success');
+                mediaFinalInput.classList.remove('text-danger');
             }
-        }
-        
-        // Atualizar campo de média
-        mediaFinalInput.value = mediaFinal.toFixed(1);
-        
-        // Adicionar classe para destacar visualmente o status da média
-        if (mediaFinal < 6.0) {
-            mediaFinalInput.classList.add('text-danger');
-            mediaFinalInput.classList.remove('text-success');
         } else {
-            mediaFinalInput.classList.add('text-success');
-            mediaFinalInput.classList.remove('text-danger');
+            mediaFinalInput.value = '';
+            mediaFinalInput.classList.remove('text-danger', 'text-success');
         }
     },
     
@@ -2804,6 +2788,14 @@ const NotasModule = {
                     this.mostrarErro(`<strong>Não foi possível salvar todas as notas.</strong> <span class="badge bg-danger">${notasComErro}</span> nota${notasComErro > 1 ? 's' : ''} com erro.`);
                 } else {
                     this.mostrarSucesso("Todas as notas foram salvas com sucesso!");
+                    
+                    // Recolher a grade após o salvamento bem-sucedido
+                    if (this.elements.gradeNotasWrapper) {
+                        setTimeout(() => {
+                            this.elements.gradeNotasWrapper.classList.add('d-none');
+                            this.elements.gradeNotas.innerHTML = '';
+                        }, 1500); // Pequeno delay para o usuário ver a confirmação visual
+                    }
                 }
             } catch (error) {
                 console.error("Erro ao salvar notas em massa:", error);
@@ -2823,6 +2815,102 @@ const NotasModule = {
             if (this.elements.btnSalvarGrade) {
                 this.elements.btnSalvarGrade.disabled = false;
                 this.elements.btnSalvarGrade.innerHTML = '<i class="fas fa-save me-1"></i> Salvar Todas as Notas';
+            }
+        }
+    },
+    
+    // Calcular média para um aluno
+    calcularMediaAluno: function(notaMensal, notaBimestral, notaRecuperacao) {
+        console.log("Calculando média para:", { notaMensal, notaBimestral, notaRecuperacao });
+        
+        // Converter para números e tratar valores vazios
+        const nMensal = notaMensal && notaMensal.trim() !== '' ? parseFloat(notaMensal) : null;
+        const nBimestral = notaBimestral && notaBimestral.trim() !== '' ? parseFloat(notaBimestral) : null;
+        const nRecuperacao = notaRecuperacao && notaRecuperacao.trim() !== '' ? parseFloat(notaRecuperacao) : null;
+        
+        // Se não houver nenhuma nota, retornar null
+        if (nMensal === null && nBimestral === null && nRecuperacao === null) {
+            return null;
+        }
+        
+        let mediaFinal = 0;
+        
+        // Se apenas uma nota estiver presente, usar essa nota como média
+        if (nMensal !== null && nBimestral === null) {
+            mediaFinal = nMensal;
+        } else if (nMensal === null && nBimestral !== null) {
+            mediaFinal = nBimestral;
+        } else if (nMensal !== null && nBimestral !== null) {
+            // Se ambas as notas estiverem presentes, calcular média simples (média aritmética)
+            mediaFinal = (nMensal + nBimestral) / 2;
+            
+            // Se tem recuperação e média < 6.0, considerar a recuperação
+            if (mediaFinal < 6.0 && nRecuperacao !== null) {
+                mediaFinal = (mediaFinal + nRecuperacao) / 2;
+            }
+        }
+        
+        // Arredondar para uma casa decimal, sempre para cima em caso de meio termo (.5)
+        // Multiplicamos por 10, arredondamos para o inteiro mais próximo e dividimos por 10
+        // O Math.ceil para o valor * 10 - 0.5 garante arredondamento para cima em caso de .5
+        return Math.ceil(mediaFinal * 10 - 0.5) / 10;
+    },
+    
+    // Função para limpar o formulário de notas
+    limparFormularioNota: function() {
+        console.log("Limpando formulário de notas");
+        
+        // Resetar estado
+        this.state.modoEdicao = false;
+        this.state.notaSelecionada = null;
+        
+        // Resetar o formulário
+        if (this.elements.formNota) {
+            this.elements.formNota.reset();
+            
+            // Limpar campo de ID da nota
+            const inputNotaId = document.getElementById('nota-id');
+            if (inputNotaId) {
+                inputNotaId.value = '';
+            }
+            
+            // Resetar média final
+            if (this.elements.inputMediaFinal) {
+                this.elements.inputMediaFinal.textContent = '0.0';
+            }
+            
+            // Limpar e desabilitar selects de disciplina e aluno
+            if (this.elements.selectDisciplina) {
+                this.elements.selectDisciplina.innerHTML = '<option value="">Selecione uma disciplina</option>';
+                this.elements.selectDisciplina.disabled = true;
+            }
+            
+            if (this.elements.selectAluno) {
+                this.elements.selectAluno.innerHTML = '<option value="">Selecione um aluno</option>';
+                this.elements.selectAluno.disabled = true;
+            }
+            
+            // Definir ano atual como padrão
+            if (this.elements.inputAno) {
+                this.elements.inputAno.value = new Date().getFullYear();
+            }
+        }
+    },
+    
+    // Função para cancelar a edição
+    cancelarEdicao: function() {
+        console.log("Cancelando edição/inclusão de nota");
+        
+        // Limpar completamente o formulário
+        this.limparFormularioNota();
+        
+        // Se estiver em um modal, fechá-lo
+        if (typeof bootstrap !== 'undefined' && this.elements.modalNota) {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('modal-nota'));
+            if (modal) {
+                modal.hide();
+            } else if (typeof this.elements.modalNota.hide === 'function') {
+                this.elements.modalNota.hide();
             }
         }
     }
