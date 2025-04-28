@@ -129,10 +129,90 @@ const App = {
         
         const moduleName = moduleMap[linkId];
         
-        if (moduleName && this.modules[moduleName]) {
+        if (moduleName) {
             console.log(`Inicializando módulo: ${moduleName}`);
             try {
-                this.modules[moduleName].init();
+                // Carregar o módulo de notas sob demanda, se ainda não estiver carregado
+                if (moduleName === 'notas' && !this.modules.notas) {
+                    console.log('Carregando módulo de notas dinamicamente...');
+                    
+                    // Adicionar indicador de carregamento
+                    const notasContent = this.conteudos[linkId];
+                    if (notasContent) {
+                        notasContent.innerHTML = `
+                            <div class="d-flex justify-content-center my-5">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Carregando...</span>
+                                </div>
+                            </div>
+                        `;
+                    }
+                    
+                    // Função para lidar com erro ao carregar o módulo
+                    const handleError = (error) => {
+                        console.error('Erro ao carregar módulo de notas:', error);
+                        if (notasContent) {
+                            notasContent.innerHTML = `
+                                <div class="alert alert-danger mt-3">
+                                    <strong>Erro!</strong> Não foi possível carregar o módulo de notas.
+                                    <br>Detalhes: ${error.message || 'Erro desconhecido'}
+                                    <br><br>
+                                    <button class="btn btn-primary" onclick="location.reload()">Tentar Novamente</button>
+                                </div>
+                            `;
+                        }
+                    };
+                    
+                    // Tentar usar importação dinâmica (ES modules)
+                    try {
+                        import('./modules/notas.js')
+                            .then(module => {
+                                this.modules.notas = module.default;
+                                console.log('Módulo de notas carregado com sucesso via import dinâmico');
+                                
+                                // Inicializar o módulo após carregar
+                                this.modules.notas.init().catch(err => {
+                                    console.error('Erro ao inicializar módulo de notas:', err);
+                                    if (notasContent) {
+                                        notasContent.innerHTML = `
+                                            <div class="alert alert-danger mt-3">
+                                                <strong>Erro!</strong> Não foi possível inicializar o módulo de notas.
+                                                <br>Detalhes: ${err.message || 'Erro desconhecido'}
+                                                <br><br>
+                                                <button class="btn btn-primary" onclick="location.reload()">Tentar Novamente</button>
+                                            </div>
+                                        `;
+                                    }
+                                });
+                            })
+                            .catch(handleError);
+                    } catch (importError) {
+                        // Fallback para navegadores que não suportam importação dinâmica
+                        console.warn('Import dinâmico não suportado, tentando método alternativo...', importError);
+                        
+                        // Criar script tag e carregar o módulo
+                        const script = document.createElement('script');
+                        script.type = 'module';
+                        script.onload = () => {
+                            // Verificar se o módulo foi carregado globalmente
+                            if (window.NotasModule) {
+                                this.modules.notas = window.NotasModule;
+                                console.log('Módulo de notas carregado com sucesso via script tag');
+                                this.modules.notas.init().catch(handleError);
+                            } else {
+                                handleError(new Error('Módulo carregado, mas não encontrado no escopo global'));
+                            }
+                        };
+                        script.onerror = () => handleError(new Error('Falha ao carregar script do módulo de notas'));
+                        script.src = './js/modules/notas.js';
+                        document.head.appendChild(script);
+                    }
+                } else if (this.modules[moduleName]) {
+                    // Para outros módulos ou se o módulo notas já estiver carregado
+                    this.modules[moduleName].init();
+                } else {
+                    console.warn(`Módulo ${moduleName} não encontrado ou não inicializado.`);
+                }
             } catch (error) {
                 console.error(`Erro ao inicializar módulo ${moduleName}:`, error);
                 const conteudo = this.conteudos[linkId];
