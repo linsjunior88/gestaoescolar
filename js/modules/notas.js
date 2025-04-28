@@ -1561,6 +1561,31 @@ const NotasModule = {
             const notasExistentes = await ConfigModule.fetchApi(`/notas${filtro}`);
             console.log("Notas existentes:", notasExistentes);
             
+            // Filtrar as notas para garantir que sejam apenas da turma, disciplina, bimestre e ano selecionados
+            let notasFiltradas = [];
+            
+            if (Array.isArray(notasExistentes) && notasExistentes.length > 0) {
+                notasFiltradas = notasExistentes.filter(nota => {
+                    const notaTurmaId = nota.turma_id || nota.id_turma;
+                    const notaDisciplinaId = nota.disciplina_id || nota.id_disciplina;
+                    const notaBimestre = String(nota.bimestre);
+                    const notaAno = String(nota.ano);
+                    
+                    const turmaMatch = String(notaTurmaId) === String(turmaId);
+                    const disciplinaMatch = String(notaDisciplinaId) === String(disciplinaId);
+                    const bimestreMatch = notaBimestre === String(bimestre);
+                    const anoMatch = notaAno === String(ano);
+                    
+                    const isMatch = turmaMatch && disciplinaMatch && bimestreMatch && anoMatch;
+                    if (isMatch) {
+                        console.log(`Nota encontrada para filtros: ID=${nota.id}, aluno=${nota.id_aluno}, valor=${nota.valor || nota.nota_mensal || nota.nota_bimestral}`);
+                    }
+                    return isMatch;
+                });
+                
+                console.log(`Filtro aplicado: ${notasFiltradas.length} notas correspondem aos critérios selecionados.`);
+            }
+            
             // Criar tabela para exibir os alunos e suas notas
             const tabela = document.createElement('table');
             tabela.className = 'table table-striped table-bordered table-hover';
@@ -1582,31 +1607,66 @@ const NotasModule = {
             const tbody = document.createElement('tbody');
             
             alunos.forEach((aluno, index) => {
-                // Encontrar nota existente para este aluno, se houver
-                const notaExistente = Array.isArray(notasExistentes) ? 
-                    notasExistentes.find(nota => String(nota.id_aluno) === String(aluno.id)) : null;
+                // Encontrar nota existente para este aluno, considerando vários formatos de ID
+                const alunoId = aluno.id_aluno || aluno.id;
+                console.log(`Buscando nota para aluno: ID=${alunoId}, Nome=${aluno.nome_aluno || aluno.nome}`);
+                
+                const notaExistente = Array.isArray(notasFiltradas) ? 
+                    notasFiltradas.find(nota => {
+                        const notaAlunoId = nota.id_aluno || nota.aluno_id;
+                        const match = String(notaAlunoId) === String(alunoId) || 
+                                     String(notaAlunoId) === String(aluno.id);
+                        
+                        if (match) {
+                            console.log(`Correspondência encontrada: Nota ID=${nota.id}, aluno_id=${notaAlunoId}, valor=${nota.valor || nota.nota_mensal || nota.nota_bimestral}`);
+                        }
+                        return match;
+                    }) : null;
+                
+                if (notaExistente) {
+                    console.log(`Nota existente encontrada para aluno ${alunoId}:`, notaExistente);
+                } else {
+                    console.log(`Nenhuma nota existente para aluno ${alunoId}`);
+                }
                 
                 const tr = document.createElement('tr');
-                tr.dataset.alunoId = aluno.id;
+                const alunoIdParaUsar = alunoId || aluno.id;
+                tr.dataset.alunoId = alunoIdParaUsar;
+                
                 if (notaExistente) {
                     tr.dataset.notaId = notaExistente.id;
                 }
                 
+                // Determinar o valor da nota a ser exibido, considerando diferentes formatos
+                let valorNota = '';
+                if (notaExistente) {
+                    // Tentar obter o valor da nota considerando diferentes campos possíveis
+                    if (notaExistente.valor !== undefined && notaExistente.valor !== null) {
+                        valorNota = notaExistente.valor;
+                    } else if (notaExistente.nota_mensal !== undefined && notaExistente.nota_mensal !== null) {
+                        valorNota = notaExistente.nota_mensal;
+                    } else if (notaExistente.nota_bimestral !== undefined && notaExistente.nota_bimestral !== null) {
+                        valorNota = notaExistente.nota_bimestral;
+                    }
+                }
+                
                 tr.innerHTML = `
                     <td class="text-center align-middle">${index + 1}</td>
-                    <td class="align-middle">${aluno.nome || aluno.nome_aluno || 'Aluno ' + aluno.id}</td>
+                    <td class="align-middle">${aluno.nome_aluno || aluno.nome || 'Aluno ' + alunoIdParaUsar}</td>
                     <td>
                         <div class="input-group">
                             <input type="text" 
                                    class="form-control nota-input" 
-                                   data-aluno-id="${aluno.id}" 
+                                   data-aluno-id="${alunoIdParaUsar}" 
                                    ${notaExistente ? `data-nota-id="${notaExistente.id}"` : ''}
-                                   value="${notaExistente ? notaExistente.valor : ''}" 
+                                   value="${valorNota}" 
                                    placeholder="0.0 a 10.0">
                             <span class="input-group-text bg-light">/ 10</span>
                         </div>
                     </td>
-                    <td class="status-cell text-center"></td>
+                    <td class="status-cell text-center">
+                        ${notaExistente ? '<span class="badge bg-info"><i class="fas fa-check-circle me-1"></i> Nota existente</span>' : ''}
+                    </td>
                 `;
                 
                 tbody.appendChild(tr);
@@ -1628,7 +1688,7 @@ const NotasModule = {
                     </div>
                     <div>
                         <span class="badge bg-primary">${alunos.length} alunos</span>
-                        <span class="badge bg-info">${Array.isArray(notasExistentes) ? notasExistentes.length : 0} notas registradas</span>
+                        <span class="badge bg-info">${notasFiltradas.length} notas registradas</span>
                     </div>
                 </div>
             `;
@@ -1637,6 +1697,15 @@ const NotasModule = {
             this.elements.gradeNotas.innerHTML = '';
             this.elements.gradeNotas.appendChild(infoDiv);
             this.elements.gradeNotas.appendChild(tabela);
+            
+            // Adicionar dica de uso
+            const dicaDiv = document.createElement('div');
+            dicaDiv.className = 'alert alert-info mt-3';
+            dicaDiv.innerHTML = `
+                <i class="fas fa-info-circle me-2"></i>
+                <strong>Dica:</strong> Preencha as notas dos alunos (valores entre 0 e 10) e clique em "Salvar Todas as Notas" para registrá-las no sistema.
+            `;
+            this.elements.gradeNotas.appendChild(dicaDiv);
             
             // Habilitar o botão de salvar
             if (this.elements.btnSalvarGrade) {
