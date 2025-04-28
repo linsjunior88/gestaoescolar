@@ -1298,9 +1298,13 @@ const NotasModule = {
         this.state.modoEdicao = false;
         this.state.notaSelecionada = null;
         
+        // Primeiro limpar o formulário completamente
         if (this.elements.formNota) {
             this.elements.formNota.reset();
+            
+            // Mostrar o formulário (remover classe d-none se existir)
             this.elements.formNota.classList.remove('d-none');
+            
             this.elements.inputMediaFinal.textContent = '0.0';
             
             // Limpar e desabilitar selects de disciplina e aluno
@@ -1358,7 +1362,9 @@ const NotasModule = {
             }
             
             if (this.elements.formNota) {
+                // Garantir que o formulário esteja visível
                 this.elements.formNota.classList.remove('d-none');
+                
                 this.elements.selectTurma.value = turmaId;
                 this.elements.selectDisciplina.value = nota.disciplina_id || nota.id_disciplina;
                 this.elements.selectAluno.value = nota.aluno_id || nota.id_aluno;
@@ -2564,7 +2570,7 @@ const NotasModule = {
                 }
             }
             
-            // Limpar o formulário
+            // Limpar o formulário e recolhê-lo (ocultar)
             this.limparFormularioNota();
             
             // Se tiver filtros aplicados, recarregar a grade
@@ -2868,6 +2874,9 @@ const NotasModule = {
         if (this.elements.formNota) {
             this.elements.formNota.reset();
             
+            // Ocultar o formulário adicionando a classe d-none
+            this.elements.formNota.classList.add('d-none');
+            
             // Limpar campo de ID da nota
             const inputNotaId = document.getElementById('nota-id');
             if (inputNotaId) {
@@ -2901,7 +2910,7 @@ const NotasModule = {
     cancelarEdicao: function() {
         console.log("Cancelando edição/inclusão de nota");
         
-        // Limpar completamente o formulário
+        // Limpar completamente o formulário e ocultá-lo
         this.limparFormularioNota();
         
         // Se estiver em um modal, fechá-lo
