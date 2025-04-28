@@ -5,6 +5,7 @@
 
 // Importar módulos
 import ConfigModule from './modules/config.js';
+import CORSBypassModule from './modules/cors-bypass.js';
 import DashboardModule from './modules/dashboard.js';
 import TurmasModule from './modules/turmas.js';
 import DisciplinasModule from './modules/disciplinas.js';
@@ -16,6 +17,7 @@ const App = {
     // Módulos da aplicação
     modules: {
         config: ConfigModule,
+        corsBypass: CORSBypassModule,
         dashboard: DashboardModule,
         turmas: TurmasModule,
         disciplinas: DisciplinasModule,
@@ -34,63 +36,21 @@ const App = {
     init: async function() {
         console.log("Inicializando aplicação...");
         
-        // Inicializar módulo de configuração primeiro
-        this.modules.config.init();
-        
-        // Carregar o módulo de notas dinamicamente
         try {
-            const NotasModule = await import('./modules/notas.js')
-                .then(module => module.default)
-                .catch(error => {
-                    console.error("Erro ao carregar módulo de notas:", error);
-                    return {
-                        init: function() {
-                            console.warn("Usando módulo de notas de fallback");
-                            const notasContent = document.getElementById('conteudo-notas');
-                            if (notasContent) {
-                                notasContent.innerHTML = `
-                                    <div class="alert alert-danger">
-                                        <strong>Erro!</strong> Não foi possível carregar o módulo de notas. 
-                                        <br>Detalhes: ${error.message || 'Erro desconhecido'}
-                                        <br><br>
-                                        <button class="btn btn-primary" onclick="location.reload()">Tentar Novamente</button>
-                                    </div>
-                                `;
-                            }
-                        }
-                    };
-                });
+            // Inicializar módulo de configuração
+            await ConfigModule.init();
             
-            this.modules.notas = NotasModule;
-            console.log("Módulo de notas carregado com sucesso");
+            // Inicializar gerenciamento de seções
+            this.initLinks();
+            
+            // Inicializar módulo inicial (dashboard)
+            await this.ativarSecao('dashboard-link');
+            
+            console.log("Aplicação inicializada com sucesso!");
         } catch (error) {
-            console.error("Erro ao carregar módulo de notas:", error);
-            // Criar um módulo de fallback
-            this.modules.notas = {
-                init: function() {
-                    console.warn("Usando módulo de notas de fallback após exceção");
-                    const notasContent = document.getElementById('conteudo-notas');
-                    if (notasContent) {
-                        notasContent.innerHTML = `
-                            <div class="alert alert-danger">
-                                <strong>Erro!</strong> Não foi possível carregar o módulo de notas. 
-                                <br>Detalhes: ${error.message || 'Erro desconhecido'}
-                                <br><br>
-                                <button class="btn btn-primary" onclick="location.reload()">Tentar Novamente</button>
-                            </div>
-                        `;
-                    }
-                }
-            };
+            console.error("Erro ao inicializar aplicação:", error);
+            this.mostrarErroInicializacao(error);
         }
-        
-        // Inicializar links do menu
-        this.initLinks();
-        
-        // Ativar seção inicial (dashboard)
-        this.ativarSecao('dashboard-link');
-        
-        console.log("Aplicação inicializada com sucesso!");
     },
     
     // Inicializar links do menu
@@ -187,6 +147,21 @@ const App = {
                     `;
                 }
             }
+        }
+    },
+    
+    // Mostrar erro de inicialização
+    mostrarErroInicializacao: function(error) {
+        const notasContent = document.getElementById('conteudo-notas');
+        if (notasContent) {
+            notasContent.innerHTML = `
+                <div class="alert alert-danger">
+                    <strong>Erro!</strong> Não foi possível inicializar a aplicação. 
+                    <br>Detalhes: ${error.message || 'Erro desconhecido'}
+                    <br><br>
+                    <button class="btn btn-primary" onclick="location.reload()">Tentar Novamente</button>
+                </div>
+            `;
         }
     }
 };

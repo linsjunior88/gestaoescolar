@@ -1584,19 +1584,238 @@ const NotasModule = {
                 this.elements.btnSalvarGrade.disabled = true;
             }
             
-            // Buscar alunos da turma
-            const alunos = await ConfigModule.fetchApi(`/turmas/${turmaId}/alunos`);
-            console.log("Alunos carregados:", alunos);
-            
-            if (!alunos || !Array.isArray(alunos) || alunos.length === 0) {
-                this.elements.gradeNotas.innerHTML = `
-                    <div class="alert alert-info">
-                        <i class="fas fa-info-circle me-2"></i>
-                        Não há alunos cadastrados nesta turma.
+            try {
+                // Buscar alunos da turma
+                const alunos = await this.buscarDadosComFeedback(
+                    `/turmas/${turmaId}/alunos`,
+                    "Buscando alunos...",
+                    "Contornando restrições de segurança (CORS)..."
+                );
+                console.log("Alunos carregados:", alunos);
+                
+                if (!alunos || !Array.isArray(alunos) || alunos.length === 0) {
+                    this.elements.gradeNotas.innerHTML = `
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Não há alunos cadastrados nesta turma.
+                        </div>
+                    `;
+                    
+                    // Restaurar estado dos botões
+                    if (this.elements.btnCarregarGrade) {
+                        this.elements.btnCarregarGrade.disabled = false;
+                        this.elements.btnCarregarGrade.innerHTML = 'Carregar Grade';
+                    }
+                    
+                    // Remover classe de carregamento
+                    conteudoNotas.classList.remove('page-loading');
+                    return;
+                }
+                
+                // Buscar notas existentes para esta turma, disciplina, bimestre e ano
+                const filtro = `?id_turma=${turmaId}&id_disciplina=${disciplinaId}&bimestre=${bimestre}&ano=${ano}`;
+                const notasExistentes = await this.buscarDadosComFeedback(
+                    `/notas${filtro}`,
+                    "Buscando notas existentes...",
+                    "Contornando restrições de segurança (CORS)..."
+                );
+                console.log("Notas existentes:", notasExistentes);
+                
+                // Continuar com o restante do código...
+                
+                // Filtrar as notas para garantir que sejam apenas da turma, disciplina, bimestre e ano selecionados
+                let notasFiltradas = [];
+                
+                if (Array.isArray(notasExistentes) && notasExistentes.length > 0) {
+                    notasFiltradas = notasExistentes.filter(nota => {
+                        const notaTurmaId = nota.turma_id || nota.id_turma;
+                        const notaDisciplinaId = nota.disciplina_id || nota.id_disciplina;
+                        const notaBimestre = String(nota.bimestre);
+                        const notaAno = String(nota.ano);
+                        
+                        const turmaMatch = String(notaTurmaId) === String(turmaId);
+                        const disciplinaMatch = String(notaDisciplinaId) === String(disciplinaId);
+                        const bimestreMatch = notaBimestre === String(bimestre);
+                        const anoMatch = notaAno === String(ano);
+                        
+                        const isMatch = turmaMatch && disciplinaMatch && bimestreMatch && anoMatch;
+                        if (isMatch) {
+                            console.log(`Nota encontrada para filtros: ID=${nota.id}, aluno=${nota.id_aluno}, valor=${nota.valor || nota.nota_mensal || nota.nota_bimestral}`);
+                        }
+                        return isMatch;
+                    });
+                    
+                    console.log(`Filtro aplicado: ${notasFiltradas.length} notas correspondem aos critérios selecionados.`);
+                }
+                
+                // ... resto do código existente...
+                
+                // Criar tabela para exibir os alunos e suas notas
+                const tabela = document.createElement('table');
+                tabela.className = 'table table-striped table-bordered table-hover';
+                tabela.id = 'tabela-grade-notas';
+                
+                // Cabeçalho da tabela
+                const thead = document.createElement('thead');
+                thead.className = 'table-light';
+                thead.innerHTML = `
+                    <tr>
+                        <th width="5%" class="text-center">#</th>
+                        <th width="40%">Aluno</th>
+                        <th width="30%" class="text-center">Nota</th>
+                        <th width="25%" class="text-center">Status</th>
+                    </tr>
+                `;
+                tabela.appendChild(thead);
+                
+                // Corpo da tabela
+                const tbody = document.createElement('tbody');
+                
+                alunos.forEach((aluno, index) => {
+                    // Encontrar nota existente para este aluno, considerando vários formatos de ID
+                    const alunoId = aluno.id_aluno || aluno.id;
+                    console.log(`Buscando nota para aluno: ID=${alunoId}, Nome=${aluno.nome_aluno || aluno.nome}`);
+                    
+                    const notaExistente = Array.isArray(notasFiltradas) ? 
+                        notasFiltradas.find(nota => {
+                            const notaAlunoId = nota.id_aluno || nota.aluno_id;
+                            const match = String(notaAlunoId) === String(alunoId) || 
+                                         String(notaAlunoId) === String(aluno.id);
+                            
+                            if (match) {
+                                console.log(`Correspondência encontrada: Nota ID=${nota.id}, aluno_id=${notaAlunoId}, valor=${nota.valor || nota.nota_mensal || nota.nota_bimestral}`);
+                            }
+                            return match;
+                        }) : null;
+                    
+                    if (notaExistente) {
+                        console.log(`Nota existente encontrada para aluno ${alunoId}:`, notaExistente);
+                    } else {
+                        console.log(`Nenhuma nota existente para aluno ${alunoId}`);
+                    }
+                    
+                    const tr = document.createElement('tr');
+                    const alunoIdParaUsar = alunoId || aluno.id;
+                    tr.dataset.alunoId = alunoIdParaUsar;
+                    
+                    if (notaExistente) {
+                        tr.dataset.notaId = notaExistente.id;
+                    }
+                    
+                    // Determinar o valor da nota a ser exibido, considerando diferentes formatos
+                    let valorNota = '';
+                    if (notaExistente) {
+                        // Tentar obter o valor da nota considerando diferentes campos possíveis
+                        if (notaExistente.valor !== undefined && notaExistente.valor !== null) {
+                            valorNota = notaExistente.valor;
+                        } else if (notaExistente.nota_mensal !== undefined && notaExistente.nota_mensal !== null) {
+                            valorNota = notaExistente.nota_mensal;
+                        } else if (notaExistente.nota_bimestral !== undefined && notaExistente.nota_bimestral !== null) {
+                            valorNota = notaExistente.nota_bimestral;
+                        }
+                    }
+                    
+                    tr.innerHTML = `
+                        <td class="text-center align-middle">${index + 1}</td>
+                        <td class="align-middle">${aluno.nome_aluno || aluno.nome || 'Aluno ' + alunoIdParaUsar}</td>
+                        <td>
+                            <div class="input-group">
+                                <input type="text" 
+                                       class="form-control nota-input" 
+                                       data-aluno-id="${alunoIdParaUsar}" 
+                                       ${notaExistente ? `data-nota-id="${notaExistente.id}"` : ''}
+                                       value="${valorNota}" 
+                                       placeholder="0.0 a 10.0">
+                                <span class="input-group-text bg-light">/ 10</span>
+                            </div>
+                        </td>
+                        <td class="status-cell text-center">
+                            ${notaExistente ? '<span class="badge bg-info"><i class="fas fa-check-circle me-1"></i> Nota existente</span>' : ''}
+                        </td>
+                    `;
+                    
+                    tbody.appendChild(tr);
+                });
+                
+                tabela.appendChild(tbody);
+                
+                // Adicionar informações resumidas acima da tabela
+                const infoDiv = document.createElement('div');
+                infoDiv.className = 'bg-light p-3 mb-3 rounded border';
+                infoDiv.innerHTML = `
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="mb-1">Lançamento de Notas - ${document.querySelector('#massa-bimestre option:checked')?.textContent || bimestre}º Bimestre ${ano}</h5>
+                            <p class="mb-0 text-muted">
+                                Turma: <strong>${document.querySelector('#massa-turma option:checked')?.textContent || turmaId}</strong> • 
+                                Disciplina: <strong>${document.querySelector('#massa-disciplina option:checked')?.textContent || disciplinaId}</strong>
+                            </p>
+                        </div>
+                        <div>
+                            <span class="badge bg-primary">${alunos.length} alunos</span>
+                            <span class="badge bg-info">${notasFiltradas.length} notas registradas</span>
+                        </div>
                     </div>
                 `;
                 
-                // Restaurar estado dos botões
+                // Limpar e substituir conteúdo da grade de notas
+                console.log("Substituindo conteúdo da grade com novos elementos");
+                
+                // Limpar completamente o container antes de adicionar novos elementos
+                this.elements.gradeNotas.innerHTML = '';
+                
+                // Adicionar os elementos na ordem correta
+                this.elements.gradeNotas.appendChild(infoDiv);
+                this.elements.gradeNotas.appendChild(tabela);
+                
+                // Adicionar dica de uso
+                const dicaDiv = document.createElement('div');
+                dicaDiv.className = 'alert alert-info mt-3';
+                dicaDiv.innerHTML = `
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>Dica:</strong> Preencha as notas dos alunos (valores entre 0 e 10) e clique em "Salvar Todas as Notas" para registrá-las no sistema.
+                `;
+                this.elements.gradeNotas.appendChild(dicaDiv);
+                
+                // Verificar se o conteúdo foi realmente adicionado
+                console.log("Grade de notas atualizada:", this.elements.gradeNotas);
+                console.log("Conteúdo interno da grade:", {
+                    elementos: this.elements.gradeNotas.children.length,
+                    primeiro: this.elements.gradeNotas.firstChild,
+                    html: this.elements.gradeNotas.innerHTML.substr(0, 100) + '...'
+                });
+                
+                // Adicionar estilo para garantir que a tabela seja visível
+                const estiloTabela = document.createElement('style');
+                estiloTabela.textContent = `
+                    #grade-notas {
+                        display: block !important;
+                        overflow-x: auto;
+                        min-height: 300px;
+                        margin-bottom: 20px;
+                        background-color: #fff;
+                    }
+                    #tabela-grade-notas {
+                        width: 100%;
+                        margin-bottom: 1rem;
+                        border-radius: 0.25rem;
+                        overflow: hidden;
+                    }
+                    .grade-container {
+                        padding: 15px;
+                        border-radius: 0.25rem;
+                        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+                        background-color: #fff;
+                    }
+                `;
+                document.head.appendChild(estiloTabela);
+                
+                // Habilitar o botão de salvar
+                if (this.elements.btnSalvarGrade) {
+                    this.elements.btnSalvarGrade.disabled = false;
+                }
+                
+                // Restaurar botão de carregar
                 if (this.elements.btnCarregarGrade) {
                     this.elements.btnCarregarGrade.disabled = false;
                     this.elements.btnCarregarGrade.innerHTML = 'Carregar Grade';
@@ -1604,215 +1823,32 @@ const NotasModule = {
                 
                 // Remover classe de carregamento
                 conteudoNotas.classList.remove('page-loading');
-                return;
-            }
-            
-            // Buscar notas existentes para esta turma, disciplina, bimestre e ano
-            const filtro = `?id_turma=${turmaId}&id_disciplina=${disciplinaId}&bimestre=${bimestre}&ano=${ano}`;
-            const notasExistentes = await ConfigModule.fetchApi(`/notas${filtro}`);
-            console.log("Notas existentes:", notasExistentes);
-            
-            // Filtrar as notas para garantir que sejam apenas da turma, disciplina, bimestre e ano selecionados
-            let notasFiltradas = [];
-            
-            if (Array.isArray(notasExistentes) && notasExistentes.length > 0) {
-                notasFiltradas = notasExistentes.filter(nota => {
-                    const notaTurmaId = nota.turma_id || nota.id_turma;
-                    const notaDisciplinaId = nota.disciplina_id || nota.id_disciplina;
-                    const notaBimestre = String(nota.bimestre);
-                    const notaAno = String(nota.ano);
+                
+                // Rolar até a grade para garantir que seja visível
+                this.elements.gradeNotas.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                 
+                } catch (fetchError) {
+                console.error("Erro ao buscar dados:", fetchError);
+                
+                // Mostrar mensagem mais amigável para erros de CORS
+                if (fetchError.message && (
+                    fetchError.message.includes('CORS') || 
+                    fetchError.message.includes('cross-origin') || 
+                    fetchError.message.includes('NetworkError')
+                )) {
+                    this.mostrarMensagemCORS();
                     
-                    const turmaMatch = String(notaTurmaId) === String(turmaId);
-                    const disciplinaMatch = String(notaDisciplinaId) === String(disciplinaId);
-                    const bimestreMatch = notaBimestre === String(bimestre);
-                    const anoMatch = notaAno === String(ano);
-                    
-                    const isMatch = turmaMatch && disciplinaMatch && bimestreMatch && anoMatch;
-                    if (isMatch) {
-                        console.log(`Nota encontrada para filtros: ID=${nota.id}, aluno=${nota.id_aluno}, valor=${nota.valor || nota.nota_mensal || nota.nota_bimestral}`);
+                    // Restaurar botões
+                    if (this.elements.btnCarregarGrade) {
+                        this.elements.btnCarregarGrade.disabled = false;
+                        this.elements.btnCarregarGrade.innerHTML = 'Tentar Novamente';
                     }
-                    return isMatch;
-                });
-                
-                console.log(`Filtro aplicado: ${notasFiltradas.length} notas correspondem aos critérios selecionados.`);
-            }
-            
-            // Criar tabela para exibir os alunos e suas notas
-            const tabela = document.createElement('table');
-            tabela.className = 'table table-striped table-bordered table-hover';
-            tabela.id = 'tabela-grade-notas';
-            
-            // Cabeçalho da tabela
-            const thead = document.createElement('thead');
-            thead.className = 'table-light';
-            thead.innerHTML = `
-                <tr>
-                    <th width="5%" class="text-center">#</th>
-                    <th width="40%">Aluno</th>
-                    <th width="30%" class="text-center">Nota</th>
-                    <th width="25%" class="text-center">Status</th>
-                </tr>
-            `;
-            tabela.appendChild(thead);
-            
-            // Corpo da tabela
-            const tbody = document.createElement('tbody');
-            
-            alunos.forEach((aluno, index) => {
-                // Encontrar nota existente para este aluno, considerando vários formatos de ID
-                const alunoId = aluno.id_aluno || aluno.id;
-                console.log(`Buscando nota para aluno: ID=${alunoId}, Nome=${aluno.nome_aluno || aluno.nome}`);
-                
-                const notaExistente = Array.isArray(notasFiltradas) ? 
-                    notasFiltradas.find(nota => {
-                        const notaAlunoId = nota.id_aluno || nota.aluno_id;
-                        const match = String(notaAlunoId) === String(alunoId) || 
-                                     String(notaAlunoId) === String(aluno.id);
-                        
-                        if (match) {
-                            console.log(`Correspondência encontrada: Nota ID=${nota.id}, aluno_id=${notaAlunoId}, valor=${nota.valor || nota.nota_mensal || nota.nota_bimestral}`);
-                        }
-                        return match;
-                    }) : null;
-                
-                if (notaExistente) {
-                    console.log(`Nota existente encontrada para aluno ${alunoId}:`, notaExistente);
                 } else {
-                    console.log(`Nenhuma nota existente para aluno ${alunoId}`);
+                    throw fetchError; // Propagar outros tipos de erro
                 }
-                
-                const tr = document.createElement('tr');
-                const alunoIdParaUsar = alunoId || aluno.id;
-                tr.dataset.alunoId = alunoIdParaUsar;
-                
-                if (notaExistente) {
-                    tr.dataset.notaId = notaExistente.id;
-                }
-                
-                // Determinar o valor da nota a ser exibido, considerando diferentes formatos
-                let valorNota = '';
-                if (notaExistente) {
-                    // Tentar obter o valor da nota considerando diferentes campos possíveis
-                    if (notaExistente.valor !== undefined && notaExistente.valor !== null) {
-                        valorNota = notaExistente.valor;
-                    } else if (notaExistente.nota_mensal !== undefined && notaExistente.nota_mensal !== null) {
-                        valorNota = notaExistente.nota_mensal;
-                    } else if (notaExistente.nota_bimestral !== undefined && notaExistente.nota_bimestral !== null) {
-                        valorNota = notaExistente.nota_bimestral;
-                    }
-                }
-                
-                tr.innerHTML = `
-                    <td class="text-center align-middle">${index + 1}</td>
-                    <td class="align-middle">${aluno.nome_aluno || aluno.nome || 'Aluno ' + alunoIdParaUsar}</td>
-                    <td>
-                        <div class="input-group">
-                            <input type="text" 
-                                   class="form-control nota-input" 
-                                   data-aluno-id="${alunoIdParaUsar}" 
-                                   ${notaExistente ? `data-nota-id="${notaExistente.id}"` : ''}
-                                   value="${valorNota}" 
-                                   placeholder="0.0 a 10.0">
-                            <span class="input-group-text bg-light">/ 10</span>
-                        </div>
-                    </td>
-                    <td class="status-cell text-center">
-                        ${notaExistente ? '<span class="badge bg-info"><i class="fas fa-check-circle me-1"></i> Nota existente</span>' : ''}
-                    </td>
-                `;
-                
-                tbody.appendChild(tr);
-            });
-            
-            tabela.appendChild(tbody);
-            
-            // Adicionar informações resumidas acima da tabela
-            const infoDiv = document.createElement('div');
-            infoDiv.className = 'bg-light p-3 mb-3 rounded border';
-            infoDiv.innerHTML = `
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h5 class="mb-1">Lançamento de Notas - ${document.querySelector('#massa-bimestre option:checked')?.textContent || bimestre}º Bimestre ${ano}</h5>
-                        <p class="mb-0 text-muted">
-                            Turma: <strong>${document.querySelector('#massa-turma option:checked')?.textContent || turmaId}</strong> • 
-                            Disciplina: <strong>${document.querySelector('#massa-disciplina option:checked')?.textContent || disciplinaId}</strong>
-                        </p>
-                    </div>
-                    <div>
-                        <span class="badge bg-primary">${alunos.length} alunos</span>
-                        <span class="badge bg-info">${notasFiltradas.length} notas registradas</span>
-                    </div>
-                </div>
-            `;
-            
-            // Limpar e substituir conteúdo da grade de notas
-            console.log("Substituindo conteúdo da grade com novos elementos");
-            
-            // Limpar completamente o container antes de adicionar novos elementos
-            this.elements.gradeNotas.innerHTML = '';
-            
-            // Adicionar os elementos na ordem correta
-            this.elements.gradeNotas.appendChild(infoDiv);
-            this.elements.gradeNotas.appendChild(tabela);
-            
-            // Adicionar dica de uso
-            const dicaDiv = document.createElement('div');
-            dicaDiv.className = 'alert alert-info mt-3';
-            dicaDiv.innerHTML = `
-                <i class="fas fa-info-circle me-2"></i>
-                <strong>Dica:</strong> Preencha as notas dos alunos (valores entre 0 e 10) e clique em "Salvar Todas as Notas" para registrá-las no sistema.
-            `;
-            this.elements.gradeNotas.appendChild(dicaDiv);
-            
-            // Verificar se o conteúdo foi realmente adicionado
-            console.log("Grade de notas atualizada:", this.elements.gradeNotas);
-            console.log("Conteúdo interno da grade:", {
-                elementos: this.elements.gradeNotas.children.length,
-                primeiro: this.elements.gradeNotas.firstChild,
-                html: this.elements.gradeNotas.innerHTML.substr(0, 100) + '...'
-            });
-            
-            // Adicionar estilo para garantir que a tabela seja visível
-            const estiloTabela = document.createElement('style');
-            estiloTabela.textContent = `
-                #grade-notas {
-                    display: block !important;
-                    overflow-x: auto;
-                    min-height: 300px;
-                    margin-bottom: 20px;
-                    background-color: #fff;
-                }
-                #tabela-grade-notas {
-                    width: 100%;
-                    margin-bottom: 1rem;
-                    border-radius: 0.25rem;
-                    overflow: hidden;
-                }
-                .grade-container {
-                    padding: 15px;
-                    border-radius: 0.25rem;
-                    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-                    background-color: #fff;
-                }
-            `;
-            document.head.appendChild(estiloTabela);
-            
-            // Habilitar o botão de salvar
-            if (this.elements.btnSalvarGrade) {
-                this.elements.btnSalvarGrade.disabled = false;
             }
             
-            // Restaurar botão de carregar
-            if (this.elements.btnCarregarGrade) {
-                this.elements.btnCarregarGrade.disabled = false;
-                this.elements.btnCarregarGrade.innerHTML = 'Carregar Grade';
-            }
-            
-            // Remover classe de carregamento
-            conteudoNotas.classList.remove('page-loading');
-            
-            // Rolar até a grade para garantir que seja visível
-            this.elements.gradeNotas.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            // ... resto do código existente...
             
         } catch (error) {
             console.error("Erro ao carregar grade de notas:", error);
@@ -1826,7 +1862,14 @@ const NotasModule = {
             // Verificar se o elemento gradeNotas existe
             const gradeNotas = this.elements.gradeNotas || document.getElementById('grade-notas');
             
-            if (gradeNotas) {
+            // Verificar se é um erro de CORS
+            if (error.message && (
+                error.message.includes('CORS') || 
+                error.message.includes('cross-origin') || 
+                error.message.includes('NetworkError')
+            )) {
+                this.mostrarMensagemCORS();
+            } else if (gradeNotas) {
                 gradeNotas.innerHTML = `
                     <div class="alert alert-danger">
                         <i class="fas fa-exclamation-circle me-2"></i>
@@ -1863,6 +1906,86 @@ const NotasModule = {
                 conteudoNotas.classList.remove('page-loading');
             }
         }
+    },
+    
+    // Função auxiliar para buscar dados com feedback do progresso
+    buscarDadosComFeedback: async function(endpoint, mensagemInicial, mensagemCORS) {
+        this.atualizarMensagemCarregamento(mensagemInicial);
+        
+        try {
+            return await ConfigModule.fetchApi(endpoint);
+        } catch (error) {
+            // Se for erro de CORS, mostrar feedback e tentar novamente
+            if (error.message && (
+                error.message.includes('CORS') || 
+                error.message.includes('cross-origin') || 
+                error.message.includes('NetworkError')
+            )) {
+                console.warn("Erro de CORS detectado, tentando alternativa:", error);
+                this.atualizarMensagemCarregamento(mensagemCORS);
+                
+                // Esperar um momento para o usuário ler a mensagem
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                
+                // Tentar novamente com a opção de capturar erro
+                const resultado = await ConfigModule.fetchApi(endpoint, { catchError: true });
+                
+                if (resultado && resultado.error) {
+                    throw new Error(resultado.message || "Erro ao acessar o servidor");
+                }
+                
+                return resultado;
+            }
+            throw error;
+        }
+    },
+    
+    // Atualizar mensagem no indicador de carregamento
+    atualizarMensagemCarregamento: function(mensagem) {
+        const statusElemento = document.querySelector('#grade-notas .text-primary.fw-bold');
+        if (statusElemento) {
+            statusElemento.textContent = mensagem;
+        }
+    },
+    
+    // Mostrar mensagem específica para erros de CORS
+    mostrarMensagemCORS: function() {
+        const gradeNotas = this.elements.gradeNotas || document.getElementById('grade-notas');
+        
+        if (!gradeNotas) return;
+        
+        gradeNotas.innerHTML = `
+            <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <strong>Problema de conectividade detectado</strong>
+                <p class="mb-0 mt-2">O navegador está impedindo o acesso ao servidor devido a restrições de segurança (CORS).</p>
+                <hr>
+                <div class="mt-3">
+                    <p><strong>O que você pode tentar:</strong></p>
+                    <ol class="mb-0">
+                        <li>Clique em "Tentar Novamente" para usar um método alternativo de comunicação.</li>
+                        <li>Verifique se o servidor está online em <a href="https://gestao-escolar-api.onrender.com/api" target="_blank">https://gestao-escolar-api.onrender.com/api</a></li>
+                        <li>Se você está usando Firefox ou Chrome, considere instalar uma extensão como "CORS Unblock" ou "Allow CORS".</li>
+                        <li>Recarregue a página e tente novamente.</li>
+                    </ol>
+                </div>
+                <div class="d-flex justify-content-end mt-3">
+                    <button id="btn-cors-retry" class="btn btn-primary">
+                        <i class="fas fa-sync-alt me-2"></i> Tentar Novamente
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        // Adicionar listener para o botão de tentar novamente
+        setTimeout(() => {
+            const btnRetry = document.getElementById('btn-cors-retry');
+            if (btnRetry) {
+                btnRetry.addEventListener('click', () => {
+                    this.carregarGradeNotas();
+                });
+            }
+        }, 100);
     },
     
     // Inicializar cabeçalhos de ordenação
