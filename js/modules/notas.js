@@ -1489,39 +1489,80 @@ const NotasModule = {
 
             console.log("Carregando grade de notas para edição em massa:", { turmaId, disciplinaId, bimestre, ano });
             
-            // Verificar se o elemento gradeNotas existe
+            // Verificar a estrutura do DOM e garantir que os elementos existam
+            const conteudoNotas = document.querySelector('#conteudo-notas');
+            if (!conteudoNotas) {
+                console.error("Elemento #conteudo-notas não encontrado. A estrutura da página pode estar incorreta.");
+                alert("Erro: Container principal não encontrado. Por favor, recarregue a página.");
+                return;
+            }
+            
+            // Mostrar todo o processo no console para depuração
+            console.log("Estrutura do DOM principal:", {
+                conteudoNotas: conteudoNotas,
+                massaSection: document.querySelector('#lancamento-massa-section'),
+                gradeWrapper: document.querySelector('#grade-notas-wrapper')
+            });
+            
+            // Garantir que o elemento gradeNotas exista e seja visível
             if (!this.elements.gradeNotas) {
-                console.warn("Elemento gradeNotas não encontrado, tentando obter novamente");
-                this.elements.gradeNotas = document.getElementById('grade-notas');
+                console.warn("Elemento gradeNotas não encontrado, criando elemento");
                 
-                // Se ainda não encontrou, criar o elemento
-                if (!this.elements.gradeNotas) {
-                    console.warn("Criando elemento grade-notas dinâmicamente");
-                    const gradeNotasWrapper = document.querySelector('#grade-notas-wrapper') || document.querySelector('#conteudo-notas');
+                // Procurar por um container adequado
+                const gradeNotasWrapper = document.querySelector('#grade-notas-wrapper') || 
+                                          document.querySelector('#massa-notas-container') || 
+                                          conteudoNotas;
+                
+                if (gradeNotasWrapper) {
+                    // Primeiro verificar se já existe um elemento com ID grade-notas
+                    let gradeNotasExistente = document.querySelector('#grade-notas');
                     
-                    if (gradeNotasWrapper) {
+                    if (gradeNotasExistente) {
+                        console.log("Elemento #grade-notas já existe no DOM, utilizando o existente");
+                        this.elements.gradeNotas = gradeNotasExistente;
+                    } else {
+                        // Criar um novo elemento
+                        console.log("Criando novo elemento #grade-notas");
                         const novoGradeNotas = document.createElement('div');
                         novoGradeNotas.id = 'grade-notas';
-                        novoGradeNotas.className = 'mt-4';
+                        novoGradeNotas.className = 'mt-4 grade-container';
+                        
+                        // Garantir que o elemento seja adicionado ao DOM
                         gradeNotasWrapper.appendChild(novoGradeNotas);
                         this.elements.gradeNotas = novoGradeNotas;
-                    } else {
-                        this.mostrarErro("Não foi possível encontrar o container para exibir as notas. Por favor, recarregue a página.");
-                        console.error("Nenhum elemento #grade-notas-wrapper ou #conteudo-notas encontrado");
-                        return;
+                        
+                        console.log("Novo elemento grade-notas criado e adicionado ao DOM:", novoGradeNotas);
                     }
+                } else {
+                    // Se não encontrou um container adequado, criar um novo e adicionar ao conteudoNotas
+                    console.warn("Nenhum container específico encontrado, criando estrutura completa");
+                    
+                    const novoContainer = document.createElement('div');
+                    novoContainer.id = 'massa-notas-container';
+                    novoContainer.className = 'mt-4 border p-3 rounded bg-white shadow-sm';
+                    
+                    const novoGradeNotas = document.createElement('div');
+                    novoGradeNotas.id = 'grade-notas';
+                    novoGradeNotas.className = 'mt-3 grade-container';
+                    
+                    novoContainer.appendChild(novoGradeNotas);
+                    conteudoNotas.appendChild(novoContainer);
+                    
+                    this.elements.gradeNotas = novoGradeNotas;
+                    console.log("Criada estrutura completa para a grade:", novoContainer);
                 }
             }
             
-            // Adicionar classe de carregamento à página
-            const conteudoNotas = document.querySelector('#conteudo-notas');
-            if (conteudoNotas) {
-                conteudoNotas.classList.add('page-loading');
-            }
+            // Adicionar classe de carregamento
+            conteudoNotas.classList.add('page-loading');
             
-            // Mostrar indicador de carregamento mais atrativo
+            // Garantir que o elemento gradeNotas esteja visível com um tamanho adequado
+            this.elements.gradeNotas.style.display = 'block';
+            this.elements.gradeNotas.style.minHeight = '200px';
+            
+            // Exibir indicador de carregamento mais visível
             this.elements.gradeNotas.innerHTML = `
-                <div class="text-center py-5">
+                <div class="text-center py-5 bg-light rounded border mb-3">
                     <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
                         <span class="visually-hidden">Carregando...</span>
                     </div>
@@ -1531,7 +1572,14 @@ const NotasModule = {
                 </div>
             `;
             
-            // Habilitar o botão de salvar em massa
+            console.log("Indicador de carregamento adicionado. Iniciando busca de alunos e notas...");
+            
+            // Desabilitar temporariamente o botão para evitar cliques múltiplos
+            if (this.elements.btnCarregarGrade) {
+                this.elements.btnCarregarGrade.disabled = true;
+                this.elements.btnCarregarGrade.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Carregando...';
+            }
+            
             if (this.elements.btnSalvarGrade) {
                 this.elements.btnSalvarGrade.disabled = true;
             }
@@ -1548,11 +1596,14 @@ const NotasModule = {
                     </div>
                 `;
                 
-                // Remover classe de carregamento
-                if (conteudoNotas) {
-                    conteudoNotas.classList.remove('page-loading');
+                // Restaurar estado dos botões
+                if (this.elements.btnCarregarGrade) {
+                    this.elements.btnCarregarGrade.disabled = false;
+                    this.elements.btnCarregarGrade.innerHTML = 'Carregar Grade';
                 }
                 
+                // Remover classe de carregamento
+                conteudoNotas.classList.remove('page-loading');
                 return;
             }
             
@@ -1589,6 +1640,7 @@ const NotasModule = {
             // Criar tabela para exibir os alunos e suas notas
             const tabela = document.createElement('table');
             tabela.className = 'table table-striped table-bordered table-hover';
+            tabela.id = 'tabela-grade-notas';
             
             // Cabeçalho da tabela
             const thead = document.createElement('thead');
@@ -1693,8 +1745,13 @@ const NotasModule = {
                 </div>
             `;
             
-            // Substituir conteúdo da grade de notas
+            // Limpar e substituir conteúdo da grade de notas
+            console.log("Substituindo conteúdo da grade com novos elementos");
+            
+            // Limpar completamente o container antes de adicionar novos elementos
             this.elements.gradeNotas.innerHTML = '';
+            
+            // Adicionar os elementos na ordem correta
             this.elements.gradeNotas.appendChild(infoDiv);
             this.elements.gradeNotas.appendChild(tabela);
             
@@ -1707,43 +1764,103 @@ const NotasModule = {
             `;
             this.elements.gradeNotas.appendChild(dicaDiv);
             
+            // Verificar se o conteúdo foi realmente adicionado
+            console.log("Grade de notas atualizada:", this.elements.gradeNotas);
+            console.log("Conteúdo interno da grade:", {
+                elementos: this.elements.gradeNotas.children.length,
+                primeiro: this.elements.gradeNotas.firstChild,
+                html: this.elements.gradeNotas.innerHTML.substr(0, 100) + '...'
+            });
+            
+            // Adicionar estilo para garantir que a tabela seja visível
+            const estiloTabela = document.createElement('style');
+            estiloTabela.textContent = `
+                #grade-notas {
+                    display: block !important;
+                    overflow-x: auto;
+                    min-height: 300px;
+                    margin-bottom: 20px;
+                    background-color: #fff;
+                }
+                #tabela-grade-notas {
+                    width: 100%;
+                    margin-bottom: 1rem;
+                    border-radius: 0.25rem;
+                    overflow: hidden;
+                }
+                .grade-container {
+                    padding: 15px;
+                    border-radius: 0.25rem;
+                    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+                    background-color: #fff;
+                }
+            `;
+            document.head.appendChild(estiloTabela);
+            
             // Habilitar o botão de salvar
             if (this.elements.btnSalvarGrade) {
                 this.elements.btnSalvarGrade.disabled = false;
             }
             
-            // Remover classe de carregamento
-            if (conteudoNotas) {
-                conteudoNotas.classList.remove('page-loading');
+            // Restaurar botão de carregar
+            if (this.elements.btnCarregarGrade) {
+                this.elements.btnCarregarGrade.disabled = false;
+                this.elements.btnCarregarGrade.innerHTML = 'Carregar Grade';
             }
+            
+            // Remover classe de carregamento
+            conteudoNotas.classList.remove('page-loading');
+            
+            // Rolar até a grade para garantir que seja visível
+            this.elements.gradeNotas.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             
         } catch (error) {
             console.error("Erro ao carregar grade de notas:", error);
             
-            // Verificar se o elemento ainda não existe
-            if (!this.elements.gradeNotas) {
-                const mensagemErro = `<strong>Erro ao carregar grade de notas.</strong> ${error.message || 'Por favor, tente novamente.'}`;
-                this.mostrarErro(mensagemErro);
-                return;
+            // Restaurar botão de carregar
+            if (this.elements.btnCarregarGrade) {
+                this.elements.btnCarregarGrade.disabled = false;
+                this.elements.btnCarregarGrade.innerHTML = 'Carregar Grade';
             }
             
-            this.mostrarErro(`<strong>Erro ao carregar grade de notas.</strong> ${error.message || 'Por favor, tente novamente.'}`);
-            this.elements.gradeNotas.innerHTML = `
-                <div class="alert alert-danger">
-                    <i class="fas fa-exclamation-circle me-2"></i>
-                    <strong>Erro ao carregar grade de notas.</strong> ${error.message || 'Por favor, tente novamente.'}
-                </div>
-            `;
+            // Verificar se o elemento gradeNotas existe
+            const gradeNotas = this.elements.gradeNotas || document.getElementById('grade-notas');
             
-            // Remover classe de carregamento
-            const conteudoNotas = document.querySelector('#conteudo-notas');
-            if (conteudoNotas) {
-                conteudoNotas.classList.remove('page-loading');
+            if (gradeNotas) {
+                gradeNotas.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-circle me-2"></i>
+                        <strong>Erro ao carregar grade de notas.</strong> ${error.message || 'Por favor, tente novamente.'}
+                    </div>
+                `;
+            } else {
+                // Se não encontrou o elemento, mostrar um alerta
+                const conteudoNotas = document.querySelector('#conteudo-notas');
+                if (conteudoNotas) {
+                    const alertaErro = document.createElement('div');
+                    alertaErro.className = 'alert alert-danger mt-3';
+                    alertaErro.innerHTML = `
+                        <i class="fas fa-exclamation-circle me-2"></i>
+                        <strong>Erro ao carregar grade de notas.</strong> Container não encontrado. ${error.message || 'Por favor, recarregue a página e tente novamente.'}
+                    `;
+                    conteudoNotas.appendChild(alertaErro);
+                } else {
+                    alert(`Erro ao carregar grade de notas: ${error.message || 'Container não encontrado. Por favor, recarregue a página.'}`);
+                }
             }
             
             // Desabilitar botão de salvar
             if (this.elements.btnSalvarGrade) {
                 this.elements.btnSalvarGrade.disabled = true;
+            }
+            
+            // Mostrar mensagem de erro também através da função mostrarErro
+            this.mostrarErro(`<strong>Erro ao carregar grade de notas.</strong> ${error.message || 'Por favor, tente novamente.'}`);
+            
+            // Remover classe de carregamento
+            const conteudoNotas = document.querySelector('#conteudo-notas');
+            if (conteudoNotas) {
+                conteudoNotas.classList.remove('page-loading');
             }
         }
     },
