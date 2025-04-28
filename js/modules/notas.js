@@ -52,7 +52,15 @@ const NotasModule = {
         filtroBimestre: null,
         filtroAno: null,
         btnFiltrar: null,
-        btnCalcularMedias: null
+        btnCalcularMedias: null,
+        massaTurma: null,
+        massaDisciplina: null,
+        massaBimestre: null,
+        massaAno: null,
+        btnCarregarGrade: null,
+        btnSalvarGrade: null,
+        gradeNotasWrapper: null,
+        gradeNotasCorpo: null
     },
     
     // Inicializar módulo
@@ -63,9 +71,13 @@ const NotasModule = {
         await this.carregarTurmas();
         // Não carregaremos as notas no início, apenas quando um filtro for aplicado
         
-        // Definir ano padrão no filtro
+        // Definir ano padrão no filtro e no lançamento em massa
+        const anoAtual = new Date().getFullYear();
         if (this.elements.filtroAno) {
-            this.elements.filtroAno.value = new Date().getFullYear();
+            this.elements.filtroAno.value = anoAtual;
+        }
+        if (this.elements.massaAno) {
+            this.elements.massaAno.value = anoAtual;
         }
         
         // Inicializar cabecalhos de ordenação
@@ -102,6 +114,16 @@ const NotasModule = {
         this.elements.filtroBimestre = document.getElementById('filtro-bimestre-nota');
         this.elements.filtroAno = document.getElementById('filtro-ano-nota');
         this.elements.btnFiltrar = document.getElementById('btn-filtrar-notas');
+        
+        // Elementos para lançamento em massa
+        this.elements.massaTurma = document.getElementById('massa-turma');
+        this.elements.massaDisciplina = document.getElementById('massa-disciplina');
+        this.elements.massaBimestre = document.getElementById('massa-bimestre');
+        this.elements.massaAno = document.getElementById('massa-ano');
+        this.elements.btnCarregarGrade = document.getElementById('btn-carregar-grade');
+        this.elements.btnSalvarGrade = document.getElementById('btn-salvar-grade');
+        this.elements.gradeNotasWrapper = document.getElementById('grade-notas-wrapper');
+        this.elements.gradeNotasCorpo = document.getElementById('grade-notas-corpo');
     },
     
     // Adicionar event listeners
@@ -167,6 +189,25 @@ const NotasModule = {
                 this.ordenarNotas(coluna);
             });
         });
+        
+        // Novos event listeners para lançamento em massa
+        if (this.elements.massaTurma) {
+            this.elements.massaTurma.addEventListener('change', () => {
+                this.carregarDisciplinasGrade(this.elements.massaTurma.value);
+            });
+        }
+        
+        if (this.elements.btnCarregarGrade) {
+            this.elements.btnCarregarGrade.addEventListener('click', () => {
+                this.carregarGradeNotas();
+            });
+        }
+        
+        if (this.elements.btnSalvarGrade) {
+            this.elements.btnSalvarGrade.addEventListener('click', () => {
+                this.salvarNotasEmMassa();
+            });
+        }
     },
     
     // Carregar turmas para os selects
@@ -190,6 +231,11 @@ const NotasModule = {
         this.elements.selectTurma.innerHTML = '<option value="">Selecione uma turma</option>';
         this.elements.filtroTurma.innerHTML = '<option value="">Selecione uma turma</option>';
         
+        // Adicionar opções para o lançamento em massa também
+        if (this.elements.massaTurma) {
+            this.elements.massaTurma.innerHTML = '<option value="">Selecione uma turma</option>';
+        }
+        
         // Adicionar opções
         this.state.turmas.forEach(turma => {
             const option1 = document.createElement('option');
@@ -201,6 +247,14 @@ const NotasModule = {
             option2.value = turma.id_turma || turma.id;
             option2.textContent = `${turma.serie || turma.nome || 'N/A'} (${turma.turno || 'N/A'})`;
             this.elements.filtroTurma.appendChild(option2);
+            
+            // Adicionar para o lançamento em massa também
+            if (this.elements.massaTurma) {
+                const option3 = document.createElement('option');
+                option3.value = turma.id_turma || turma.id;
+                option3.textContent = `${turma.serie || turma.nome || 'N/A'} (${turma.turno || 'N/A'})`;
+                this.elements.massaTurma.appendChild(option3);
+            }
         });
         
         // Desabilitar selects de disciplina e aluno até que uma turma seja selecionada
@@ -208,6 +262,7 @@ const NotasModule = {
         if (this.elements.selectAluno) this.elements.selectAluno.disabled = true;
         if (this.elements.filtroDisciplina) this.elements.filtroDisciplina.disabled = true;
         if (this.elements.filtroAluno) this.elements.filtroAluno.disabled = true;
+        if (this.elements.massaDisciplina) this.elements.massaDisciplina.disabled = true;
     },
     
     // Carregar disciplinas de uma turma específica
@@ -865,19 +920,23 @@ const NotasModule = {
                 return;
             }
             
-            // Verificar se as notas são números válidos
-            const notaMensal = parseFloat(this.elements.inputNotaMensal.value);
-            const notaBimestral = parseFloat(this.elements.inputNotaBimestral.value);
-            let notaRecuperacao = this.elements.inputNotaRecuperacao.value 
-                ? parseFloat(this.elements.inputNotaRecuperacao.value) 
-                : null;
+            // Verificar se pelo menos uma das notas está preenchida
+            const notaMensal = this.elements.inputNotaMensal.value ? parseFloat(this.elements.inputNotaMensal.value) : null;
+            const notaBimestral = this.elements.inputNotaBimestral.value ? parseFloat(this.elements.inputNotaBimestral.value) : null;
+            const notaRecuperacao = this.elements.inputNotaRecuperacao.value ? parseFloat(this.elements.inputNotaRecuperacao.value) : null;
             
-            if (isNaN(notaMensal) || notaMensal < 0 || notaMensal > 10) {
+            if (notaMensal === null && notaBimestral === null) {
+                this.mostrarErro("Informe pelo menos uma nota (mensal ou bimestral).");
+                return;
+            }
+            
+            // Validar valores das notas
+            if (notaMensal !== null && (isNaN(notaMensal) || notaMensal < 0 || notaMensal > 10)) {
                 this.mostrarErro("A nota mensal deve ser um número entre 0 e 10.");
                 return;
             }
             
-            if (isNaN(notaBimestral) || notaBimestral < 0 || notaBimestral > 10) {
+            if (notaBimestral !== null && (isNaN(notaBimestral) || notaBimestral < 0 || notaBimestral > 10)) {
                 this.mostrarErro("A nota bimestral deve ser um número entre 0 e 10.");
                 return;
             }
@@ -899,12 +958,23 @@ const NotasModule = {
                 nota_recuperacao: notaRecuperacao
             };
             
-            // Calcular média final
-            let mediaFinal = (notaDados.nota_mensal + notaDados.nota_bimestral) / 2;
-            if (notaDados.nota_recuperacao && notaDados.nota_recuperacao > mediaFinal) {
-                mediaFinal = notaDados.nota_recuperacao;
+            // Calcular média final (apenas se ambas as notas estiverem preenchidas)
+            if (notaMensal !== null && notaBimestral !== null) {
+                let mediaFinal = (notaMensal + notaBimestral) / 2;
+                
+                // Se tem recuperação e a média base é menor que 6, considerar a recuperação
+                if (notaRecuperacao !== null && mediaFinal < 6) {
+                    mediaFinal = (mediaFinal + notaRecuperacao) / 2;
+                }
+                
+                notaDados.media_final = mediaFinal;
+            } else if (notaMensal !== null) {
+                // Se só tem nota mensal, ela é a média
+                notaDados.media_final = notaMensal;
+            } else if (notaBimestral !== null) {
+                // Se só tem nota bimestral, ela é a média
+                notaDados.media_final = notaBimestral;
             }
-            notaDados.media_final = mediaFinal;
             
             console.log("Salvando nota com dados:", notaDados);
             
@@ -1163,6 +1233,346 @@ const NotasModule = {
                 span.innerHTML = '<i class="fas fa-sort text-muted"></i>';
             }
         });
+    },
+    
+    // NOVOS MÉTODOS PARA LANÇAMENTO EM MASSA DE NOTAS
+    
+    // Carregar disciplinas para a grade de notas
+    carregarDisciplinasGrade: async function(turmaId) {
+        if (!turmaId || !this.elements.massaDisciplina) return;
+        
+        // Limpar e desabilitar select de disciplina
+        this.elements.massaDisciplina.innerHTML = '<option value="">Selecione uma disciplina</option>';
+        this.elements.massaDisciplina.disabled = !turmaId;
+        
+        try {
+            const disciplinas = await this.carregarDisciplinasDaTurma(turmaId);
+            
+            // Popular select de disciplinas para a grade
+            if (disciplinas.length > 0) {
+                // Usar Set para evitar duplicatas
+                const disciplinasAdicionadas = new Set();
+                
+                disciplinas.forEach(disciplina => {
+                    const disciplinaId = String(disciplina.id_disciplina || disciplina.id);
+                    
+                    if (!disciplinasAdicionadas.has(disciplinaId)) {
+                        disciplinasAdicionadas.add(disciplinaId);
+                        
+                        const option = document.createElement('option');
+                        option.value = disciplinaId;
+                        option.textContent = disciplina.nome_disciplina || disciplina.nome || 'N/A';
+                        this.elements.massaDisciplina.appendChild(option);
+                    }
+                });
+                
+                console.log(`Adicionadas ${disciplinasAdicionadas.size} disciplinas únicas ao select da grade`);
+            } else {
+                console.log("Nenhuma disciplina disponível para esta turma");
+            }
+        } catch (error) {
+            console.error("Erro ao carregar disciplinas para a grade:", error);
+            this.mostrarErro("Não foi possível carregar as disciplinas. Tente novamente.");
+        }
+    },
+    
+    // Calcular média para um aluno na grade
+    calcularMediaAluno: function(notaMensal, notaBimestral, notaRecuperacao) {
+        // Converter para números
+        notaMensal = notaMensal ? parseFloat(notaMensal) : null;
+        notaBimestral = notaBimestral ? parseFloat(notaBimestral) : null;
+        notaRecuperacao = notaRecuperacao ? parseFloat(notaRecuperacao) : null;
+        
+        // Se não tem notas, retorna null
+        if (notaMensal === null && notaBimestral === null) {
+            return null;
+        }
+        
+        // Se tem apenas uma das notas, ela é a média
+        if (notaMensal === null) return notaBimestral;
+        if (notaBimestral === null) return notaMensal;
+        
+        // Se tem as duas notas, calcula a média
+        let media = (notaMensal + notaBimestral) / 2;
+        
+        // Se tem recuperação e a média é menor que 6, considera a recuperação
+        if (notaRecuperacao !== null && media < 6) {
+            media = (media + notaRecuperacao) / 2;
+        }
+        
+        // Arredondar para uma casa decimal
+        return Math.round(media * 10) / 10;
+    },
+    
+    // Determinar o status do aluno com base na média
+    determinarStatusAluno: function(media) {
+        if (media === null) return { texto: 'Sem notas', classe: '' };
+        
+        if (media >= 6) {
+            return { texto: 'Aprovado', classe: 'text-success' };
+        } else if (media >= 4) {
+            return { texto: 'Recuperação', classe: 'text-warning' };
+        } else {
+            return { texto: 'Recuperação', classe: 'text-danger' };
+        }
+    },
+    
+    // Atualizar média e status de um aluno na grade
+    atualizarMediaAluno: function(linha) {
+        const notaMensal = linha.querySelector('.nota-mensal').value;
+        const notaBimestral = linha.querySelector('.nota-bimestral').value;
+        const notaRecuperacao = linha.querySelector('.nota-recuperacao').value;
+        
+        const media = this.calcularMediaAluno(notaMensal, notaBimestral, notaRecuperacao);
+        const status = this.determinarStatusAluno(media);
+        
+        // Atualizar média e status no DOM
+        linha.querySelector('.media-aluno').textContent = media !== null ? media.toFixed(1) : '-';
+        
+        const statusEl = linha.querySelector('.status-aluno');
+        statusEl.textContent = status.texto;
+        statusEl.className = 'status-aluno ' + status.classe;
+        
+        return { media, status };
+    },
+    
+    // Carregar grade de notas
+    carregarGradeNotas: async function() {
+        const turmaId = this.elements.massaTurma.value;
+        const disciplinaId = this.elements.massaDisciplina.value;
+        const bimestre = this.elements.massaBimestre.value;
+        const ano = this.elements.massaAno.value;
+        
+        // Validar campos obrigatórios
+        if (!turmaId) {
+            this.mostrarErro("Selecione uma turma.");
+            return;
+        }
+        
+        if (!disciplinaId) {
+            this.mostrarErro("Selecione uma disciplina.");
+            return;
+        }
+        
+        if (!bimestre) {
+            this.mostrarErro("Selecione um bimestre.");
+            return;
+        }
+        
+        if (!ano) {
+            this.mostrarErro("Informe o ano letivo.");
+            return;
+        }
+        
+        try {
+            // Carregar alunos da turma
+            const alunos = await this.carregarAlunosDaTurma(turmaId);
+            
+            if (!alunos || alunos.length === 0) {
+                this.mostrarErro("Não foram encontrados alunos para esta turma.");
+                return;
+            }
+            
+            console.log("Alunos carregados para a grade:", alunos);
+            
+            // Carregar notas existentes para a combinação de turma, disciplina, bimestre e ano
+            const filtros = {
+                turma_id: turmaId,
+                disciplina_id: disciplinaId,
+                bimestre: bimestre,
+                ano: ano
+            };
+            
+            // Construir URL para buscar notas
+            let endpoint = '/notas';
+            const params = new URLSearchParams();
+            Object.entries(filtros).forEach(([key, value]) => {
+                if (value) params.append(key, value);
+            });
+            
+            const queryString = params.toString();
+            if (queryString) {
+                endpoint += `?${queryString}`;
+            }
+            
+            console.log("Buscando notas para a grade com endpoint:", endpoint);
+            const notas = await ConfigModule.fetchApi(endpoint);
+            console.log("Notas recebidas para a grade:", notas);
+            
+            // Limpar corpo da grade
+            this.elements.gradeNotasCorpo.innerHTML = '';
+            
+            // Construir a grade de notas
+            alunos.forEach(aluno => {
+                const alunoId = aluno.id_aluno || aluno.id;
+                const alunoNome = aluno.nome_aluno || aluno.nome || 'N/A';
+                
+                // Procurar nota existente para este aluno
+                const notaExistente = Array.isArray(notas) ? notas.find(nota => {
+                    const notaAlunoId = nota.aluno_id || nota.id_aluno;
+                    return String(notaAlunoId) === String(alunoId);
+                }) : null;
+                
+                console.log(`Processando aluno ${alunoId} (${alunoNome}), nota existente:`, notaExistente);
+                
+                // Extrair valores das notas existentes
+                const notaMensal = notaExistente ? notaExistente.nota_mensal : '';
+                const notaBimestral = notaExistente ? notaExistente.nota_bimestral : '';
+                const notaRecuperacao = notaExistente ? notaExistente.nota_recuperacao : '';
+                const notaId = notaExistente ? notaExistente.id : '';
+                
+                // Calcular média e status
+                const media = this.calcularMediaAluno(notaMensal, notaBimestral, notaRecuperacao);
+                const status = this.determinarStatusAluno(media);
+                
+                // Criar linha na tabela
+                const linha = document.createElement('tr');
+                linha.dataset.alunoId = alunoId;
+                linha.dataset.notaId = notaId; // Armazenar ID da nota se existir
+                
+                linha.innerHTML = `
+                    <td>${alunoNome}</td>
+                    <td>
+                        <input type="number" class="form-control nota-mensal" min="0" max="10" step="0.1" value="${notaMensal || ''}">
+                    </td>
+                    <td>
+                        <input type="number" class="form-control nota-bimestral" min="0" max="10" step="0.1" value="${notaBimestral || ''}">
+                    </td>
+                    <td>
+                        <input type="number" class="form-control nota-recuperacao" min="0" max="10" step="0.1" value="${notaRecuperacao || ''}">
+                    </td>
+                    <td class="media-aluno">${media !== null ? media.toFixed(1) : '-'}</td>
+                    <td class="status-aluno ${status.classe}">${status.texto}</td>
+                `;
+                
+                // Adicionar event listeners para os inputs de notas
+                const inputs = linha.querySelectorAll('input');
+                inputs.forEach(input => {
+                    input.addEventListener('input', () => {
+                        this.atualizarMediaAluno(linha);
+                    });
+                });
+                
+                // Adicionar à tabela
+                this.elements.gradeNotasCorpo.appendChild(linha);
+            });
+            
+            // Mostrar a grade
+            this.elements.gradeNotasWrapper.classList.remove('d-none');
+            
+            this.mostrarSucesso("Alunos carregados com sucesso. Informe as notas e clique em 'Salvar Todas as Notas'.");
+            
+        } catch (error) {
+            console.error("Erro ao carregar grade de notas:", error);
+            this.mostrarErro("Não foi possível carregar a grade de notas. Tente novamente mais tarde.");
+        }
+    },
+    
+    // Salvar notas em massa
+    salvarNotasEmMassa: async function() {
+        const turmaId = this.elements.massaTurma.value;
+        const disciplinaId = this.elements.massaDisciplina.value;
+        const bimestre = this.elements.massaBimestre.value;
+        const ano = this.elements.massaAno.value;
+        
+        // Validar novamente
+        if (!turmaId || !disciplinaId || !bimestre || !ano) {
+            this.mostrarErro("Todos os campos de filtro são obrigatórios.");
+            return;
+        }
+        
+        try {
+            // Coletar todas as linhas da tabela
+            const linhas = this.elements.gradeNotasCorpo.querySelectorAll('tr');
+            let sucessos = 0;
+            let falhas = 0;
+            let atualizacoes = 0;
+            const erros = [];
+            
+            // Para cada linha, tentar salvar a nota
+            for (const linha of linhas) {
+                const alunoId = linha.dataset.alunoId;
+                const notaId = linha.dataset.notaId;
+                
+                const notaMensal = linha.querySelector('.nota-mensal').value;
+                const notaBimestral = linha.querySelector('.nota-bimestral').value;
+                const notaRecuperacao = linha.querySelector('.nota-recuperacao').value;
+                
+                // Verificar se pelo menos uma nota foi informada
+                if (!notaMensal && !notaBimestral) {
+                    // Pular este aluno se não tiver nenhuma nota
+                    continue;
+                }
+                
+                // Criar objeto com os dados da nota
+                const notaDados = {
+                    id_turma: turmaId,
+                    id_disciplina: disciplinaId,
+                    id_aluno: alunoId,
+                    bimestre: parseInt(bimestre),
+                    ano: parseInt(ano),
+                    nota_mensal: notaMensal ? parseFloat(notaMensal) : null,
+                    nota_bimestral: notaBimestral ? parseFloat(notaBimestral) : null,
+                    nota_recuperacao: notaRecuperacao ? parseFloat(notaRecuperacao) : null
+                };
+                
+                // Calcular média final
+                const media = this.calcularMediaAluno(notaMensal, notaBimestral, notaRecuperacao);
+                if (media !== null) {
+                    notaDados.media_final = media;
+                }
+                
+                try {
+                    let response;
+                    
+                    if (notaId) {
+                        // Atualizar nota existente
+                        response = await ConfigModule.fetchApi(`/notas/${notaId}`, {
+                            method: 'PUT',
+                            body: JSON.stringify(notaDados)
+                        });
+                        atualizacoes++;
+                    } else {
+                        // Criar nova nota
+                        response = await ConfigModule.fetchApi('/notas', {
+                            method: 'POST',
+                            body: JSON.stringify(notaDados)
+                        });
+                        
+                        // Atualizar o atributo data-nota-id com o novo ID
+                        if (response && response.id) {
+                            linha.dataset.notaId = response.id;
+                        }
+                        
+                        sucessos++;
+                    }
+                } catch (error) {
+                    console.error(`Erro ao salvar nota para o aluno ${alunoId}:`, error);
+                    falhas++;
+                    erros.push(`Erro ao salvar nota para o aluno ${alunoId}: ${error.message || 'Erro desconhecido'}`);
+                }
+            }
+            
+            // Mostrar mensagem de resultado
+            if (sucessos > 0 || atualizacoes > 0) {
+                const mensagem = `Notas salvas com sucesso! ${sucessos} novas notas criadas, ${atualizacoes} notas atualizadas.`;
+                this.mostrarSucesso(mensagem);
+                
+                // Recarregar a grade para mostrar os dados atualizados
+                await this.carregarGradeNotas();
+            } else if (falhas === 0) {
+                this.mostrarErro("Nenhuma nota foi informada para salvar.");
+            }
+            
+            if (falhas > 0) {
+                this.mostrarErro(`${falhas} notas não puderam ser salvas. Verifique o console para mais detalhes.`);
+                console.error("Erros ao salvar notas:", erros);
+            }
+            
+        } catch (error) {
+            console.error("Erro ao salvar notas em massa:", error);
+            this.mostrarErro("Ocorreu um erro ao salvar as notas. Tente novamente mais tarde.");
+        }
     }
 };
 
