@@ -1553,8 +1553,160 @@ function initNotas() {
         });
     });
     
-    // Baseado no log, sabemos quais são os IDs realmente disponíveis no DOM
-    // Vamos usar os IDs corretos que existem, em vez de procurar IDs que não existem
+    // Criar ou garantir que os elementos de filtro existam
+    const notas_container = document.querySelector('#conteudo-notas');
+    if (!notas_container) {
+        console.error('Container de notas não encontrado!');
+        return;
+    }
+    
+    // Verificar se o formulário de filtros existe
+    let filtrosForm = document.querySelector('#form-filtro-notas-professor');
+    if (!filtrosForm) {
+        console.log('Formulário de filtros não encontrado, criando-o dinamicamente');
+        
+        // Encontrar o primeiro card para inserir os filtros
+        const primeiroCard = notas_container.querySelector('.card');
+        if (!primeiroCard) {
+            // Se não existir card, criar um
+            const novoCard = document.createElement('div');
+            novoCard.className = 'card shadow mb-4';
+            novoCard.innerHTML = `
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-primary">Filtros</h6>
+                    <button class="btn btn-sm btn-outline-secondary d-md-none" type="button" data-bs-toggle="collapse" data-bs-target="#filtrosNotas">
+                        <i class="fas fa-filter"></i>
+                    </button>
+                </div>
+                <div class="card-body collapse show" id="filtrosNotas">
+                    <form id="form-filtro-notas-professor">
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label for="filtro-turma-notas" class="form-label">Turma</label>
+                                <select class="form-select" id="filtro-turma-notas">
+                                    <option value="">Todas as turmas</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="filtro-disciplina-notas" class="form-label">Disciplina</label>
+                                <select class="form-select" id="filtro-disciplina-notas">
+                                    <option value="">Todas as disciplinas</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="filtro-bimestre-notas" class="form-label">Bimestre</label>
+                                <select class="form-select" id="filtro-bimestre-notas">
+                                    <option value="">Todos os bimestres</option>
+                                    <option value="1">1º Bimestre</option>
+                                    <option value="2">2º Bimestre</option>
+                                    <option value="3">3º Bimestre</option>
+                                    <option value="4">4º Bimestre</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label for="filtro-aluno-notas" class="form-label">Aluno</label>
+                                <select class="form-select" id="filtro-aluno-notas">
+                                    <option value="">Todos os alunos</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="filtro-ano-notas" class="form-label">Ano</label>
+                                <select class="form-select" id="filtro-ano-notas">
+                                    <option value="">Todos os anos</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <button type="button" class="btn btn-primary" id="btn-filtrar-notas">
+                                <i class="fas fa-filter"></i> Filtrar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            `;
+            
+            // Adicionar o card ao container
+            notas_container.insertBefore(novoCard, notas_container.firstChild);
+        } else {
+            // Se existir, verificar se tem o header correto
+            let cardHeader = primeiroCard.querySelector('.card-header');
+            let cardBody = primeiroCard.querySelector('.card-body');
+            
+            if (!cardHeader) {
+                const novoHeader = document.createElement('div');
+                novoHeader.className = 'card-header py-3 d-flex justify-content-between align-items-center';
+                novoHeader.innerHTML = `
+                    <h6 class="m-0 font-weight-bold text-primary">Filtros</h6>
+                    <button class="btn btn-sm btn-outline-secondary d-md-none" type="button" data-bs-toggle="collapse" data-bs-target="#filtrosNotas">
+                        <i class="fas fa-filter"></i>
+                    </button>
+                `;
+                primeiroCard.insertBefore(novoHeader, primeiroCard.firstChild);
+            }
+            
+            if (!cardBody) {
+                cardBody = document.createElement('div');
+                cardBody.className = 'card-body collapse show';
+                cardBody.id = 'filtrosNotas';
+                cardBody.innerHTML = `
+                    <form id="form-filtro-notas-professor">
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label for="filtro-turma-notas" class="form-label">Turma</label>
+                                <select class="form-select" id="filtro-turma-notas">
+                                    <option value="">Todas as turmas</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="filtro-disciplina-notas" class="form-label">Disciplina</label>
+                                <select class="form-select" id="filtro-disciplina-notas">
+                                    <option value="">Todas as disciplinas</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="filtro-bimestre-notas" class="form-label">Bimestre</label>
+                                <select class="form-select" id="filtro-bimestre-notas">
+                                    <option value="">Todos os bimestres</option>
+                                    <option value="1">1º Bimestre</option>
+                                    <option value="2">2º Bimestre</option>
+                                    <option value="3">3º Bimestre</option>
+                                    <option value="4">4º Bimestre</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label for="filtro-aluno-notas" class="form-label">Aluno</label>
+                                <select class="form-select" id="filtro-aluno-notas">
+                                    <option value="">Todos os alunos</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="filtro-ano-notas" class="form-label">Ano</label>
+                                <select class="form-select" id="filtro-ano-notas">
+                                    <option value="">Todos os anos</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <button type="button" class="btn btn-primary" id="btn-filtrar-notas">
+                                <i class="fas fa-filter"></i> Filtrar
+                            </button>
+                        </div>
+                    </form>
+                `;
+                
+                primeiroCard.appendChild(cardBody);
+            }
+        }
+        
+        // Buscar novamente após criar
+        filtrosForm = document.querySelector('#form-filtro-notas-professor');
+    }
+    
+    // Agora obtenha os elementos de filtro do DOM
     window.filtroTurma = document.getElementById('filtro-turma-notas');
     window.filtroDisciplina = document.getElementById('filtro-disciplina-notas');
     window.filtroAluno = document.getElementById('filtro-aluno-notas');
@@ -1562,79 +1714,54 @@ function initNotas() {
     window.filtroBimestre = document.getElementById('filtro-bimestre-notas');
     
     // Verificar os elementos encontrados
-    console.log('Elementos de filtro encontrados (inicialmente):', {
-        filtroTurma,
-        filtroDisciplina,
-        filtroAluno,
-        filtroAno,
-        filtroBimestre
+    console.log('Elementos de filtro encontrados (verificação final):', {
+        filtroTurma: window.filtroTurma,
+        filtroDisciplina: window.filtroDisciplina,
+        filtroAluno: window.filtroAluno,
+        filtroAno: window.filtroAno,
+        filtroBimestre: window.filtroBimestre
     });
     
-    // Verificar se existem elementos que não foram encontrados
-    const filtrosNaoEncontrados = [];
-    if (!filtroTurma) {
-        console.warn('Filtro de turma não encontrado, usando filtro-turma-professor como alternativa');
-        window.filtroTurma = document.getElementById('filtro-turma-professor');
-        filtrosNaoEncontrados.push('filtro-turma-notas (usando alternativa)');
-    }
+    // Se ainda faltam filtros, exibir alerta
+    const filtrosFaltando = [];
+    if (!window.filtroTurma) filtrosFaltando.push('Turma');
+    if (!window.filtroDisciplina) filtrosFaltando.push('Disciplina');
+    if (!window.filtroAluno) filtrosFaltando.push('Aluno');
+    if (!window.filtroAno) filtrosFaltando.push('Ano');
+    if (!window.filtroBimestre) filtrosFaltando.push('Bimestre');
     
-    if (!filtroDisciplina) {
-        console.warn('Filtro de disciplina não encontrado, usando filtro-disciplina-professor como alternativa');
-        window.filtroDisciplina = document.getElementById('filtro-disciplina-professor');
-        filtrosNaoEncontrados.push('filtro-disciplina-notas (usando alternativa)');
-    }
-    
-    if (!filtroAluno) filtrosNaoEncontrados.push('Aluno');
-    if (!filtroAno) filtrosNaoEncontrados.push('Ano');
-    if (!filtroBimestre) filtrosNaoEncontrados.push('Bimestre');
-    
-    console.log('Elementos de filtro encontrados (após correções):', {
-        filtroTurma,
-        filtroDisciplina,
-        filtroAluno,
-        filtroAno,
-        filtroBimestre
-    });
-    
-    if (filtrosNaoEncontrados.length > 0) {
-        console.warn('Alguns filtros não foram encontrados:', filtrosNaoEncontrados.join(', '));
+    if (filtrosFaltando.length > 0) {
+        console.error('Filtros não encontrados mesmo após tentativa de criação:', filtrosFaltando);
         
-        // Exibir alerta para o usuário apenas se faltarem filtros críticos
-        const filtrosCriticosFaltando = filtrosNaoEncontrados.filter(f => 
-            !f.includes('usando alternativa'));
-        
-        if (filtrosCriticosFaltando.length > 0) {
-            const notasContainer = document.querySelector('.card-body.notas-container');
-            if (notasContainer) {
-                notasContainer.innerHTML = `
-                    <div class="alert alert-danger">
-                        <h4 class="alert-heading">Erro ao inicializar módulo de notas</h4>
-                        <p>Não foi possível encontrar os seguintes filtros: ${filtrosCriticosFaltando.join(', ')}</p>
-                        <hr>
-                        <p class="mb-0">Verifique se os elementos de filtro estão presentes no HTML com os IDs corretos.</p>
-                    </div>
-                `;
-            }
-            
-            return; // Encerrar a inicialização se filtros críticos não foram encontrados
+        const notasContainer = document.querySelector('.card-body:not(#filtrosNotas)');
+        if (notasContainer) {
+            notasContainer.innerHTML = `
+                <div class="alert alert-danger">
+                    <h4 class="alert-heading">Erro ao inicializar módulo de notas</h4>
+                    <p>Não foi possível criar os seguintes filtros: ${filtrosFaltando.join(', ')}</p>
+                    <hr>
+                    <p class="mb-0">Recarregue a página ou tente novamente mais tarde.</p>
+                </div>
+            `;
         }
+        return;
     }
     
     // Inicializar valores padrão para o ano
-    if (filtroAno) {
+    if (window.filtroAno) {
         const anoAtual = new Date().getFullYear();
         let opcoesAnos = '';
         
-        for (let ano = 2025; ano <= 2030; ano++) {
+        for (let ano = anoAtual - 1; ano <= anoAtual + 2; ano++) {
             opcoesAnos += `<option value="${ano}" ${ano === anoAtual ? 'selected' : ''}>${ano}</option>`;
         }
         
-        filtroAno.innerHTML = `<option value="">Selecione o ano</option>${opcoesAnos}`;
+        window.filtroAno.innerHTML = `<option value="">Selecione o ano</option>${opcoesAnos}`;
     }
     
     // Inicializar valores padrão para bimestre
-    if (filtroBimestre) {
-        filtroBimestre.innerHTML = `
+    if (window.filtroBimestre) {
+        window.filtroBimestre.innerHTML = `
             <option value="">Selecione o bimestre</option>
             <option value="1">1º Bimestre</option>
             <option value="2">2º Bimestre</option>
@@ -1644,7 +1771,7 @@ function initNotas() {
     }
     
     // Inicializar turmas disponíveis para o professor
-    if (filtroTurma) {
+    if (window.filtroTurma) {
         carregarTurmasDoProfessor(professorId)
             .then(turmas => {
                 let opcoesTurmas = '';
@@ -1652,16 +1779,16 @@ function initNotas() {
                     opcoesTurmas += `<option value="${turma.id}">${turma.nome}</option>`;
                 });
                 
-                filtroTurma.innerHTML = `<option value="">Selecione a turma</option>${opcoesTurmas}`;
+                window.filtroTurma.innerHTML = `<option value="">Selecione a turma</option>${opcoesTurmas}`;
             })
             .catch(error => {
                 console.error('Erro ao carregar turmas:', error);
-                filtroTurma.innerHTML = '<option value="">Erro ao carregar turmas</option>';
+                window.filtroTurma.innerHTML = '<option value="">Erro ao carregar turmas</option>';
             });
     }
     
     // Inicializar disciplinas disponíveis para o professor
-    if (filtroDisciplina) {
+    if (window.filtroDisciplina) {
         carregarDisciplinasDoProfessor(professorId)
             .then(disciplinas => {
                 let opcoesDisciplinas = '';
@@ -1669,24 +1796,24 @@ function initNotas() {
                     opcoesDisciplinas += `<option value="${disciplina.id}">${disciplina.nome}</option>`;
                 });
                 
-                filtroDisciplina.innerHTML = `<option value="">Selecione a disciplina</option>${opcoesDisciplinas}`;
+                window.filtroDisciplina.innerHTML = `<option value="">Selecione a disciplina</option>${opcoesDisciplinas}`;
             })
             .catch(error => {
                 console.error('Erro ao carregar disciplinas:', error);
-                filtroDisciplina.innerHTML = '<option value="">Erro ao carregar disciplinas</option>';
+                window.filtroDisciplina.innerHTML = '<option value="">Erro ao carregar disciplinas</option>';
             });
     }
     
     // Atualizar alunos quando a turma for selecionada
-    if (filtroTurma && filtroAluno) {
-        filtroTurma.addEventListener('change', () => {
-            const idTurma = filtroTurma.value;
+    if (window.filtroTurma && window.filtroAluno) {
+        window.filtroTurma.addEventListener('change', () => {
+            const idTurma = window.filtroTurma.value;
             console.log('Turma selecionada:', idTurma);
             
             if (idTurma) {
                 // Habilitar e indicar carregamento no select de alunos
-                filtroAluno.disabled = true;
-                filtroAluno.innerHTML = '<option value="">Carregando alunos...</option>';
+                window.filtroAluno.disabled = true;
+                window.filtroAluno.innerHTML = '<option value="">Carregando alunos...</option>';
                 
                 carregarAlunosDaTurma(idTurma)
                     .then(alunos => {
@@ -1695,17 +1822,17 @@ function initNotas() {
                             opcoesAlunos += `<option value="${aluno.id}">${aluno.nome}</option>`;
                         });
                         
-                        filtroAluno.innerHTML = `<option value="">Todos os alunos</option>${opcoesAlunos}`;
-                        filtroAluno.disabled = false;
+                        window.filtroAluno.innerHTML = `<option value="">Todos os alunos</option>${opcoesAlunos}`;
+                        window.filtroAluno.disabled = false;
                     })
                     .catch(error => {
                         console.error('Erro ao carregar alunos:', error);
-                        filtroAluno.innerHTML = '<option value="">Erro ao carregar alunos</option>';
-                        filtroAluno.disabled = false;
+                        window.filtroAluno.innerHTML = '<option value="">Erro ao carregar alunos</option>';
+                        window.filtroAluno.disabled = false;
                     });
             } else {
-                filtroAluno.innerHTML = '<option value="">Selecione uma turma primeiro</option>';
-                filtroAluno.disabled = true;
+                window.filtroAluno.innerHTML = '<option value="">Selecione uma turma primeiro</option>';
+                window.filtroAluno.disabled = true;
             }
         });
     }
@@ -1758,42 +1885,8 @@ function initNotas() {
         }
     }
     
-    // Adicionar botão para lançamento em massa se não existir
-    const cardHeaderNotas = document.querySelector('.card-header.lancamento-notas .d-flex, .card-header .d-flex');
-    if (cardHeaderNotas) {
-        console.log('Container para botão de lançamento em massa encontrado');
-        if (!document.getElementById('btn-lancamento-massa')) {
-            console.log('Adicionando botão de lançamento em massa');
-            const btnLancamentoMassa = document.createElement('button');
-            btnLancamentoMassa.id = 'btn-lancamento-massa';
-            btnLancamentoMassa.className = 'btn btn-success ms-2';
-            btnLancamentoMassa.innerHTML = '<i class="fas fa-list-ol me-1"></i> Lançamento em Massa';
-            btnLancamentoMassa.addEventListener('click', () => {
-                console.log('Botão de lançamento em massa clicado');
-                abrirModoLancamentoEmMassa();
-            });
-            
-            // Adicionar após o botão de novo lançamento
-            cardHeaderNotas.appendChild(btnLancamentoMassa);
-        }
-    }
-    
     // Inicializar a tabela de notas com mensagem inicial
-    const notasTabela = document.getElementById('notas-lista');
-    if (notasTabela) {
-        notasTabela.innerHTML = `
-            <tr class="text-center">
-                <td colspan="9">
-                    <div class="alert alert-info" role="alert">
-                        <h4 class="alert-heading">Selecione os filtros</h4>
-                        <p>Utilize os filtros acima para carregar as notas dos alunos.</p>
-                    </div>
-                </td>
-            </tr>
-        `;
-    } else {
-        console.error('Tabela de notas (notas-lista) não encontrada!');
-    }
+    inicializarTabelaNotas();
 }
 
 // Função para carregar turmas para o filtro
@@ -1955,16 +2048,6 @@ function carregarAlunosParaFiltro(idTurma = null, idDisciplina = null) {
 function carregarNotas() {
     console.log("=== INICIANDO CARREGAMENTO DE NOTAS ===");
     
-    // Usar as variáveis globais definidas em initNotas()
-    // Não tentar encontrar os elementos novamente
-    console.log("Elementos DOM dos filtros globais:", {
-        filtroTurma: window.filtroTurma,
-        filtroDisciplina: window.filtroDisciplina,
-        filtroAluno: window.filtroAluno,
-        filtroAno: window.filtroAno,
-        filtroBimestre: window.filtroBimestre
-    });
-    
     // Obter valores dos filtros das variáveis globais
     const idTurma = window.filtroTurma ? window.filtroTurma.value : '';
     const idDisciplina = window.filtroDisciplina ? window.filtroDisciplina.value : '';
@@ -1985,23 +2068,68 @@ function carregarNotas() {
     const notasTabela = document.getElementById('notas-lista');
     if (!notasTabela) {
         console.error('Elemento da tabela de notas não encontrado!');
-        alert('Erro: Tabela de notas não encontrada na página.');
-        return;
-    }
-    
-    // Mostrar indicador de carregamento
-    notasTabela.innerHTML = `
-        <tr class="text-center">
-            <td colspan="10">
-                <div class="d-flex justify-content-center align-items-center" style="height: 100px;">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Carregando notas...</span>
-                    </div>
-                    <span class="ms-2">Carregando notas...</span>
+        
+        // Tentar criar a tabela dinamicamente se não existir
+        const notasContainer = document.querySelector('#conteudo-notas .card:last-child .card-body');
+        if (notasContainer) {
+            notasContainer.innerHTML = `
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover" id="tabela-notas">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Aluno</th>
+                                <th>Disciplina</th>
+                                <th>Turma</th>
+                                <th>Bimestre</th>
+                                <th>Nota Mensal</th>
+                                <th>Nota Bimestral</th>
+                                <th>Recuperação</th>
+                                <th>Média</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="notas-lista">
+                            <tr class="text-center">
+                                <td colspan="10">
+                                    <div class="d-flex justify-content-center align-items-center" style="height: 100px;">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Carregando notas...</span>
+                                        </div>
+                                        <span class="ms-2">Carregando notas...</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
-            </td>
-        </tr>
-    `;
+            `;
+            
+            // Tentar novamente obter a tabela
+            const notasTabela = document.getElementById('notas-lista');
+            if (!notasTabela) {
+                alert('Erro: Tabela de notas não encontrada e não foi possível criá-la.');
+                return;
+            }
+        } else {
+            alert('Erro: Container de notas não encontrado.');
+            return;
+        }
+    } else {
+        // Mostrar indicador de carregamento
+        notasTabela.innerHTML = `
+            <tr class="text-center">
+                <td colspan="10">
+                    <div class="d-flex justify-content-center align-items-center" style="height: 100px;">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Carregando notas...</span>
+                        </div>
+                        <span class="ms-2">Carregando notas...</span>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }
     
     // Construir URL com parâmetros de consulta
     const params = new URLSearchParams();
@@ -2042,6 +2170,13 @@ function carregarNotas() {
                 nota && 
                 (!nota.professor_id || nota.professor_id == professorId || nota.id_professor == professorId)
             );
+
+            // Buscar novamente a referência à tabela (pode ter mudado)
+            const notasTabela = document.getElementById('notas-lista');
+            if (!notasTabela) {
+                console.error('Tabela de notas desapareceu durante o carregamento!');
+                return;
+            }
             
             if (!notas || notas.length === 0) {
                 notasTabela.innerHTML = `
@@ -2160,26 +2295,39 @@ function carregarNotas() {
             });
             
             notasTabela.innerHTML = html;
+            
+            // Registrar atividade
+            registrarAtividade(
+                'consulta',
+                'notas',
+                `${notas.length} registros`,
+                `Filtros: ${idTurma ? 'Turma: '+idTurma+', ' : ''}${idDisciplina ? 'Disciplina: '+idDisciplina+', ' : ''}${bimestre ? 'Bimestre: '+bimestre : ''}`,
+                'concluído'
+            );
         })
         .catch(error => {
             console.error('Erro ao carregar notas:', error);
             
-            notasTabela.innerHTML = `
-                <tr class="text-center">
-                    <td colspan="10">
-                        <div class="alert alert-danger" role="alert">
-                            <h4 class="alert-heading">Erro ao carregar notas</h4>
-                            <p>${error.message}</p>
-                            <hr>
-                            <p class="mb-0">
-                                <button class="btn btn-outline-danger btn-sm" onclick="carregarNotas()">
-                                    <i class="fas fa-sync-alt"></i> Tentar novamente
-                                </button>
-                            </p>
-                        </div>
-                    </td>
-                </tr>
-            `;
+            // Buscar novamente a referência à tabela (pode ter mudado)
+            const notasTabela = document.getElementById('notas-lista');
+            if (notasTabela) {
+                notasTabela.innerHTML = `
+                    <tr class="text-center">
+                        <td colspan="10">
+                            <div class="alert alert-danger" role="alert">
+                                <h4 class="alert-heading">Erro ao carregar notas</h4>
+                                <p>${error.message}</p>
+                                <hr>
+                                <p class="mb-0">
+                                    <button class="btn btn-outline-danger btn-sm" onclick="carregarNotas()">
+                                        <i class="fas fa-sync-alt"></i> Tentar novamente
+                                    </button>
+                                </p>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }
         });
 }
 
@@ -2191,16 +2339,164 @@ function editarNota(notaId) {
     const form = document.getElementById('form-nota');
     if (!form) {
         console.error('Formulário de notas não encontrado!');
-        return;
+        
+        // Tentar encontrar o container e criar o formulário
+        const notasContainer = document.querySelector('#conteudo-notas');
+        if (notasContainer) {
+            console.log('Tentando criar o formulário de edição de notas...');
+            
+            // Criar o card para o formulário
+            const formCard = document.createElement('div');
+            formCard.className = 'card shadow mb-4';
+            formCard.innerHTML = `
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-primary" id="form-nota-titulo">Editar Nota</h6>
+                    <button class="btn btn-outline-secondary btn-sm" id="btn-cancelar-nota">
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
+                </div>
+                <div class="card-body">
+                    <form id="form-nota">
+                        <input type="hidden" id="form-modo-nota" value="editar">
+                        <input type="hidden" id="nota-index" value="${notaId}">
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label for="ano_nota" class="form-label">Ano</label>
+                                <select class="form-select" id="ano_nota" required>
+                                    <option value="">Selecione...</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="bimestre" class="form-label">Bimestre</label>
+                                <select class="form-select" id="bimestre" required>
+                                    <option value="">Selecione...</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="turma_nota" class="form-label">Turma</label>
+                                <select class="form-select" id="turma_nota" required>
+                                    <option value="">Selecione...</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="disciplina_nota" class="form-label">Disciplina</label>
+                                <select class="form-select" id="disciplina_nota" required>
+                                    <option value="">Selecione...</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="aluno_nota" class="form-label">Aluno</label>
+                                <select class="form-select" id="aluno_nota" required>
+                                    <option value="">Selecione...</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label for="nota_mensal" class="form-label">Nota Mensal</label>
+                                <input type="number" class="form-control" id="nota_mensal" min="0" max="10" step="0.1" placeholder="0.0 a 10.0">
+                            </div>
+                            <div class="col-md-4">
+                                <label for="nota_bimestral" class="form-label">Nota Bimestral</label>
+                                <input type="number" class="form-control" id="nota_bimestral" min="0" max="10" step="0.1" placeholder="0.0 a 10.0">
+                            </div>
+                            <div class="col-md-4">
+                                <label for="recuperacao" class="form-label">Recuperação</label>
+                                <input type="number" class="form-control" id="recuperacao" min="0" max="10" step="0.1" placeholder="0.0 a 10.0">
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label for="media" class="form-label">Média Final</label>
+                                <input type="number" class="form-control" id="media" min="0" max="10" step="0.1" readonly placeholder="Calculada automaticamente">
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <button type="submit" class="btn btn-primary" id="btn-salvar-nota">
+                                <i class="fas fa-save"></i> Salvar Notas
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            `;
+            
+            // Inserir antes da tabela de notas
+            const tabelaCard = notasContainer.querySelector('.card:last-child');
+            if (tabelaCard) {
+                notasContainer.insertBefore(formCard, tabelaCard);
+            } else {
+                notasContainer.appendChild(formCard);
+            }
+            
+            // Configurar o cancelamento
+            const btnCancelar = document.getElementById('btn-cancelar-nota');
+            if (btnCancelar) {
+                btnCancelar.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    formCard.remove();
+                });
+            }
+            
+            // Adicionar listener ao formulário
+            const novoForm = document.getElementById('form-nota');
+            if (novoForm) {
+                novoForm.addEventListener('submit', handleFormSubmit);
+                form = novoForm; // Atualizar a referência para continuar com a função
+            } else {
+                console.error('Falha ao criar o formulário de notas');
+                return;
+            }
+        } else {
+            console.error('Container de notas não encontrado, impossível criar formulário');
+            alert('Erro: Formulário de notas não encontrado.');
+            return;
+        }
     }
     
     // Atualizar o título do formulário
-    document.getElementById('form-nota-titulo').textContent = 'Editar Nota';
+    const formTitulo = document.getElementById('form-nota-titulo');
+    if (formTitulo) {
+        formTitulo.textContent = 'Editar Nota';
+    }
     
     // Mostrar o botão de cancelar, se existir
     const btnCancelar = document.getElementById('btn-cancelar-nota');
     if (btnCancelar) {
         btnCancelar.style.display = 'inline-block';
+        
+        // Verificar se já tem o event listener para cancelar
+        const hasListener = btnCancelar.getAttribute('data-has-listener') === 'true';
+        if (!hasListener) {
+            btnCancelar.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                // Resetar o formulário
+                form.reset();
+                form.removeAttribute('data-mode');
+                form.removeAttribute('data-nota-id');
+                
+                // Atualizar o título do formulário
+                if (formTitulo) {
+                    formTitulo.textContent = 'Lançamento de Notas';
+                }
+                
+                // Ocultar o botão de cancelar
+                this.style.display = 'none';
+                
+                // Rolar para o topo do formulário
+                form.scrollIntoView({ behavior: 'smooth' });
+            });
+            
+            // Marcar que o listener foi adicionado
+            btnCancelar.setAttribute('data-has-listener', 'true');
+        }
     }
     
     // Definir o modo de edição e o ID da nota
@@ -2215,7 +2511,7 @@ function editarNota(notaId) {
     form.appendChild(loadingSpinner);
     
     // Desabilitar o botão salvar durante o carregamento
-    const saveButton = document.querySelector('#form-nota button[type="submit"]');
+    const saveButton = form.querySelector('button[type="submit"]');
     if (saveButton) {
         saveButton.disabled = true;
     }
@@ -2322,7 +2618,7 @@ function editarNota(notaId) {
                     alunoSelect.innerHTML = '<option value="">Carregando alunos...</option>';
                     alunoSelect.disabled = true;
                     
-                    fetch(CONFIG.getApiUrl(`/professores/${professorId}/turmas/${nota.id_turma}/alunos`))
+                    fetch(CONFIG.getApiUrl(`/turmas/${nota.id_turma}/alunos`))
                         .then(response => {
                             if (!response.ok) {
                                 throw new Error(`Erro ao carregar alunos: ${response.status}`);
@@ -3360,14 +3656,80 @@ function salvarLancamentoEmMassa() {
 
 // Função para inicializar a tabela de notas
 function inicializarTabelaNotas() {
-    const cardBody = document.querySelector('.card-body.notas-container');
-    if (!cardBody) {
+    // Buscar o container principal primeiro
+    const notasContainer = document.querySelector('#conteudo-notas');
+    if (!notasContainer) {
+        console.error('Container de notas (#conteudo-notas) não encontrado!');
         return;
     }
     
+    // Procurar o card que deve conter a tabela
+    // Podemos estar lidando com diferentes estruturas, então tentamos todas
+    const cardBody = notasContainer.querySelector('.card-body.notas-container') || 
+                      notasContainer.querySelector('.card:last-child .card-body') ||
+                      notasContainer.querySelector('.card:nth-child(3) .card-body');
+    
+    if (!cardBody) {
+        console.log('Container para tabela de notas não encontrado, criando card...');
+        
+        // Criar um novo card para tabela se não existir
+        const cardTabela = document.createElement('div');
+        cardTabela.className = 'card shadow mb-4';
+        cardTabela.innerHTML = `
+            <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                <h6 class="m-0 font-weight-bold text-primary">Notas Lançadas</h6>
+                <button class="btn btn-primary btn-sm" id="btn-novo-lancamento">
+                    <i class="fas fa-plus"></i> <span class="d-none d-md-inline">Novo Lançamento</span>
+                </button>
+            </div>
+            <div class="card-body notas-container">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover" id="tabela-notas">
+                        <thead class="table-secondary">
+                            <tr>
+                                <th>Aluno</th>
+                                <th>Disciplina</th>
+                                <th>Turma</th>
+                                <th>Bimestre</th>
+                                <th>Nota Mensal</th>
+                                <th>Nota Bimestral</th>
+                                <th>Recuperação</th>
+                                <th>Média</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="notas-lista">
+                            <tr class="text-center">
+                                <td colspan="10">
+                                    <div class="alert alert-info" role="alert">
+                                        <h4 class="alert-heading">Selecione os filtros</h4>
+                                        <p>Utilize os filtros acima para carregar as notas dos alunos.</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+        
+        // Adicionar ao container principal
+        notasContainer.appendChild(cardTabela);
+        
+        // Configurar evento para o botão de novo lançamento
+        const btnNovoLancamento = document.getElementById('btn-novo-lancamento');
+        if (btnNovoLancamento) {
+            btnNovoLancamento.addEventListener('click', novaNota);
+        }
+        
+        return;
+    }
+    
+    // Se o card body existe, adicionar a tabela
     cardBody.innerHTML = `
         <div class="table-responsive">
-            <table class="table table-striped table-hover">
+            <table class="table table-striped table-hover" id="tabela-notas">
                 <thead class="table-secondary">
                     <tr>
                         <th>Aluno</th>
@@ -3395,6 +3757,8 @@ function inicializarTabelaNotas() {
             </table>
         </div>
     `;
+    
+    console.log('Tabela de notas inicializada');
 }
 
 // Função para carregar as turmas do professor
@@ -3585,10 +3949,50 @@ function novaNota() {
 function corrigirHeaderNotas() {
     console.log('Verificando e corrigindo o header da card de notas');
     
-    // Procurar o header da card
-    const cardHeader = document.querySelector('.card-header.lancamento-notas, .card-header:has(.d-flex)');
+    // Procurar o header da card - procurar seletores específicos que existem na página
+    const cardHeader = document.querySelector('.card-header:has(h6:contains("Notas Lançadas"))') || 
+                       document.querySelector('.card-header:has(.m-0.font-weight-bold.text-primary)') ||
+                       document.querySelector('.card-header.py-3:has(h6)');
+    
     if (!cardHeader) {
         console.error('Header da card de notas não encontrado');
+        // Como estamos no mobile-first, vamos tentar criar o header dinâmicamente
+        const notasContainer = document.querySelector('#conteudo-notas .card:last-child');
+        if (notasContainer) {
+            const newHeader = document.createElement('div');
+            newHeader.className = 'card-header py-3 lancamento-notas';
+            
+            const headerContent = `
+                <div class="d-flex justify-content-between align-items-center w-100">
+                    <h5 class="card-title mb-0">Gestão de Notas</h5>
+                    <div class="d-flex">
+                        <button id="btn-nova-nota" class="btn btn-primary">
+                            <i class="fas fa-plus-circle me-1"></i> Novo Lançamento
+                        </button>
+                        <button id="btn-lancamento-massa" class="btn btn-success ms-2">
+                            <i class="fas fa-list-ol me-1"></i> Lançamento em Massa
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            newHeader.innerHTML = headerContent;
+            
+            // Verificar se já existe um header e substituí-lo ou adicionar no início
+            const existingHeader = notasContainer.querySelector('.card-header');
+            if (existingHeader) {
+                notasContainer.replaceChild(newHeader, existingHeader);
+            } else {
+                notasContainer.insertBefore(newHeader, notasContainer.firstChild);
+            }
+            
+            // Adicionar eventos
+            newHeader.querySelector('#btn-nova-nota').addEventListener('click', novaNota);
+            newHeader.querySelector('#btn-lancamento-massa').addEventListener('click', abrirModoLancamentoEmMassa);
+            
+            console.log('Header da card de notas criado dinamicamente');
+            return;
+        }
         return;
     }
     
