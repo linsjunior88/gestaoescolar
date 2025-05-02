@@ -3239,8 +3239,6 @@ function abrirModoLancamentoEmMassa() {
         return;
     }
     
-    }
-    
     // Container para o formulário de lançamento em massa
     const cardBody = document.querySelector('.card-body.notas-container');
     if (!cardBody) {
