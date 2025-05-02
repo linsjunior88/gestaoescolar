@@ -1534,16 +1534,56 @@ function initAlunos() {
 
 // Inicialização do módulo de notas
 function initNotas() {
-    console.log('Inicializando módulo de notas...');
+    console.log('=== INICIALIZANDO MÓDULO DE NOTAS ===');
     
-    // Declarar as variáveis dos filtros no escopo mais amplo
+    // Encontrar todos os selects na página para depuração
+    const allSelects = document.querySelectorAll('select');
+    console.log(`Total de ${allSelects.length} selects encontrados na página`);
+    
+    // Listar todos os selects para identificação
+    allSelects.forEach((select, index) => {
+        console.log(`Select #${index + 1}:`, { 
+            id: select.id, 
+            class: select.className,
+            name: select.name,
+            parentElement: select.parentElement ? select.parentElement.tagName : 'N/A'
+        });
+    });
+    
+    // Declarar as variáveis dos filtros no escopo global para acesso em outras funções
     window.filtroTurma = document.getElementById('filtro-turma-notas');
     window.filtroDisciplina = document.getElementById('filtro-disciplina-notas');
     window.filtroAluno = document.getElementById('filtro-aluno-notas');
     window.filtroAno = document.getElementById('filtro-ano-notas');
     window.filtroBimestre = document.getElementById('filtro-bimestre-notas');
     
-    console.log('Elementos de filtro encontrados:', {
+    // Se não encontrar os filtros com os IDs exatos, tentar com seletores genéricos
+    if (!filtroTurma) {
+        console.warn('Filtro de turma não encontrado com ID exato, buscando alternativas...');
+        filtroTurma = document.querySelector('select[id*="turma"], select[id*="Turma"]');
+    }
+    
+    if (!filtroDisciplina) {
+        console.warn('Filtro de disciplina não encontrado com ID exato, buscando alternativas...');
+        filtroDisciplina = document.querySelector('select[id*="disciplina"], select[id*="Disciplina"]');
+    }
+    
+    if (!filtroAluno) {
+        console.warn('Filtro de aluno não encontrado com ID exato, buscando alternativas...');
+        filtroAluno = document.querySelector('select[id*="aluno"], select[id*="Aluno"]');
+    }
+    
+    if (!filtroAno) {
+        console.warn('Filtro de ano não encontrado com ID exato, buscando alternativas...');
+        filtroAno = document.querySelector('select[id*="ano"], select[id*="Ano"]');
+    }
+    
+    if (!filtroBimestre) {
+        console.warn('Filtro de bimestre não encontrado com ID exato, buscando alternativas...');
+        filtroBimestre = document.querySelector('select[id*="bimestre"], select[id*="Bimestre"]');
+    }
+    
+    console.log('Elementos de filtro encontrados (finais):', {
         filtroTurma,
         filtroDisciplina,
         filtroAluno,
@@ -1553,14 +1593,29 @@ function initNotas() {
     
     // Verificar se existem elementos que não foram encontrados
     const filtrosNaoEncontrados = [];
-    if (!filtroTurma) filtrosNaoEncontrados.push('filtro-turma-notas');
-    if (!filtroDisciplina) filtrosNaoEncontrados.push('filtro-disciplina-notas');
-    if (!filtroAluno) filtrosNaoEncontrados.push('filtro-aluno-notas');
-    if (!filtroAno) filtrosNaoEncontrados.push('filtro-ano-notas');
-    if (!filtroBimestre) filtrosNaoEncontrados.push('filtro-bimestre-notas');
+    if (!filtroTurma) filtrosNaoEncontrados.push('Turma');
+    if (!filtroDisciplina) filtrosNaoEncontrados.push('Disciplina');
+    if (!filtroAluno) filtrosNaoEncontrados.push('Aluno');
+    if (!filtroAno) filtrosNaoEncontrados.push('Ano');
+    if (!filtroBimestre) filtrosNaoEncontrados.push('Bimestre');
     
     if (filtrosNaoEncontrados.length > 0) {
-        console.warn('Filtros não encontrados:', filtrosNaoEncontrados);
+        console.error('Filtros não encontrados:', filtrosNaoEncontrados.join(', '));
+        
+        // Exibir alerta para o usuário
+        const notasContainer = document.querySelector('.card-body.notas-container');
+        if (notasContainer) {
+            notasContainer.innerHTML = `
+                <div class="alert alert-danger">
+                    <h4 class="alert-heading">Erro ao inicializar módulo de notas</h4>
+                    <p>Não foi possível encontrar os seguintes filtros: ${filtrosNaoEncontrados.join(', ')}</p>
+                    <hr>
+                    <p class="mb-0">Verifique se os elementos de filtro estão presentes no HTML com os IDs corretos.</p>
+                </div>
+            `;
+        }
+        
+        return; // Encerrar a inicialização se filtros críticos não foram encontrados
     }
     
     // Inicializar valores padrão para o ano
@@ -1624,8 +1679,13 @@ function initNotas() {
     if (filtroTurma && filtroAluno) {
         filtroTurma.addEventListener('change', () => {
             const idTurma = filtroTurma.value;
+            console.log('Turma selecionada:', idTurma);
             
             if (idTurma) {
+                // Habilitar e indicar carregamento no select de alunos
+                filtroAluno.disabled = true;
+                filtroAluno.innerHTML = '<option value="">Carregando alunos...</option>';
+                
                 carregarAlunosDaTurma(idTurma)
                     .then(alunos => {
                         let opcoesAlunos = '';
@@ -1639,7 +1699,7 @@ function initNotas() {
                     .catch(error => {
                         console.error('Erro ao carregar alunos:', error);
                         filtroAluno.innerHTML = '<option value="">Erro ao carregar alunos</option>';
-                        filtroAluno.disabled = true;
+                        filtroAluno.disabled = false;
                     });
             } else {
                 filtroAluno.innerHTML = '<option value="">Selecione uma turma primeiro</option>';
@@ -1651,18 +1711,35 @@ function initNotas() {
     // Adicionar ação ao botão de filtrar
     const btnFiltrarNotas = document.getElementById('btn-filtrar-notas');
     if (btnFiltrarNotas) {
+        console.log('Botão de filtrar notas encontrado, adicionando evento');
         btnFiltrarNotas.addEventListener('click', (e) => {
             e.preventDefault();
+            console.log('Botão de filtrar clicado, chamando carregarNotas()');
             carregarNotas();
         });
     } else {
         console.error('Botão de filtrar notas não encontrado!');
+        
+        // Procurar botão genérico
+        const btnGenerico = document.querySelector('button[id*="filtrar"], button.btn-filtrar, button.btn-primary');
+        if (btnGenerico) {
+            console.log('Encontrado botão genérico, usando como alternativa:', btnGenerico);
+            btnGenerico.addEventListener('click', (e) => {
+                e.preventDefault();
+                console.log('Botão alternativo clicado, chamando carregarNotas()');
+                carregarNotas();
+            });
+        } else {
+            console.error('Nenhum botão de filtrar encontrado, mesmo com seletores genéricos!');
+        }
     }
     
     // Adicionar ação ao botão de nova nota
     const btnNovaNota = document.getElementById('btn-nova-nota');
     if (btnNovaNota) {
+        console.log('Botão de nova nota encontrado, adicionando evento');
         btnNovaNota.addEventListener('click', () => {
+            console.log('Botão de nova nota clicado');
             novaNota();
         });
     } else {
@@ -1670,14 +1747,17 @@ function initNotas() {
     }
     
     // Adicionar botão para lançamento em massa se não existir
-    const cardHeaderNotas = document.querySelector('.card-header.lancamento-notas .d-flex');
+    const cardHeaderNotas = document.querySelector('.card-header.lancamento-notas .d-flex, .card-header .d-flex');
     if (cardHeaderNotas) {
+        console.log('Container para botão de lançamento em massa encontrado');
         if (!document.getElementById('btn-lancamento-massa')) {
+            console.log('Adicionando botão de lançamento em massa');
             const btnLancamentoMassa = document.createElement('button');
             btnLancamentoMassa.id = 'btn-lancamento-massa';
             btnLancamentoMassa.className = 'btn btn-success ms-2';
             btnLancamentoMassa.innerHTML = '<i class="fas fa-list-ol me-1"></i> Lançamento em Massa';
             btnLancamentoMassa.addEventListener('click', () => {
+                console.log('Botão de lançamento em massa clicado');
                 abrirModoLancamentoEmMassa();
             });
             
@@ -1859,43 +1939,51 @@ function carregarAlunosParaFiltro(idTurma = null, idDisciplina = null) {
 
 // Função para carregar notas com base nos filtros selecionados
 function carregarNotas() {
-    console.log("Carregando notas com filtros");
+    console.log("=== INICIANDO CARREGAMENTO DE NOTAS ===");
     
-    // Tentar obter os elementos de filtro de forma mais genérica caso não tenham sido encontrados antes
-    const obterValorFiltro = (filtroVar, seletorFallback) => {
-        if (filtroVar && filtroVar.value !== undefined) {
-            return filtroVar.value;
-        }
-        const elementoFallback = document.querySelector(seletorFallback);
-        return elementoFallback ? elementoFallback.value : '';
-    };
+    // Verificar se os elementos de filtro existem e capturar seus valores
+    const filtroTurmaEl = document.getElementById('filtro-turma-notas');
+    const filtroDisciplinaEl = document.getElementById('filtro-disciplina-notas');
+    const filtroAlunoEl = document.getElementById('filtro-aluno-notas');
+    const filtroAnoEl = document.getElementById('filtro-ano-notas');
+    const filtroBimestreEl = document.getElementById('filtro-bimestre-notas');
     
-    // Obter valores dos filtros
-    const idTurma = obterValorFiltro(filtroTurma, 'select[id*="turma"], select[id*="Turma"]');
-    const idDisciplina = obterValorFiltro(filtroDisciplina, 'select[id*="disciplina"], select[id*="Disciplina"]');
-    const idAluno = obterValorFiltro(filtroAluno, 'select[id*="aluno"], select[id*="Aluno"]');
-    const ano = obterValorFiltro(filtroAno, 'select[id*="ano"], select[id*="Ano"]');
-    const bimestre = obterValorFiltro(filtroBimestre, 'select[id*="bimestre"], select[id*="Bimestre"]');
+    console.log("Elementos DOM dos filtros:", {
+        filtroTurmaEl,
+        filtroDisciplinaEl,
+        filtroAlunoEl,
+        filtroAnoEl,
+        filtroBimestreEl
+    });
     
-    console.log('Filtros aplicados:', {
-        turma: idTurma,
-        disciplina: idDisciplina,
-        aluno: idAluno,
-        ano: ano,
-        bimestre: bimestre
+    // Obter valores dos filtros com fallback para seletores genéricos
+    const idTurma = filtroTurmaEl ? filtroTurmaEl.value : '';
+    const idDisciplina = filtroDisciplinaEl ? filtroDisciplinaEl.value : '';
+    const idAluno = filtroAlunoEl ? filtroAlunoEl.value : '';
+    const ano = filtroAnoEl ? filtroAnoEl.value : '';
+    const bimestre = filtroBimestreEl ? filtroBimestreEl.value : '';
+    
+    console.log('Valores dos filtros:', {
+        idTurma,
+        idDisciplina,
+        idAluno,
+        ano,
+        bimestre,
+        professorId
     });
     
     // Verificar se o elemento da tabela existe
     const notasTabela = document.getElementById('notas-lista');
     if (!notasTabela) {
         console.error('Elemento da tabela de notas não encontrado!');
+        alert('Erro: Tabela de notas não encontrada na página.');
         return;
     }
     
     // Mostrar indicador de carregamento
     notasTabela.innerHTML = `
         <tr class="text-center">
-            <td colspan="9">
+            <td colspan="10">
                 <div class="d-flex justify-content-center align-items-center" style="height: 100px;">
                     <div class="spinner-border text-primary" role="status">
                         <span class="visually-hidden">Carregando notas...</span>
@@ -1914,53 +2002,47 @@ function carregarNotas() {
     if (ano) params.append('ano', ano);
     if (bimestre) params.append('bimestre', bimestre);
     
-    // Adicionar parâmetro do professor
+    // Adicionar parâmetro do professor - fundamental para filtrar as notas
     params.append('professor_id', professorId);
     
-    // Se não há filtros específicos, carregamos todas as notas do professor
-    const url = CONFIG.getApiUrl(`/notas?${params.toString()}`);
-    console.log('URL de consulta:', url);
+    // Construir a URL base para notas
+    let baseUrl = CONFIG.getApiUrl('/notas');
+    let url = `${baseUrl}?${params.toString()}`;
+    console.log('URL de consulta para notas:', url);
     
     // Buscar notas
     fetch(url)
         .then(response => {
+            console.log("Resposta da API:", response.status, response.statusText);
+            
             if (!response.ok) {
-                // Se o endpoint específico retornar erro, tentar endpoint genérico
-                if (response.status === 404) {
-                    console.log('Endpoint específico não encontrado, tentando endpoint genérico...');
-                    return fetch(CONFIG.getApiUrl(`/notas`))
-                        .then(genericResponse => {
-                            if (!genericResponse.ok) {
-                                throw new Error(`Erro na requisição: ${genericResponse.status}`);
-                            }
-                            return genericResponse.json();
-                        })
-                        .then(todasNotas => {
-                            // Filtrar notas manualmente
-                            return filtrarNotasManualmente(todasNotas, {
-                                professorId,
-                                idTurma,
-                                idDisciplina,
-                                idAluno,
-                                ano,
-                                bimestre
-                            });
-                        });
-                }
-                throw new Error(`Erro na requisição: ${response.status}`);
+                throw new Error(`Erro na requisição: ${response.status} - ${response.statusText}`);
             }
             return response.json();
         })
-        .then(notas => {
-            console.log('Notas carregadas:', notas);
+        .then(data => {
+            console.log('Dados recebidos:', data);
+            
+            // Garantir que temos um array para trabalhar
+            let notas = Array.isArray(data) ? data : (data.notas || []);
+            
+            console.log('Array de notas processado:', notas);
+            
+            // Filtrar as notas para garantir que são apenas do professor atual
+            notas = notas.filter(nota => 
+                nota && 
+                (!nota.professor_id || nota.professor_id == professorId || nota.id_professor == professorId)
+            );
             
             if (!notas || notas.length === 0) {
                 notasTabela.innerHTML = `
                     <tr class="text-center">
-                        <td colspan="9">
+                        <td colspan="10">
                             <div class="alert alert-warning" role="alert">
                                 <h4 class="alert-heading">Nenhuma nota encontrada</h4>
                                 <p>Não foram encontradas notas com os filtros selecionados.</p>
+                                <hr>
+                                <p class="mb-0">Verifique se os filtros estão corretos e tente novamente.</p>
                             </div>
                         </td>
                     </tr>
@@ -1987,26 +2069,40 @@ function carregarNotas() {
             let html = '';
             
             notas.forEach(nota => {
+                // Garantir que todos os campos necessários existam
+                const notaMensal = nota.nota_mensal !== undefined ? nota.nota_mensal : null;
+                const notaBimestral = nota.nota_bimestral !== undefined ? nota.nota_bimestral : null;
+                const recuperacao = nota.recuperacao !== undefined ? nota.recuperacao : null;
+                
                 // Calcular média corretamente
-                let media = nota.media;
-                if (media === null || media === undefined) {
-                    if (nota.nota_mensal !== null && nota.nota_bimestral !== null) {
+                let media = nota.media !== undefined ? nota.media : null;
+                
+                if (media === null) {
+                    if (notaMensal !== null && notaBimestral !== null) {
                         // Média simples: (mensal + bimestral) / 2
-                        media = (nota.nota_mensal + nota.nota_bimestral) / 2;
+                        const notaMensalNum = parseFloat(notaMensal);
+                        const notaBimestralNum = parseFloat(notaBimestral);
                         
-                        // Se há recuperação, ajustar a média
-                        if (nota.recuperacao !== null) {
-                            media = (media + parseFloat(nota.recuperacao)) / 2;
+                        if (!isNaN(notaMensalNum) && !isNaN(notaBimestralNum)) {
+                            media = (notaMensalNum + notaBimestralNum) / 2;
+                            
+                            // Se há recuperação, ajustar a média
+                            if (recuperacao !== null) {
+                                const recNum = parseFloat(recuperacao);
+                                if (!isNaN(recNum)) {
+                                    media = (media + recNum) / 2;
+                                }
+                            }
                         }
-                    } else if (nota.nota_mensal !== null) {
-                        media = nota.nota_mensal;
-                    } else if (nota.nota_bimestral !== null) {
-                        media = nota.nota_bimestral;
+                    } else if (notaMensal !== null) {
+                        media = parseFloat(notaMensal);
+                    } else if (notaBimestral !== null) {
+                        media = parseFloat(notaBimestral);
                     }
                 }
                 
-                // Arredondar para uma casa decimal
-                media = media !== null ? Math.ceil(media * 10) / 10 : null;
+                // Arredondar para uma casa decimal (para cima)
+                media = media !== null && !isNaN(media) ? Math.ceil(media * 10) / 10 : null;
                 
                 // Determinar status com base na média
                 let statusClass = '';
@@ -2028,15 +2124,21 @@ function carregarNotas() {
                     statusText = 'Não avaliado';
                 }
                 
+                // Formatar valores para exibição
+                const formatarNota = (valor) => {
+                    if (valor === null || valor === undefined || isNaN(parseFloat(valor))) return '-';
+                    return parseFloat(valor).toFixed(1);
+                };
+                
                 html += `
                     <tr>
                         <td>${nota.nome_aluno || 'N/A'}</td>
-                        <td>${nota.nome_disciplina || 'N/A'}</td>
-                        <td>${nota.id_turma || 'N/A'}</td>
+                        <td>${nota.nome_disciplina || nota.disciplina_nome || 'N/A'}</td>
+                        <td>${nota.id_turma || nota.turma_id || 'N/A'}</td>
                         <td>${nota.bimestre || 'N/A'}</td>
-                        <td>${nota.nota_mensal !== null ? nota.nota_mensal.toFixed(1) : '-'}</td>
-                        <td>${nota.nota_bimestral !== null ? nota.nota_bimestral.toFixed(1) : '-'}</td>
-                        <td>${nota.recuperacao !== null ? nota.recuperacao.toFixed(1) : '-'}</td>
+                        <td>${formatarNota(notaMensal)}</td>
+                        <td>${formatarNota(notaBimestral)}</td>
+                        <td>${formatarNota(recuperacao)}</td>
                         <td>${media !== null ? media.toFixed(1) : '-'}</td>
                         <td class="${statusClass} text-center">${statusText}</td>
                         <td>
@@ -2055,104 +2157,21 @@ function carregarNotas() {
             
             notasTabela.innerHTML = `
                 <tr class="text-center">
-                    <td colspan="9">
+                    <td colspan="10">
                         <div class="alert alert-danger" role="alert">
                             <h4 class="alert-heading">Erro ao carregar notas</h4>
                             <p>${error.message}</p>
+                            <hr>
+                            <p class="mb-0">
+                                <button class="btn btn-outline-danger btn-sm" onclick="carregarNotas()">
+                                    <i class="fas fa-sync-alt"></i> Tentar novamente
+                                </button>
+                            </p>
                         </div>
                     </td>
                 </tr>
             `;
         });
-}
-
-// Função auxiliar para filtrar notas manualmente no cliente
-function filtrarNotasManualmente(todasNotas, filtros) {
-    console.log("Filtrando notas manualmente com filtros:", filtros);
-    
-    if (!Array.isArray(todasNotas)) {
-        console.error("Dados inválidos para filtro manual:", todasNotas);
-        return [];
-    }
-    
-    // Extrair filtros
-    const { professorId, idTurma, idDisciplina, bimestre, ano } = filtros;
-    
-    // Filtrar notas com base nos filtros fornecidos
-    return todasNotas.filter(nota => {
-        // Filtrar por professor
-        if (professorId && nota.id_professor && nota.id_professor.toString() !== professorId.toString()) {
-            return false;
-        }
-        
-        // Filtrar por turma
-        if (idTurma && nota.id_turma && nota.id_turma.toString() !== idTurma.toString()) {
-            return false;
-        }
-        
-        // Filtrar por disciplina
-        if (idDisciplina && nota.id_disciplina && nota.id_disciplina.toString() !== idDisciplina.toString()) {
-            return false;
-        }
-        
-        // Filtrar por bimestre
-        if (bimestre && nota.bimestre && nota.bimestre.toString() !== bimestre.toString()) {
-            return false;
-        }
-        
-        // Filtrar por ano
-        if (ano && nota.ano && nota.ano.toString() !== ano.toString()) {
-            return false;
-        }
-        
-        // A nota passou por todos os filtros
-        return true;
-    });
-}
-
-// Função para recalcular a média das notas
-function recalcularMedia() {
-    console.log('Recalculando média...');
-    
-    const notaMensal = document.getElementById('nota_mensal');
-    const notaBimestral = document.getElementById('nota_bimestral');
-    const recuperacao = document.getElementById('recuperacao');
-    const mediaInput = document.getElementById('media');
-    
-    if (!notaMensal || !notaBimestral || !recuperacao || !mediaInput) {
-        console.error('Elementos de nota não encontrados');
-        return;
-    }
-    
-    // Obter valores das notas
-    const mensal = notaMensal.value ? parseFloat(notaMensal.value) : null;
-    const bimestral = notaBimestral.value ? parseFloat(notaBimestral.value) : null;
-    const rec = recuperacao.value ? parseFloat(recuperacao.value) : null;
-    
-    // Calcular média
-    let media = 0;
-    
-    if (mensal !== null && bimestral !== null) {
-        // Média normal
-        media = (mensal + bimestral) / 2;
-        
-        // Se há recuperação, calcular média final
-        if (rec !== null) {
-            media = (media + rec) / 2;
-        }
-        
-        // Arredondar para cima com uma casa decimal
-        media = Math.ceil(media * 10) / 10;
-    } else if (mensal !== null) {
-        media = mensal;
-    } else if (bimestral !== null) {
-        media = bimestral;
-    }
-    
-    // Atualizar campo de média
-    mediaInput.value = media > 0 ? media.toFixed(1) : '';
-    
-    console.log('Média calculada:', media);
 }
 
 // Função para editar uma nota existente
@@ -2857,35 +2876,15 @@ function carregarNotasAluno(idAluno) {
         </tr>
     `;
     
-    // Como o endpoint /alunos/{id}/notas não está funcionando (erro 404),
-    // vamos buscar todas as notas do professor e filtrar pelo ID do aluno
-    fetch(CONFIG.getApiUrl(`/professores/${professorId}/notas`))
+    fetch(CONFIG.getApiUrl(`/alunos/${idAluno}/notas`))
         .then(response => {
             if (!response.ok) {
-                // Se receber um 404 aqui também, vamos tentar outra abordagem
-                if (response.status === 404) {
-                    // Tenta buscar todas as notas e filtrar no cliente
-                    return fetch(CONFIG.getApiUrl(`/notas`))
-                        .then(innerResponse => {
-                            if (!innerResponse.ok) {
-                                throw new Error(`Erro na requisição: ${innerResponse.status}`);
-                            }
-                            return innerResponse.json();
-                        });
-                }
                 throw new Error(`Erro na requisição: ${response.status}`);
             }
             return response.json();
         })
-        .then(todasNotas => {
-            console.log("Todas as notas carregadas, filtrando para o aluno:", idAluno);
-            
-            // Filtrar apenas as notas do aluno específico
-            const notasDoAluno = Array.isArray(todasNotas) 
-                ? todasNotas.filter(nota => nota.id_aluno === idAluno)
-                : [];
-            
-            console.log("Notas filtradas do aluno:", notasDoAluno);
+        .then(notasDoAluno => {
+            console.log("Notas do aluno:", notasDoAluno);
             
             if (!notasDoAluno || notasDoAluno.length === 0) {
                 tbody.innerHTML = `
@@ -3002,27 +3001,7 @@ function abrirModoLancamentoEmMassa() {
             return fetch(CONFIG.getApiUrl(`/notas?turma_id=${turmaId}&disciplina_id=${disciplinaId}&ano=${ano}&bimestre=${bimestre}`))
                 .then(response => {
                     if (!response.ok) {
-                        // Se o endpoint específico retornar erro, tentar endpoint genérico
-                        if (response.status === 404) {
-                            console.log('Endpoint específico não encontrado, tentando endpoint genérico...');
-                            return fetch(CONFIG.getApiUrl('/notas'))
-                                .then(genericResponse => {
-                                    if (!genericResponse.ok) {
-                                        return [];
-                                    }
-                                    return genericResponse.json();
-                                })
-                                .then(todasNotas => {
-                                    return filtrarNotasManualmente(todasNotas, {
-                                        professorId,
-                                        idTurma: turmaId,
-                                        idDisciplina: disciplinaId,
-                                        ano,
-                                        bimestre
-                                    });
-                                });
-                        }
-                        return [];
+                        throw new Error(`Erro na requisição: ${response.status} - ${response.statusText}`);
                     }
                     return response.json();
                 })
@@ -3382,4 +3361,100 @@ function inicializarTabelaNotas() {
             </table>
         </div>
     `;
+}
+
+// Função para carregar as turmas do professor
+function carregarTurmasDoProfessor(professorId) {
+    console.log('Carregando turmas do professor ID:', professorId);
+    
+    if (!professorId) {
+        console.error('ID do professor não fornecido para carregarTurmasDoProfessor()');
+        return Promise.reject(new Error('ID do professor não fornecido'));
+    }
+    
+    const url = CONFIG.getApiUrl(`/professores/${professorId}/turmas`);
+    console.log('URL para buscar turmas:', url);
+    
+    return fetch(url)
+        .then(response => {
+            console.log('Resposta da API de turmas:', response.status, response.statusText);
+            
+            if (!response.ok) {
+                throw new Error(`Erro na requisição: ${response.status} - ${response.statusText}`);
+            }
+            return response.json();
+        })
+        .then(turmas => {
+            console.log('Turmas recebidas da API:', turmas);
+            
+            // Mapear os campos para um formato padrão
+            return turmas.map(turma => ({
+                id: turma.id || turma.id_turma || turma.turma_id || "",
+                nome: turma.nome || turma.nome_turma || turma.descricao || turma.id_turma || ""
+            }));
+        });
+}
+
+// Função para carregar as disciplinas do professor
+function carregarDisciplinasDoProfessor(professorId) {
+    console.log('Carregando disciplinas do professor ID:', professorId);
+    
+    if (!professorId) {
+        console.error('ID do professor não fornecido para carregarDisciplinasDoProfessor()');
+        return Promise.reject(new Error('ID do professor não fornecido'));
+    }
+    
+    const url = CONFIG.getApiUrl(`/professores/${professorId}/disciplinas`);
+    console.log('URL para buscar disciplinas:', url);
+    
+    return fetch(url)
+        .then(response => {
+            console.log('Resposta da API de disciplinas:', response.status, response.statusText);
+            
+            if (!response.ok) {
+                throw new Error(`Erro na requisição: ${response.status} - ${response.statusText}`);
+            }
+            return response.json();
+        })
+        .then(disciplinas => {
+            console.log('Disciplinas recebidas da API:', disciplinas);
+            
+            // Mapear os campos para um formato padrão
+            return disciplinas.map(disciplina => ({
+                id: disciplina.id || disciplina.id_disciplina || disciplina.disciplina_id || "",
+                nome: disciplina.nome || disciplina.nome_disciplina || disciplina.descricao || disciplina.id_disciplina || ""
+            }));
+        });
+}
+
+// Função para carregar os alunos de uma turma
+function carregarAlunosDaTurma(idTurma) {
+    console.log('Carregando alunos da turma ID:', idTurma);
+    
+    if (!idTurma) {
+        console.error('ID da turma não fornecido para carregarAlunosDaTurma()');
+        return Promise.reject(new Error('ID da turma não fornecido'));
+    }
+    
+    const url = CONFIG.getApiUrl(`/turmas/${idTurma}/alunos`);
+    console.log('URL para buscar alunos:', url);
+    
+    return fetch(url)
+        .then(response => {
+            console.log('Resposta da API de alunos:', response.status, response.statusText);
+            
+            if (!response.ok) {
+                throw new Error(`Erro na requisição: ${response.status} - ${response.statusText}`);
+            }
+            return response.json();
+        })
+        .then(alunos => {
+            console.log('Alunos recebidos da API:', alunos);
+            
+            // Mapear os campos para um formato padrão
+            return alunos.map(aluno => ({
+                id: aluno.id || aluno.id_aluno || aluno.aluno_id || "",
+                nome: aluno.nome || aluno.nome_aluno || `Aluno ${aluno.id_aluno || aluno.id || 'N/A'}`
+            }));
+        });
 }
