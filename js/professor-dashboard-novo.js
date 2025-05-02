@@ -2735,6 +2735,38 @@ function exibirFichaAluno(idAluno) {
         return;
     }
     
+    // Exibir um indicador de carregamento enquanto buscamos os dados
+    const loadingModal = `
+        <div class="modal fade" id="loadingModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-body text-center p-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Carregando...</span>
+                        </div>
+                        <p class="mt-3 mb-0">Carregando informações do aluno...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Remover modal anterior se existir
+    const existingModal = document.getElementById('alunoModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    const existingLoadingModal = document.getElementById('loadingModal');
+    if (existingLoadingModal) {
+        existingLoadingModal.remove();
+    }
+    
+    // Adicionar o modal de carregamento
+    document.body.insertAdjacentHTML('beforeend', loadingModal);
+    const loading = new bootstrap.Modal(document.getElementById('loadingModal'));
+    loading.show();
+    
     // Buscar dados do aluno
     fetch(CONFIG.getApiUrl(`/alunos/${idAluno}`))
         .then(response => {
@@ -2746,29 +2778,44 @@ function exibirFichaAluno(idAluno) {
         .then(aluno => {
             console.log("Dados do aluno:", aluno);
             
+            // Fechar o modal de carregamento
+            loading.hide();
+            
+            // Formatação de campos específicos
+            const dataNascimento = aluno.data_nascimento || aluno.data_nasc;
+            const dataNascFormatada = dataNascimento ? 
+                new Date(dataNascimento).toLocaleDateString('pt-BR') : 'N/A';
+                
+            // Nome da mãe (pode estar em diferentes campos)
+            const nomeMae = aluno.nome_mae || aluno.mae || aluno.responsavel || 'N/A';
+            
             // Criar conteúdo do modal
             const modalContent = `
                 <div class="modal fade" id="alunoModal" tabindex="-1" aria-labelledby="alunoModalLabel" aria-hidden="true">
                     <div class="modal-dialog modal-lg">
                         <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title" id="alunoModalLabel">Ficha do Aluno</h5>
+                            <div class="modal-header bg-light">
+                                <h5 class="modal-title" id="alunoModalLabel">
+                                    <i class="fas fa-user-graduate me-2"></i>Ficha do Aluno
+                                </h5>
                                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
                             </div>
                             <div class="modal-body">
                                 <div class="row">
                                     <div class="col-md-4 text-center mb-3">
-                                        <i class="fas fa-user-graduate fa-5x text-primary mb-3"></i>
-                                        <h4>${aluno.nome_aluno || 'Nome não disponível'}</h4>
+                                        <div class="border rounded-circle mx-auto d-flex align-items-center justify-content-center" style="width: 100px; height: 100px; background-color: #f8f9fa;">
+                                            <i class="fas fa-user-graduate fa-3x text-primary"></i>
+                                        </div>
+                                        <h4 class="mt-3">${aluno.nome_aluno || 'Nome não disponível'}</h4>
                                         <p class="badge bg-info">${aluno.id_turma || 'Turma não informada'}</p>
                                     </div>
                                     <div class="col-md-8">
-                                        <h5>Informações do Aluno</h5>
+                                        <h5 class="border-bottom pb-2 mb-3">Informações do Aluno</h5>
                                         <div class="table-responsive">
                                             <table class="table table-bordered">
                                                 <tbody>
                                                     <tr>
-                                                        <th>ID</th>
+                                                        <th style="width: 40%">ID</th>
                                                         <td>${aluno.id_aluno || 'N/A'}</td>
                                                     </tr>
                                                     <tr>
@@ -2781,15 +2828,15 @@ function exibirFichaAluno(idAluno) {
                                                     </tr>
                                                     <tr>
                                                         <th>Data de Nascimento</th>
-                                                        <td>${aluno.data_nascimento ? new Date(aluno.data_nascimento).toLocaleDateString('pt-BR') : 'N/A'}</td>
+                                                        <td>${dataNascFormatada}</td>
                                                     </tr>
                                                     <tr>
-                                                        <th>Responsável</th>
-                                                        <td>${aluno.nome_responsavel || 'N/A'}</td>
+                                                        <th>Mãe/Responsável</th>
+                                                        <td>${nomeMae}</td>
                                                     </tr>
                                                     <tr>
                                                         <th>Telefone</th>
-                                                        <td>${aluno.telefone_responsavel || 'N/A'}</td>
+                                                        <td>${aluno.telefone_responsavel || aluno.telefone || 'N/A'}</td>
                                                     </tr>
                                                 </tbody>
                                             </table>
@@ -2799,7 +2846,7 @@ function exibirFichaAluno(idAluno) {
                                 
                                 <div class="row mt-4">
                                     <div class="col-12">
-                                        <h5>Notas do Aluno</h5>
+                                        <h5 class="border-bottom pb-2 mb-3">Notas do Aluno</h5>
                                         <div class="table-responsive">
                                             <table class="table table-bordered table-sm">
                                                 <thead class="table-light">
@@ -2814,7 +2861,12 @@ function exibirFichaAluno(idAluno) {
                                                 </thead>
                                                 <tbody id="notas-aluno-tbody">
                                                     <tr>
-                                                        <td colspan="6" class="text-center">Carregando notas...</td>
+                                                        <td colspan="6" class="text-center">
+                                                            <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                                                <span class="visually-hidden">Carregando notas...</span>
+                                                            </div>
+                                                            <span class="ms-2">Carregando notas...</span>
+                                                        </td>
                                                     </tr>
                                                 </tbody>
                                             </table>
@@ -2823,21 +2875,17 @@ function exibirFichaAluno(idAluno) {
                                 </div>
                             </div>
                             <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-                                <button type="button" class="btn btn-primary" onclick="window.location.href='#conteudo-notas'">
-                                    <i class="fas fa-graduation-cap"></i> Ir para Gestão de Notas
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                    <i class="fas fa-times me-1"></i>Fechar
+                                </button>
+                                <button type="button" class="btn btn-primary" data-bs-dismiss="modal" onclick="document.getElementById('notas-link').click()">
+                                    <i class="fas fa-graduation-cap me-1"></i>Ir para Gestão de Notas
                                 </button>
                             </div>
                         </div>
                     </div>
                 </div>
             `;
-            
-            // Remover modal anterior se existir
-            const modalAnterior = document.getElementById('alunoModal');
-            if (modalAnterior) {
-                modalAnterior.remove();
-            }
             
             // Adicionar o modal ao DOM
             document.body.insertAdjacentHTML('beforeend', modalContent);
@@ -2846,37 +2894,77 @@ function exibirFichaAluno(idAluno) {
             const modal = new bootstrap.Modal(document.getElementById('alunoModal'));
             modal.show();
             
-            // Carregar as notas do aluno
-            carregarNotasAluno(idAluno);
+            // Carregar as notas do aluno de forma independente 
+            // (não bloqueamos a exibição do modal se as notas falharem)
+            setTimeout(() => carregarNotasAluno(idAluno), 500);
             
             // Registrar atividade
             registrarAtividade('visualização', 'aluno', idAluno, `Aluno: ${aluno.nome_aluno || idAluno}`, 'concluído');
         })
         .catch(error => {
             console.error("Erro ao carregar dados do aluno:", error);
-            alert(`Erro ao carregar dados do aluno: ${error.message}`);
+            
+            // Fechar o modal de carregamento
+            loading.hide();
+            
+            // Exibir um alerta mais amigável
+            alert(`Não foi possível carregar os dados do aluno no momento. Por favor, tente novamente mais tarde.`);
         });
 }
 
 // Função para carregar as notas de um aluno específico
 function carregarNotasAluno(idAluno) {
-    fetch(CONFIG.getApiUrl(`/alunos/${idAluno}/notas`))
+    console.log("Carregando notas do aluno:", idAluno);
+    
+    const tbody = document.getElementById('notas-aluno-tbody');
+    if (!tbody) {
+        console.error("Elemento notas-aluno-tbody não encontrado!");
+        return;
+    }
+    
+    // Exibir indicador de carregamento
+    tbody.innerHTML = `
+        <tr>
+            <td colspan="6" class="text-center">
+                <div class="spinner-border text-primary spinner-border-sm" role="status">
+                    <span class="visually-hidden">Carregando notas...</span>
+                </div>
+                <span class="ms-2">Carregando notas...</span>
+            </td>
+        </tr>
+    `;
+    
+    // Como o endpoint /alunos/{id}/notas não está funcionando (erro 404),
+    // vamos buscar todas as notas do professor e filtrar pelo ID do aluno
+    fetch(CONFIG.getApiUrl(`/professores/${professorId}/notas`))
         .then(response => {
             if (!response.ok) {
+                // Se receber um 404 aqui também, vamos tentar outra abordagem
+                if (response.status === 404) {
+                    // Tenta buscar todas as notas e filtrar no cliente
+                    return fetch(CONFIG.getApiUrl(`/notas`))
+                        .then(innerResponse => {
+                            if (!innerResponse.ok) {
+                                throw new Error(`Erro na requisição: ${innerResponse.status}`);
+                            }
+                            return innerResponse.json();
+                        });
+                }
                 throw new Error(`Erro na requisição: ${response.status}`);
             }
             return response.json();
         })
-        .then(notas => {
-            console.log("Notas do aluno:", notas);
+        .then(todasNotas => {
+            console.log("Todas as notas carregadas, filtrando para o aluno:", idAluno);
             
-            const tbody = document.getElementById('notas-aluno-tbody');
-            if (!tbody) {
-                console.error("Elemento notas-aluno-tbody não encontrado!");
-                return;
-            }
+            // Filtrar apenas as notas do aluno específico
+            const notasDoAluno = Array.isArray(todasNotas) 
+                ? todasNotas.filter(nota => nota.id_aluno === idAluno)
+                : [];
             
-            if (!notas || notas.length === 0) {
+            console.log("Notas filtradas do aluno:", notasDoAluno);
+            
+            if (!notasDoAluno || notasDoAluno.length === 0) {
                 tbody.innerHTML = `
                     <tr>
                         <td colspan="6" class="text-center">Nenhuma nota registrada para este aluno.</td>
@@ -2889,7 +2977,7 @@ function carregarNotasAluno(idAluno) {
             tbody.innerHTML = '';
             
             // Exibir as notas
-            notas.forEach(nota => {
+            notasDoAluno.forEach(nota => {
                 const row = document.createElement('tr');
                 
                 // Determinar o status baseado na média
@@ -2910,10 +2998,10 @@ function carregarNotasAluno(idAluno) {
                 row.innerHTML = `
                     <td>${nota.nome_disciplina || nota.id_disciplina || 'N/A'}</td>
                     <td>${nota.bimestre ? nota.bimestre + 'º Bimestre' : 'N/A'}</td>
-                    <td>${nota.nota_mensal !== null && nota.nota_mensal !== undefined ? nota.nota_mensal.toFixed(1) : 'N/A'}</td>
-                    <td>${nota.nota_bimestral !== null && nota.nota_bimestral !== undefined ? nota.nota_bimestral.toFixed(1) : 'N/A'}</td>
-                    <td>${nota.recuperacao !== null && nota.recuperacao !== undefined ? nota.recuperacao.toFixed(1) : 'N/A'}</td>
-                    <td><strong>${nota.media !== null && nota.media !== undefined ? nota.media.toFixed(1) : 'N/A'}</strong></td>
+                    <td>${nota.nota_mensal !== null && nota.nota_mensal !== undefined ? parseFloat(nota.nota_mensal).toFixed(1) : 'N/A'}</td>
+                    <td>${nota.nota_bimestral !== null && nota.nota_bimestral !== undefined ? parseFloat(nota.nota_bimestral).toFixed(1) : 'N/A'}</td>
+                    <td>${nota.recuperacao !== null && nota.recuperacao !== undefined ? parseFloat(nota.recuperacao).toFixed(1) : 'N/A'}</td>
+                    <td><strong>${nota.media !== null && nota.media !== undefined ? parseFloat(nota.media).toFixed(1) : 'N/A'}</strong></td>
                 `;
                 
                 tbody.appendChild(row);
@@ -2922,15 +3010,18 @@ function carregarNotasAluno(idAluno) {
         .catch(error => {
             console.error("Erro ao carregar notas do aluno:", error);
             
-            const tbody = document.getElementById('notas-aluno-tbody');
-            if (tbody) {
-                tbody.innerHTML = `
-                    <tr>
-                        <td colspan="6" class="text-center text-danger">
-                            Erro ao carregar notas: ${error.message}
-                        </td>
-                    </tr>
-                `;
-            }
+            // Tratar o erro exibindo uma mensagem amigável
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="text-center text-danger">
+                        <div class="alert alert-warning" role="alert">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Não foi possível carregar as notas deste aluno no momento.
+                            <br>
+                            <small class="text-muted">Tente novamente mais tarde ou acesse a seção de Gestão de Notas.</small>
+                        </div>
+                    </td>
+                </tr>
+            `;
         });
 }
