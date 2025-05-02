@@ -11,7 +11,7 @@ let notasTabela, filtroAno, filtroBimestre, filtroTurma, filtroDisciplina, filtr
 
 // Inicialização quando o DOM estiver pronto
 document.addEventListener('DOMContentLoaded', function() {
-    console.log("#### NOVO ARQUIVO JS CARREGADO v5 ####");
+    console.log("#### PROFESSOR DASHBOARD MOBILE FIRST v1 ####");
     
     // Verificar se o usuário está autenticado como professor
     const userProfile = sessionStorage.getItem('userProfile');
@@ -45,31 +45,24 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('professor-nome').textContent = professorNome || 'Professor';
     
     // Inicializar componentes do dashboard
-    initSidebar();
     initLinks();
     
     // Inicializar o dashboard automaticamente na carga da página
     initDashboard();
     
     // Configurar logout
-    document.getElementById('btn-logout').addEventListener('click', function() {
-        if (confirm('Tem certeza que deseja sair?')) {
-            // Limpar sessão
-            sessionStorage.clear();
-            // Redirecionar para a página de login
-            window.location.href = 'index.html';
-        }
-    });
-    
-    // Configurar o botão de logout no menu lateral
-    document.getElementById('sidebar-logout').addEventListener('click', function() {
-        if (confirm('Tem certeza que deseja sair?')) {
-            // Limpar sessão
-            sessionStorage.clear();
-            // Redirecionar para a página de login
-            window.location.href = 'index.html';
-        }
-    });
+    const btnLogout = document.getElementById('btn-logout');
+    if (btnLogout) {
+        btnLogout.addEventListener('click', function(e) {
+            e.preventDefault();
+            if (confirm('Tem certeza que deseja sair?')) {
+                // Limpar sessão
+                sessionStorage.clear();
+                // Redirecionar para a página de login
+                window.location.href = 'index.html';
+            }
+        });
+    }
     
     // Adicionar evento ao botão de cancelar nota
     const btnCancelarNota = document.getElementById('btn-cancelar-nota');
@@ -114,8 +107,58 @@ function initLinks() {
             links[key].addEventListener('click', function(e) {
                 e.preventDefault();
                 ativarSecao(key);
+                
+                // Fechar o menu de navegação mobile se estiver aberto
+                const navbarCollapse = document.getElementById('navbarNav');
+                if (navbarCollapse && navbarCollapse.classList.contains('show')) {
+                    document.querySelector('.navbar-toggler').click();
+                }
             });
         }
+    }
+    
+    // Mapear links da navegação inferior mobile
+    const bottomNavLinks = {
+        'bottom-dashboard-link': 'dashboard-link',
+        'bottom-alunos-link': 'alunos-link',
+        'bottom-notas-link': 'notas-link'
+    };
+    
+    // Adicionar eventos para a navegação inferior
+    for (const bottomId in bottomNavLinks) {
+        const bottomLink = document.getElementById(bottomId);
+        if (bottomLink) {
+            bottomLink.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                // Ativar a seção correspondente
+                const mainLinkId = bottomNavLinks[bottomId];
+                ativarSecao(mainLinkId);
+                
+                // Atualizar estado ativo na navegação inferior
+                document.querySelectorAll('.bottom-nav-item').forEach(item => {
+                    item.classList.remove('active');
+                });
+                this.classList.add('active');
+            });
+        }
+    }
+    
+    // Configurar link de perfil mobile
+    const perfilMobileLink = document.getElementById('bottom-perfil-link');
+    if (perfilMobileLink) {
+        perfilMobileLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // Rolar até a seção de perfil no dashboard
+            document.getElementById('dashboard-link').click();
+            const perfilCard = document.querySelector('.card:has(#perfil-id)');
+            if (perfilCard) {
+                setTimeout(() => {
+                    perfilCard.scrollIntoView({ behavior: 'smooth' });
+                }, 300);
+            }
+        });
     }
 }
 
@@ -123,16 +166,53 @@ function initLinks() {
 function ativarSecao(linkId) {
     console.log("Ativando seção para o link:", linkId);
     
-    // Remover classe ativa de todos os links
+    // Atualizar título da página
+    const pageTitleEl = document.getElementById('page-title');
+    if (pageTitleEl) {
+        switch (linkId) {
+            case 'dashboard-link':
+                pageTitleEl.textContent = 'Dashboard';
+                break;
+            case 'alunos-link':
+                pageTitleEl.textContent = 'Meus Alunos';
+                break;
+            case 'notas-link':
+                pageTitleEl.textContent = 'Gestão de Notas';
+                break;
+            default:
+                pageTitleEl.textContent = 'Dashboard';
+        }
+    }
+    
+    // Remover classe ativa de todos os links no navbar
     for (const key in links) {
         if (links[key]) {
             links[key].classList.remove('active');
         }
     }
     
-    // Adicionar classe ativa ao link clicado
+    // Adicionar classe ativa ao link clicado no navbar
     if (links[linkId]) {
         links[linkId].classList.add('active');
+    }
+    
+    // Atualizar navegação mobile
+    const bottomNavMap = {
+        'dashboard-link': 'bottom-dashboard-link',
+        'alunos-link': 'bottom-alunos-link',
+        'notas-link': 'bottom-notas-link'
+    };
+    
+    document.querySelectorAll('.bottom-nav-item').forEach(item => {
+        item.classList.remove('active');
+    });
+    
+    const bottomLinkId = bottomNavMap[linkId];
+    if (bottomLinkId) {
+        const bottomLink = document.getElementById(bottomLinkId);
+        if (bottomLink) {
+            bottomLink.classList.add('active');
+        }
     }
     
     // Ocultar todos os conteúdos
@@ -146,6 +226,9 @@ function ativarSecao(linkId) {
     if (conteudos[linkId]) {
         conteudos[linkId].classList.add('active');
         
+        // Voltar ao topo para melhor experiência em mobile
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        
         // Ações específicas por seção
         if (linkId === 'dashboard-link') {
             initDashboard();
@@ -154,21 +237,6 @@ function ativarSecao(linkId) {
         } else if (linkId === 'notas-link') {
             initNotas();
         }
-    }
-}
-
-// Função para inicializar o menu lateral retrátil
-function initSidebar() {
-    console.log("Inicializando sidebar");
-    const sidebar = document.getElementById('sidebarMenu');
-    const toggleSidebar = document.getElementById('toggleSidebar');
-    const toggleSidebarDesktop = document.getElementById('toggleSidebarDesktop');
-    const sidebarIcon = document.getElementById('sidebarIcon');
-    
-    // Verificar estado salvo do menu (se estava recolhido ou expandido)
-    const sidebarState = localStorage.getItem('sidebarCollapsed');
-    if (sidebarState === 'true' && sidebar) {
-        sidebar.classList.add('collapsed');
     }
 }
 
@@ -198,10 +266,10 @@ function initDashboard() {
         return texto
             .replace(/Âº/g, 'º') // Correção para caractere "º"
             .replace(/Ã£/g, 'ã')
-            .replace(/Ã¡/g, 'á')
             .replace(/Ã©/g, 'é')
+            .replace(/Ã¡/g, 'á')
             .replace(/Ãª/g, 'ê')
-            .replace(/Ã³/g, 'ó')
+            .replace(/Ã£/g, 'ã')
             .replace(/Ã§/g, 'ç');
     }
     

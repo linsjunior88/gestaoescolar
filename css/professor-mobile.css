@@ -1,0 +1,302 @@
+/* Estilos para o dashboard do professor - Mobile First */
+
+/* Estilos base - aplicados em todas as telas, começando pelo mobile */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background-color: #f8f9fc;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+}
+
+/* Navbar - principal elemento de navegação agora */
+.navbar {
+    padding: 0.5rem 1rem;
+    background-color: #7cb9e8 !important; /* Azul pastel */
+    width: 100% !important;
+    z-index: 1030 !important;
+}
+
+.navbar-brand {
+    display: flex;
+    align-items: center;
+}
+
+.navbar-brand img {
+    max-height: 40px;
+    margin-right: 10px;
+}
+
+.nav-item {
+    position: relative;
+}
+
+/* Estilos para o dropdown de navegação mobile */
+.navbar-nav .dropdown-menu {
+    background-color: #f8f9fc;
+    border: none;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    z-index: 1050;
+}
+
+.navbar-nav .dropdown-item {
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+}
+
+.navbar-nav .dropdown-item i {
+    margin-right: 10px;
+    width: 20px;
+    text-align: center;
+}
+
+.navbar-nav .dropdown-item:active,
+.navbar-nav .dropdown-item:focus,
+.navbar-nav .dropdown-item:hover {
+    background-color: rgba(124, 185, 232, 0.1);
+}
+
+/* Estilos para o conteúdo principal */
+.main-content {
+    padding: 1rem;
+}
+
+.page-title {
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+}
+
+.page-subtitle {
+    margin-bottom: 1.5rem;
+    font-size: 0.9rem;
+    color: #6c757d;
+}
+
+/* Cards Responsivos */
+.card {
+    margin-bottom: 1rem;
+    border: none;
+    box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.1);
+}
+
+.card-header {
+    background-color: #f8f9fc;
+    border-bottom: 1px solid #e3e6f0;
+    padding: 0.75rem 1rem;
+}
+
+.card-header h6 {
+    margin: 0;
+    font-weight: 700;
+    color: #7cb9e8;
+}
+
+/* Cores para os cards de estatísticas */
+.border-left-primary {
+    border-left: 0.25rem solid #7cb9e8 !important; /* Azul pastel */
+}
+
+.border-left-success {
+    border-left: 0.25rem solid #b0e57c !important; /* Verde pastel */
+}
+
+.border-left-info {
+    border-left: 0.25rem solid #afcbfa !important; /* Azul info pastel */
+}
+
+.border-left-warning {
+    border-left: 0.25rem solid #fbe5a5 !important; /* Amarelo pastel */
+}
+
+/* Ícones e textos nos cards */
+.text-gray-300 {
+    color: #dddfeb !important;
+}
+
+.text-gray-800 {
+    color: #5a5c69 !important;
+}
+
+/* Botões personalizados */
+.btn-primary {
+    background-color: #7cb9e8;
+    border: none;
+    color: #333;
+}
+
+.btn-primary:hover {
+    background-color: #5a9bd5;
+    color: #fff;
+}
+
+.btn-outline-light {
+    color: #333;
+    border-color: #7cb9e8;
+}
+
+.btn-outline-light:hover {
+    background-color: #7cb9e8;
+    color: #333;
+}
+
+/* Tabelas responsivas */
+.table th {
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Navegação por abas para dispositivos móveis */
+.nav-tabs {
+    border-bottom: 1px solid #dee2e6;
+    margin-bottom: 1rem;
+}
+
+.nav-tabs .nav-link {
+    color: #6c757d;
+    border: none;
+    border-bottom: 2px solid transparent;
+    padding: 0.5rem 1rem;
+}
+
+.nav-tabs .nav-link.active {
+    color: #7cb9e8;
+    border-bottom: 2px solid #7cb9e8;
+    background-color: transparent;
+}
+
+/* Estilos para a área de conteúdo dinâmico */
+.conteudo-secao {
+    display: none;
+}
+
+.conteudo-secao.active {
+    display: block;
+    animation: fadeIn 0.5s ease forwards;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Status de notas */
+.status-aprovado {
+    background-color: rgba(176, 229, 124, 0.15) !important;
+}
+
+.status-recuperacao {
+    background-color: rgba(251, 229, 165, 0.15) !important;
+}
+
+.status-reprovado {
+    background-color: rgba(231, 74, 59, 0.15) !important;
+}
+
+/* Botão de voltar ao topo para mobile */
+.back-to-top {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: #7cb9e8;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+}
+
+.back-to-top.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Menu de navegação inferior para mobile (opcional) */
+.bottom-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: #fff;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+}
+
+.bottom-nav-item {
+    flex: 1;
+    text-align: center;
+    padding: 0.75rem 0.5rem;
+    color: #6c757d;
+    text-decoration: none;
+}
+
+.bottom-nav-item.active {
+    color: #7cb9e8;
+}
+
+.bottom-nav-icon {
+    display: block;
+    font-size: 1.25rem;
+    margin-bottom: 0.25rem;
+}
+
+.bottom-nav-text {
+    font-size: 0.7rem;
+}
+
+/* Breakpoints para tablets e desktops */
+@media (min-width: 576px) {
+    .main-content {
+        padding: 1.5rem;
+    }
+    
+    .card {
+        margin-bottom: 1.5rem;
+    }
+}
+
+@media (min-width: 768px) {
+    .main-content {
+        padding: 2rem;
+    }
+    
+    /* Esconde navegação inferior em telas maiores */
+    .bottom-nav {
+        display: none;
+    }
+    
+    /* Ajustes para navbar em telas maiores */
+    .navbar-brand span {
+        font-size: 1.25rem;
+    }
+}
+
+@media (min-width: 992px) {
+    .main-content {
+        padding: 2.5rem;
+    }
+    
+    /* Ajustes específicos para desktops */
+    .navbar-expand-lg .navbar-nav .dropdown-menu {
+        position: absolute;
+    }
+} 

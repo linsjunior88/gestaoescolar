@@ -10,496 +10,184 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- CSS Personalizado -->
-    <link rel="stylesheet" href="css/dashboard.css">
+    <!-- CSS Personalizado - Mobile First -->
+    <link rel="stylesheet" href="css/professor-mobile.css">
     <!-- Garantir que o Bootstrap JS seja carregado no head para resolver problemas com dropdowns -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </head>
 <body>
-    <div class="container-fluid p-0">
-        <div class="row g-0">
-            <!-- Sidebar -->
-            <nav id="sidebarMenu" class="col-md-3 col-lg-2 d-md-block sidebar">
-                <div class="position-sticky pt-3">
-                    <div class="d-flex justify-content-between align-items-center px-3 mb-3">
-                        <button id="toggleSidebar" class="btn btn-sm btn-link d-md-none">
-                            <i class="fas fa-bars"></i>
-                        </button>
-                        <button id="toggleSidebarDesktop" class="btn btn-sm btn-link d-none d-md-block">
-                            <i class="fas fa-angle-left" id="sidebarIcon"></i>
-                        </button>
+    <!-- Navbar Principal -->
+    <nav class="navbar navbar-expand-lg navbar-light sticky-top">
+        <div class="container-fluid">
+            <!-- Logo e Nome da Escola -->
+            <a class="navbar-brand d-flex align-items-center" href="#">
+                <img src="img/logo.png" alt="Logo Nazaré Rodrigues" class="me-2" style="max-height: 40px;">
+                <span class="h5 mb-0 d-none d-sm-inline">EMEF Nazaré Rodrigues</span>
+            </a>
+            
+            <!-- Botão de Toggle do Menu -->
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <!-- Menu de Navegação -->
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    <li class="nav-item">
+                        <a id="dashboard-link" class="nav-link active" href="#">
+                            <i class="fas fa-home"></i> Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a id="alunos-link" class="nav-link" href="#">
+                            <i class="fas fa-user-graduate"></i> Alunos
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a id="notas-link" class="nav-link" href="#">
+                            <i class="fas fa-graduation-cap"></i> Gestão de Notas
+                        </a>
+                    </li>
+                </ul>
+                
+                <!-- Perfil do Usuário -->
+                <ul class="navbar-nav">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <span class="d-none d-md-inline me-2">Olá, <span id="professor-nome">Professor</span></span>
+                            <i class="fas fa-user-circle"></i>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
+                            <li>
+                                <a class="dropdown-item" href="#" id="perfil-professor-link">
+                                    <i class="fas fa-id-card"></i> Meu Perfil
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item" href="index.html" id="btn-logout">
+                                    <i class="fas fa-sign-out-alt"></i> Sair
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+    
+    <!-- Conteúdo Principal -->
+    <main class="main-content">
+        <!-- Cabeçalho da Página -->
+        <div class="container-fluid">
+            <div class="row mb-4">
+                <div class="col-12">
+                    <h1 id="page-title" class="h3 page-title">Dashboard</h1>
+                    <p id="page-subtitle" class="page-subtitle">Área restrita do professor</p>
+                </div>
+            </div>
+            
+            <!-- Conteúdo do Dashboard -->
+            <div id="conteudo-dashboard" class="conteudo-secao active">
+                <div class="row g-3">
+                    <!-- Cards Totalizadores -->
+                    <div class="col-6 col-md-3">
+                        <div class="card border-left-primary shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                            Turmas
+                                        </div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="total-turmas">0</div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="fas fa-chalkboard fa-2x text-gray-300"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    
-                    <ul class="nav flex-column">
-                        <li class="nav-item">
-                            <a id="dashboard-link" class="nav-link active" href="#">
-                                <i class="fas fa-home"></i> <span class="menu-text">Dashboard</span>
-                            </a>
-                        </li>
-                        
-                        <li class="nav-item">
-                            <a id="alunos-link" class="nav-link" href="#">
-                                <i class="fas fa-user-graduate"></i> <span class="menu-text">Alunos</span>
-                            </a>
-                        </li>
-                        
-                        <li class="nav-item">
-                            <a id="notas-link" class="nav-link" href="#">
-                                <i class="fas fa-graduation-cap"></i> <span class="menu-text">Gestão de Notas</span>
-                            </a>
-                        </li>
-                    </ul>
-                    
-                    <div class="mt-5 mb-3 border-top pt-3">
-                        <div class="text-center">
-                            <a href="index.html" id="sidebar-logout" class="btn btn-outline-light btn-sm" style="position: relative; z-index: 9999; pointer-events: auto;">
-                                <i class="fas fa-sign-out-alt"></i> <span class="menu-text">Sair</span>
-                            </a>
+
+                    <!-- Total de Disciplinas -->
+                    <div class="col-6 col-md-3">
+                        <div class="card border-left-success shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                            Disciplinas
+                                        </div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="total-disciplinas">0</div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="fas fa-book fa-2x text-gray-300"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Total de Alunos -->
+                    <div class="col-6 col-md-3">
+                        <div class="card border-left-info shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                            Alunos
+                                        </div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="total-alunos">0</div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="fas fa-user-graduate fa-2x text-gray-300"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Total de Notas Lançadas -->
+                    <div class="col-6 col-md-3">
+                        <div class="card border-left-warning shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                            Notas
+                                        </div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="total-notas">0</div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="fas fa-graduation-cap fa-2x text-gray-300"></i>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </nav>
-            
-            <!-- Conteúdo Principal -->
-            <main id="mainContent" class="col-md-9 ms-sm-auto col-lg-10 px-0">
-                <!-- Barra de navegação -->
-                <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4 w-100">
-                    <div class="container-fluid">
-                        <a class="navbar-brand d-flex align-items-center" href="#">
-                            <img src="img/logo.png" alt="Logo Nazaré Rodrigues" class="me-2" style="max-height: 40px;">
-                            <span class="h5 mb-0 d-none d-sm-inline">EMEF Nazaré Rodrigues</span>
-                        </a>
-                        <div class="d-flex align-items-center">
-                            <span class="text-dark me-3 d-none d-md-block">Olá, <span id="professor-nome">Professor</span></span>
-                            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                                <span class="navbar-toggler-icon"></span>
-                            </button>
-                        </div>
-                        
-                        <div class="collapse navbar-collapse" id="navbarNav">
-                            <ul class="navbar-nav ms-auto">
-                                <li class="nav-item dropdown" style="position: static;">
-                                    <a class="nav-link dropdown-toggle text-dark" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" style="position: relative; z-index: 10001;">
-                                        <i class="fas fa-user-circle"></i> Perfil
-                                    </a>
-                                    <div class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown" style="position: absolute; z-index: 10001; right: 0; left: auto; min-width: 200px; margin-top: 0.5rem; box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.175);">
-                                        <a class="dropdown-item" href="#" id="perfil-professor-link" style="z-index: 10002; position: relative;"><i class="fas fa-id-card"></i> Meu Perfil</a>
-                                        <div class="dropdown-divider"></div>
-                                        <a class="dropdown-item" href="index.html" id="btn-logout" style="z-index: 10002; position: relative; pointer-events: auto;"><i class="fas fa-sign-out-alt"></i> Sair</a>
-                                    </div>
-                                </li>
-                                <li class="nav-item d-md-none">
-                                    <a class="nav-link text-dark" href="index.html">
-                                        <i class="fas fa-sign-out-alt"></i> Sair
-                                    </a>
-                                </li>
-                            </ul>
-                        </div>
-                    </div>
-                </nav>
                 
-                <!-- Conteúdo das Seções -->
-                <div class="container-fluid py-4 px-md-4">
-                    <div class="row mb-4">
-                        <div class="col-12">
-                            <h1 id="page-title" class="h3">Dashboard Administrativo</h1>
-                            <p id="page-subtitle" class="text-muted">Área restrita do professor</p>
-                        </div>
-                    </div>
-                    
-                    <!-- Conteúdo do Dashboard -->
-                    <div id="conteudo-dashboard" class="conteudo-secao active">
-                        <div class="row">
-                            <!-- Cards Totalizadores -->
-                            <div class="col-12 mb-4">
-                                <div class="row">
-                                    <!-- Total de Turmas -->
-                                    <div class="col-md-3 mb-4">
-                                        <div class="card border-left-primary shadow h-100 py-2">
-                                            <div class="card-body">
-                                                <div class="row no-gutters align-items-center">
-                                                    <div class="col mr-2">
-                                                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                                            Turmas
-                                                        </div>
-                                                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="total-turmas">0</div>
-                                                    </div>
-                                                    <div class="col-auto">
-                                                        <i class="fas fa-chalkboard fa-2x text-gray-300"></i>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Total de Disciplinas -->
-                                    <div class="col-md-3 mb-4">
-                                        <div class="card border-left-success shadow h-100 py-2">
-                                            <div class="card-body">
-                                                <div class="row no-gutters align-items-center">
-                                                    <div class="col mr-2">
-                                                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                                            Disciplinas
-                                                        </div>
-                                                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="total-disciplinas">0</div>
-                                                    </div>
-                                                    <div class="col-auto">
-                                                        <i class="fas fa-book fa-2x text-gray-300"></i>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Total de Alunos -->
-                                    <div class="col-md-3 mb-4">
-                                        <div class="card border-left-info shadow h-100 py-2">
-                                            <div class="card-body">
-                                                <div class="row no-gutters align-items-center">
-                                                    <div class="col mr-2">
-                                                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                                                            Alunos
-                                                        </div>
-                                                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="total-alunos">0</div>
-                                                    </div>
-                                                    <div class="col-auto">
-                                                        <i class="fas fa-user-graduate fa-2x text-gray-300"></i>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Total de Notas Lançadas -->
-                                    <div class="col-md-3 mb-4">
-                                        <div class="card border-left-warning shadow h-100 py-2">
-                                            <div class="card-body">
-                                                <div class="row no-gutters align-items-center">
-                                                    <div class="col mr-2">
-                                                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                                            Notas Lançadas
-                                                        </div>
-                                                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="total-notas">0</div>
-                                                    </div>
-                                                    <div class="col-auto">
-                                                        <i class="fas fa-graduation-cap fa-2x text-gray-300"></i>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="col-md-8 mb-4">
-                                <div class="card shadow h-100">
-                                    <div class="card-header py-3 d-flex justify-content-between align-items-center">
-                                        <h6 class="m-0 font-weight-bold text-primary">Minhas Turmas e Disciplinas</h6>
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="table-responsive">
-                                            <table class="table table-bordered">
-                                                <thead class="table-light">
-                                                    <tr>
-                                                        <th>Disciplina</th>
-                                                        <th>Turmas</th>
-                                                        <th>Alunos</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody id="professor-disciplinas-lista">
-                                                    <!-- Disciplinas e turmas do professor serão exibidas aqui -->
-                                                    <tr class="text-center">
-                                                        <td colspan="3">Carregando...</td>
-                                                    </tr>
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="col-md-4 mb-4">
-                                <div class="card shadow h-100">
-                                    <div class="card-header py-3">
-                                        <h6 class="m-0 font-weight-bold text-primary">Meu Perfil</h6>
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="text-center mb-4">
-                                            <i class="fas fa-user-circle fa-5x text-primary"></i>
-                                        </div>
-                                        <ul class="list-group list-group-flush">
-                                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                                <strong>ID:</strong>
-                                                <span id="perfil-id">-</span>
-                                            </li>
-                                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                                <strong>Nome:</strong>
-                                                <span id="perfil-nome">-</span>
-                                            </li>
-                                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                                <strong>Email:</strong>
-                                                <span id="perfil-email">-</span>
-                                            </li>
-                                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                                <strong>Disciplinas:</strong>
-                                                <span id="perfil-disciplinas">-</span>
-                                            </li>
-                                        </ul>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Atividades Recentes -->
-                        <div class="row">
-                            <div class="col-12">
-                                <div class="card shadow mb-4">
-                                    <div class="card-header py-3">
-                                        <h6 class="m-0 font-weight-bold text-primary">Atividades Recentes</h6>
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="timeline" id="logs-atividades">
-                                            <p class="text-center text-muted">Carregando atividades recentes...</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Conteúdo de Alunos (somente para visualização) -->
-                    <div id="conteudo-alunos" class="conteudo-secao">
-                        <h2 class="h3 mb-4">Meus Alunos</h2>
-                        
-                        <!-- Filtros -->
-                        <div class="card shadow mb-4">
+                <div class="row mt-4">
+                    <!-- Minhas Turmas e Disciplinas -->
+                    <div class="col-md-8 mb-4">
+                        <div class="card shadow h-100">
                             <div class="card-header py-3 d-flex justify-content-between align-items-center">
-                                <h6 class="m-0 font-weight-bold text-primary">Filtrar Alunos</h6>
-                            </div>
-                            <div class="card-body">
-                                <form id="form-filtro-alunos-professor">
-                                    <div class="row mb-3">
-                                        <div class="col-md-6">
-                                            <label for="filtro-turma-professor" class="form-label">Turma</label>
-                                            <select class="form-select" id="filtro-turma-professor">
-                                                <option value="">Todas as turmas</option>
-                                            </select>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <label for="filtro-disciplina-professor" class="form-label">Disciplina</label>
-                                            <select class="form-select" id="filtro-disciplina-professor">
-                                                <option value="">Todas as disciplinas</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                                        <button type="button" class="btn btn-primary" id="btn-filtrar-alunos-professor">
-                                            <i class="fas fa-filter"></i> Filtrar
-                                        </button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                        
-                        <!-- Tabela de Alunos -->
-                        <div class="card shadow mb-4">
-                            <div class="card-header py-3 d-flex justify-content-between align-items-center">
-                                <h6 class="m-0 font-weight-bold text-primary">Alunos</h6>
-                                <div>
-                                    <button type="button" class="btn btn-sm btn-outline-primary" id="btn-exportar-alunos-professor">
-                                        <i class="fas fa-file-export"></i> Exportar
-                                    </button>
-                                </div>
+                                <h6 class="m-0 font-weight-bold text-primary">Minhas Turmas e Disciplinas</h6>
                             </div>
                             <div class="card-body">
                                 <div class="table-responsive">
                                     <table class="table table-bordered">
                                         <thead class="table-light">
                                             <tr>
-                                                <th>ID</th>
-                                                <th>Nome</th>
-                                                <th>Turma</th>
-                                                <th>Ações</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="tabela-alunos-professor">
-                                            <!-- Dados dos alunos serão carregados aqui -->
-                                            <tr class="text-center">
-                                                <td colspan="4">Carregando...</td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Conteúdo de Gestão de Notas (com restrições) -->
-                    <div id="conteudo-notas" class="conteudo-secao">
-                        <h2 class="h3 mb-4">Gestão de Notas</h2>
-                        
-                        <!-- Card para filtros -->
-                        <div class="card shadow mb-4">
-                            <div class="card-header py-3 d-flex justify-content-between align-items-center">
-                                <h6 class="m-0 font-weight-bold text-primary">Filtros</h6>
-                            </div>
-                            <div class="card-body">
-                                <form id="form-filtro-notas-professor">
-                                    <div class="row mb-3">
-                                        <div class="col-md-4">
-                                            <label for="filtro-turma-notas" class="form-label">Turma</label>
-                                            <select class="form-select" id="filtro-turma-notas">
-                                                <option value="">Todas as turmas</option>
-                                            </select>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <label for="filtro-disciplina-notas" class="form-label">Disciplina</label>
-                                            <select class="form-select" id="filtro-disciplina-notas">
-                                                <option value="">Todas as disciplinas</option>
-                                            </select>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <label for="filtro-bimestre-notas" class="form-label">Bimestre</label>
-                                            <select class="form-select" id="filtro-bimestre-notas">
-                                                <option value="">Todos os bimestres</option>
-                                                <option value="1">1º Bimestre</option>
-                                                <option value="2">2º Bimestre</option>
-                                                <option value="3">3º Bimestre</option>
-                                                <option value="4">4º Bimestre</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div class="row mb-3">
-                                        <div class="col-md-4">
-                                            <label for="filtro-aluno-notas" class="form-label">Aluno</label>
-                                            <select class="form-select" id="filtro-aluno-notas">
-                                                <option value="">Todos os alunos</option>
-                                            </select>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <label for="filtro-ano-notas" class="form-label">Ano</label>
-                                            <select class="form-select" id="filtro-ano-notas">
-                                                <option value="">Todos os anos</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                                        <button type="button" class="btn btn-primary" id="btn-filtrar-notas">
-                                            <i class="fas fa-filter"></i> Filtrar
-                                        </button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                        
-                        <!-- Card para cadastro/edição de notas -->
-                        <div class="card shadow mb-4">
-                            <div class="card-header py-3 d-flex justify-content-between align-items-center">
-                                <h6 class="m-0 font-weight-bold text-primary" id="form-nota-titulo">Lançamento de Notas</h6>
-                                <button class="btn btn-outline-secondary btn-sm" id="btn-cancelar-nota" style="display: none;">
-                                    <i class="fas fa-times"></i> Cancelar
-                                </button>
-                            </div>
-                            <div class="card-body">
-                                <form id="form-nota">
-                                    <input type="hidden" id="form-modo-nota" value="novo">
-                                    <input type="hidden" id="nota-index" value="">
-                                    
-                                    <div class="row mb-3">
-                                        <div class="col-md-4">
-                                            <label for="ano_nota" class="form-label">Ano</label>
-                                            <select class="form-select" id="ano_nota" required>
-                                                <option value="">Selecione...</option>
-                                            </select>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <label for="bimestre" class="form-label">Bimestre</label>
-                                            <select class="form-select" id="bimestre" required>
-                                                <option value="">Selecione...</option>
-                                            </select>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <label for="turma_nota" class="form-label">Turma</label>
-                                            <select class="form-select" id="turma_nota" required>
-                                                <option value="">Selecione...</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="row mb-3">
-                                        <div class="col-md-6">
-                                            <label for="disciplina_nota" class="form-label">Disciplina</label>
-                                            <select class="form-select" id="disciplina_nota" required>
-                                                <option value="">Selecione...</option>
-                                            </select>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <label for="aluno_nota" class="form-label">Aluno</label>
-                                            <select class="form-select" id="aluno_nota" required>
-                                                <option value="">Selecione...</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="row mb-3">
-                                        <div class="col-md-4">
-                                            <label for="nota_mensal" class="form-label">Nota Mensal</label>
-                                            <input type="number" class="form-control" id="nota_mensal" min="0" max="10" step="0.1" placeholder="0.0 a 10.0">
-                                        </div>
-                                        <div class="col-md-4">
-                                            <label for="nota_bimestral" class="form-label">Nota Bimestral</label>
-                                            <input type="number" class="form-control" id="nota_bimestral" min="0" max="10" step="0.1" placeholder="0.0 a 10.0">
-                                        </div>
-                                        <div class="col-md-4">
-                                            <label for="recuperacao" class="form-label">Recuperação</label>
-                                            <input type="number" class="form-control" id="recuperacao" min="0" max="10" step="0.1" placeholder="0.0 a 10.0">
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="row mb-3">
-                                        <div class="col-md-4">
-                                            <label for="media" class="form-label">Média Final</label>
-                                            <input type="number" class="form-control" id="media" min="0" max="10" step="0.1" readonly placeholder="Calculada automaticamente">
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                                        <button type="submit" class="btn btn-primary" id="btn-salvar-nota">
-                                            <i class="fas fa-save"></i> Salvar Notas
-                                        </button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                        
-                        <!-- Card para listagem de notas -->
-                        <div class="card shadow mb-4">
-                            <div class="card-header py-3 d-flex justify-content-between align-items-center">
-                                <h6 class="m-0 font-weight-bold text-primary">Notas Lançadas</h6>
-                                <button class="btn btn-primary btn-sm" id="btn-novo-lancamento">
-                                    <i class="fas fa-plus"></i> Novo Lançamento
-                                </button>
-                            </div>
-                            <div class="card-body">
-                                <div class="table-responsive">
-                                    <table class="table table-bordered table-hover" id="tabela-notas">
-                                        <thead class="table-light">
-                                            <tr>
-                                                <th>Aluno</th>
-                                                <th>Turma</th>
                                                 <th>Disciplina</th>
-                                                <th>Bimestre</th>
-                                                <th>Nota Mensal</th>
-                                                <th>Nota Bimestral</th>
-                                                <th>Recuperação</th>
-                                                <th>Média</th>
-                                                <th>Ações</th>
+                                                <th>Turmas</th>
+                                                <th>Alunos</th>
                                             </tr>
                                         </thead>
-                                        <tbody id="notas-lista">
-                                            <!-- Notas serão listadas aqui via JavaScript -->
+                                        <tbody id="professor-disciplinas-lista">
+                                            <!-- Disciplinas e turmas do professor serão exibidas aqui -->
                                             <tr class="text-center">
-                                                <td colspan="9">Selecione os filtros para visualizar as notas</td>
+                                                <td colspan="3">Carregando...</td>
                                             </tr>
                                         </tbody>
                                     </table>
@@ -508,188 +196,449 @@
                         </div>
                     </div>
                     
-                    <!-- Rodapé -->
-                    <footer class="mt-5 mb-4">
-                        <div class="text-center">
-                            <p class="text-muted">&copy; 2024 EMEF Nazaré Rodrigues</p>
+                    <!-- Meu Perfil -->
+                    <div class="col-md-4 mb-4">
+                        <div class="card shadow h-100">
+                            <div class="card-header py-3">
+                                <h6 class="m-0 font-weight-bold text-primary">Meu Perfil</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="text-center mb-4">
+                                    <i class="fas fa-user-circle fa-5x text-primary"></i>
+                                </div>
+                                <ul class="list-group list-group-flush">
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        <strong>ID:</strong>
+                                        <span id="perfil-id">-</span>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        <strong>Nome:</strong>
+                                        <span id="perfil-nome">-</span>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        <strong>Email:</strong>
+                                        <span id="perfil-email">-</span>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        <strong>Disciplinas:</strong>
+                                        <span id="perfil-disciplinas">-</span>
+                                    </li>
+                                </ul>
+                            </div>
                         </div>
-                    </footer>
+                    </div>
                 </div>
-            </main>
+                
+                <!-- Atividades Recentes -->
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card shadow mb-4">
+                            <div class="card-header py-3">
+                                <h6 class="m-0 font-weight-bold text-primary">Atividades Recentes</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="timeline" id="logs-atividades">
+                                    <p class="text-center text-muted">Carregando atividades recentes...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Conteúdo de Alunos -->
+            <div id="conteudo-alunos" class="conteudo-secao">
+                <h2 class="h3 mb-4">Meus Alunos</h2>
+                
+                <!-- Filtros -->
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                        <h6 class="m-0 font-weight-bold text-primary">Filtrar Alunos</h6>
+                        <button class="btn btn-sm btn-outline-secondary d-md-none" type="button" data-bs-toggle="collapse" data-bs-target="#filtrosAlunos">
+                            <i class="fas fa-filter"></i>
+                        </button>
+                    </div>
+                    <div class="card-body collapse show" id="filtrosAlunos">
+                        <form id="form-filtro-alunos-professor">
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="filtro-turma-professor" class="form-label">Turma</label>
+                                    <select class="form-select" id="filtro-turma-professor">
+                                        <option value="">Todas as turmas</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="filtro-disciplina-professor" class="form-label">Disciplina</label>
+                                    <select class="form-select" id="filtro-disciplina-professor">
+                                        <option value="">Todas as disciplinas</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                <button type="button" class="btn btn-primary" id="btn-filtrar-alunos-professor">
+                                    <i class="fas fa-filter"></i> Filtrar
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                
+                <!-- Tabela de Alunos -->
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                        <h6 class="m-0 font-weight-bold text-primary">Alunos</h6>
+                        <div>
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="btn-exportar-alunos-professor">
+                                <i class="fas fa-file-export"></i> <span class="d-none d-md-inline">Exportar</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-bordered">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Nome</th>
+                                        <th>Turma</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tabela-alunos-professor">
+                                    <!-- Dados dos alunos serão carregados aqui -->
+                                    <tr class="text-center">
+                                        <td colspan="4">Carregando...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Conteúdo de Gestão de Notas -->
+            <div id="conteudo-notas" class="conteudo-secao">
+                <h2 class="h3 mb-4">Gestão de Notas</h2>
+                
+                <!-- Card para filtros -->
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                        <h6 class="m-0 font-weight-bold text-primary">Filtros</h6>
+                        <button class="btn btn-sm btn-outline-secondary d-md-none" type="button" data-bs-toggle="collapse" data-bs-target="#filtrosNotas">
+                            <i class="fas fa-filter"></i>
+                        </button>
+                    </div>
+                    <div class="card-body collapse show" id="filtrosNotas">
+                        <form id="form-filtro-notas-professor">
+                            <div class="row mb-3">
+                                <div class="col-md-4">
+                                    <label for="filtro-turma-notas" class="form-label">Turma</label>
+                                    <select class="form-select" id="filtro-turma-notas">
+                                        <option value="">Todas as turmas</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="filtro-disciplina-notas" class="form-label">Disciplina</label>
+                                    <select class="form-select" id="filtro-disciplina-notas">
+                                        <option value="">Todas as disciplinas</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="filtro-bimestre-notas" class="form-label">Bimestre</label>
+                                    <select class="form-select" id="filtro-bimestre-notas">
+                                        <option value="">Todos os bimestres</option>
+                                        <option value="1">1º Bimestre</option>
+                                        <option value="2">2º Bimestre</option>
+                                        <option value="3">3º Bimestre</option>
+                                        <option value="4">4º Bimestre</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-md-4">
+                                    <label for="filtro-aluno-notas" class="form-label">Aluno</label>
+                                    <select class="form-select" id="filtro-aluno-notas">
+                                        <option value="">Todos os alunos</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="filtro-ano-notas" class="form-label">Ano</label>
+                                    <select class="form-select" id="filtro-ano-notas">
+                                        <option value="">Todos os anos</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                <button type="button" class="btn btn-primary" id="btn-filtrar-notas">
+                                    <i class="fas fa-filter"></i> Filtrar
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                
+                <!-- Card para cadastro/edição de notas -->
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                        <h6 class="m-0 font-weight-bold text-primary" id="form-nota-titulo">Lançamento de Notas</h6>
+                        <button class="btn btn-outline-secondary btn-sm" id="btn-cancelar-nota" style="display: none;">
+                            <i class="fas fa-times"></i> Cancelar
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <form id="form-nota">
+                            <input type="hidden" id="form-modo-nota" value="novo">
+                            <input type="hidden" id="nota-index" value="">
+                            
+                            <div class="row mb-3">
+                                <div class="col-md-4">
+                                    <label for="ano_nota" class="form-label">Ano</label>
+                                    <select class="form-select" id="ano_nota" required>
+                                        <option value="">Selecione...</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="bimestre" class="form-label">Bimestre</label>
+                                    <select class="form-select" id="bimestre" required>
+                                        <option value="">Selecione...</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="turma_nota" class="form-label">Turma</label>
+                                    <select class="form-select" id="turma_nota" required>
+                                        <option value="">Selecione...</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="disciplina_nota" class="form-label">Disciplina</label>
+                                    <select class="form-select" id="disciplina_nota" required>
+                                        <option value="">Selecione...</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="aluno_nota" class="form-label">Aluno</label>
+                                    <select class="form-select" id="aluno_nota" required>
+                                        <option value="">Selecione...</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="row mb-3">
+                                <div class="col-md-4">
+                                    <label for="nota_mensal" class="form-label">Nota Mensal</label>
+                                    <input type="number" class="form-control" id="nota_mensal" min="0" max="10" step="0.1" placeholder="0.0 a 10.0">
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="nota_bimestral" class="form-label">Nota Bimestral</label>
+                                    <input type="number" class="form-control" id="nota_bimestral" min="0" max="10" step="0.1" placeholder="0.0 a 10.0">
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="recuperacao" class="form-label">Recuperação</label>
+                                    <input type="number" class="form-control" id="recuperacao" min="0" max="10" step="0.1" placeholder="0.0 a 10.0">
+                                </div>
+                            </div>
+                            
+                            <div class="row mb-3">
+                                <div class="col-md-4">
+                                    <label for="media" class="form-label">Média Final</label>
+                                    <input type="number" class="form-control" id="media" min="0" max="10" step="0.1" readonly placeholder="Calculada automaticamente">
+                                </div>
+                            </div>
+                            
+                            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                <button type="submit" class="btn btn-primary" id="btn-salvar-nota">
+                                    <i class="fas fa-save"></i> Salvar Notas
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                
+                <!-- Card para listagem de notas -->
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                        <h6 class="m-0 font-weight-bold text-primary">Notas Lançadas</h6>
+                        <button class="btn btn-primary btn-sm" id="btn-novo-lancamento">
+                            <i class="fas fa-plus"></i> <span class="d-none d-md-inline">Novo Lançamento</span>
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-hover" id="tabela-notas">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Aluno</th>
+                                        <th>Turma</th>
+                                        <th>Disciplina</th>
+                                        <th>Bimestre</th>
+                                        <th>Nota Mensal</th>
+                                        <th>Nota Bimestral</th>
+                                        <th>Recuperação</th>
+                                        <th>Média</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="notas-lista">
+                                    <!-- Notas serão listadas aqui via JavaScript -->
+                                    <tr class="text-center">
+                                        <td colspan="9">Selecione os filtros para visualizar as notas</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Rodapé -->
+            <footer class="mt-5 mb-5 pb-4">
+                <div class="text-center">
+                    <p class="text-muted">&copy; 2024 EMEF Nazaré Rodrigues</p>
+                </div>
+            </footer>
         </div>
+    </main>
+    
+    <!-- Navegação Inferior Mobile -->
+    <div class="bottom-nav d-md-none">
+        <a href="#" class="bottom-nav-item active" id="bottom-dashboard-link">
+            <i class="fas fa-home bottom-nav-icon"></i>
+            <span class="bottom-nav-text">Dashboard</span>
+        </a>
+        <a href="#" class="bottom-nav-item" id="bottom-alunos-link">
+            <i class="fas fa-user-graduate bottom-nav-icon"></i>
+            <span class="bottom-nav-text">Alunos</span>
+        </a>
+        <a href="#" class="bottom-nav-item" id="bottom-notas-link">
+            <i class="fas fa-graduation-cap bottom-nav-icon"></i>
+            <span class="bottom-nav-text">Notas</span>
+        </a>
+        <a href="#" class="bottom-nav-item" id="bottom-perfil-link">
+            <i class="fas fa-user-circle bottom-nav-icon"></i>
+            <span class="bottom-nav-text">Perfil</span>
+        </a>
     </div>
     
-    <!-- Script para garantir que o botão de logout funcione (versão simplificada) -->
+    <!-- Botão Voltar ao Topo -->
+    <a href="#" class="back-to-top" id="backToTop">
+        <i class="fas fa-arrow-up"></i>
+    </a>
+    
+    <!-- Scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/professor-dashboard-novo.js?v=5"></script>
+    
+    <!-- Script adicional para elementos da nova interface mobile -->
     <script>
-        // Função de logout direta
-        function fazerLogout() {
-            console.log("Logout direto acionado");
-            // Limpar sessão
-            sessionStorage.clear();
-            // Redirecionar para a página inicial
-            window.location.href = 'index.html';
-        }
-        
-        // Função para alternar o sidebar (expandir/recolher)
-        function toggleSidebarFunc() {
-            const sidebarMenu = document.getElementById('sidebarMenu');
-            const mainContent = document.getElementById('mainContent');
-            const sidebarIcon = document.getElementById('sidebarIcon');
-            
-            console.log("Toggle sidebar chamado - estado atual:", sidebarMenu ? sidebarMenu.classList.contains('collapsed') : "sidebar não encontrado");
-            
-            if (!sidebarMenu) {
-                console.error("Elemento sidebar não encontrado!");
-                return;
-            }
-            
-            sidebarMenu.classList.toggle('collapsed');
-            mainContent.classList.toggle('expanded');
-            
-            // Alternar a ícone e margem do conteúdo principal
-            if (sidebarMenu.classList.contains('collapsed')) {
-                console.log("Recolhendo sidebar...");
-                sidebarIcon.classList.remove('fa-angle-left');
-                sidebarIcon.classList.add('fa-angle-right');
-            } else {
-                console.log("Expandindo sidebar...");
-                sidebarIcon.classList.remove('fa-angle-right');
-                sidebarIcon.classList.add('fa-angle-left');
-            }
-            
-            // Salvar o estado do sidebar no localStorage
-            localStorage.setItem('professorSidebarCollapsed', sidebarMenu.classList.contains('collapsed'));
-            console.log("Estado do sidebar salvo no localStorage:", sidebarMenu.classList.contains('collapsed'));
-        }
-        
-        // Garantir que o botão de logout tenha o evento de clique
         document.addEventListener('DOMContentLoaded', function() {
-            console.log("DOM carregado, inicializando dropdowns");
+            // Controle do botão voltar ao topo
+            const backToTopButton = document.getElementById('backToTop');
             
-            // Inicializar manualmente todos os dropdowns para garantir funcionamento
-            var dropdownElementList = [].slice.call(document.querySelectorAll('.dropdown-toggle'));
-            dropdownElementList.map(function (dropdownToggleEl) {
-                return new bootstrap.Dropdown(dropdownToggleEl, {
-                    boundary: 'viewport'
-                });
-            });
-            
-            // Toggle Sidebar para desktop e mobile
-            const toggleSidebar = document.getElementById('toggleSidebar');
-            const toggleSidebarDesktop = document.getElementById('toggleSidebarDesktop');
-            const sidebarMenu = document.getElementById('sidebarMenu');
-            const mainContent = document.getElementById('mainContent');
-            const sidebarIcon = document.getElementById('sidebarIcon');
-            
-            if (toggleSidebar) {
-                toggleSidebar.addEventListener('click', function() {
-                    sidebarMenu.classList.toggle('show-mobile');
-                });
-            }
-            
-            if (toggleSidebarDesktop) {
-                console.log("Adicionando evento de clique ao botão de toggle do sidebar");
-                
-                // Importante: remover qualquer listener existente primeiro para evitar duplicações
-                const btnClone = toggleSidebarDesktop.cloneNode(true);
-                if (toggleSidebarDesktop.parentNode) {
-                    toggleSidebarDesktop.parentNode.replaceChild(btnClone, toggleSidebarDesktop);
-                }
-                
-                // Adicionar o event listener ao elemento clonado
-                btnClone.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    console.log("Botão de toggle do sidebar clicado");
-                    toggleSidebarFunc();
-                });
-                
-                console.log("Evento de toggle adicionado ao botão do sidebar desktop");
-            } else {
-                console.error("Botão de toggle do sidebar não encontrado!");
-            }
-            
-            // Verificar se o sidebar estava recolhido anteriormente
-            const sidebarCollapsed = localStorage.getItem('professorSidebarCollapsed') === 'true';
-            console.log("Estado do sidebar no localStorage:", sidebarCollapsed);
-            
-            // Restaurar o estado do sidebar conforme o localStorage
-            if (sidebarMenu) {
-                if (sidebarCollapsed) {
-                    if (!sidebarMenu.classList.contains('collapsed')) {
-                        console.log("Inicializando sidebar como recolhido");
-                        // Chamar a função de toggle para recolher a sidebar
-                        toggleSidebarFunc();
-                    }
+            window.addEventListener('scroll', function() {
+                if (window.pageYOffset > 300) {
+                    backToTopButton.classList.add('show');
                 } else {
-                    if (sidebarMenu.classList.contains('collapsed')) {
-                        console.log("Inicializando sidebar como expandido");
-                        // Chamar a função de toggle para expandir a sidebar
-                        toggleSidebarFunc();
+                    backToTopButton.classList.remove('show');
+                }
+            });
+            
+            backToTopButton.addEventListener('click', function(e) {
+                e.preventDefault();
+                window.scrollTo({top: 0, behavior: 'smooth'});
+            });
+            
+            // Navegação inferior mobile
+            const bottomNavItems = document.querySelectorAll('.bottom-nav-item');
+            const navLinks = {
+                'bottom-dashboard-link': 'dashboard-link',
+                'bottom-alunos-link': 'alunos-link',
+                'bottom-notas-link': 'notas-link',
+                'bottom-perfil-link': 'perfil-professor-link'
+            };
+            
+            bottomNavItems.forEach(item => {
+                item.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    
+                    // Remover classe ativa de todos os itens
+                    bottomNavItems.forEach(navItem => navItem.classList.remove('active'));
+                    
+                    // Adicionar classe ativa ao item clicado
+                    this.classList.add('active');
+                    
+                    // Simular clique no link correspondente no navbar
+                    const correspondingLink = navLinks[this.id];
+                    if (correspondingLink) {
+                        document.getElementById(correspondingLink).click();
                     }
-                }
-            }
-            
-            var btnLogout = document.getElementById('btn-logout');
-            if (btnLogout) {
-                btnLogout.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    console.log("Botão de logout clicado");
-                    fazerLogout();
+                    
+                    // Fechar o menu hamburger se estiver aberto
+                    const navbarCollapse = document.getElementById('navbarNav');
+                    if (navbarCollapse.classList.contains('show')) {
+                        document.querySelector('.navbar-toggler').click();
+                    }
                 });
-                console.log("Evento de logout registrado com sucesso");
-            } else {
-                console.error("Elemento btn-logout não encontrado!");
-            }
-            
-            var sidebarLogout = document.getElementById('sidebar-logout');
-            if (sidebarLogout) {
-                sidebarLogout.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    console.log("Botão de sidebar logout clicado");
-                    fazerLogout();
-                });
-                console.log("Evento de logout sidebar registrado com sucesso");
-            } else {
-                console.error("Elemento sidebar-logout não encontrado!");
-            }
-            
-            // Adicionar event listener global para capturar cliques em qualquer lugar do documento
-            document.addEventListener('click', function(e) {
-                // Verificar se o clique foi no botão de logout ou em algum de seus elementos filhos
-                if (e.target.id === 'btn-logout' || e.target.closest('#btn-logout') ||
-                    e.target.id === 'sidebar-logout' || e.target.closest('#sidebar-logout')) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    console.log("Clique no botão de logout capturado globalmente");
-                    fazerLogout();
-                }
             });
             
-            // Adicionar evento de teclado para permitir logout via tecla ESC
-            document.addEventListener('keydown', function(e) {
-                if (e.key === 'Escape' && document.querySelector('.dropdown-menu.show')) {
-                    console.log("Tecla ESC pressionada com dropdown aberto");
-                    document.querySelector('.dropdown-menu.show').classList.remove('show');
-                }
+            // Sincronizar estado ativo entre navbar e bottom-nav
+            const mainNavLinks = document.querySelectorAll('#navbarNav .nav-link');
+            
+            mainNavLinks.forEach(link => {
+                link.addEventListener('click', function() {
+                    // Atualizar bottom-nav ativo
+                    for (const [bottomId, mainId] of Object.entries(navLinks)) {
+                        if (mainId === this.id) {
+                            document.querySelectorAll('.bottom-nav-item').forEach(item => {
+                                item.classList.remove('active');
+                            });
+                            document.getElementById(bottomId).classList.add('active');
+                            break;
+                        }
+                    }
+                });
             });
             
-            // Corrigir problemas de clique na dropdown-menu
-            var dropdownMenus = document.querySelectorAll('.dropdown-menu');
-            dropdownMenus.forEach(function(menu) {
-                menu.addEventListener('click', function(e) {
-                    // Impedir que o clique no menu propague para elementos pai
-                    // que possam fechar o dropdown
-                    e.stopPropagation();
+            // Adaptações para colapsar filtros em mobile
+            const filtrosToggles = document.querySelectorAll('[data-bs-toggle="collapse"]');
+            filtrosToggles.forEach(toggle => {
+                toggle.addEventListener('click', function() {
+                    const icon = this.querySelector('i');
+                    if (icon) {
+                        if (icon.classList.contains('fa-filter')) {
+                            icon.classList.remove('fa-filter');
+                            icon.classList.add('fa-times');
+                        } else {
+                            icon.classList.remove('fa-times');
+                            icon.classList.add('fa-filter');
+                        }
+                    }
                 });
+            });
+            
+            // Função de logout para garantir funcionamento
+            function fazerLogout() {
+                console.log("Logout acionado");
+                sessionStorage.clear();
+                window.location.href = 'index.html';
+            }
+            
+            // Configurar evento de logout para todos os botões
+            const logoutButtons = [
+                document.getElementById('btn-logout')
+            ];
+            
+            logoutButtons.forEach(button => {
+                if (button) {
+                    button.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        fazerLogout();
+                    });
+                }
             });
         });
     </script>
-    
-    <!-- Scripts Personalizados -->
-    <script src="js/config.js"></script>
-    <script src="js/professor-dashboard-novo.js?v=5"></script>
 </body>
 </html> 
