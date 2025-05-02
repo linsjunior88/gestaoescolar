@@ -1697,28 +1697,37 @@ function initNotas() {
         }
         
         // Definir variáveis globais para os filtros para uso em outras funções
-        window.filtroTurma = document.getElementById('filtro-turma-notas');
-        window.filtroDisciplina = document.getElementById('filtro-disciplina-notas');
-        window.filtroAluno = document.getElementById('filtro-aluno-notas');
-        window.filtroAno = document.getElementById('filtro-ano-notas');
-        window.filtroBimestre = document.getElementById('filtro-bimestre-notas');
+        // PROBLEMA: Estava usando window.filtroTurma, mas o código lê da variável global filtroTurma sem window
+        // Corrigir atribuindo às variáveis globais diretamente
+        filtroTurma = document.getElementById('filtro-turma-notas');
+        filtroDisciplina = document.getElementById('filtro-disciplina-notas');
+        filtroAluno = document.getElementById('filtro-aluno-notas');
+        filtroAno = document.getElementById('filtro-ano-notas');
+        filtroBimestre = document.getElementById('filtro-bimestre-notas');
+        
+        // Também atribuir às variáveis window para compatibilidade
+        window.filtroTurma = filtroTurma;
+        window.filtroDisciplina = filtroDisciplina;
+        window.filtroAluno = filtroAluno;
+        window.filtroAno = filtroAno;
+        window.filtroBimestre = filtroBimestre;
         
         // Verificar os elementos encontrados
         console.log('Elementos de filtro encontrados:', {
-            filtroTurma: window.filtroTurma ? '#' + window.filtroTurma.id : null,
-            filtroDisciplina: window.filtroDisciplina ? '#' + window.filtroDisciplina.id : null,
-            filtroAluno: window.filtroAluno ? '#' + window.filtroAluno.id : null,
-            filtroAno: window.filtroAno ? '#' + window.filtroAno.id : null,
-            filtroBimestre: window.filtroBimestre ? '#' + window.filtroBimestre.id : null
+            filtroTurma: filtroTurma ? '#' + filtroTurma.id : null,
+            filtroDisciplina: filtroDisciplina ? '#' + filtroDisciplina.id : null,
+            filtroAluno: filtroAluno ? '#' + filtroAluno.id : null,
+            filtroAno: filtroAno ? '#' + filtroAno.id : null,
+            filtroBimestre: filtroBimestre ? '#' + filtroBimestre.id : null
         });
         
         // Se ainda faltam filtros, exibir alerta
         const filtrosFaltando = [];
-        if (!window.filtroTurma) filtrosFaltando.push('Turma');
-        if (!window.filtroDisciplina) filtrosFaltando.push('Disciplina');
-        if (!window.filtroAluno) filtrosFaltando.push('Aluno');
-        if (!window.filtroAno) filtrosFaltando.push('Ano');
-        if (!window.filtroBimestre) filtrosFaltando.push('Bimestre');
+        if (!filtroTurma) filtrosFaltando.push('Turma');
+        if (!filtroDisciplina) filtrosFaltando.push('Disciplina');
+        if (!filtroAluno) filtrosFaltando.push('Aluno');
+        if (!filtroAno) filtrosFaltando.push('Ano');
+        if (!filtroBimestre) filtrosFaltando.push('Bimestre');
         
         if (filtrosFaltando.length > 0) {
             console.error('Filtros não encontrados mesmo após tentativa de criação:', filtrosFaltando.join(', '));
@@ -1738,7 +1747,7 @@ function initNotas() {
         }
         
         // Inicializar valores padrão para o ano
-        if (window.filtroAno) {
+        if (filtroAno) {
             const anoAtual = new Date().getFullYear();
             let opcoesAnos = '';
             
@@ -1746,12 +1755,12 @@ function initNotas() {
                 opcoesAnos += `<option value="${ano}" ${ano === anoAtual ? 'selected' : ''}>${ano}</option>`;
             }
             
-            window.filtroAno.innerHTML = `<option value="">Selecione o ano</option>${opcoesAnos}`;
+            filtroAno.innerHTML = `<option value="">Selecione o ano</option>${opcoesAnos}`;
         }
         
         // Inicializar valores padrão para bimestre (garantir que seja apenas uma vez)
-        if (window.filtroBimestre && window.filtroBimestre.options.length <= 1) {
-            window.filtroBimestre.innerHTML = `
+        if (filtroBimestre && filtroBimestre.options.length <= 1) {
+            filtroBimestre.innerHTML = `
                 <option value="">Selecione o bimestre</option>
                 <option value="1">1º Bimestre</option>
                 <option value="2">2º Bimestre</option>
@@ -1761,9 +1770,9 @@ function initNotas() {
         }
         
         // Carregar dados para os filtros
-        if (window.filtroTurma) {
+        if (filtroTurma) {
             // Evitar chamadas repetidas verificando se já tem opções
-            if (window.filtroTurma.options.length <= 1) {
+            if (filtroTurma.options.length <= 1) {
                 carregarTurmasDoProfessor(professorId)
                     .then(turmas => {
                         if (turmas && turmas.length > 0) {
@@ -1772,38 +1781,38 @@ function initNotas() {
                                 opcoesTurmas += `<option value="${turma.id}">${turma.nome}</option>`;
                             });
                             
-                            window.filtroTurma.innerHTML = `<option value="">Selecione a turma</option>${opcoesTurmas}`;
+                            filtroTurma.innerHTML = `<option value="">Selecione a turma</option>${opcoesTurmas}`;
                             
                             // Configurar evento de mudança apenas após termos dados
-                            if (!window.filtroTurma.hasEventListener) {
-                                window.filtroTurma.addEventListener('change', function() {
+                            if (!filtroTurma.hasEventListener) {
+                                filtroTurma.addEventListener('change', function() {
                                     const idTurma = this.value;
                                     console.log('Turma selecionada:', idTurma);
                                     
-                                    if (window.filtroDisciplina) {
+                                    if (filtroDisciplina) {
                                         carregarDisciplinasParaFiltro(idTurma);
                                     }
                                     
-                                    if (window.filtroAluno) {
-                                        carregarAlunosParaFiltro(idTurma, window.filtroDisciplina ? window.filtroDisciplina.value : null);
+                                    if (filtroAluno) {
+                                        carregarAlunosParaFiltro(idTurma, filtroDisciplina ? filtroDisciplina.value : null);
                                     }
                                 });
-                                window.filtroTurma.hasEventListener = true;
+                                filtroTurma.hasEventListener = true;
                             }
                         } else {
                             console.warn('Nenhuma turma disponível');
-                            window.filtroTurma.innerHTML = '<option value="">Nenhuma turma disponível</option>';
+                            filtroTurma.innerHTML = '<option value="">Nenhuma turma disponível</option>';
                         }
                     })
                     .catch(error => {
                         console.error('Erro ao carregar turmas:', error);
-                        window.filtroTurma.innerHTML = '<option value="">Erro ao carregar turmas</option>';
+                        filtroTurma.innerHTML = '<option value="">Erro ao carregar turmas</option>';
                     });
             }
         }
         
         // Inicializar disciplinas do professor
-        if (window.filtroDisciplina && window.filtroDisciplina.options.length <= 1) {
+        if (filtroDisciplina && filtroDisciplina.options.length <= 1) {
             carregarDisciplinasDoProfessor(professorId)
                 .then(disciplinas => {
                     if (disciplinas && disciplinas.length > 0) {
@@ -1812,19 +1821,19 @@ function initNotas() {
                             opcoesDisciplinas += `<option value="${disciplina.id}">${disciplina.nome}</option>`;
                         });
                         
-                        window.filtroDisciplina.innerHTML = `<option value="">Selecione a disciplina</option>${opcoesDisciplinas}`;
+                        filtroDisciplina.innerHTML = `<option value="">Selecione a disciplina</option>${opcoesDisciplinas}`;
                         
                         // Configurar evento de mudança
-                        if (!window.filtroDisciplina.hasEventListener) {
-                            window.filtroDisciplina.addEventListener('change', function() {
+                        if (!filtroDisciplina.hasEventListener) {
+                            filtroDisciplina.addEventListener('change', function() {
                                 const idDisciplina = this.value;
-                                const idTurma = window.filtroTurma ? window.filtroTurma.value : null;
+                                const idTurma = filtroTurma ? filtroTurma.value : null;
                                 
-                                if (window.filtroAluno) {
+                                if (filtroAluno) {
                                     carregarAlunosParaFiltro(idTurma, idDisciplina);
                                 }
                             });
-                            window.filtroDisciplina.hasEventListener = true;
+                            filtroDisciplina.hasEventListener = true;
                         }
                     }
                 })
@@ -1907,8 +1916,14 @@ function carregarDisciplinasParaFiltro(idTurma = null) {
     
     // Verificar se o elemento existe
     if (!filtroDisciplina) {
-        console.error('Elemento de filtro de disciplina não encontrado!');
-        return;
+        console.error('Elemento de filtro de disciplina não encontrado! Tentando buscar novamente...');
+        filtroDisciplina = document.getElementById('filtro-disciplina-notas');
+        window.filtroDisciplina = filtroDisciplina;
+        
+        if (!filtroDisciplina) {
+            console.error('Elemento de filtro de disciplina ainda não encontrado após nova tentativa!');
+            return;
+        }
     }
     
     // Desabilitar o select enquanto carrega
@@ -1922,6 +1937,8 @@ function carregarDisciplinasParaFiltro(idTurma = null) {
         url = CONFIG.getApiUrl(`/professores/${professorId}/turmas/${idTurma}/disciplinas`);
     }
     
+    console.log('URL para carregar disciplinas:', url);
+    
     // Buscar disciplinas
     fetch(url)
         .then(response => {
@@ -1931,7 +1948,7 @@ function carregarDisciplinasParaFiltro(idTurma = null) {
             return response.json();
         })
         .then(disciplinas => {
-            console.log('Disciplinas para filtro:', disciplinas);
+            console.log('Disciplinas carregadas com sucesso:', disciplinas);
             
             filtroDisciplina.innerHTML = '<option value="">Todas as disciplinas</option>';
             
@@ -1939,7 +1956,7 @@ function carregarDisciplinasParaFiltro(idTurma = null) {
                 disciplinas.forEach(disciplina => {
                     const option = document.createElement('option');
                     option.value = disciplina.id_disciplina;
-                    option.textContent = disciplina.nome_disciplina;
+                    option.textContent = disciplina.nome_disciplina || disciplina.id_disciplina;
                     filtroDisciplina.appendChild(option);
                 });
             }
@@ -1960,8 +1977,14 @@ function carregarAlunosParaFiltro(idTurma = null, idDisciplina = null) {
     
     // Verificar se o elemento existe
     if (!filtroAluno) {
-        console.error('Elemento de filtro de aluno não encontrado!');
-        return;
+        console.error('Elemento de filtro de aluno não encontrado! Tentando buscar novamente...');
+        filtroAluno = document.getElementById('filtro-aluno-notas');
+        window.filtroAluno = filtroAluno;
+        
+        if (!filtroAluno) {
+            console.error('Elemento de filtro de aluno ainda não encontrado após nova tentativa!');
+            return;
+        }
     }
     
     // Desabilitar o select enquanto carrega
@@ -1975,6 +1998,8 @@ function carregarAlunosParaFiltro(idTurma = null, idDisciplina = null) {
         url = CONFIG.getApiUrl(`/turmas/${idTurma}/alunos`);
     }
     
+    console.log('URL para carregar alunos:', url);
+    
     // Buscar alunos
     fetch(url)
         .then(response => {
@@ -1984,7 +2009,7 @@ function carregarAlunosParaFiltro(idTurma = null, idDisciplina = null) {
             return response.json();
         })
         .then(alunos => {
-            console.log('Alunos para filtro:', alunos);
+            console.log('Alunos carregados com sucesso:', alunos);
             
             filtroAluno.innerHTML = '<option value="">Todos os alunos</option>';
             
@@ -2019,12 +2044,19 @@ function carregarNotas() {
     console.log("=== INICIANDO CARREGAMENTO DE NOTAS ===");
     
     try {
-        // Obter valores dos filtros das variáveis globais
-        const idTurma = window.filtroTurma && window.filtroTurma.value ? window.filtroTurma.value : '';
-        const idDisciplina = window.filtroDisciplina && window.filtroDisciplina.value ? window.filtroDisciplina.value : '';
-        const idAluno = window.filtroAluno && window.filtroAluno.value ? window.filtroAluno.value : '';
-        const ano = window.filtroAno && window.filtroAno.value ? window.filtroAno.value : '';
-        const bimestre = window.filtroBimestre && window.filtroBimestre.value ? window.filtroBimestre.value : '';
+        // Garantir que temos acesso às variáveis de filtro - buscar novamente se necessário
+        if (!filtroTurma) filtroTurma = document.getElementById('filtro-turma-notas');
+        if (!filtroDisciplina) filtroDisciplina = document.getElementById('filtro-disciplina-notas');
+        if (!filtroAluno) filtroAluno = document.getElementById('filtro-aluno-notas');
+        if (!filtroAno) filtroAno = document.getElementById('filtro-ano-notas');
+        if (!filtroBimestre) filtroBimestre = document.getElementById('filtro-bimestre-notas');
+        
+        // Obter valores dos filtros
+        const idTurma = filtroTurma && filtroTurma.value ? filtroTurma.value : '';
+        const idDisciplina = filtroDisciplina && filtroDisciplina.value ? filtroDisciplina.value : '';
+        const idAluno = filtroAluno && filtroAluno.value ? filtroAluno.value : '';
+        const ano = filtroAno && filtroAno.value ? filtroAno.value : '';
+        const bimestre = filtroBimestre && filtroBimestre.value ? filtroBimestre.value : '';
         
         // Verificar se temos o ID do professor
         if (!professorId) {
@@ -2112,10 +2144,44 @@ function carregarNotas() {
                 console.log('Array de notas processado:', notas);
                 
                 // Filtrar as notas para garantir que são apenas do professor atual
-                notas = notas.filter(nota => 
-                    nota && 
-                    (!nota.professor_id || nota.professor_id == professorId || nota.id_professor == professorId)
-                );
+                // E aplicar os filtros selecionados
+                notas = notas.filter(nota => {
+                    // Primeiro filtrar por professor
+                    const professorMatch = !nota.professor_id || 
+                                         nota.professor_id == professorId || 
+                                         nota.id_professor == professorId;
+                    
+                    if (!professorMatch) return false;
+                    
+                    // Aplicar filtro de turma se selecionado
+                    if (idTurma && nota.id_turma != idTurma) {
+                        return false;
+                    }
+                    
+                    // Aplicar filtro de disciplina se selecionado
+                    if (idDisciplina && nota.id_disciplina != idDisciplina) {
+                        return false;
+                    }
+                    
+                    // Aplicar filtro de aluno se selecionado
+                    if (idAluno && nota.id_aluno != idAluno) {
+                        return false;
+                    }
+                    
+                    // Aplicar filtro de ano se selecionado
+                    if (ano && nota.ano != ano) {
+                        return false;
+                    }
+                    
+                    // Aplicar filtro de bimestre se selecionado
+                    if (bimestre && nota.bimestre != bimestre) {
+                        return false;
+                    }
+                    
+                    return true;
+                });
+                
+                console.log('Notas após aplicação dos filtros:', notas.length);
                 
                 // Buscar novamente a referência à tabela (pode ter mudado)
                 const notasTabela = document.getElementById('notas-lista');
@@ -2141,19 +2207,28 @@ function carregarNotas() {
                     return;
                 }
                 
-                // Ordenar notas por nome do aluno e bimestre
+                // Ordenar notas por aluno, disciplina, turma e bimestre
                 notas.sort((a, b) => {
                     // Primeiro por nome do aluno
                     const nomeA = a.nome_aluno || '';
                     const nomeB = b.nome_aluno || '';
                     const compareNome = nomeA.localeCompare(nomeB);
+                    if (compareNome !== 0) return compareNome;
                     
-                    // Se nomes iguais, ordenar por bimestre
-                    if (compareNome === 0) {
-                        return (a.bimestre || 0) - (b.bimestre || 0);
-                    }
+                    // Se nomes iguais, ordenar por disciplina
+                    const discA = a.nome_disciplina || a.id_disciplina || '';
+                    const discB = b.nome_disciplina || b.id_disciplina || '';
+                    const compareDisc = discA.localeCompare(discB);
+                    if (compareDisc !== 0) return compareDisc;
                     
-                    return compareNome;
+                    // Se disciplinas iguais, ordenar por turma
+                    const turmaA = a.id_turma || '';
+                    const turmaB = b.id_turma || '';
+                    const compareTurma = turmaA.localeCompare(turmaB);
+                    if (compareTurma !== 0) return compareTurma;
+                    
+                    // Por fim, ordenar por bimestre
+                    return (a.bimestre || 0) - (b.bimestre || 0);
                 });
                 
                 // Gerar HTML para a tabela
@@ -2248,8 +2323,11 @@ function carregarNotas() {
                 notasTabela.innerHTML = html;
                 
                 // Registrar atividade
+                const turmaTexto = idTurma ? (filtroTurma.options[filtroTurma.selectedIndex]?.text || idTurma) : 'Todas';
+                const disciplinaTexto = idDisciplina ? (filtroDisciplina.options[filtroDisciplina.selectedIndex]?.text || idDisciplina) : 'Todas';
+                
                 registrarAtividade('consulta', 'notas', professorId, 
-                    `Consulta de notas com filtros - Turma: ${idTurma || 'Todas'}, Disciplina: ${idDisciplina || 'Todas'}`);
+                    `Consulta de notas com filtros - Turma: ${turmaTexto}, Disciplina: ${disciplinaTexto}`);
                 
                 console.log('Notas carregadas com sucesso:', notas.length);
             })
@@ -3823,10 +3901,24 @@ function carregarTurmasDoProfessor(professorId) {
             console.log('Turmas recebidas da API:', turmas);
             
             // Mapear os campos para um formato padrão
-            return turmas.map(turma => ({
-                id: turma.id || turma.id_turma || turma.turma_id || "",
-                nome: turma.nome || turma.nome_turma || turma.descricao || turma.id_turma || ""
-            }));
+            return turmas.map(turma => {
+                // Verificar qual formato de ID está sendo usado
+                const turmaId = turma.id || turma.id_turma || turma.turma_id || "";
+                
+                // Construir um nome descritivo para a turma
+                let turmaNome = turma.nome || turma.nome_turma || turma.descricao || "";
+                if (!turmaNome) {
+                    turmaNome = `${turma.serie || ""} ${turma.turno || ""} (${turmaId})`.trim();
+                    if (turmaNome === "()") turmaNome = turmaId;
+                }
+                
+                console.log(`Turma processada: ID=${turmaId}, Nome=${turmaNome}`);
+                
+                return {
+                    id: turmaId,
+                    nome: turmaNome
+                };
+            });
         });
 }
 
@@ -3855,10 +3947,23 @@ function carregarDisciplinasDoProfessor(professorId) {
             console.log('Disciplinas recebidas da API:', disciplinas);
             
             // Mapear os campos para um formato padrão
-            return disciplinas.map(disciplina => ({
-                id: disciplina.id || disciplina.id_disciplina || disciplina.disciplina_id || "",
-                nome: disciplina.nome || disciplina.nome_disciplina || disciplina.descricao || disciplina.id_disciplina || ""
-            }));
+            return disciplinas.map(disciplina => {
+                // Verificar qual formato de ID está sendo usado
+                const disciplinaId = disciplina.id || disciplina.id_disciplina || disciplina.disciplina_id || "";
+                
+                // Obter o nome da disciplina com fallback
+                const disciplinaNome = disciplina.nome || 
+                                       disciplina.nome_disciplina || 
+                                       disciplina.descricao || 
+                                       disciplinaId;
+                
+                console.log(`Disciplina processada: ID=${disciplinaId}, Nome=${disciplinaNome}`);
+                
+                return {
+                    id: disciplinaId,
+                    nome: disciplinaNome
+                };
+            });
         });
 }
 
