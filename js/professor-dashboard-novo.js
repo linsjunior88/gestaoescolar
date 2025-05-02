@@ -1536,6 +1536,9 @@ function initAlunos() {
 function initNotas() {
     console.log('=== INICIALIZANDO MÓDULO DE NOTAS ===');
     
+    // Corrigir o header da card primeiro
+    corrigirHeaderNotas();
+    
     // Encontrar todos os selects na página para depuração
     const allSelects = document.querySelectorAll('select');
     console.log(`Total de ${allSelects.length} selects encontrados na página`);
@@ -1550,40 +1553,16 @@ function initNotas() {
         });
     });
     
-    // Declarar as variáveis dos filtros no escopo global para acesso em outras funções
+    // Baseado no log, sabemos quais são os IDs realmente disponíveis no DOM
+    // Vamos usar os IDs corretos que existem, em vez de procurar IDs que não existem
     window.filtroTurma = document.getElementById('filtro-turma-notas');
     window.filtroDisciplina = document.getElementById('filtro-disciplina-notas');
     window.filtroAluno = document.getElementById('filtro-aluno-notas');
     window.filtroAno = document.getElementById('filtro-ano-notas');
     window.filtroBimestre = document.getElementById('filtro-bimestre-notas');
     
-    // Se não encontrar os filtros com os IDs exatos, tentar com seletores genéricos
-    if (!filtroTurma) {
-        console.warn('Filtro de turma não encontrado com ID exato, buscando alternativas...');
-        filtroTurma = document.querySelector('select[id*="turma"], select[id*="Turma"]');
-    }
-    
-    if (!filtroDisciplina) {
-        console.warn('Filtro de disciplina não encontrado com ID exato, buscando alternativas...');
-        filtroDisciplina = document.querySelector('select[id*="disciplina"], select[id*="Disciplina"]');
-    }
-    
-    if (!filtroAluno) {
-        console.warn('Filtro de aluno não encontrado com ID exato, buscando alternativas...');
-        filtroAluno = document.querySelector('select[id*="aluno"], select[id*="Aluno"]');
-    }
-    
-    if (!filtroAno) {
-        console.warn('Filtro de ano não encontrado com ID exato, buscando alternativas...');
-        filtroAno = document.querySelector('select[id*="ano"], select[id*="Ano"]');
-    }
-    
-    if (!filtroBimestre) {
-        console.warn('Filtro de bimestre não encontrado com ID exato, buscando alternativas...');
-        filtroBimestre = document.querySelector('select[id*="bimestre"], select[id*="Bimestre"]');
-    }
-    
-    console.log('Elementos de filtro encontrados (finais):', {
+    // Verificar os elementos encontrados
+    console.log('Elementos de filtro encontrados (inicialmente):', {
         filtroTurma,
         filtroDisciplina,
         filtroAluno,
@@ -1593,29 +1572,52 @@ function initNotas() {
     
     // Verificar se existem elementos que não foram encontrados
     const filtrosNaoEncontrados = [];
-    if (!filtroTurma) filtrosNaoEncontrados.push('Turma');
-    if (!filtroDisciplina) filtrosNaoEncontrados.push('Disciplina');
+    if (!filtroTurma) {
+        console.warn('Filtro de turma não encontrado, usando filtro-turma-professor como alternativa');
+        window.filtroTurma = document.getElementById('filtro-turma-professor');
+        filtrosNaoEncontrados.push('filtro-turma-notas (usando alternativa)');
+    }
+    
+    if (!filtroDisciplina) {
+        console.warn('Filtro de disciplina não encontrado, usando filtro-disciplina-professor como alternativa');
+        window.filtroDisciplina = document.getElementById('filtro-disciplina-professor');
+        filtrosNaoEncontrados.push('filtro-disciplina-notas (usando alternativa)');
+    }
+    
     if (!filtroAluno) filtrosNaoEncontrados.push('Aluno');
     if (!filtroAno) filtrosNaoEncontrados.push('Ano');
     if (!filtroBimestre) filtrosNaoEncontrados.push('Bimestre');
     
+    console.log('Elementos de filtro encontrados (após correções):', {
+        filtroTurma,
+        filtroDisciplina,
+        filtroAluno,
+        filtroAno,
+        filtroBimestre
+    });
+    
     if (filtrosNaoEncontrados.length > 0) {
-        console.error('Filtros não encontrados:', filtrosNaoEncontrados.join(', '));
+        console.warn('Alguns filtros não foram encontrados:', filtrosNaoEncontrados.join(', '));
         
-        // Exibir alerta para o usuário
-        const notasContainer = document.querySelector('.card-body.notas-container');
-        if (notasContainer) {
-            notasContainer.innerHTML = `
-                <div class="alert alert-danger">
-                    <h4 class="alert-heading">Erro ao inicializar módulo de notas</h4>
-                    <p>Não foi possível encontrar os seguintes filtros: ${filtrosNaoEncontrados.join(', ')}</p>
-                    <hr>
-                    <p class="mb-0">Verifique se os elementos de filtro estão presentes no HTML com os IDs corretos.</p>
-                </div>
-            `;
+        // Exibir alerta para o usuário apenas se faltarem filtros críticos
+        const filtrosCriticosFaltando = filtrosNaoEncontrados.filter(f => 
+            !f.includes('usando alternativa'));
+        
+        if (filtrosCriticosFaltando.length > 0) {
+            const notasContainer = document.querySelector('.card-body.notas-container');
+            if (notasContainer) {
+                notasContainer.innerHTML = `
+                    <div class="alert alert-danger">
+                        <h4 class="alert-heading">Erro ao inicializar módulo de notas</h4>
+                        <p>Não foi possível encontrar os seguintes filtros: ${filtrosCriticosFaltando.join(', ')}</p>
+                        <hr>
+                        <p class="mb-0">Verifique se os elementos de filtro estão presentes no HTML com os IDs corretos.</p>
+                    </div>
+                `;
+            }
+            
+            return; // Encerrar a inicialização se filtros críticos não foram encontrados
         }
-        
-        return; // Encerrar a inicialização se filtros críticos não foram encontrados
     }
     
     // Inicializar valores padrão para o ano
@@ -1744,6 +1746,16 @@ function initNotas() {
         });
     } else {
         console.error('Botão de nova nota não encontrado!');
+        // Procurar botão alternativo para nova nota
+        const btnNovoGenerico = document.querySelector('button.btn-success, button[id*="novo"], button[id*="nova"]');
+        if (btnNovoGenerico) {
+            console.log('Encontrado botão genérico para nova nota, usando como alternativa:', btnNovoGenerico);
+            btnNovoGenerico.addEventListener('click', (e) => {
+                e.preventDefault();
+                console.log('Botão alternativo para nova nota clicado');
+                novaNota();
+            });
+        }
     }
     
     // Adicionar botão para lançamento em massa se não existir
@@ -1779,6 +1791,8 @@ function initNotas() {
                 </td>
             </tr>
         `;
+    } else {
+        console.error('Tabela de notas (notas-lista) não encontrada!');
     }
 }
 
@@ -1941,27 +1955,22 @@ function carregarAlunosParaFiltro(idTurma = null, idDisciplina = null) {
 function carregarNotas() {
     console.log("=== INICIANDO CARREGAMENTO DE NOTAS ===");
     
-    // Verificar se os elementos de filtro existem e capturar seus valores
-    const filtroTurmaEl = document.getElementById('filtro-turma-notas');
-    const filtroDisciplinaEl = document.getElementById('filtro-disciplina-notas');
-    const filtroAlunoEl = document.getElementById('filtro-aluno-notas');
-    const filtroAnoEl = document.getElementById('filtro-ano-notas');
-    const filtroBimestreEl = document.getElementById('filtro-bimestre-notas');
-    
-    console.log("Elementos DOM dos filtros:", {
-        filtroTurmaEl,
-        filtroDisciplinaEl,
-        filtroAlunoEl,
-        filtroAnoEl,
-        filtroBimestreEl
+    // Usar as variáveis globais definidas em initNotas()
+    // Não tentar encontrar os elementos novamente
+    console.log("Elementos DOM dos filtros globais:", {
+        filtroTurma: window.filtroTurma,
+        filtroDisciplina: window.filtroDisciplina,
+        filtroAluno: window.filtroAluno,
+        filtroAno: window.filtroAno,
+        filtroBimestre: window.filtroBimestre
     });
     
-    // Obter valores dos filtros com fallback para seletores genéricos
-    const idTurma = filtroTurmaEl ? filtroTurmaEl.value : '';
-    const idDisciplina = filtroDisciplinaEl ? filtroDisciplinaEl.value : '';
-    const idAluno = filtroAlunoEl ? filtroAlunoEl.value : '';
-    const ano = filtroAnoEl ? filtroAnoEl.value : '';
-    const bimestre = filtroBimestreEl ? filtroBimestreEl.value : '';
+    // Obter valores dos filtros das variáveis globais
+    const idTurma = window.filtroTurma ? window.filtroTurma.value : '';
+    const idDisciplina = window.filtroDisciplina ? window.filtroDisciplina.value : '';
+    const idAluno = window.filtroAluno ? window.filtroAluno.value : '';
+    const ano = window.filtroAno ? window.filtroAno.value : '';
+    const bimestre = window.filtroBimestre ? window.filtroBimestre.value : '';
     
     console.log('Valores dos filtros:', {
         idTurma,
@@ -2952,15 +2961,31 @@ function carregarNotasAluno(idAluno) {
 function abrirModoLancamentoEmMassa() {
     console.log('Abrindo modo de lançamento em massa...');
     
-    // Obter os valores dos filtros necessários
-    const turmaId = filtroTurma ? filtroTurma.value : '';
-    const disciplinaId = filtroDisciplina ? filtroDisciplina.value : '';
-    const ano = filtroAno ? filtroAno.value : '';
-    const bimestre = filtroBimestre ? filtroBimestre.value : '';
+    // Obter os valores dos filtros necessários das variáveis globais
+    const turmaId = window.filtroTurma ? window.filtroTurma.value : '';
+    const disciplinaId = window.filtroDisciplina ? window.filtroDisciplina.value : '';
+    const ano = window.filtroAno ? window.filtroAno.value : '';
+    const bimestre = window.filtroBimestre ? window.filtroBimestre.value : '';
+    
+    console.log('Valores dos filtros para lançamento em massa:', {
+        turmaId,
+        disciplinaId, 
+        ano, 
+        bimestre,
+        filtroTurma: window.filtroTurma,
+        filtroDisciplina: window.filtroDisciplina
+    });
     
     // Validar campos obrigatórios
     if (!turmaId || !disciplinaId || !ano || !bimestre) {
-        alert('Selecione turma, disciplina, ano e bimestre antes de usar o lançamento em massa!');
+        const camposFaltantes = [];
+        if (!turmaId) camposFaltantes.push('turma');
+        if (!disciplinaId) camposFaltantes.push('disciplina');
+        if (!ano) camposFaltantes.push('ano');
+        if (!bimestre) camposFaltantes.push('bimestre');
+        
+        console.error('Campos obrigatórios não preenchidos:', camposFaltantes);
+        alert(`Selecione ${camposFaltantes.join(', ')} antes de usar o lançamento em massa!`);
         return;
     }
     
@@ -2968,6 +2993,7 @@ function abrirModoLancamentoEmMassa() {
     const cardBody = document.querySelector('.card-body.notas-container');
     if (!cardBody) {
         console.error('Container para o formulário de lançamento em massa não encontrado!');
+        alert('Erro: Não foi possível localizar o container para o formulário de lançamento em massa.');
         return;
     }
     
@@ -2981,14 +3007,19 @@ function abrirModoLancamentoEmMassa() {
         </div>
     `;
     
+    console.log(`Carregando alunos da turma ${turmaId} para lançamento em massa...`);
+    
     // Carregar alunos da turma para o formulário
     carregarAlunosDaTurma(turmaId)
         .then(alunos => {
+            console.log(`Recebidos ${alunos ? alunos.length : 0} alunos para lançamento em massa`);
+            
             if (!alunos || alunos.length === 0) {
                 cardBody.innerHTML = `
                     <div class="alert alert-warning" role="alert">
                         <h4 class="alert-heading">Nenhum aluno encontrado</h4>
-                        <p>Não foram encontrados alunos para a turma selecionada.</p>
+                        <p>Não foram encontrados alunos para a turma selecionada (${turmaId}).</p>
+                        <button class="btn btn-secondary mt-2" onclick="inicializarTabelaNotas()">Voltar</button>
                     </div>
                 `;
                 return;
@@ -2997,6 +3028,9 @@ function abrirModoLancamentoEmMassa() {
             // Ordenar alunos por nome
             alunos.sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
             
+            console.log(`Buscando notas existentes para turma ${turmaId}, disciplina ${disciplinaId}, ano ${ano}, bimestre ${bimestre}`);
+            
+            // Carregar notas existentes para preencher o formulário
             // Carregar notas existentes para preencher o formulário
             return fetch(CONFIG.getApiUrl(`/notas?turma_id=${turmaId}&disciplina_id=${disciplinaId}&ano=${ano}&bimestre=${bimestre}`))
                 .then(response => {
@@ -3457,4 +3491,170 @@ function carregarAlunosDaTurma(idTurma) {
                 nome: aluno.nome || aluno.nome_aluno || `Aluno ${aluno.id_aluno || aluno.id || 'N/A'}`
             }));
         });
+}
+
+// Função para inicializar nova nota (criar entrada em branco)
+function novaNota() {
+    console.log('Iniciando nova nota');
+    
+    // Verificar se o formulário existe
+    const form = document.getElementById('form-nota');
+    if (!form) {
+        console.error('Formulário de notas não encontrado!');
+        alert('Erro: Formulário de notas não encontrado na página.');
+        return;
+    }
+    
+    // Atualizar o título do formulário
+    const formTitulo = document.getElementById('form-nota-titulo');
+    if (formTitulo) {
+        formTitulo.textContent = 'Novo Lançamento de Nota';
+    }
+    
+    // Esconder o botão de cancelar, pois é uma nova nota
+    const btnCancelar = document.getElementById('btn-cancelar-nota');
+    if (btnCancelar) {
+        btnCancelar.style.display = 'none';
+    }
+    
+    // Definir o modo como criação (não edição)
+    form.setAttribute('data-mode', 'create');
+    form.removeAttribute('data-nota-id');
+    
+    // Limpar todos os campos
+    form.reset();
+    
+    // Preencher o ano com o ano atual se o campo existir
+    const anoInput = document.getElementById('ano_nota');
+    if (anoInput) {
+        anoInput.value = new Date().getFullYear();
+    }
+    
+    // Obter valores selecionados dos filtros para preencher automaticamente
+    if (window.filtroTurma && window.filtroTurma.value) {
+        const turmaInput = document.getElementById('turma_nota');
+        if (turmaInput) {
+            turmaInput.value = window.filtroTurma.value;
+            
+            // Disparar evento de mudança para carregar disciplinas e alunos
+            const changeEvent = new Event('change');
+            turmaInput.dispatchEvent(changeEvent);
+        }
+    }
+    
+    // Preencher disciplina se selecionada
+    if (window.filtroDisciplina && window.filtroDisciplina.value) {
+        setTimeout(() => {
+            const disciplinaInput = document.getElementById('disciplina_nota');
+            if (disciplinaInput) {
+                disciplinaInput.value = window.filtroDisciplina.value;
+            }
+        }, 500); // Aguardar para que as disciplinas sejam carregadas
+    }
+    
+    // Preencher bimestre se selecionado
+    if (window.filtroBimestre && window.filtroBimestre.value) {
+        const bimestreInput = document.getElementById('bimestre');
+        if (bimestreInput) {
+            bimestreInput.value = window.filtroBimestre.value;
+        }
+    }
+    
+    // Rolar até o formulário
+    form.scrollIntoView({ behavior: 'smooth' });
+    
+    // Colocar o foco no primeiro campo após rolagem
+    setTimeout(() => {
+        const firstInput = form.querySelector('select:not([disabled]), input:not([disabled])');
+        if (firstInput) {
+            firstInput.focus();
+        }
+    }, 500);
+    
+    // Registrar atividade
+    registrarAtividade(
+        'início',
+        'notas',
+        'nova',
+        'Iniciou criação de nova nota',
+        'em andamento'
+    );
+}
+
+// Função para corrigir o header da card de notas
+function corrigirHeaderNotas() {
+    console.log('Verificando e corrigindo o header da card de notas');
+    
+    // Procurar o header da card
+    const cardHeader = document.querySelector('.card-header.lancamento-notas, .card-header:has(.d-flex)');
+    if (!cardHeader) {
+        console.error('Header da card de notas não encontrado');
+        return;
+    }
+    
+    // Garantir que temos a classe correta
+    if (!cardHeader.classList.contains('lancamento-notas')) {
+        console.log('Adicionando classe lancamento-notas ao header');
+        cardHeader.classList.add('lancamento-notas');
+    }
+    
+    // Verificar se existe um container para os botões
+    let btnContainer = cardHeader.querySelector('.d-flex');
+    if (!btnContainer) {
+        console.log('Criando container para botões no header');
+        btnContainer = document.createElement('div');
+        btnContainer.className = 'd-flex justify-content-between align-items-center w-100';
+        
+        // Criar título
+        const titulo = document.createElement('h5');
+        titulo.className = 'card-title mb-0';
+        titulo.textContent = 'Gestão de Notas';
+        
+        // Criar container para os botões
+        const botoesDiv = document.createElement('div');
+        botoesDiv.className = 'd-flex';
+        
+        // Adicionar elementos ao container
+        btnContainer.appendChild(titulo);
+        btnContainer.appendChild(botoesDiv);
+        
+        // Limpar e adicionar o novo container
+        cardHeader.innerHTML = '';
+        cardHeader.appendChild(btnContainer);
+    }
+    
+    // Container específico para os botões
+    let botoesDiv = btnContainer.querySelector('div.d-flex');
+    if (!botoesDiv) {
+        console.log('Criando div específica para botões');
+        botoesDiv = document.createElement('div');
+        botoesDiv.className = 'd-flex';
+        btnContainer.appendChild(botoesDiv);
+    }
+    
+    // Verificar se o botão de nova nota existe
+    if (!document.getElementById('btn-nova-nota')) {
+        console.log('Criando botão de nova nota');
+        const btnNovaNota = document.createElement('button');
+        btnNovaNota.id = 'btn-nova-nota';
+        btnNovaNota.className = 'btn btn-primary';
+        btnNovaNota.innerHTML = '<i class="fas fa-plus-circle me-1"></i> Novo Lançamento';
+        btnNovaNota.addEventListener('click', novaNota);
+        
+        // Adicionar o botão ao container
+        botoesDiv.appendChild(btnNovaNota);
+    }
+    
+    // Verificar se o botão de lançamento em massa existe
+    if (!document.getElementById('btn-lancamento-massa')) {
+        console.log('Criando botão de lançamento em massa');
+        const btnLancamentoMassa = document.createElement('button');
+        btnLancamentoMassa.id = 'btn-lancamento-massa';
+        btnLancamentoMassa.className = 'btn btn-success ms-2';
+        btnLancamentoMassa.innerHTML = '<i class="fas fa-list-ol me-1"></i> Lançamento em Massa';
+        btnLancamentoMassa.addEventListener('click', abrirModoLancamentoEmMassa);
+        
+        // Adicionar o botão ao container
+        botoesDiv.appendChild(btnLancamentoMassa);
+    }
 }
