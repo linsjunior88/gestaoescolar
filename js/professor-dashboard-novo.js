@@ -1534,19 +1534,16 @@ function initAlunos() {
 
 // Inicialização do módulo de notas
 function initNotas() {
-    console.log("Inicializando módulo de notas");
+    console.log('Inicializando módulo de notas...');
     
-    // Obter elementos com os IDs corretos
-    notasTabela = document.getElementById('notas-lista');
-    filtroTurma = document.getElementById('filtro--turma-notas');
-    filtroDisciplina = document.getElementById('filtro--disciplina-notas');
-    filtroAluno = document.getElementById('filtro--aluno-notas');
-    filtroAno = document.getElementById('filtro--ano-notas');
-    filtroBimestre = document.getElementById('filtro--bimestre-notas');
+    // Declarar as variáveis dos filtros no escopo mais amplo
+    window.filtroTurma = document.getElementById('filtro-turma-notas');
+    window.filtroDisciplina = document.getElementById('filtro-disciplina-notas');
+    window.filtroAluno = document.getElementById('filtro-aluno-notas');
+    window.filtroAno = document.getElementById('filtro-ano-notas');
+    window.filtroBimestre = document.getElementById('filtro-bimestre-notas');
     
-    // Log para debug - verificar se encontrou os elementos
     console.log('Elementos de filtro encontrados:', {
-        notasTabela,
         filtroTurma,
         filtroDisciplina,
         filtroAluno,
@@ -1554,130 +1551,155 @@ function initNotas() {
         filtroBimestre
     });
     
-    // Verificar se os elementos essenciais existem
-    if (!notasTabela) {
-        console.error('Elemento tabela de notas não encontrado!');
-        return;
+    // Verificar se existem elementos que não foram encontrados
+    const filtrosNaoEncontrados = [];
+    if (!filtroTurma) filtrosNaoEncontrados.push('filtro-turma-notas');
+    if (!filtroDisciplina) filtrosNaoEncontrados.push('filtro-disciplina-notas');
+    if (!filtroAluno) filtrosNaoEncontrados.push('filtro-aluno-notas');
+    if (!filtroAno) filtrosNaoEncontrados.push('filtro-ano-notas');
+    if (!filtroBimestre) filtrosNaoEncontrados.push('filtro-bimestre-notas');
+    
+    if (filtrosNaoEncontrados.length > 0) {
+        console.warn('Filtros não encontrados:', filtrosNaoEncontrados);
     }
     
-    if (!filtroTurma) {
-        console.error('Elemento filtro de turma não encontrado! ID esperado: filtro--turma-notas');
+    // Inicializar valores padrão para o ano
+    if (filtroAno) {
+        const anoAtual = new Date().getFullYear();
+        let opcoesAnos = '';
+        
+        for (let ano = 2025; ano <= 2030; ano++) {
+            opcoesAnos += `<option value="${ano}" ${ano === anoAtual ? 'selected' : ''}>${ano}</option>`;
+        }
+        
+        filtroAno.innerHTML = `<option value="">Selecione o ano</option>${opcoesAnos}`;
     }
     
-    // Exibir mensagem inicial informativa
-    notasTabela.innerHTML = `
-        <tr class="text-center">
-            <td colspan="9">
-                <div class="alert alert-info" role="alert">
-                    <h4 class="alert-heading">Bem-vindo ao Módulo de Notas</h4>
-                    <p>Selecione os filtros acima e clique em "Filtrar" para visualizar as notas.</p>
-                    <hr>
-                    <p class="mb-0">
-                        <i class="fas fa-info-circle me-1"></i> Você também pode usar o botão "Lançamento em Massa" para registrar notas de vários alunos simultaneamente.
-                    </p>
-                </div>
-            </td>
-        </tr>
-    `;
+    // Inicializar valores padrão para bimestre
+    if (filtroBimestre) {
+        filtroBimestre.innerHTML = `
+            <option value="">Selecione o bimestre</option>
+            <option value="1">1º Bimestre</option>
+            <option value="2">2º Bimestre</option>
+            <option value="3">3º Bimestre</option>
+            <option value="4">4º Bimestre</option>
+        `;
+    }
     
-    // Adicionar botão de lançamento em massa
-    const cardHeader = document.querySelector('.card:has(#tabela-notas) .card-header');
-    if (cardHeader) {
-        const btnNovaNota = cardHeader.querySelector('button');
-        if (btnNovaNota) {
+    // Inicializar turmas disponíveis para o professor
+    if (filtroTurma) {
+        carregarTurmasDoProfessor(professorId)
+            .then(turmas => {
+                let opcoesTurmas = '';
+                turmas.forEach(turma => {
+                    opcoesTurmas += `<option value="${turma.id}">${turma.nome}</option>`;
+                });
+                
+                filtroTurma.innerHTML = `<option value="">Selecione a turma</option>${opcoesTurmas}`;
+            })
+            .catch(error => {
+                console.error('Erro ao carregar turmas:', error);
+                filtroTurma.innerHTML = '<option value="">Erro ao carregar turmas</option>';
+            });
+    }
+    
+    // Inicializar disciplinas disponíveis para o professor
+    if (filtroDisciplina) {
+        carregarDisciplinasDoProfessor(professorId)
+            .then(disciplinas => {
+                let opcoesDisciplinas = '';
+                disciplinas.forEach(disciplina => {
+                    opcoesDisciplinas += `<option value="${disciplina.id}">${disciplina.nome}</option>`;
+                });
+                
+                filtroDisciplina.innerHTML = `<option value="">Selecione a disciplina</option>${opcoesDisciplinas}`;
+            })
+            .catch(error => {
+                console.error('Erro ao carregar disciplinas:', error);
+                filtroDisciplina.innerHTML = '<option value="">Erro ao carregar disciplinas</option>';
+            });
+    }
+    
+    // Atualizar alunos quando a turma for selecionada
+    if (filtroTurma && filtroAluno) {
+        filtroTurma.addEventListener('change', () => {
+            const idTurma = filtroTurma.value;
+            
+            if (idTurma) {
+                carregarAlunosDaTurma(idTurma)
+                    .then(alunos => {
+                        let opcoesAlunos = '';
+                        alunos.forEach(aluno => {
+                            opcoesAlunos += `<option value="${aluno.id}">${aluno.nome}</option>`;
+                        });
+                        
+                        filtroAluno.innerHTML = `<option value="">Todos os alunos</option>${opcoesAlunos}`;
+                        filtroAluno.disabled = false;
+                    })
+                    .catch(error => {
+                        console.error('Erro ao carregar alunos:', error);
+                        filtroAluno.innerHTML = '<option value="">Erro ao carregar alunos</option>';
+                        filtroAluno.disabled = true;
+                    });
+            } else {
+                filtroAluno.innerHTML = '<option value="">Selecione uma turma primeiro</option>';
+                filtroAluno.disabled = true;
+            }
+        });
+    }
+    
+    // Adicionar ação ao botão de filtrar
+    const btnFiltrarNotas = document.getElementById('btn-filtrar-notas');
+    if (btnFiltrarNotas) {
+        btnFiltrarNotas.addEventListener('click', (e) => {
+            e.preventDefault();
+            carregarNotas();
+        });
+    } else {
+        console.error('Botão de filtrar notas não encontrado!');
+    }
+    
+    // Adicionar ação ao botão de nova nota
+    const btnNovaNota = document.getElementById('btn-nova-nota');
+    if (btnNovaNota) {
+        btnNovaNota.addEventListener('click', () => {
+            novaNota();
+        });
+    } else {
+        console.error('Botão de nova nota não encontrado!');
+    }
+    
+    // Adicionar botão para lançamento em massa se não existir
+    const cardHeaderNotas = document.querySelector('.card-header.lancamento-notas .d-flex');
+    if (cardHeaderNotas) {
+        if (!document.getElementById('btn-lancamento-massa')) {
             const btnLancamentoMassa = document.createElement('button');
-            btnLancamentoMassa.className = 'btn btn-primary ms-2';
-            btnLancamentoMassa.innerHTML = '<i class="fas fa-table-list me-1"></i> Lançamento em Massa';
-            btnLancamentoMassa.addEventListener('click', function() {
+            btnLancamentoMassa.id = 'btn-lancamento-massa';
+            btnLancamentoMassa.className = 'btn btn-success ms-2';
+            btnLancamentoMassa.innerHTML = '<i class="fas fa-list-ol me-1"></i> Lançamento em Massa';
+            btnLancamentoMassa.addEventListener('click', () => {
                 abrirModoLancamentoEmMassa();
             });
             
-            btnNovaNota.parentNode.insertBefore(btnLancamentoMassa, btnNovaNota.nextSibling);
+            // Adicionar após o botão de novo lançamento
+            cardHeaderNotas.appendChild(btnLancamentoMassa);
         }
     }
     
-    // Inicializar preencher anos
-    if (filtroAno) {
-        filtroAno.innerHTML = '<option value="">Todos</option>';
-        
-        // Adicionar anos de 2025 a 2030
-        for (let ano = 2025; ano <= 2030; ano++) {
-            const option = document.createElement('option');
-            option.value = ano;
-            option.textContent = ano;
-            filtroAno.appendChild(option);
-        }
-        
-        // Selecionar 2025 por padrão
-        filtroAno.value = "2025";
+    // Inicializar a tabela de notas com mensagem inicial
+    const notasTabela = document.getElementById('notas-lista');
+    if (notasTabela) {
+        notasTabela.innerHTML = `
+            <tr class="text-center">
+                <td colspan="9">
+                    <div class="alert alert-info" role="alert">
+                        <h4 class="alert-heading">Selecione os filtros</h4>
+                        <p>Utilize os filtros acima para carregar as notas dos alunos.</p>
+                    </div>
+                </td>
+            </tr>
+        `;
     }
-    
-    // Inicializar filtros de dados
-    carregarTurmasParaFiltro();
-    
-    // Adicionar event listeners para os filtros
-    if (filtroTurma) {
-        filtroTurma.addEventListener('change', function() {
-            const idTurma = this.value;
-            console.log("Turma selecionada:", idTurma);
-            
-            // Resetar e carregar disciplinas quando a turma mudar
-            if (filtroDisciplina) {
-                filtroDisciplina.innerHTML = '<option value="">Todas</option>';
-                filtroDisciplina.disabled = true;
-            }
-            
-            if (filtroAluno) {
-                filtroAluno.innerHTML = '<option value="">Todos</option>';
-                filtroAluno.disabled = true;
-            }
-            
-            if (idTurma) {
-                carregarDisciplinasParaFiltro(idTurma);
-                carregarAlunosParaFiltro(idTurma);
-            }
-        });
-    }
-    
-    // Event listener para o botão de filtro
-    const btnFiltrar = document.getElementById('btn-filtrar-notas');
-    if (btnFiltrar) {
-        btnFiltrar.addEventListener('click', function() {
-            carregarNotas();
-        });
-    }
-    
-    // Event listener para a nova nota
-    const btnNovaNota = document.getElementById('btn-nova-nota');
-    if (btnNovaNota) {
-        btnNovaNota.addEventListener('click', novaNota);
-    }
-    
-    // Event listener para cancelar edição de nota
-    const btnCancelarNota = document.getElementById('btn-cancelar-nota');
-    if (btnCancelarNota) {
-        btnCancelarNota.addEventListener('click', cancelarEdicao);
-    }
-    
-    // Event listener para salvar nota
-    const formNota = document.getElementById('form-nota');
-    if (formNota) {
-        formNota.addEventListener('submit', function(e) {
-            e.preventDefault();
-            salvarNota();
-        });
-    }
-    
-    // Event listeners para calcular média automaticamente
-    const notaMensal = document.getElementById('nota-mensal');
-    const notaBimestral = document.getElementById('nota-bimestral');
-    const notaRecuperacao = document.getElementById('nota-recuperacao');
-    
-    [notaMensal, notaBimestral, notaRecuperacao].forEach(input => {
-        if (input) {
-            input.addEventListener('input', calcularMedia);
-        }
-    });
 }
 
 // Função para carregar turmas para o filtro
@@ -1839,12 +1861,21 @@ function carregarAlunosParaFiltro(idTurma = null, idDisciplina = null) {
 function carregarNotas() {
     console.log("Carregando notas com filtros");
     
+    // Tentar obter os elementos de filtro de forma mais genérica caso não tenham sido encontrados antes
+    const obterValorFiltro = (filtroVar, seletorFallback) => {
+        if (filtroVar && filtroVar.value !== undefined) {
+            return filtroVar.value;
+        }
+        const elementoFallback = document.querySelector(seletorFallback);
+        return elementoFallback ? elementoFallback.value : '';
+    };
+    
     // Obter valores dos filtros
-    const idTurma = document.getElementById('filtro--turma-notas')?.value;
-    const idDisciplina = document.getElementById('filtro--disciplina-notas')?.value;
-    const idAluno = document.getElementById('filtro--aluno-notas')?.value;
-    const ano = document.getElementById('filtro--ano-notas')?.value;
-    const bimestre = document.getElementById('filtro--bimestre-notas')?.value;
+    const idTurma = obterValorFiltro(filtroTurma, 'select[id*="turma"], select[id*="Turma"]');
+    const idDisciplina = obterValorFiltro(filtroDisciplina, 'select[id*="disciplina"], select[id*="Disciplina"]');
+    const idAluno = obterValorFiltro(filtroAluno, 'select[id*="aluno"], select[id*="Aluno"]');
+    const ano = obterValorFiltro(filtroAno, 'select[id*="ano"], select[id*="Ano"]');
+    const bimestre = obterValorFiltro(filtroBimestre, 'select[id*="bimestre"], select[id*="Bimestre"]');
     
     console.log('Filtros aplicados:', {
         turma: idTurma,
@@ -1886,6 +1917,7 @@ function carregarNotas() {
     // Adicionar parâmetro do professor
     params.append('professor_id', professorId);
     
+    // Se não há filtros específicos, carregamos todas as notas do professor
     const url = CONFIG.getApiUrl(`/notas?${params.toString()}`);
     console.log('URL de consulta:', url);
     
@@ -1964,7 +1996,7 @@ function carregarNotas() {
                         
                         // Se há recuperação, ajustar a média
                         if (nota.recuperacao !== null) {
-                            media = (media + nota.recuperacao) / 2;
+                            media = (media + parseFloat(nota.recuperacao)) / 2;
                         }
                     } else if (nota.nota_mensal !== null) {
                         media = nota.nota_mensal;
@@ -2919,401 +2951,149 @@ function carregarNotasAluno(idAluno) {
 
 // Função para abrir o modo de lançamento em massa de notas
 function abrirModoLancamentoEmMassa() {
-    console.log("Iniciando modo de lançamento em massa de notas");
+    console.log('Abrindo modo de lançamento em massa...');
     
-    // Obter o container para a tabela de notas
-    const cardBody = document.querySelector('.card:has(#tabela-notas) .card-body');
-    if (!cardBody) {
-        console.error("Não foi possível encontrar o container da tabela de notas");
-        alert("Erro ao iniciar modo de edição em massa. Tente novamente.");
+    // Obter os valores dos filtros necessários
+    const turmaId = filtroTurma ? filtroTurma.value : '';
+    const disciplinaId = filtroDisciplina ? filtroDisciplina.value : '';
+    const ano = filtroAno ? filtroAno.value : '';
+    const bimestre = filtroBimestre ? filtroBimestre.value : '';
+    
+    // Validar campos obrigatórios
+    if (!turmaId || !disciplinaId || !ano || !bimestre) {
+        alert('Selecione turma, disciplina, ano e bimestre antes de usar o lançamento em massa!');
         return;
     }
     
-    // Esconder o formulário individual de notas se estiver visível
-    const formCard = document.querySelector('.card:has(#form-nota)');
-    if (formCard && !formCard.classList.contains('d-none')) {
-        formCard.classList.add('d-none');
+    // Container para o formulário de lançamento em massa
+    const cardBody = document.querySelector('.card-body.notas-container');
+    if (!cardBody) {
+        console.error('Container para o formulário de lançamento em massa não encontrado!');
+        return;
     }
     
-    // Criar e exibir o form de configuração para edição em massa
-    const formHTML = `
-        <div id="configuracao-massa" class="mb-4 animate__animated animate__fadeIn">
-            <div class="card">
-                <div class="card-header py-3 d-flex justify-content-between align-items-center bg-light">
-                    <h6 class="m-0 font-weight-bold text-primary">
-                        <i class="fas fa-table me-2"></i> Lançamento em Massa
-                    </h6>
-                    <button type="button" class="btn-close" id="fechar-modo-massa" aria-label="Fechar"></button>
-                </div>
-                <div class="card-body">
-                    <p class="text-muted mb-3">
-                        Selecione a turma, disciplina e bimestre para editar as notas de todos os alunos de uma vez.
-                    </p>
-                    <form id="form-configuracao-massa" class="row g-3">
-                        <div class="col-md-4">
-                            <label for="turma-massa" class="form-label">Turma</label>
-                            <select class="form-select" id="turma-massa" required>
-                                <option value="">Selecione a Turma</option>
-                            </select>
-                        </div>
-                        <div class="col-md-4">
-                            <label for="disciplina-massa" class="form-label">Disciplina</label>
-                            <select class="form-select" id="disciplina-massa" required disabled>
-                                <option value="">Selecione a Disciplina</option>
-                            </select>
-                        </div>
-                        <div class="col-md-4">
-                            <label for="bimestre-massa" class="form-label">Bimestre</label>
-                            <select class="form-select" id="bimestre-massa" required>
-                                <option value="">Selecione o Bimestre</option>
-                                <option value="1">1º Bimestre</option>
-                                <option value="2">2º Bimestre</option>
-                                <option value="3">3º Bimestre</option>
-                                <option value="4">4º Bimestre</option>
-                            </select>
-                        </div>
-                        <div class="col-md-4">
-                            <label for="ano-massa" class="form-label">Ano</label>
-                            <select class="form-select" id="ano-massa" required>
-                                <option value="">Selecione o Ano</option>
-                            </select>
-                        </div>
-                        <div class="col-12 d-grid gap-2 d-md-flex justify-content-md-end">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-table-list me-1"></i> Carregar Alunos
-                            </button>
-                        </div>
-                    </form>
-                </div>
+    // Mostrar indicador de carregamento enquanto busca os alunos
+    cardBody.innerHTML = `
+        <div class="d-flex justify-content-center align-items-center" style="height: 200px;">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Carregando...</span>
             </div>
+            <span class="ms-2">Carregando dados dos alunos...</span>
         </div>
     `;
     
-    // Inserir o formulário no início da área de conteúdo
-    cardBody.insertAdjacentHTML('beforebegin', formHTML);
-    
-    // Obter referências para os elementos do formulário
-    const formConfiguracaoMassa = document.getElementById('form-configuracao-massa');
-    const selectTurma = document.getElementById('turma-massa');
-    const selectDisciplina = document.getElementById('disciplina-massa');
-    const selectBimestre = document.getElementById('bimestre-massa');
-    const selectAno = document.getElementById('ano-massa');
-    const btnFechar = document.getElementById('fechar-modo-massa');
-    
-    // Preencher o dropdown de anos
-    if (selectAno) {
-        const anoAtual = new Date().getFullYear();
-        for (let i = 0; i < 3; i++) {
-            const ano = anoAtual - i;
-            const option = document.createElement('option');
-            option.value = ano;
-            option.textContent = ano;
-            if (i === 0) option.selected = true;
-            selectAno.appendChild(option);
-        }
-    }
-    
-    // Carregar turmas do professor
-    fetch(CONFIG.getApiUrl(`/professores/${professorId}/turmas`))
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`Erro na requisição: ${response.status}`);
-            }
-            return response.json();
-        })
-        .then(turmas => {
-            console.log("Turmas do professor carregadas para lançamento em massa:", turmas);
-            
-            if (turmas.length === 0) {
-                selectTurma.innerHTML = '<option value="">Nenhuma turma encontrada</option>';
-                return;
-            }
-            
-            // Preencher o dropdown de turmas
-            selectTurma.innerHTML = '<option value="">Selecione a Turma</option>';
-            turmas.forEach(turma => {
-                const option = document.createElement('option');
-                option.value = turma.id_turma;
-                option.textContent = `${turma.id_turma} - ${turma.serie || ''}`;
-                selectTurma.appendChild(option);
-            });
-            
-            // Adicionar evento de mudança para o dropdown de turmas
-            selectTurma.addEventListener('change', function() {
-                const idTurma = this.value;
-                console.log("Turma selecionada para lançamento em massa:", idTurma);
-                
-                if (idTurma) {
-                    // Carregar disciplinas para esta turma
-                    carregarDisciplinasParaMassa(idTurma);
-                } else {
-                    // Resetar disciplinas se nenhuma turma for selecionada
-                    selectDisciplina.innerHTML = '<option value="">Selecione a Disciplina</option>';
-                    selectDisciplina.disabled = true;
-                }
-            });
-        })
-        .catch(error => {
-            console.error("Erro ao carregar turmas:", error);
-            selectTurma.innerHTML = '<option value="">Erro ao carregar turmas</option>';
-        });
-    
-    // Adicionar evento para o botão de fechar
-    if (btnFechar) {
-        btnFechar.addEventListener('click', function() {
-            fecharModoLancamentoEmMassa();
-        });
-    }
-    
-    // Adicionar evento para o formulário de configuração
-    if (formConfiguracaoMassa) {
-        formConfiguracaoMassa.addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const idTurma = selectTurma.value;
-            const idDisciplina = selectDisciplina.value;
-            const bimestre = selectBimestre.value;
-            const ano = selectAno.value;
-            
-            if (!idTurma || !idDisciplina || !bimestre || !ano) {
-                alert("Por favor, preencha todos os campos.");
-                return;
-            }
-            
-            carregarAlunosParaEdicaoEmMassa(idTurma, idDisciplina, bimestre, ano);
-        });
-    }
-}
-
-// Função para fechar o modo de lançamento em massa
-function fecharModoLancamentoEmMassa() {
-    console.log("Fechando modo de lançamento em massa");
-    
-    // Remover o formulário de configuração
-    const configuracaoMassa = document.getElementById('configuracao-massa');
-    if (configuracaoMassa) {
-        configuracaoMassa.remove();
-    }
-    
-    // Remover a tabela de edição em massa se existir
-    const tabelaMassa = document.getElementById('tabela-massa-container');
-    if (tabelaMassa) {
-        tabelaMassa.remove();
-    }
-    
-    // Mostrar novamente a tabela de notas regular
-    mostrarTabelaNotasRegular();
-    
-    // Restaurar mensagem inicial se nenhuma nota foi carregada anteriormente
-    if (notasTabela && notasTabela.children.length === 0) {
-        notasTabela.innerHTML = `
-            <tr class="text-center">
-                <td colspan="9">
-                    <div class="alert alert-info" role="alert">
-                        <h4 class="alert-heading">Bem-vindo ao Módulo de Notas</h4>
-                        <p>Selecione os filtros acima e clique em "Filtrar" para visualizar as notas.</p>
-                        <hr>
-                        <p class="mb-0">
-                            <i class="fas fa-info-circle me-1"></i> Você também pode usar o botão "Lançamento em Massa" para registrar notas de vários alunos simultaneamente.
-                        </p>
-                    </div>
-                </td>
-            </tr>
-        `;
-    }
-}
-
-// Função para carregar disciplinas para o formulário de edição em massa
-function carregarDisciplinasParaMassa(idTurma) {
-    const selectDisciplina = document.getElementById('disciplina-massa');
-    if (!selectDisciplina) return;
-    
-    // Mostrar indicador de carregamento
-    selectDisciplina.innerHTML = '<option value="">Carregando disciplinas...</option>';
-    selectDisciplina.disabled = true;
-    
-    // Carregar disciplinas do professor para esta turma
-    fetch(CONFIG.getApiUrl(`/professores/${professorId}/turmas/${idTurma}/disciplinas`))
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`Erro na requisição: ${response.status}`);
-            }
-            return response.json();
-        })
-        .then(disciplinas => {
-            console.log("Disciplinas carregadas para lançamento em massa:", disciplinas);
-            
-            selectDisciplina.innerHTML = '<option value="">Selecione a Disciplina</option>';
-            
-            if (disciplinas.length === 0) {
-                selectDisciplina.innerHTML = '<option value="">Nenhuma disciplina encontrada</option>';
-                selectDisciplina.disabled = true;
-                return;
-            }
-            
-            // Preencher o dropdown de disciplinas
-            disciplinas.forEach(disciplina => {
-                const option = document.createElement('option');
-                option.value = disciplina.id_disciplina;
-                option.textContent = disciplina.nome_disciplina;
-                selectDisciplina.appendChild(option);
-            });
-            
-            // Habilitar o dropdown
-            selectDisciplina.disabled = false;
-        })
-        .catch(error => {
-            console.error("Erro ao carregar disciplinas:", error);
-            selectDisciplina.innerHTML = '<option value="">Erro ao carregar disciplinas</option>';
-            selectDisciplina.disabled = true;
-        });
-}
-
-// Função para carregar alunos para edição em massa
-function carregarAlunosParaEdicaoEmMassa(idTurma, idDisciplina, bimestre, ano) {
-    console.log("Carregando alunos para edição em massa:", {
-        turma: idTurma,
-        disciplina: idDisciplina,
-        bimestre: bimestre,
-        ano: ano
-    });
-    
-    // Esconder a tabela regular de notas
-    const tabelaRegular = document.querySelector('.table-responsive');
-    if (tabelaRegular) {
-        tabelaRegular.style.display = 'none';
-    }
-    
-    // Criar container para a tabela de edição em massa
-    const cardBody = document.querySelector('.card:has(#tabela-notas) .card-body');
-    if (!cardBody) return;
-    
-    // Remover tabela anterior se existir
-    const tabelaMassaExistente = document.getElementById('tabela-massa-container');
-    if (tabelaMassaExistente) {
-        tabelaMassaExistente.remove();
-    }
-    
-    // Criar e inserir container para a tabela de edição em massa
-    const tabelaMassaHTML = `
-        <div id="tabela-massa-container" class="animate__animated animate__fadeIn">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="mb-0">
-                    <i class="fas fa-edit me-2"></i> Edição em Massa - ${idTurma} (${bimestre}º Bimestre)
-                </h5>
-                <div>
-                    <button type="button" class="btn btn-success btn-sm" id="btn-salvar-massa">
-                        <i class="fas fa-save me-1"></i> Salvar Todas as Notas
-                    </button>
-                    <button type="button" class="btn btn-outline-secondary btn-sm ms-2" id="btn-cancelar-massa">
-                        <i class="fas fa-times me-1"></i> Cancelar
-                    </button>
-                </div>
-            </div>
-            <div class="table-responsive">
-                <table class="table table-bordered table-hover" id="tabela-notas-massa">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Aluno</th>
-                            <th>Nota Mensal</th>
-                            <th>Nota Bimestral</th>
-                            <th>Recuperação</th>
-                            <th>Média</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody id="notas-massa-lista">
-                        <tr class="text-center">
-                            <td colspan="6">
-                                <div class="spinner-border text-primary" role="status">
-                                    <span class="visually-hidden">Carregando alunos...</span>
-                                </div>
-                                <span class="ms-2">Carregando alunos...</span>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    `;
-    
-    cardBody.insertAdjacentHTML('beforeend', tabelaMassaHTML);
-    
-    // Referências aos elementos da tabela
-    const tabelaNotas = document.getElementById('notas-massa-lista');
-    const btnSalvar = document.getElementById('btn-salvar-massa');
-    const btnCancelar = document.getElementById('btn-cancelar-massa');
-    
-    // Evento para o botão cancelar
-    if (btnCancelar) {
-        btnCancelar.addEventListener('click', function() {
-            fecharModoLancamentoEmMassa();
-        });
-    }
-    
-    // Carregar alunos da turma
-    fetch(CONFIG.getApiUrl(`/turmas/${idTurma}/alunos`))
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`Erro na requisição: ${response.status}`);
-            }
-            return response.json();
-        })
+    // Carregar alunos da turma para o formulário
+    carregarAlunosDaTurma(turmaId)
         .then(alunos => {
-            console.log("Alunos carregados para edição em massa:", alunos);
-            
-            if (alunos.length === 0) {
-                tabelaNotas.innerHTML = `
-                    <tr class="text-center">
-                        <td colspan="6">
-                            <div class="alert alert-warning" role="alert">
-                                <h4 class="alert-heading">Nenhum aluno encontrado!</h4>
-                                <p>Não foram encontrados alunos na turma selecionada.</p>
-                            </div>
-                        </td>
-                    </tr>
+            if (!alunos || alunos.length === 0) {
+                cardBody.innerHTML = `
+                    <div class="alert alert-warning" role="alert">
+                        <h4 class="alert-heading">Nenhum aluno encontrado</h4>
+                        <p>Não foram encontrados alunos para a turma selecionada.</p>
+                    </div>
                 `;
                 return;
             }
             
             // Ordenar alunos por nome
-            alunos.sort((a, b) => {
-                const nomeA = a.nome_aluno || '';
-                const nomeB = b.nome_aluno || '';
-                return nomeA.localeCompare(nomeB);
-            });
+            alunos.sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
             
-            // Buscar notas existentes para esses alunos
-            buscarNotasExistentes(idTurma, idDisciplina, bimestre, ano)
+            // Carregar notas existentes para preencher o formulário
+            return fetch(CONFIG.getApiUrl(`/notas?turma_id=${turmaId}&disciplina_id=${disciplinaId}&ano=${ano}&bimestre=${bimestre}`))
+                .then(response => {
+                    if (!response.ok) {
+                        // Se o endpoint específico retornar erro, tentar endpoint genérico
+                        if (response.status === 404) {
+                            console.log('Endpoint específico não encontrado, tentando endpoint genérico...');
+                            return fetch(CONFIG.getApiUrl('/notas'))
+                                .then(genericResponse => {
+                                    if (!genericResponse.ok) {
+                                        return [];
+                                    }
+                                    return genericResponse.json();
+                                })
+                                .then(todasNotas => {
+                                    return filtrarNotasManualmente(todasNotas, {
+                                        professorId,
+                                        idTurma: turmaId,
+                                        idDisciplina: disciplinaId,
+                                        ano,
+                                        bimestre
+                                    });
+                                });
+                        }
+                        return [];
+                    }
+                    return response.json();
+                })
                 .then(notasExistentes => {
-                    // Criar mapa de notas por ID do aluno para acesso rápido
+                    // Criar mapa de notas existentes por ID de aluno para fácil acesso
                     const notasPorAluno = {};
                     notasExistentes.forEach(nota => {
-                        notasPorAluno[nota.id_aluno] = nota;
+                        if (nota.aluno_id) {
+                            notasPorAluno[nota.aluno_id] = nota;
+                        }
                     });
                     
-                    // Gerar linhas da tabela
-                    let html = '';
-                    
-                    alunos.forEach((aluno, index) => {
-                        const idAluno = aluno.id_aluno;
-                        const notaExistente = notasPorAluno[idAluno] || {};
+                    // Criar formulário de lançamento em massa
+                    let html = `
+                        <h4 class="mb-3">Lançamento em Massa de Notas</h4>
+                        <div class="d-flex justify-content-between mb-3">
+                            <div>
+                                <strong>Turma:</strong> ${filtroTurma.options[filtroTurma.selectedIndex].text}
+                                <strong class="ms-3">Disciplina:</strong> ${filtroDisciplina.options[filtroDisciplina.selectedIndex].text}
+                            </div>
+                            <div>
+                                <strong>Ano:</strong> ${ano}
+                                <strong class="ms-3">Bimestre:</strong> ${bimestre}º Bimestre
+                            </div>
+                        </div>
                         
+                        <form id="form-lancamento-massa">
+                            <div class="table-responsive">
+                                <table class="table table-striped table-hover">
+                                    <thead class="table-secondary">
+                                        <tr>
+                                            <th>Aluno</th>
+                                            <th class="text-center">Nota Mensal</th>
+                                            <th class="text-center">Nota Bimestral</th>
+                                            <th class="text-center">Recuperação</th>
+                                            <th class="text-center">Média</th>
+                                            <th class="text-center">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                    `;
+                    
+                    // Adicionar linha para cada aluno
+                    alunos.forEach(aluno => {
+                        const notaExistente = notasPorAluno[aluno.id] || {};
+                        const idNota = notaExistente.id || '';
                         const notaMensal = notaExistente.nota_mensal !== undefined ? notaExistente.nota_mensal : '';
                         const notaBimestral = notaExistente.nota_bimestral !== undefined ? notaExistente.nota_bimestral : '';
-                        const recuperacao = notaExistente.recuperacao !== undefined ? notaExistente.recuperacao : '';
-                        const media = notaExistente.media !== undefined ? notaExistente.media : '';
-                        const idNota = notaExistente.id || '';
+                        const notaRecuperacao = notaExistente.recuperacao !== undefined ? notaExistente.recuperacao : '';
                         
+                        // Calcular média se as notas existirem
+                        let media = null;
+                        if (notaMensal !== '' && notaBimestral !== '') {
+                            media = (parseFloat(notaMensal) + parseFloat(notaBimestral)) / 2;
+                            
+                            if (notaRecuperacao !== '') {
+                                media = (media + parseFloat(notaRecuperacao)) / 2;
+                            }
+                        }
+                        
+                        // Determinar status com base na média
                         let statusClass = '';
                         let statusText = '';
                         
-                        if (media !== '') {
-                            const mediaNum = parseFloat(media);
-                            if (mediaNum >= 7) {
+                        if (media !== null) {
+                            media = Math.ceil(media * 10) / 10; // Arredondar para uma casa decimal
+                            
+                            if (media >= 7) {
                                 statusClass = 'bg-success-subtle text-success';
                                 statusText = 'Aprovado';
-                            } else if (mediaNum >= 5) {
+                            } else if (media >= 5) {
                                 statusClass = 'bg-warning-subtle text-warning';
                                 statusText = 'Recuperação';
                             } else {
@@ -3321,961 +3101,285 @@ function carregarAlunosParaEdicaoEmMassa(idTurma, idDisciplina, bimestre, ano) {
                                 statusText = 'Reprovado';
                             }
                         } else {
-                            statusText = 'Não lançado';
+                            statusClass = 'bg-light text-muted';
+                            statusText = 'Não avaliado';
                         }
                         
                         html += `
-                            <tr data-aluno-id="${idAluno}" data-nota-id="${idNota}">
+                            <tr>
                                 <td>
-                                    <strong>${aluno.nome_aluno || 'N/A'}</strong>
-                                    <input type="hidden" name="aluno_id" value="${idAluno}">
+                                    ${aluno.nome}
+                                    <input type="hidden" name="aluno_id_${aluno.id}" value="${aluno.id}">
+                                    <input type="hidden" name="nota_id_${aluno.id}" value="${idNota}">
                                 </td>
                                 <td>
-                                    <input type="number" class="form-control form-control-sm nota-input" 
-                                           name="nota_mensal" min="0" max="10" step="0.1" 
-                                           value="${notaMensal}" data-original="${notaMensal}"
-                                           placeholder="0.0 a 10.0">
+                                    <input type="number" class="form-control nota-mensal" name="nota_mensal_${aluno.id}" 
+                                        value="${notaMensal}" min="0" max="10" step="0.1" data-aluno-id="${aluno.id}">
                                 </td>
                                 <td>
-                                    <input type="number" class="form-control form-control-sm nota-input" 
-                                           name="nota_bimestral" min="0" max="10" step="0.1" 
-                                           value="${notaBimestral}" data-original="${notaBimestral}"
-                                           placeholder="0.0 a 10.0">
+                                    <input type="number" class="form-control nota-bimestral" name="nota_bimestral_${aluno.id}" 
+                                        value="${notaBimestral}" min="0" max="10" step="0.1" data-aluno-id="${aluno.id}">
                                 </td>
                                 <td>
-                                    <input type="number" class="form-control form-control-sm nota-input" 
-                                           name="recuperacao" min="0" max="10" step="0.1" 
-                                           value="${recuperacao}" data-original="${recuperacao}"
-                                           placeholder="0.0 a 10.0">
+                                    <input type="number" class="form-control nota-recuperacao" name="recuperacao_${aluno.id}" 
+                                        value="${notaRecuperacao}" min="0" max="10" step="0.1" data-aluno-id="${aluno.id}">
                                 </td>
-                                <td>
-                                    <input type="number" class="form-control form-control-sm" 
-                                           name="media" readonly 
-                                           value="${media}" data-original="${media}">
+                                <td class="text-center media-container-${aluno.id}">
+                                    ${media !== null ? media.toFixed(1) : '-'}
                                 </td>
-                                <td class="${statusClass}">
-                                    <span class="status-text">${statusText}</span>
+                                <td class="text-center status-container-${aluno.id} ${statusClass}">
+                                    ${statusText}
                                 </td>
                             </tr>
                         `;
                     });
                     
-                    tabelaNotas.innerHTML = html;
+                    html += `
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <div class="d-flex justify-content-end mt-3">
+                                <button type="button" class="btn btn-secondary me-2" id="btn-cancelar-lancamento-massa">Cancelar</button>
+                                <button type="submit" class="btn btn-primary" id="btn-salvar-lancamento-massa">Salvar Notas</button>
+                            </div>
+                        </form>
+                    `;
                     
-                    // Adicionar eventos para cálculo automático de média
-                    document.querySelectorAll('#notas-massa-lista tr').forEach(row => {
-                        const inputs = row.querySelectorAll('input.nota-input');
-                        const mediaInput = row.querySelector('input[name="media"]');
-                        const statusText = row.querySelector('.status-text');
-                        const statusCell = row.querySelector('td:last-child');
-                        
-                        inputs.forEach(input => {
-                            input.addEventListener('input', function() {
-                                // Extrair valores das notas
-                                const notaMensal = parseFloat(row.querySelector('input[name="nota_mensal"]').value) || null;
-                                const notaBimestral = parseFloat(row.querySelector('input[name="nota_bimestral"]').value) || null;
-                                const recuperacao = parseFloat(row.querySelector('input[name="recuperacao"]').value) || null;
-                                
-                                // Calcular média
-                                let media = 0;
-                                
-                                if (notaMensal !== null && notaBimestral !== null) {
-                                    // Média normal (mensal + bimestral) / 2
-                                    media = (notaMensal + notaBimestral) / 2;
-                                    
-                                    // Se há recuperação, calcular média final
-                                    if (recuperacao !== null) {
-                                        media = (media + recuperacao) / 2;
-                                    }
-                                    
-                                    // Arredondar para cima com uma casa decimal
-                                    media = Math.ceil(media * 10) / 10;
-                                } else if (notaMensal !== null) {
-                                    media = notaMensal;
-                                } else if (notaBimestral !== null) {
-                                    media = notaBimestral;
-                                }
-                                
-                                // Atualizar campo de média
-                                mediaInput.value = media > 0 ? media.toFixed(1) : '';
-                                
-                                // Atualizar status
-                                let statusClass = '';
-                                let statusText = '';
-                                
-                                if (media > 0) {
-                                    if (media >= 7) {
-                                        statusClass = 'bg-success-subtle text-success';
-                                        statusText = 'Aprovado';
-                                    } else if (media >= 5) {
-                                        statusClass = 'bg-warning-subtle text-warning';
-                                        statusText = 'Recuperação';
-                                    } else {
-                                        statusClass = 'bg-danger-subtle text-danger';
-                                        statusText = 'Reprovado';
-                                    }
-                                } else {
-                                    statusClass = '';
-                                    statusText = 'Não lançado';
-                                }
-                                
-                                // Atualizar classe e texto do status
-                                statusCell.className = statusClass;
-                                statusText.textContent = statusText;
-                                
-                                // Destacar campos que foram modificados
-                                this.classList.toggle('bg-light', this.value !== this.dataset.original);
-                            });
+                    cardBody.innerHTML = html;
+                    
+                    // Adicionar listeners para calcular média em tempo real
+                    document.querySelectorAll('.nota-mensal, .nota-bimestral, .nota-recuperacao').forEach(input => {
+                        input.addEventListener('input', function() {
+                            const alunoId = this.dataset.alunoId;
+                            atualizarMediaEStatus(alunoId);
                         });
                     });
                     
-                    // Evento para o botão salvar
-                    if (btnSalvar) {
-                        btnSalvar.addEventListener('click', function() {
-                            salvarNotasEmMassa(idTurma, idDisciplina, bimestre, ano);
-                        });
-                    }
-                })
-                .catch(error => {
-                    console.error("Erro ao buscar notas existentes:", error);
+                    // Adicionar listener para o botão cancelar
+                    document.getElementById('btn-cancelar-lancamento-massa').addEventListener('click', function() {
+                        // Restaurar a tabela de notas
+                        inicializarTabelaNotas();
+                        carregarNotas();
+                    });
                     
-                    // Mostrar mensagem de erro
-                    tabelaNotas.innerHTML = `
-                        <tr class="text-center">
-                            <td colspan="6">
-                                <div class="alert alert-danger" role="alert">
-                                    <h4 class="alert-heading">Erro ao carregar notas!</h4>
-                                    <p>Não foi possível carregar as notas existentes.</p>
-                                    <hr>
-                                    <p class="mb-0">Detalhes: ${error.message}</p>
-                                </div>
-                            </td>
-                        </tr>
-                    `;
+                    // Adicionar listener para o formulário
+                    document.getElementById('form-lancamento-massa').addEventListener('submit', function(e) {
+                        e.preventDefault();
+                        salvarLancamentoEmMassa();
+                    });
                 });
         })
         .catch(error => {
-            console.error("Erro ao carregar alunos:", error);
-            
-            if (tabelaNotas) {
-                tabelaNotas.innerHTML = `
-                    <tr class="text-center">
-                        <td colspan="6">
-                            <div class="alert alert-danger" role="alert">
-                                <h4 class="alert-heading">Erro ao carregar alunos!</h4>
-                                <p>Não foi possível carregar os alunos da turma.</p>
-                                <hr>
-                                <p class="mb-0">Detalhes: ${error.message}</p>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-            }
-        });
-}
-
-// Função para buscar notas existentes
-function buscarNotasExistentes(idTurma, idDisciplina, bimestre, ano) {
-    // Construir URL com filtros
-    const params = new URLSearchParams({
-        turma_id: idTurma,
-        disciplina_id: idDisciplina,
-        bimestre: bimestre,
-        ano: ano
-    });
-    
-    const url = CONFIG.getApiUrl(`/notas/por_professor/${professorId}?${params.toString()}`);
-    
-    return fetch(url)
-        .then(response => {
-            if (!response.ok) {
-                // Se o endpoint específico retornar erro, tentar endpoint genérico
-                if (response.status === 404) {
-                    console.log('Endpoint específico não encontrado, tentando endpoint genérico...');
-                    return fetch(CONFIG.getApiUrl(`/notas`))
-                        .then(genericResponse => {
-                            if (!genericResponse.ok) {
-                                throw new Error(`Erro na requisição: ${genericResponse.status}`);
-                            }
-                            return genericResponse.json();
-                        })
-                        .then(todasNotas => {
-                            // Filtrar notas manualmente
-                            return filtrarNotasManualmente(todasNotas, {
-                                professorId,
-                                idTurma,
-                                idDisciplina,
-                                bimestre,
-                                ano
-                            });
-                        });
-                }
-                throw new Error(`Erro na requisição: ${response.status}`);
-            }
-            return response.json();
-        });
-}
-
-// Função para salvar todas as notas em massa
-function salvarNotasEmMassa(idTurma, idDisciplina, bimestre, ano) {
-    console.log("Salvando notas em massa");
-    
-    // Obter todas as linhas da tabela
-    const rows = document.querySelectorAll('#notas-massa-lista tr');
-    if (rows.length === 0) {
-        alert("Nenhum aluno encontrado para salvar notas.");
-        return;
-    }
-    
-    // Array para armazenar todas as promessas de salvamento
-    const savePromises = [];
-    
-    // Criar um indicador de progresso
-    const progressHTML = `
-        <div id="progress-container" class="position-fixed top-0 start-0 end-0 p-3 bg-light border-bottom" style="z-index: 1050;">
-            <div class="container">
-                <div class="progress" style="height: 20px;">
-                    <div id="progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" 
-                         role="progressbar" style="width: 0%;" 
-                         aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+            console.error('Erro ao carregar dados para lançamento em massa:', error);
+            cardBody.innerHTML = `
+                <div class="alert alert-danger" role="alert">
+                    <h4 class="alert-heading">Erro ao carregar dados</h4>
+                    <p>${error.message}</p>
                 </div>
-                <p id="progress-text" class="text-center mt-2 mb-0">Salvando notas...</p>
-            </div>
-        </div>
-    `;
+            `;
+        });
+}
+
+// Função para atualizar média e status de um aluno no formulário de lançamento em massa
+function atualizarMediaEStatus(alunoId) {
+    const notaMensalInput = document.querySelector(`input[name="nota_mensal_${alunoId}"]`);
+    const notaBimestralInput = document.querySelector(`input[name="nota_bimestral_${alunoId}"]`);
+    const notaRecuperacaoInput = document.querySelector(`input[name="recuperacao_${alunoId}"]`);
+    const mediaContainer = document.querySelector(`.media-container-${alunoId}`);
+    const statusContainer = document.querySelector(`.status-container-${alunoId}`);
     
-    document.body.insertAdjacentHTML('beforeend', progressHTML);
-    
-    const progressBar = document.getElementById('progress-bar');
-    const progressText = document.getElementById('progress-text');
-    
-    // Iterar sobre cada linha da tabela
-    rows.forEach((row, index) => {
-        const idAluno = row.dataset.alunoId;
-        const idNota = row.dataset.notaId;
-        
-        // Obter valores dos campos de notas
-        const notaMensal = row.querySelector('input[name="nota_mensal"]').value;
-        const notaBimestral = row.querySelector('input[name="nota_bimestral"]').value;
-        const recuperacao = row.querySelector('input[name="recuperacao"]').value;
-        const media = row.querySelector('input[name="media"]').value;
-        
-        // Verificar se pelo menos um campo foi preenchido
-        if (!notaMensal && !notaBimestral && !recuperacao) {
-            // Se não há notas e não existe ID de nota (nota nova), pular
-            if (!idNota) {
-                return;
-            }
-        }
-        
-        // Preparar dados da nota
-        const notaData = {
-            id_professor: professorId,
-            id_turma: idTurma,
-            id_disciplina: idDisciplina,
-            id_aluno: idAluno,
-            bimestre: parseInt(bimestre),
-            ano: parseInt(ano),
-            nota_mensal: notaMensal ? parseFloat(notaMensal) : null,
-            nota_bimestral: notaBimestral ? parseFloat(notaBimestral) : null,
-            recuperacao: recuperacao ? parseFloat(recuperacao) : null,
-            media: media ? parseFloat(media) : null
-        };
-        
-        // Determinar se é uma atualização ou uma nova inserção
-        let savePromise;
-        if (idNota) {
-            // Atualizar nota existente
-            notaData.id = idNota;
-            savePromise = fetch(CONFIG.getApiUrl(`/notas/${idNota}`), {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(notaData)
-            });
-        } else {
-            // Criar nova nota
-            savePromise = fetch(CONFIG.getApiUrl('/notas'), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(notaData)
-            });
-        }
-        
-        // Adicionar promessa ao array
-        savePromises.push(savePromise);
-    });
-    
-    // Executar todas as promessas e atualizar o progresso
-    let completedSaves = 0;
-    const totalSaves = savePromises.length;
-    
-    if (totalSaves === 0) {
-        // Remover indicador de progresso
-        const progressContainer = document.getElementById('progress-container');
-        if (progressContainer) progressContainer.remove();
-        
-        alert("Nenhuma nota para salvar.");
+    if (!notaMensalInput || !notaBimestralInput || !mediaContainer || !statusContainer) {
         return;
     }
     
-    // Função para atualizar o progresso
-    const updateProgress = () => {
-        completedSaves++;
-        const percentage = Math.round((completedSaves / totalSaves) * 100);
-        
-        if (progressBar) {
-            progressBar.style.width = `${percentage}%`;
-            progressBar.setAttribute('aria-valuenow', percentage);
-            progressBar.textContent = `${percentage}%`;
-        }
-        
-        if (progressText) {
-            progressText.textContent = `Salvando notas... ${completedSaves} de ${totalSaves}`;
-        }
-    };
+    const notaMensal = parseFloat(notaMensalInput.value) || null;
+    const notaBimestral = parseFloat(notaBimestralInput.value) || null;
+    const notaRecuperacao = parseFloat(notaRecuperacaoInput.value) || null;
     
-    // Processar cada promessa sequencialmente para não sobrecarregar a API
-    let sequence = Promise.resolve();
-    savePromises.forEach(promise => {
-        sequence = sequence
-            .then(() => promise)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`Erro ao salvar nota: ${response.status}`);
-                }
-                updateProgress();
-                return new Promise(resolve => setTimeout(resolve, 100)); // Pequeno delay entre requisições
-            })
-            .catch(error => {
-                console.error("Erro ao salvar nota:", error);
-                updateProgress();
-            });
-    });
-    
-    // Após todas as promessas serem concluídas
-    sequence.then(() => {
-        // Remover indicador de progresso
-        const progressContainer = document.getElementById('progress-container');
-        if (progressContainer) {
-            // Transformar em mensagem de sucesso
-            progressText.textContent = 'Notas salvas com sucesso!';
-            progressBar.classList.remove('progress-bar-animated');
-            progressBar.classList.add('bg-success');
-            
-            // Remover após alguns segundos
-            setTimeout(() => {
-                progressContainer.remove();
-            }, 3000);
-        }
-        
-        // Registrar atividade
-        registrarAtividade(
-            'registro',
-            'notas',
-            `${totalSaves} registros em massa`,
-            `Turma: ${idTurma}, Disciplina: ${idDisciplina}, Bimestre: ${bimestre}, Ano: ${ano}`,
-            'concluído'
-        );
-        
-        // Recarregar a visualização de notas para mostrar as alterações
-        fecharModoLancamentoEmMassa();
-        carregarNotas();
-    });
-}
-
-// Função para mostrar novamente a tabela regular de notas
-function mostrarTabelaNotasRegular() {
-    const tabelaRegular = document.querySelector('.table-responsive');
-    if (tabelaRegular) {
-        tabelaRegular.style.display = '';
-    }
-}
-
-// Função para calcular a média automaticamente no formulário
-function calcularMedia() {
-    console.log("Calculando média...");
-    
-    const notaMensal = parseFloat(document.getElementById('nota_mensal')?.value) || null;
-    const notaBimestral = parseFloat(document.getElementById('nota_bimestral')?.value) || null;
-    const notaRecuperacao = parseFloat(document.getElementById('recuperacao')?.value) || null;
-    const mediaField = document.getElementById('media');
-    
-    if (!mediaField) {
-        console.error('Campo de média não encontrado! ID esperado: media');
-        return;
-    }
-    
-    // Exibir valores para debug
-    console.log('Valores para cálculo da média:', {
-        notaMensal,
-        notaBimestral,
-        notaRecuperacao
-    });
-    
-    let media = 0;
-    
+    let media = null;
     if (notaMensal !== null && notaBimestral !== null) {
-        // Média normal: (mensal + bimestral) / 2
         media = (notaMensal + notaBimestral) / 2;
         
-        // Se houver recuperação, calcular a média final
         if (notaRecuperacao !== null) {
             media = (media + notaRecuperacao) / 2;
         }
+    }
+    
+    // Atualizar média
+    if (media !== null) {
+        media = Math.ceil(media * 10) / 10; // Arredondar para uma casa decimal
+        mediaContainer.textContent = media.toFixed(1);
         
-        // Arredondar para uma casa decimal
-        media = Math.ceil(media * 10) / 10;
-    } else if (notaMensal !== null) {
-        media = notaMensal;
-    } else if (notaBimestral !== null) {
-        media = notaBimestral;
-    }
-    
-    // Preencher o campo de média
-    mediaField.value = media > 0 ? media.toFixed(1) : '';
-    
-    // Atualizar o status visual
-    atualizarStatusNota(media);
-}
-
-// Função para atualizar o status visual da nota
-function atualizarStatusNota(media) {
-    const statusContainer = document.getElementById('status-container');
-    if (!statusContainer) {
-        console.error('Container de status da nota não encontrado! ID esperado: status-container');
-        return;
-    }
-    
-    let statusHTML = '';
-    let statusClass = '';
-    
-    if (media >= 7) {
-        statusClass = 'bg-success-subtle text-success';
-        statusHTML = '<i class="fas fa-check-circle me-1"></i> Aprovado';
-    } else if (media >= 5) {
-        statusClass = 'bg-warning-subtle text-warning';
-        statusHTML = '<i class="fas fa-exclamation-triangle me-1"></i> Recuperação';
-    } else if (media > 0) {
-        statusClass = 'bg-danger-subtle text-danger';
-        statusHTML = '<i class="fas fa-times-circle me-1"></i> Reprovado';
-    } else {
-        statusClass = 'bg-light text-muted';
-        statusHTML = '<i class="fas fa-question-circle me-1"></i> Não avaliado';
-    }
-    
-    statusContainer.className = `p-2 rounded ${statusClass}`;
-    statusContainer.innerHTML = statusHTML;
-}
-
-// Função para novo lançamento de nota
-function novaNota() {
-    console.log("Iniciando novo lançamento de nota");
-    
-    // Obter referências aos elementos do formulário
-    const formCard = document.querySelector('.card:has(#form-nota)');
-    const formTitulo = document.querySelector('#form-nota-titulo');
-    const formNota = document.getElementById('form-nota');
-    const idNotaInput = document.getElementById('id-nota');
-    
-    // Campos do formulário com IDs corretos
-    const turmaNota = document.getElementById('turma_nota');
-    const disciplinaNota = document.getElementById('disciplina_nota');
-    const alunoNota = document.getElementById('aluno_nota');
-    const bimestreNota = document.getElementById('bimestre');
-    const anoNota = document.getElementById('ano_nota');
-    
-    // Log para debug - verificar se encontrou os elementos
-    console.log('Elementos do formulário encontrados:', {
-        formCard,
-        formTitulo,
-        formNota,
-        idNotaInput,
-        turmaNota,
-        disciplinaNota,
-        alunoNota,
-        bimestreNota,
-        anoNota
-    });
-    
-    // Esconder o formulário de edição em massa se estiver visível
-    const configuracaoMassa = document.getElementById('configuracao-massa');
-    if (configuracaoMassa) {
-        configuracaoMassa.remove();
-    }
-    
-    const tabelaMassa = document.getElementById('tabela-massa-container');
-    if (tabelaMassa) {
-        tabelaMassa.remove();
-    }
-    
-    // Mostrar a tabela regular
-    mostrarTabelaNotasRegular();
-    
-    // Verificar se os elementos existem
-    if (!formCard || !formNota) {
-        console.error("Elementos essenciais do formulário não encontrados");
-        return;
-    }
-    
-    // Mostrar o formulário se estiver oculto
-    if (formCard.classList.contains('d-none')) {
-        formCard.classList.remove('d-none');
-    }
-    
-    // Atualizar o título
-    if (formTitulo) {
-        formTitulo.textContent = 'Novo Lançamento de Nota';
-    }
-    
-    // Resetar o formulário e campos
-    formNota.reset();
-    
-    // Limpar o ID da nota
-    if (idNotaInput) {
-        idNotaInput.value = '';
-    }
-    
-    // Inicializar anos (2025 a 2030)
-    if (anoNota) {
-        anoNota.innerHTML = '<option value="">Selecione o Ano</option>';
-        for (let ano = 2025; ano <= 2030; ano++) {
-            const option = document.createElement('option');
-            option.value = ano;
-            option.textContent = ano;
-            anoNota.appendChild(option);
-        }
-    }
-    
-    // Inicializar bimestres
-    if (bimestreNota) {
-        bimestreNota.innerHTML = '<option value="">Selecione o Bimestre</option>';
-        for (let i = 1; i <= 4; i++) {
-            const option = document.createElement('option');
-            option.value = i;
-            option.textContent = `${i}º Bimestre`;
-            bimestreNota.appendChild(option);
-        }
-    }
-    
-    // Carregar turmas
-    if (turmaNota) {
-        turmaNota.innerHTML = '<option value="">Carregando turmas...</option>';
-        turmaNota.disabled = true;
+        // Atualizar status
+        let statusClass = '';
+        let statusText = '';
         
-        fetch(CONFIG.getApiUrl(`/professores/${professorId}/turmas`))
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`Erro na requisição: ${response.status}`);
-                }
-                return response.json();
-            })
-            .then(turmas => {
-                console.log('Turmas carregadas para o formulário:', turmas);
-                turmaNota.innerHTML = '<option value="">Selecione a Turma</option>';
-                
-                if (turmas.length > 0) {
-                    turmas.forEach(turma => {
-                        const option = document.createElement('option');
-                        option.value = turma.id_turma;
-                        option.textContent = `${turma.serie || ''} ${turma.turno || ''} (${turma.id_turma})`;
-                        turmaNota.appendChild(option);
-                    });
-                }
-                
-                turmaNota.disabled = false;
-                
-                // Adicionar evento para carregar disciplinas quando a turma for selecionada
-                turmaNota.addEventListener('change', function() {
-                    const idTurma = this.value;
-                    
-                    // Limpar e desabilitar os selects dependentes
-                    if (disciplinaNota) {
-                        disciplinaNota.innerHTML = '<option value="">Selecione a Disciplina</option>';
-                        disciplinaNota.disabled = !idTurma;
-                    }
-                    
-                    if (alunoNota) {
-                        alunoNota.innerHTML = '<option value="">Selecione o Aluno</option>';
-                        alunoNota.disabled = true;
-                    }
-                    
-                    if (idTurma) {
-                        // Carregar disciplinas para esta turma
-                        carregarDisciplinasFormulario(idTurma);
-                    }
-                });
-            })
-            .catch(error => {
-                console.error("Erro ao carregar turmas:", error);
-                turmaNota.innerHTML = '<option value="">Erro ao carregar turmas</option>';
-                turmaNota.disabled = false;
-            });
+        if (media >= 7) {
+            statusClass = 'bg-success-subtle text-success';
+            statusText = 'Aprovado';
+        } else if (media >= 5) {
+            statusClass = 'bg-warning-subtle text-warning';
+            statusText = 'Recuperação';
+        } else {
+            statusClass = 'bg-danger-subtle text-danger';
+            statusText = 'Reprovado';
+        }
+        
+        statusContainer.textContent = statusText;
+        statusContainer.className = `text-center status-container-${alunoId} ${statusClass}`;
     } else {
-        console.error('Elemento de seleção de turma não encontrado! ID esperado: turma_nota');
+        mediaContainer.textContent = '-';
+        statusContainer.textContent = 'Não avaliado';
+        statusContainer.className = `text-center status-container-${alunoId} bg-light text-muted`;
     }
-    
-    // Atualizar o status para não avaliado
-    atualizarStatusNota(0);
 }
 
-// Função para carregar disciplinas no formulário
-function carregarDisciplinasFormulario(idTurma) {
-    console.log('Carregando disciplinas para o formulário. Turma:', idTurma);
+// Função para salvar o lançamento em massa
+function salvarLancamentoEmMassa() {
+    // Obter valores dos filtros
+    const turmaId = filtroTurma.value;
+    const disciplinaId = filtroDisciplina.value;
+    const ano = filtroAno.value;
+    const bimestre = filtroBimestre.value;
     
-    const disciplinaNota = document.getElementById('disciplina_nota');
-    if (!disciplinaNota) {
-        console.error('Elemento de seleção de disciplina não encontrado! ID esperado: disciplina_nota');
-        return;
-    }
-    
-    disciplinaNota.innerHTML = '<option value="">Carregando disciplinas...</option>';
-    disciplinaNota.disabled = true;
-    
-    fetch(CONFIG.getApiUrl(`/professores/${professorId}/turmas/${idTurma}/disciplinas`))
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`Erro na requisição: ${response.status}`);
-            }
-            return response.json();
-        })
-        .then(disciplinas => {
-            console.log('Disciplinas carregadas para o formulário:', disciplinas);
-            
-            disciplinaNota.innerHTML = '<option value="">Selecione a Disciplina</option>';
-            
-            if (disciplinas.length > 0) {
-                disciplinas.forEach(disciplina => {
-                    const option = document.createElement('option');
-                    option.value = disciplina.id_disciplina;
-                    option.textContent = disciplina.nome_disciplina;
-                    disciplinaNota.appendChild(option);
-                });
-            } else {
-                disciplinaNota.innerHTML = '<option value="">Nenhuma disciplina encontrada</option>';
-            }
-            
-            disciplinaNota.disabled = false;
-            
-            // Adicionar evento para carregar alunos quando a disciplina for selecionada
-            disciplinaNota.addEventListener('change', function() {
-                const idDisciplina = this.value;
-                const idTurma = document.getElementById('turma_nota').value;
-                
-                if (idTurma && idDisciplina) {
-                    carregarAlunosFormulario(idTurma);
-                }
-            });
-        })
-        .catch(error => {
-            console.error("Erro ao carregar disciplinas:", error);
-            disciplinaNota.innerHTML = '<option value="">Erro ao carregar disciplinas</option>';
-            disciplinaNota.disabled = false;
-        });
-}
-
-// Função para carregar alunos no formulário
-function carregarAlunosFormulario(idTurma) {
-    console.log('Carregando alunos para o formulário. Turma:', idTurma);
-    
-    const alunoNota = document.getElementById('aluno_nota');
-    if (!alunoNota) {
-        console.error('Elemento de seleção de aluno não encontrado! ID esperado: aluno_nota');
-        return;
-    }
-    
-    alunoNota.innerHTML = '<option value="">Carregando alunos...</option>';
-    alunoNota.disabled = true;
-    
-    fetch(CONFIG.getApiUrl(`/turmas/${idTurma}/alunos`))
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`Erro na requisição: ${response.status}`);
-            }
-            return response.json();
-        })
-        .then(alunos => {
-            console.log('Alunos carregados para o formulário:', alunos);
-            
-            alunoNota.innerHTML = '<option value="">Selecione o Aluno</option>';
-            
-            if (alunos.length > 0) {
-                // Ordenar alunos por nome
-                alunos.sort((a, b) => {
-                    const nomeA = a.nome_aluno || '';
-                    const nomeB = b.nome_aluno || '';
-                    return nomeA.localeCompare(nomeB);
-                });
-                
-                alunos.forEach(aluno => {
-                    const option = document.createElement('option');
-                    option.value = aluno.id_aluno;
-                    option.textContent = aluno.nome_aluno || `Aluno ID: ${aluno.id_aluno}`;
-                    alunoNota.appendChild(option);
-                });
-            } else {
-                alunoNota.innerHTML = '<option value="">Nenhum aluno encontrado</option>';
-            }
-            
-            alunoNota.disabled = false;
-        })
-        .catch(error => {
-            console.error("Erro ao carregar alunos:", error);
-            alunoNota.innerHTML = '<option value="">Erro ao carregar alunos</option>';
-            alunoNota.disabled = false;
-        });
-}
-
-// Função para salvar nota
-function salvarNota() {
-    console.log("Salvando nota...");
-    
-    // Obter dados do formulário
-    const formNota = document.getElementById('form-nota');
-    if (!formNota) return;
-    
-    const idNota = document.getElementById('id-nota')?.value || '';
-    const idTurma = document.getElementById('turma_nota')?.value;
-    const idDisciplina = document.getElementById('disciplina_nota')?.value;
-    const idAluno = document.getElementById('aluno_nota')?.value;
-    const bimestre = document.getElementById('bimestre')?.value;
-    const ano = document.getElementById('ano_nota')?.value;
-    const notaMensal = document.getElementById('nota_mensal')?.value;
-    const notaBimestral = document.getElementById('nota_bimestral')?.value;
-    const recuperacao = document.getElementById('recuperacao')?.value;
-    const media = document.getElementById('media')?.value;
-    
-    // Log para debug - valores obtidos do formulário
-    console.log('Valores do formulário:', {
-        idNota,
-        idTurma,
-        idDisciplina,
-        idAluno,
-        bimestre,
-        ano,
-        notaMensal,
-        notaBimestral,
-        recuperacao,
-        media
-    });
-    
-    // Validar dados obrigatórios
-    if (!idTurma || !idDisciplina || !idAluno || !bimestre || !ano) {
-        alert("Por favor, preencha todos os campos obrigatórios.");
-        return;
-    }
-    
-    // Verificar se pelo menos uma nota foi preenchida
-    if (!notaMensal && !notaBimestral && !recuperacao) {
-        alert("Por favor, preencha pelo menos uma nota.");
-        return;
-    }
-    
-    // Preparar dados para envio
-    const notaData = {
-        id_professor: professorId,
-        id_turma: idTurma,
-        id_disciplina: idDisciplina,
-        id_aluno: idAluno,
-        bimestre: parseInt(bimestre),
-        ano: parseInt(ano),
-        nota_mensal: notaMensal ? parseFloat(notaMensal) : null,
-        nota_bimestral: notaBimestral ? parseFloat(notaBimestral) : null,
-        recuperacao: recuperacao ? parseFloat(recuperacao) : null,
-        media: media ? parseFloat(media) : null
-    };
+    // Coletando dados do formulário
+    const form = document.getElementById('form-lancamento-massa');
+    const alunos = document.querySelectorAll('input[name^="aluno_id_"]');
     
     // Mostrar indicador de carregamento
-    const btnSalvar = document.getElementById('btn-salvar-nota');
-    if (btnSalvar) {
-        btnSalvar.disabled = true;
-        btnSalvar.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Salvando...';
-    }
-    
-    // Determinar se é uma criação ou atualização
-    let url = CONFIG.getApiUrl('/notas');
-    let method = 'POST';
-    
-    if (idNota) {
-        url = CONFIG.getApiUrl(`/notas/${idNota}`);
-        method = 'PUT';
-        notaData.id = idNota;
-    }
-    
-    // Enviar dados para a API
-    fetch(url, {
-        method: method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(notaData)
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error(`Erro na requisição: ${response.status}`);
-        }
-        return response.json();
-    })
-    .then(data => {
-        console.log("Nota salva com sucesso:", data);
-        
-        // Registrar atividade
-        const alunoNome = document.getElementById('aluno_nota').options[document.getElementById('aluno_nota').selectedIndex]?.text || 'Desconhecido';
-        const disciplinaNome = document.getElementById('disciplina_nota').options[document.getElementById('disciplina_nota').selectedIndex]?.text || 'Desconhecida';
-        
-        registrarAtividade(
-            idNota ? 'atualização' : 'criação',
-            'nota',
-            `Nota ${idNota ? 'atualizada' : 'criada'} com sucesso`,
-            `Aluno: ${alunoNome}, Disciplina: ${disciplinaNome}`,
-            'concluído'
-        );
-        
-        // Exibir mensagem de sucesso
-        exibirMensagem('success', `Nota ${idNota ? 'atualizada' : 'registrada'} com sucesso!`);
-        
-        // Limpar o formulário e ocultá-lo
-        limparFormularioNota();
-        
-        // Esconder o card do formulário
-        const formCard = document.querySelector('.card:has(#form-nota)');
-        if (formCard) {
-            formCard.classList.add('d-none');
-        }
-        
-        // Recarregar a tabela de notas
-        carregarNotas();
-    })
-    .catch(error => {
-        console.error("Erro ao salvar nota:", error);
-        
-        // Exibir mensagem de erro
-        exibirMensagem('danger', `Erro ao salvar a nota: ${error.message}`);
-        
-        // Registrar erro
-        registrarAtividade(
-            idNota ? 'atualização' : 'criação',
-            'nota',
-            `Erro ao ${idNota ? 'atualizar' : 'criar'} nota`,
-            error.message,
-            'erro'
-        );
-    })
-    .finally(() => {
-        // Restaurar botão de salvar
-        if (btnSalvar) {
-            btnSalvar.disabled = false;
-            btnSalvar.innerHTML = '<i class="fas fa-save me-1"></i> Salvar';
-        }
-    });
-}
-
-// Função para limpar o formulário de notas
-function limparFormularioNota() {
-    console.log("Limpando formulário de notas");
-    
-    const formNota = document.getElementById('form-nota');
-    if (!formNota) {
-        console.error('Formulário de notas não encontrado! ID esperado: form-nota');
-        return;
-    }
-    
-    // Resetar todos os campos do formulário
-    formNota.reset();
-    
-    // Limpar o ID da nota
-    const idNotaInput = document.getElementById('id-nota');
-    if (idNotaInput) {
-        idNotaInput.value = '';
-    }
-    
-    // Limpar selects que podem ter sido populados
-    const selects = ['turma_nota', 'disciplina_nota', 'aluno_nota'];
-    selects.forEach(id => {
-        const select = document.getElementById(id);
-        if (select) {
-            select.innerHTML = '<option value="">Selecione...</option>';
-        }
-    });
-    
-    // Resetar o status visual
-    atualizarStatusNota(0);
-    
-    // Esconder o formulário
-    const formCard = document.querySelector('.card:has(#form-nota)');
-    if (formCard) {
-        formCard.classList.add('d-none');
-    }
-}
-
-// Função para cancelar a edição de uma nota
-function cancelarEdicao() {
-    console.log("Cancelando edição de nota");
-    
-    // Limpar o formulário
-    limparFormularioNota();
-}
-
-// Função para exibir mensagens toast
-function exibirMensagem(tipo, mensagem) {
-    // Criar container para as mensagens se não existir
-    let toastContainer = document.getElementById('toast-container');
-    if (!toastContainer) {
-        toastContainer = document.createElement('div');
-        toastContainer.id = 'toast-container';
-        toastContainer.className = 'toast-container position-fixed bottom-0 end-0 p-3';
-        document.body.appendChild(toastContainer);
-    }
-    
-    // Gerar ID único para o toast
-    const toastId = 'toast-' + Date.now();
-    
-    // Definir classe de cor com base no tipo
-    let bgClass = 'bg-primary text-white';
-    let iconClass = 'fas fa-info-circle';
-    
-    switch (tipo) {
-        case 'success':
-            bgClass = 'bg-success text-white';
-            iconClass = 'fas fa-check-circle';
-            break;
-        case 'danger':
-        case 'error':
-            bgClass = 'bg-danger text-white';
-            iconClass = 'fas fa-exclamation-circle';
-            break;
-        case 'warning':
-            bgClass = 'bg-warning text-dark';
-            iconClass = 'fas fa-exclamation-triangle';
-            break;
-    }
-    
-    // Criar o HTML do toast
-    const toastHTML = `
-        <div id="${toastId}" class="toast ${bgClass}" role="alert" aria-live="assertive" aria-atomic="true">
-            <div class="toast-header ${bgClass}">
-                <i class="${iconClass} me-2"></i>
-                <strong class="me-auto">Notificação</strong>
-                <small>${new Date().toLocaleTimeString()}</small>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Fechar"></button>
+    const cardBody = document.querySelector('.card-body.notas-container');
+    const formHtml = cardBody.innerHTML;
+    cardBody.innerHTML = `
+        <div class="d-flex justify-content-center align-items-center" style="height: 200px;">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Salvando notas...</span>
             </div>
-            <div class="toast-body">
-                ${mensagem}
-            </div>
+            <span class="ms-2">Salvando notas...</span>
         </div>
     `;
     
-    // Adicionar o toast ao container
-    toastContainer.insertAdjacentHTML('beforeend', toastHTML);
+    // Array para armazenar promessas de salvamento
+    const promessasSalvamento = [];
     
-    // Inicializar e mostrar o toast
-    const toastElement = document.getElementById(toastId);
-    const toast = new bootstrap.Toast(toastElement, {
-        autohide: true,
-        delay: 5000
+    // Para cada aluno, criar um objeto de nota e salvar
+    alunos.forEach(alunoInput => {
+        const alunoId = alunoInput.value;
+        const notaId = document.querySelector(`input[name="nota_id_${alunoId}"]`).value;
+        const notaMensal = document.querySelector(`input[name="nota_mensal_${alunoId}"]`).value;
+        const notaBimestral = document.querySelector(`input[name="nota_bimestral_${alunoId}"]`).value;
+        const recuperacao = document.querySelector(`input[name="recuperacao_${alunoId}"]`).value;
+        
+        // Se não tem notas, continuar
+        if (!notaMensal && !notaBimestral && !recuperacao) {
+            return;
+        }
+        
+        // Calcular média
+        let media = null;
+        if (notaMensal && notaBimestral) {
+            media = (parseFloat(notaMensal) + parseFloat(notaBimestral)) / 2;
+            
+            if (recuperacao) {
+                media = (media + parseFloat(recuperacao)) / 2;
+            }
+            
+            // Arredondar para uma casa decimal
+            media = Math.ceil(media * 10) / 10;
+        }
+        
+        // Criar objeto de nota
+        const notaObj = {
+            id: notaId || null,
+            professor_id: professorId,
+            aluno_id: alunoId,
+            disciplina_id: disciplinaId,
+            id_turma: turmaId,
+            ano: ano,
+            bimestre: bimestre,
+            nota_mensal: notaMensal || null,
+            nota_bimestral: notaBimestral || null,
+            recuperacao: recuperacao || null,
+            media: media
+        };
+        
+        // Se tem ID, atualizar nota existente
+        if (notaId) {
+            const promessa = fetch(CONFIG.getApiUrl(`/notas/${notaId}`), {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(notaObj)
+            });
+            promessasSalvamento.push(promessa);
+        } 
+        // Caso contrário, criar nova nota
+        else {
+            const promessa = fetch(CONFIG.getApiUrl('/notas'), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(notaObj)
+            });
+            promessasSalvamento.push(promessa);
+        }
     });
     
-    toast.show();
+    // Esperar todas as promessas terminarem
+    Promise.all(promessasSalvamento)
+        .then(() => {
+            alert('Notas salvas com sucesso!');
+            
+            // Restaurar a tabela de notas
+            inicializarTabelaNotas();
+            carregarNotas();
+        })
+        .catch(error => {
+            console.error('Erro ao salvar notas:', error);
+            alert('Erro ao salvar notas. Verifique o console para mais detalhes.');
+            
+            // Restaurar o formulário em caso de erro
+            cardBody.innerHTML = formHtml;
+        });
+}
+
+// Função para inicializar a tabela de notas
+function inicializarTabelaNotas() {
+    const cardBody = document.querySelector('.card-body.notas-container');
+    if (!cardBody) {
+        return;
+    }
     
-    // Remover o toast do DOM após ser escondido
-    toastElement.addEventListener('hidden.bs.toast', function() {
-        toastElement.remove();
-    });
+    cardBody.innerHTML = `
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead class="table-secondary">
+                    <tr>
+                        <th>Aluno</th>
+                        <th>Disciplina</th>
+                        <th>Turma</th>
+                        <th>Bimestre</th>
+                        <th>Nota Mensal</th>
+                        <th>Nota Bimestral</th>
+                        <th>Recuperação</th>
+                        <th>Média</th>
+                        <th>Status</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="notas-lista">
+                    <tr class="text-center">
+                        <td colspan="10">
+                            <div class="alert alert-info" role="alert">
+                                <h4 class="alert-heading">Selecione os filtros</h4>
+                                <p>Utilize os filtros acima para carregar as notas dos alunos.</p>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    `;
 }
