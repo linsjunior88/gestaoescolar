@@ -36,9 +36,25 @@ const ConfigModule = {
     },
     
     // Obter URL da API
-    getApiUrl: function() {
-        return this.state.apiUrl;
+    getApiUrl: function(endpoint = '') {
+        const base = this.state.apiUrl;
+        
+        // Se não foi fornecido um endpoint, retorne a URL base
+        if (!endpoint) return base;
+        
+        // Garantir que a junção de URLs seja feita corretamente
+        if (endpoint.startsWith('/')) {
+            return `${base}${endpoint}`;
+        } else {
+            return `${base}/${endpoint}`;
+        }
     }
 };
 
-export default ConfigModule;
+// Exportar o módulo para o escopo global para uso em scripts não-modularizados
+window.CONFIG = ConfigModule;
+
+// Inicializar automaticamente
+document.addEventListener('DOMContentLoaded', function() {
+    ConfigModule.init();
+});
