@@ -1851,14 +1851,8 @@ function initNotas() {
             btnFiltrar.hasEventListener = true;
         }
         
-        // Carregar notas iniciais após configurar tudo
-        setTimeout(() => {
-            try {
-                carregarNotas();
-            } catch (error) {
-                console.error('Erro ao carregar notas iniciais:', error);
-            }
-        }, 300);
+        // REMOVIDO O CARREGAMENTO AUTOMÁTICO DE NOTAS
+        // Deixamos a cargo do usuário clicar no botão filtrar para carregar as notas
         
         console.log('=== MÓDULO DE NOTAS INICIALIZADO COM SUCESSO ===');
         
@@ -1930,43 +1924,102 @@ function carregarDisciplinasParaFiltro(idTurma = null) {
     filtroDisciplina.disabled = true;
     filtroDisciplina.innerHTML = '<option value="">Carregando disciplinas...</option>';
     
+    // Definir URLs principal e alternativa
     let url;
+    let urlAlternativa;
+    
     if (!idTurma) {
+        // URL principal: todas as disciplinas do professor
         url = CONFIG.getApiUrl(`/professores/${professorId}/disciplinas`);
+        // URL alternativa: nenhuma (já estamos buscando todas)
     } else {
+        // URL principal: disciplinas do professor para a turma específica
         url = CONFIG.getApiUrl(`/professores/${professorId}/turmas/${idTurma}/disciplinas`);
+        // URL alternativa: todas as disciplinas da turma
+        urlAlternativa = CONFIG.getApiUrl(`/turmas/${idTurma}/disciplinas`);
     }
     
     console.log('URL para carregar disciplinas:', url);
     
-    // Buscar disciplinas
+    // Função para processar os resultados das disciplinas
+    const processarDisciplinas = (disciplinas) => {
+        console.log('Disciplinas carregadas com sucesso:', disciplinas);
+        
+        filtroDisciplina.innerHTML = '<option value="">Todas as disciplinas</option>';
+        
+        if (disciplinas && disciplinas.length > 0) {
+            disciplinas.forEach(disciplina => {
+                const disciplinaId = disciplina.id_disciplina || disciplina.id || '';
+                const disciplinaNome = disciplina.nome_disciplina || disciplina.nome || disciplinaId;
+                
+                const option = document.createElement('option');
+                option.value = disciplinaId;
+                option.textContent = disciplinaNome;
+                filtroDisciplina.appendChild(option);
+            });
+        }
+        
+        // Reativar o select
+        filtroDisciplina.disabled = false;
+    };
+    
+    // Função para tentar a URL alternativa em caso de falha
+    const tentarUrlAlternativa = (error) => {
+        console.warn(`Erro na primeira tentativa (${error.message}). Tentando URL alternativa para disciplinas:`, urlAlternativa);
+        
+        if (!urlAlternativa) {
+            throw error; // Se não há URL alternativa, propagar o erro
+        }
+        
+        return fetch(urlAlternativa)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Erro na requisição alternativa: ${response.status}`);
+                }
+                return response.json();
+            });
+    };
+    
+    // Buscar disciplinas com tratamento de erro e URL alternativa
     fetch(url)
         .then(response => {
             if (!response.ok) {
+                if (response.status === 404 && urlAlternativa) {
+                    // Se for 404 e temos URL alternativa, tentar a alternativa
+                    return tentarUrlAlternativa(new Error(`Erro 404 na requisição: ${response.status}`))
+                        .then(disciplinas => disciplinas);
+                }
                 throw new Error(`Erro na requisição: ${response.status}`);
             }
             return response.json();
         })
-        .then(disciplinas => {
-            console.log('Disciplinas carregadas com sucesso:', disciplinas);
+        .then(processarDisciplinas)
+        .catch(error => {
+            if (urlAlternativa && !error.message.includes('alternativa')) {
+                // Se temos URL alternativa e ainda não tentamos, tentar
+                return tentarUrlAlternativa(error)
+                    .then(processarDisciplinas)
+                    .catch(alternativeError => {
+                        throw alternativeError;
+                    });
+            } else {
+                // Se não temos URL alternativa ou já tentamos, propagar o erro
+                throw error;
+            }
+        })
+        .catch(finalError => {
+            console.error('Erro ao carregar disciplinas para filtro:', finalError);
             
-            filtroDisciplina.innerHTML = '<option value="">Todas as disciplinas</option>';
-            
-            if (disciplinas.length > 0) {
-                disciplinas.forEach(disciplina => {
-                    const option = document.createElement('option');
-                    option.value = disciplina.id_disciplina;
-                    option.textContent = disciplina.nome_disciplina || disciplina.id_disciplina;
-                    filtroDisciplina.appendChild(option);
-                });
+            // Tentar carregar todas as disciplinas do professor como última alternativa
+            if (idTurma && url !== CONFIG.getApiUrl(`/professores/${professorId}/disciplinas`)) {
+                console.log('Tentando carregar todas as disciplinas do professor como última alternativa');
+                carregarDisciplinasParaFiltro(); // Chamar sem parâmetro para buscar todas
+            } else {
+                // Se já estamos tentando todas as disciplinas ou não temos ID de turma, mostrar erro
+                filtroDisciplina.innerHTML = '<option value="">Erro ao carregar disciplinas</option>';
             }
             
-            // Reativar o select
-            filtroDisciplina.disabled = false;
-        })
-        .catch(error => {
-            console.error('Erro ao carregar disciplinas para filtro:', error);
-            filtroDisciplina.innerHTML = '<option value="">Erro ao carregar disciplinas</option>';
+            // Reativar o select mesmo em caso de erro
             filtroDisciplina.disabled = false;
         });
 }
@@ -1991,50 +2044,126 @@ function carregarAlunosParaFiltro(idTurma = null, idDisciplina = null) {
     filtroAluno.disabled = true;
     filtroAluno.innerHTML = '<option value="">Carregando alunos...</option>';
     
+    // Definir URLs principal e alternativa
     let url;
+    let urlAlternativa;
+    
     if (!idTurma) {
+        // Todos os alunos do professor
         url = CONFIG.getApiUrl(`/professores/${professorId}/alunos`);
+        // Não temos alternativa neste caso
     } else {
+        // URL principal: alunos da turma
         url = CONFIG.getApiUrl(`/turmas/${idTurma}/alunos`);
+        // URL alternativa: alunos do professor
+        urlAlternativa = CONFIG.getApiUrl(`/professores/${professorId}/alunos`);
+        
+        // Se temos disciplina, tentar endpoint mais específico
+        if (idDisciplina) {
+            // URL para alunos de uma disciplina específica na turma
+            const urlEspecifica = CONFIG.getApiUrl(`/disciplinas/${idDisciplina}/turmas/${idTurma}/alunos`);
+            urlAlternativa = urlEspecifica; // Primeiro tentaremos esta
+        }
     }
     
     console.log('URL para carregar alunos:', url);
+    if (urlAlternativa) console.log('URL alternativa:', urlAlternativa);
     
-    // Buscar alunos
+    // Função para processar os resultados dos alunos
+    const processarAlunos = (alunos) => {
+        console.log('Alunos carregados com sucesso:', alunos);
+        
+        filtroAluno.innerHTML = '<option value="">Todos os alunos</option>';
+        
+        if (alunos && alunos.length > 0) {
+            // Ordenar alunos por nome
+            alunos.sort((a, b) => {
+                const nomeA = a.nome_aluno || a.nome || '';
+                const nomeB = b.nome_aluno || b.nome || '';
+                return nomeA.localeCompare(nomeB);
+            });
+            
+            alunos.forEach(aluno => {
+                const alunoId = aluno.id_aluno || aluno.id || '';
+                const alunoNome = aluno.nome_aluno || aluno.nome || `Aluno ID: ${alunoId}`;
+                
+                const option = document.createElement('option');
+                option.value = alunoId;
+                option.textContent = alunoNome;
+                filtroAluno.appendChild(option);
+            });
+        }
+        
+        // Reativar o select
+        filtroAluno.disabled = false;
+    };
+    
+    // Função para tentar a URL alternativa em caso de falha
+    const tentarUrlAlternativa = (error) => {
+        console.warn(`Erro na primeira tentativa (${error.message}). Tentando URL alternativa para alunos:`, urlAlternativa);
+        
+        if (!urlAlternativa) {
+            throw error; // Se não há URL alternativa, propagar o erro
+        }
+        
+        return fetch(urlAlternativa)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Erro na requisição alternativa: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(alunos => {
+                // Se estamos buscando com filtro de turma e disciplina, filtrar os resultados
+                if (idTurma) {
+                    return alunos.filter(aluno => {
+                        const turmaDoAluno = aluno.id_turma || aluno.turma_id || '';
+                        return turmaDoAluno === idTurma;
+                    });
+                }
+                return alunos;
+            });
+    };
+    
+    // Buscar alunos com tratamento de erro
     fetch(url)
         .then(response => {
             if (!response.ok) {
+                if (response.status === 404 && urlAlternativa) {
+                    // Se for 404 e temos URL alternativa, tentar a alternativa
+                    return tentarUrlAlternativa(new Error(`Erro 404 na requisição: ${response.status}`));
+                }
                 throw new Error(`Erro na requisição: ${response.status}`);
             }
             return response.json();
         })
-        .then(alunos => {
-            console.log('Alunos carregados com sucesso:', alunos);
+        .then(processarAlunos)
+        .catch(error => {
+            if (urlAlternativa && !error.message.includes('alternativa')) {
+                // Se temos URL alternativa e ainda não tentamos, tentar
+                return tentarUrlAlternativa(error)
+                    .then(processarAlunos)
+                    .catch(alternativeError => {
+                        throw alternativeError;
+                    });
+            } else {
+                // Se não temos URL alternativa ou já tentamos, propagar o erro
+                throw error;
+            }
+        })
+        .catch(finalError => {
+            console.error('Erro ao carregar alunos para filtro:', finalError);
             
-            filtroAluno.innerHTML = '<option value="">Todos os alunos</option>';
-            
-            if (alunos.length > 0) {
-                // Ordenar alunos por nome
-                alunos.sort((a, b) => {
-                    const nomeA = a.nome_aluno || '';
-                    const nomeB = b.nome_aluno || '';
-                    return nomeA.localeCompare(nomeB);
-                });
-                
-                alunos.forEach(aluno => {
-                    const option = document.createElement('option');
-                    option.value = aluno.id_aluno;
-                    option.textContent = aluno.nome_aluno || `Aluno ID: ${aluno.id_aluno}`;
-                    filtroAluno.appendChild(option);
-                });
+            // Tentar carregar todos os alunos do professor como última alternativa
+            if (idTurma && url !== CONFIG.getApiUrl(`/professores/${professorId}/alunos`)) {
+                console.log('Tentando carregar todos os alunos do professor como última alternativa');
+                carregarAlunosParaFiltro(); // Chamar sem parâmetro para buscar todos
+            } else {
+                // Se já estamos tentando todos os alunos, mostrar erro
+                filtroAluno.innerHTML = '<option value="">Erro ao carregar alunos</option>';
             }
             
-            // Reativar o select
-            filtroAluno.disabled = false;
-        })
-        .catch(error => {
-            console.error('Erro ao carregar alunos para filtro:', error);
-            filtroAluno.innerHTML = '<option value="">Erro ao carregar alunos</option>';
+            // Reativar o select mesmo em caso de erro
             filtroAluno.disabled = false;
         });
 }
@@ -2103,6 +2232,11 @@ function carregarNotas() {
                 </td>
             </tr>
         `;
+        
+        // Armazenar informações de alunos, turmas e disciplinas
+        const dadosAlunos = {};
+        const dadosTurmas = {};
+        const dadosDisciplinas = {};
         
         // Construir URL com parâmetros de consulta
         const params = new URLSearchParams();
@@ -2234,102 +2368,156 @@ function carregarNotas() {
                 // Gerar HTML para a tabela
                 let html = '';
                 
-                // Iterar sobre as notas
+                // Coletar IDs dos alunos, turmas e disciplinas que precisamos buscar
+                const alunosIDs = new Set();
+                const turmasIDs = new Set();
+                const disciplinasIDs = new Set();
+                
                 notas.forEach(nota => {
-                    // Garantir que todos os campos necessários existam
-                    const notaMensal = nota.nota_mensal !== undefined ? nota.nota_mensal : null;
-                    const notaBimestral = nota.nota_bimestral !== undefined ? nota.nota_bimestral : null;
-                    const recuperacao = nota.recuperacao !== undefined ? nota.recuperacao : null;
+                    const alunoId = nota.id_aluno || nota.aluno_id;
+                    const turmaId = nota.id_turma || nota.turma_id;
+                    const disciplinaId = nota.id_disciplina || nota.disciplina_id;
                     
-                    // Calcular média corretamente ou usar a que veio da API
-                    let media = nota.media !== undefined ? nota.media : null;
-                    
-                    if (media === null) {
-                        if (notaMensal !== null && notaBimestral !== null) {
-                            // Média simples: (mensal + bimestral) / 2
-                            const notaMensalNum = parseFloat(notaMensal);
-                            const notaBimestralNum = parseFloat(notaBimestral);
+                    if (alunoId && !dadosAlunos[alunoId]) alunosIDs.add(alunoId);
+                    if (turmaId && !dadosTurmas[turmaId]) turmasIDs.add(turmaId);
+                    if (disciplinaId && !dadosDisciplinas[disciplinaId]) disciplinasIDs.add(disciplinaId);
+                });
+                
+                console.log("Dados complementares a buscar:", { 
+                    alunos: Array.from(alunosIDs), 
+                    turmas: Array.from(turmasIDs), 
+                    disciplinas: Array.from(disciplinasIDs) 
+                });
+                
+                // Carregar os dados dos alunos faltantes
+                const promessasAlunos = Array.from(alunosIDs).map(alunoId => {
+                    return fetch(CONFIG.getApiUrl(`/alunos/${alunoId}`))
+                        .then(response => response.ok ? response.json() : null)
+                        .then(aluno => {
+                            if (aluno) {
+                                dadosAlunos[alunoId] = aluno;
+                                console.log(`Aluno ${alunoId} carregado:`, aluno);
+                            }
+                        })
+                        .catch(error => {
+                            console.error(`Erro ao carregar aluno ${alunoId}:`, error);
+                        });
+                });
+                
+                // Aguardar carregamento de dados complementares
+                Promise.all(promessasAlunos)
+                    .then(() => {
+                        // Iterar sobre as notas com os dados complementares
+                        notas.forEach(nota => {
+                            // Obter ID do aluno (que pode estar em campos diferentes)
+                            const alunoId = nota.id_aluno || nota.aluno_id;
+                            // Obter dados completos do aluno
+                            const aluno = dadosAlunos[alunoId] || {};
                             
-                            if (!isNaN(notaMensalNum) && !isNaN(notaBimestralNum)) {
-                                media = (notaMensalNum + notaBimestralNum) / 2;
-                                
-                                // Se há recuperação, ajustar a média
-                                if (recuperacao !== null) {
-                                    const recNum = parseFloat(recuperacao);
-                                    if (!isNaN(recNum)) {
-                                        media = (media + recNum) / 2;
+                            // Garantir que todos os campos necessários existam
+                            const notaMensal = nota.nota_mensal !== undefined ? nota.nota_mensal : null;
+                            const notaBimestral = nota.nota_bimestral !== undefined ? nota.nota_bimestral : null;
+                            const recuperacao = nota.recuperacao !== undefined ? nota.recuperacao : null;
+                            
+                            // Calcular média corretamente ou usar a que veio da API
+                            let media = nota.media !== undefined ? nota.media : null;
+                            
+                            if (media === null) {
+                                if (notaMensal !== null && notaBimestral !== null) {
+                                    // Média simples: (mensal + bimestral) / 2
+                                    const notaMensalNum = parseFloat(notaMensal);
+                                    const notaBimestralNum = parseFloat(notaBimestral);
+                                    
+                                    if (!isNaN(notaMensalNum) && !isNaN(notaBimestralNum)) {
+                                        media = (notaMensalNum + notaBimestralNum) / 2;
+                                        
+                                        // Se há recuperação, ajustar a média
+                                        if (recuperacao !== null) {
+                                            const recNum = parseFloat(recuperacao);
+                                            if (!isNaN(recNum)) {
+                                                media = (media + recNum) / 2;
+                                            }
+                                        }
+                                    }
+                                } else if (notaMensal !== null) {
+                                    media = parseFloat(notaMensal);
+                                } else if (notaBimestral !== null) {
+                                    media = parseFloat(notaBimestral);
+                                }
+                            }
+                            
+                            // Determinar status com base na média
+                            let status = '';
+                            let statusClass = '';
+                            
+                            if (media !== null) {
+                                const mediaNum = parseFloat(media);
+                                if (!isNaN(mediaNum)) {
+                                    if (mediaNum >= 7) {
+                                        status = 'Aprovado';
+                                        statusClass = 'bg-success text-white';
+                                    } else if (mediaNum >= 5) {
+                                        status = 'Recuperação';
+                                        statusClass = 'bg-warning';
+                                    } else {
+                                        status = 'Reprovado';
+                                        statusClass = 'bg-danger text-white';
                                     }
                                 }
                             }
-                        } else if (notaMensal !== null) {
-                            media = parseFloat(notaMensal);
-                        } else if (notaBimestral !== null) {
-                            media = parseFloat(notaBimestral);
-                        }
-                    }
-                    
-                    // Determinar status com base na média
-                    let status = '';
-                    let statusClass = '';
-                    
-                    if (media !== null) {
-                        const mediaNum = parseFloat(media);
-                        if (!isNaN(mediaNum)) {
-                            if (mediaNum >= 7) {
-                                status = 'Aprovado';
-                                statusClass = 'bg-success text-white';
-                            } else if (mediaNum >= 5) {
-                                status = 'Recuperação';
-                                statusClass = 'bg-warning';
-                            } else {
-                                status = 'Reprovado';
-                                statusClass = 'bg-danger text-white';
-                            }
-                        }
-                    }
-                    
-                    // Formatação para exibição
-                    const formatarNota = (valor) => {
-                        if (valor === null || valor === undefined) return '-';
-                        const num = parseFloat(valor);
-                        return isNaN(num) ? '-' : num.toFixed(1);
-                    };
-                    
-                    // Criar a linha da tabela
-                    html += `
-                        <tr>
-                            <td>${nota.nome_aluno || 'N/A'}</td>
-                            <td>${nota.nome_disciplina || nota.id_disciplina || 'N/A'}</td>
-                            <td>${nota.nome_turma || nota.id_turma || 'N/A'}</td>
-                            <td>${nota.bimestre ? nota.bimestre + 'º' : 'N/A'}</td>
-                            <td>${formatarNota(notaMensal)}</td>
-                            <td>${formatarNota(notaBimestral)}</td>
-                            <td>${formatarNota(recuperacao)}</td>
-                            <td><strong>${formatarNota(media)}</strong></td>
-                            <td><span class="badge ${statusClass}">${status || 'N/A'}</span></td>
-                            <td>
-                                <div class="btn-group" role="group">
-                                    <button type="button" class="btn btn-sm btn-outline-primary" 
-                                            onclick="editarNota('${nota.id || nota.id_nota}')">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
-                    `;
-                });
-                
-                // Atualizar a tabela
-                notasTabela.innerHTML = html;
-                
-                // Registrar atividade
-                const turmaTexto = idTurma ? (filtroTurma.options[filtroTurma.selectedIndex]?.text || idTurma) : 'Todas';
-                const disciplinaTexto = idDisciplina ? (filtroDisciplina.options[filtroDisciplina.selectedIndex]?.text || idDisciplina) : 'Todas';
-                
-                registrarAtividade('consulta', 'notas', professorId, 
-                    `Consulta de notas com filtros - Turma: ${turmaTexto}, Disciplina: ${disciplinaTexto}`);
-                
-                console.log('Notas carregadas com sucesso:', notas.length);
+                            
+                            // Formatação para exibição
+                            const formatarNota = (valor) => {
+                                if (valor === null || valor === undefined) return '-';
+                                const num = parseFloat(valor);
+                                return isNaN(num) ? '-' : num.toFixed(1);
+                            };
+                            
+                            // Obter o nome do aluno de onde estiver disponível
+                            const nomeAluno = aluno.nome_aluno || aluno.nome || nota.nome_aluno || 'N/A';
+                            
+                            // Criar a linha da tabela
+                            html += `
+                                <tr>
+                                    <td>${nomeAluno}</td>
+                                    <td>${nota.nome_disciplina || nota.id_disciplina || 'N/A'}</td>
+                                    <td>${nota.nome_turma || nota.id_turma || 'N/A'}</td>
+                                    <td>${nota.bimestre ? nota.bimestre + 'º' : 'N/A'}</td>
+                                    <td>${formatarNota(notaMensal)}</td>
+                                    <td>${formatarNota(notaBimestral)}</td>
+                                    <td>${formatarNota(recuperacao)}</td>
+                                    <td><strong>${formatarNota(media)}</strong></td>
+                                    <td><span class="badge ${statusClass}">${status || 'N/A'}</span></td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <button type="button" class="btn btn-sm btn-outline-primary" 
+                                                    onclick="editarNota('${nota.id || nota.id_nota}')">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            `;
+                        });
+                        
+                        // Atualizar a tabela
+                        notasTabela.innerHTML = html;
+                        
+                        // Registrar atividade
+                        const turmaTexto = idTurma ? (filtroTurma.options[filtroTurma.selectedIndex]?.text || idTurma) : 'Todas';
+                        const disciplinaTexto = idDisciplina ? (filtroDisciplina.options[filtroDisciplina.selectedIndex]?.text || idDisciplina) : 'Todas';
+                        
+                        registrarAtividade('consulta', 'notas', professorId, 
+                            `Consulta de notas com filtros - Turma: ${turmaTexto}, Disciplina: ${disciplinaTexto}`);
+                        
+                        console.log('Notas carregadas com sucesso:', notas.length);
+                    })
+                    .catch(error => {
+                        console.error("Erro ao carregar dados complementares:", error);
+                        
+                        // Mesmo com erro, exibir os dados que temos
+                        notasTabela.innerHTML = html;
+                    });
             })
             .catch(error => {
                 clearTimeout(timeoutId);
@@ -3903,13 +4091,22 @@ function carregarTurmasDoProfessor(professorId) {
             // Mapear os campos para um formato padrão
             return turmas.map(turma => {
                 // Verificar qual formato de ID está sendo usado
-                const turmaId = turma.id || turma.id_turma || turma.turma_id || "";
+                const turmaId = turma.id_turma || turma.id || turma.turma_id || "";
+                
+                // Obter a série e turno (ou outros campos disponíveis)
+                const serie = turma.serie_turma || turma.serie || "";
+                const turno = turma.turno_turma || turma.turno || "";
                 
                 // Construir um nome descritivo para a turma
-                let turmaNome = turma.nome || turma.nome_turma || turma.descricao || "";
-                if (!turmaNome) {
-                    turmaNome = `${turma.serie || ""} ${turma.turno || ""} (${turmaId})`.trim();
-                    if (turmaNome === "()") turmaNome = turmaId;
+                let turmaNome = turma.nome_turma || turma.nome || turma.descricao || "";
+                
+                // Se não tiver nome, criar um com série e turno
+                if (!turmaNome || turmaNome === turmaId) {
+                    if (serie || turno) {
+                        turmaNome = `${serie} ${turno} (${turmaId})`.trim();
+                    } else {
+                        turmaNome = `Turma ${turmaId}`;
+                    }
                 }
                 
                 console.log(`Turma processada: ID=${turmaId}, Nome=${turmaNome}`);
