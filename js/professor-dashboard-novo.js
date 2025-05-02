@@ -1538,7 +1538,12 @@ function initNotas() {
     
     try {
         // Inicializar a tabela de notas primeiro (importante para estrutura da página)
-        inicializarTabelaNotas();
+        if (typeof window.inicializarTabelaNotas === 'function') {
+            window.inicializarTabelaNotas();
+        } else {
+            console.error('Função inicializarTabelaNotas não encontrada');
+            inicializarTabelaNotas(); // Tentar chamada direta como fallback
+        }
         
         // Corrigir o header da card depois que a tabela foi inicializada
         corrigirHeaderNotas();
@@ -1773,92 +1778,83 @@ function initNotas() {
         if (filtroTurma) {
             // Evitar chamadas repetidas verificando se já tem opções
             if (filtroTurma.options.length <= 1) {
-                carregarTurmasDoProfessor(professorId)
-                    .then(turmas => {
-                        if (turmas && turmas.length > 0) {
-                            let opcoesTurmas = '';
+                console.log('Carregando turmas para o filtro...');
+                if (typeof window.carregarTurmasDoProfessor === 'function') {
+                    window.carregarTurmasDoProfessor(CONFIG.professorId)
+                        .then(turmas => {
+                            console.log('Turmas carregadas com sucesso para filtro:', turmas);
+                            let options = '<option value="">Todas as turmas</option>';
                             turmas.forEach(turma => {
-                                opcoesTurmas += `<option value="${turma.id}">${turma.nome}</option>`;
+                                options += `<option value="${turma.id}">${turma.nome}</option>`;
                             });
-                            
-                            filtroTurma.innerHTML = `<option value="">Selecione a turma</option>${opcoesTurmas}`;
-                            
-                            // Configurar evento de mudança apenas após termos dados
-                            if (!filtroTurma.hasEventListener) {
-                                filtroTurma.addEventListener('change', function() {
-                                    const idTurma = this.value;
-                                    console.log('Turma selecionada:', idTurma);
-                                    
-                                    if (filtroDisciplina) {
-                                        carregarDisciplinasParaFiltro(idTurma);
-                                    }
-                                    
-                                    if (filtroAluno) {
-                                        carregarAlunosParaFiltro(idTurma, filtroDisciplina ? filtroDisciplina.value : null);
-                                    }
-                                });
-                                filtroTurma.hasEventListener = true;
-                            }
-                        } else {
-                            console.warn('Nenhuma turma disponível');
-                            filtroTurma.innerHTML = '<option value="">Nenhuma turma disponível</option>';
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Erro ao carregar turmas:', error);
-                        filtroTurma.innerHTML = '<option value="">Erro ao carregar turmas</option>';
-                    });
-            }
-        }
-        
-        // Inicializar disciplinas do professor
-        if (filtroDisciplina && filtroDisciplina.options.length <= 1) {
-            carregarDisciplinasDoProfessor(professorId)
-                .then(disciplinas => {
-                    if (disciplinas && disciplinas.length > 0) {
-                        let opcoesDisciplinas = '';
-                        disciplinas.forEach(disciplina => {
-                            opcoesDisciplinas += `<option value="${disciplina.id}">${disciplina.nome}</option>`;
+                            filtroTurma.innerHTML = options;
+                        })
+                        .catch(error => {
+                            console.error('Erro ao carregar turmas para filtro:', error);
+                            filtroTurma.innerHTML = '<option value="">Erro ao carregar turmas</option>';
                         });
-                        
-                        filtroDisciplina.innerHTML = `<option value="">Selecione a disciplina</option>${opcoesDisciplinas}`;
-                        
-                        // Configurar evento de mudança
-                        if (!filtroDisciplina.hasEventListener) {
-                            filtroDisciplina.addEventListener('change', function() {
-                                const idDisciplina = this.value;
-                                const idTurma = filtroTurma ? filtroTurma.value : null;
-                                
-                                if (filtroAluno) {
-                                    carregarAlunosParaFiltro(idTurma, idDisciplina);
-                                }
-                            });
-                            filtroDisciplina.hasEventListener = true;
-                        }
-                    }
-                })
-                .catch(error => {
-                    console.error('Erro ao carregar disciplinas:', error);
-                });
-        }
-        
-        // Configurar o botão de filtrar
-        const btnFiltrar = document.getElementById('btn-filtrar-notas');
-        if (btnFiltrar && !btnFiltrar.hasEventListener) {
-            btnFiltrar.addEventListener('click', function() {
-                carregarNotas();
+                } else {
+                    console.error('Função carregarTurmasDoProfessor não está disponível globalmente');
+                    alert('Erro ao inicializar filtros de notas. Por favor, recarregue a página.');
+                }
+            }
+            
+            // Adicionar evento para carregar disciplinas ao mudar a turma
+            filtroTurma.addEventListener('change', function() {
+                const idTurma = this.value;
+                console.log('Turma selecionada:', idTurma);
+                
+                // Atualizar select de disciplinas
+                if (typeof window.carregarDisciplinasParaFiltro === 'function') {
+                    window.carregarDisciplinasParaFiltro(idTurma);
+                } else {
+                    console.error('Função carregarDisciplinasParaFiltro não está disponível globalmente');
+                }
+                
+                // Atualizar select de alunos
+                if (typeof window.carregarAlunosParaFiltro === 'function') {
+                    window.carregarAlunosParaFiltro(idTurma);
+                } else {
+                    console.error('Função carregarAlunosParaFiltro não está disponível globalmente');
+                }
             });
-            btnFiltrar.hasEventListener = true;
         }
         
-        // REMOVIDO O CARREGAMENTO AUTOMÁTICO DE NOTAS
-        // Deixamos a cargo do usuário clicar no botão filtrar para carregar as notas
+        // Adicionar evento para o botão de filtrar
+        const btnFiltrar = document.getElementById('btn-filtrar-notas');
+        if (btnFiltrar) {
+            btnFiltrar.addEventListener('click', function() {
+                console.log('Botão de filtrar notas clicado');
+                if (typeof window.carregarNotas === 'function') {
+                    window.carregarNotas();
+                } else {
+                    console.error('Função carregarNotas não está disponível globalmente');
+                    alert('Erro ao filtrar notas. Por favor, recarregue a página.');
+                }
+            });
+        }
         
-        console.log('=== MÓDULO DE NOTAS INICIALIZADO COM SUCESSO ===');
+        // Se o filtro de disciplina existe, adicionar evento para atualizar alunos
+        if (filtroDisciplina) {
+            filtroDisciplina.addEventListener('change', function() {
+                const idTurma = filtroTurma ? filtroTurma.value : '';
+                const idDisciplina = this.value;
+                console.log('Disciplina selecionada:', idDisciplina);
+                
+                // Atualizar select de alunos
+                if (typeof window.carregarAlunosParaFiltro === 'function') {
+                    window.carregarAlunosParaFiltro(idTurma, idDisciplina);
+                } else {
+                    console.error('Função carregarAlunosParaFiltro não está disponível globalmente');
+                }
+            });
+        }
+        
+        console.log('Módulo de notas inicializado com sucesso!');
         
     } catch (error) {
-        console.error('ERRO FATAL na inicialização do módulo de notas:', error);
-        alert('Ocorreu um erro ao inicializar o módulo de notas. Consulte o console para mais informações.');
+        console.error('Erro ao inicializar módulo de notas:', error);
+        alert('Erro ao inicializar módulo de notas. Por favor, recarregue a página.');
     }
 }
 
@@ -4189,6 +4185,19 @@ function inicializarTabelaNotas() {
     }
 }
 
+// Definir funções globalmente para evitar erros de referência
+window.novaNota = novaNota;
+window.abrirModoLancamentoEmMassa = abrirModoLancamentoEmMassa;
+window.carregarTurmasDoProfessor = carregarTurmasDoProfessor;
+window.carregarDisciplinasDoProfessor = carregarDisciplinasDoProfessor;
+window.carregarAlunosDaTurma = carregarAlunosDaTurma;
+window.inicializarTabelaNotas = inicializarTabelaNotas;
+window.carregarNotas = carregarNotas;
+window.editarNota = editarNota;
+window.carregarDisciplinasParaFiltro = carregarDisciplinasParaFiltro;
+window.carregarAlunosParaFiltro = carregarAlunosParaFiltro;
+window.handleFormSubmit = handleFormSubmit;
+
 // Função para corrigir o header da card de notas
 function corrigirHeaderNotas() {
     console.log('Verificando e corrigindo o header da card de notas');
@@ -4354,11 +4363,27 @@ function corrigirHeaderNotas() {
             btnNovaNota.innerHTML = '<i class="fas fa-plus-circle me-1"></i> Novo Lançamento';
             botoesContainer.appendChild(btnNovaNota);
             
-            // Adicionar evento
-            btnNovaNota.addEventListener('click', novaNota);
+            // Adicionar evento usando window.novaNota para referência global
+            btnNovaNota.addEventListener('click', function() {
+                console.log('Botão de nova nota clicado');
+                if (typeof window.novaNota === 'function') {
+                    window.novaNota();
+                } else {
+                    console.error('Função novaNota não encontrada ou não está definida');
+                    alert('Erro: Função para novo lançamento não está disponível');
+                }
+            });
         } else if (!btnNovaNota.onclick) {
             // Se o botão já existe mas não tem evento
-            btnNovaNota.addEventListener('click', novaNota);
+            btnNovaNota.addEventListener('click', function() {
+                console.log('Botão de nova nota clicado');
+                if (typeof window.novaNota === 'function') {
+                    window.novaNota();
+                } else {
+                    console.error('Função novaNota não encontrada ou não está definida');
+                    alert('Erro: Função para novo lançamento não está disponível');
+                }
+            });
         }
         
         // Verificar se temos o botão de lançamento em massa
@@ -4371,11 +4396,27 @@ function corrigirHeaderNotas() {
             btnLancamentoMassa.innerHTML = '<i class="fas fa-list-ol me-1"></i> Lançamento em Massa';
             botoesContainer.appendChild(btnLancamentoMassa);
             
-            // Adicionar evento
-            btnLancamentoMassa.addEventListener('click', abrirModoLancamentoEmMassa);
+            // Adicionar evento usando window.abrirModoLancamentoEmMassa para referência global
+            btnLancamentoMassa.addEventListener('click', function() {
+                console.log('Botão de lançamento em massa clicado');
+                if (typeof window.abrirModoLancamentoEmMassa === 'function') {
+                    window.abrirModoLancamentoEmMassa();
+                } else {
+                    console.error('Função abrirModoLancamentoEmMassa não encontrada ou não está definida');
+                    alert('Erro: Função para lançamento em massa não está disponível');
+                }
+            });
         } else if (!btnLancamentoMassa.onclick) {
             // Se o botão já existe mas não tem evento
-            btnLancamentoMassa.addEventListener('click', abrirModoLancamentoEmMassa);
+            btnLancamentoMassa.addEventListener('click', function() {
+                console.log('Botão de lançamento em massa clicado');
+                if (typeof window.abrirModoLancamentoEmMassa === 'function') {
+                    window.abrirModoLancamentoEmMassa();
+                } else {
+                    console.error('Função abrirModoLancamentoEmMassa não encontrada ou não está definida');
+                    alert('Erro: Função para lançamento em massa não está disponível');
+                }
+            });
         }
         
         console.log('Header da card de notas corrigido com sucesso');
@@ -4383,3 +4424,143 @@ function corrigirHeaderNotas() {
         console.error('Erro ao corrigir header da card de notas:', error);
     }
 }
+
+// Função para criar um novo lançamento de nota
+function novaNota() {
+    console.log('Iniciando função de nova nota');
+    
+    try {
+        // Verificar se o container de notas existe
+        const notasContainer = document.querySelector('#conteudo-notas');
+        if (!notasContainer) {
+            console.error('Container de notas não encontrado!');
+            alert('Erro: Container de notas não encontrado.');
+            return;
+        }
+        
+        // Verificar se já existe o formulário
+        let form = document.getElementById('form-nota');
+        let formCard = document.querySelector('.card-nota-form');
+        
+        if (!form || !formCard) {
+            console.log('Formulário não encontrado, criando novo');
+            
+            // Criar card para o formulário
+            formCard = document.createElement('div');
+            formCard.className = 'card shadow mb-4 card-nota-form';
+            formCard.innerHTML = `
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-primary" id="form-nota-titulo">Lançamento de Notas</h6>
+                    <button class="btn btn-sm btn-outline-secondary" id="btn-cancelar-nota" style="display:none;">
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
+                </div>
+                <div class="card-body">
+                    <form id="form-nota">
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label for="ano_nota" class="form-label">Ano</label>
+                                <select class="form-select" id="ano_nota" required>
+                                    <option value="">Selecione...</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="bimestre" class="form-label">Bimestre</label>
+                                <select class="form-select" id="bimestre" required>
+                                    <option value="">Selecione...</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="turma_nota" class="form-label">Turma</label>
+                                <select class="form-select" id="turma_nota" required>
+                                    <option value="">Selecione...</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="disciplina_nota" class="form-label">Disciplina</label>
+                                <select class="form-select" id="disciplina_nota" required>
+                                    <option value="">Selecione...</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="aluno_nota" class="form-label">Aluno</label>
+                                <select class="form-select" id="aluno_nota" required>
+                                    <option value="">Selecione...</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label for="nota_mensal" class="form-label">Nota Mensal</label>
+                                <input type="number" class="form-control" id="nota_mensal" min="0" max="10" step="0.1" placeholder="0.0 a 10.0">
+                            </div>
+                            <div class="col-md-4">
+                                <label for="nota_bimestral" class="form-label">Nota Bimestral</label>
+                                <input type="number" class="form-control" id="nota_bimestral" min="0" max="10" step="0.1" placeholder="0.0 a 10.0">
+                            </div>
+                            <div class="col-md-4">
+                                <label for="recuperacao" class="form-label">Recuperação</label>
+                                <input type="number" class="form-control" id="recuperacao" min="0" max="10" step="0.1" placeholder="0.0 a 10.0">
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label for="media" class="form-label">Média Final</label>
+                                <input type="number" class="form-control" id="media" min="0" max="10" step="0.1" readonly placeholder="Calculada automaticamente">
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <button type="submit" class="btn btn-primary" id="btn-salvar-nota">
+                                <i class="fas fa-save"></i> Salvar Notas
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            `;
+            
+            // Inserir antes da tabela de notas
+            const tabelaCard = notasContainer.querySelector('.card:last-child');
+            if (tabelaCard) {
+                notasContainer.insertBefore(formCard, tabelaCard);
+            } else {
+                notasContainer.appendChild(formCard);
+            }
+            
+            // Configurar o cancelamento
+            const btnCancelar = document.getElementById('btn-cancelar-nota');
+            if (btnCancelar) {
+                btnCancelar.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    formCard.remove();
+                });
+            }
+            
+            // Adicionar listener ao formulário
+            const novoForm = document.getElementById('form-nota');
+            if (novoForm) {
+                novoForm.addEventListener('submit', window.handleFormSubmit || handleFormSubmit);
+                form = novoForm; // Atualizar a referência para continuar com a função
+            } else {
+                console.error('Falha ao criar o formulário de notas');
+                return;
+            }
+        }
+        
+        // Rolar para o formulário
+        formCard.scrollIntoView({ behavior: 'smooth' });
+        
+        console.log('Formulário de nova nota inicializado com sucesso');
+    } catch (error) {
+        console.error('Erro ao criar formulário de nova nota:', error);
+        alert('Erro ao criar formulário de lançamento. Por favor, tente novamente.');
+    }
+}
+
+// Registrar a função novaNota globalmente
+window.novaNota = novaNota;
