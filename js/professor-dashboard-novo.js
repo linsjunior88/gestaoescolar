@@ -9,6 +9,152 @@ let professorDisciplinas = [];
 let turmasFiltro, disciplinasFiltro, alunosFiltro;
 let notasTabela, filtroAno, filtroBimestre, filtroTurma, filtroDisciplina, filtroAluno, btnFiltrar;
 
+// Função para carregar turmas do professor - Precisa estar definida antes de ser usada
+function carregarTurmasDoProfessor(idProfessor) {
+    console.log('Função carregarTurmasDoProfessor chamada para professor:', idProfessor);
+    
+    if (!idProfessor) {
+        console.error('ID do professor não fornecido para carregarTurmasDoProfessor');
+        return Promise.reject(new Error('ID do professor é obrigatório'));
+    }
+    
+    // Retornar uma promessa para permitir encadeamento
+    return fetch(CONFIG.getApiUrl(`/professores/${idProfessor}/turmas`))
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Erro ao carregar turmas: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(turmas => {
+            console.log(`Carregadas ${turmas.length} turmas para o professor ${idProfessor}:`, turmas);
+            
+            // Processar as turmas para garantir formato consistente
+            return turmas.map(turma => {
+                const id = turma.id_turma || turma.id;
+                let nome = turma.nome_turma || turma.nome;
+                
+                // Se não tiver nome definido, construir um a partir de outras propriedades
+                if (!nome) {
+                    const serie = turma.serie_turma || '';
+                    const turno = turma.turno_turma || '';
+                    nome = `${id} - ${serie} ${turno}`.trim();
+                    
+                    // Se ainda estiver vazio, usar só o ID
+                    if (nome === '' || nome === `${id} - `) {
+                        nome = id;
+                    }
+                }
+                
+                console.log(`Turma processada: id=${id}, nome=${nome}`);
+                
+                return {
+                    id: id,
+                    nome: nome,
+                    qtdAlunos: turma.qtd_alunos || 0,
+                    serie: turma.serie_turma || '',
+                    turno: turma.turno_turma || ''
+                };
+            });
+        })
+        .catch(error => {
+            console.error('Erro em carregarTurmasDoProfessor:', error);
+            throw error;
+        });
+}
+
+// Função para carregar disciplinas do professor - Precisa estar definida antes de ser usada
+function carregarDisciplinasDoProfessor(idProfessor) {
+    console.log('Função carregarDisciplinasDoProfessor chamada para professor:', idProfessor);
+    
+    if (!idProfessor) {
+        console.error('ID do professor não fornecido para carregarDisciplinasDoProfessor');
+        return Promise.reject(new Error('ID do professor é obrigatório'));
+    }
+    
+    // Retornar uma promessa para permitir encadeamento
+    return fetch(CONFIG.getApiUrl(`/professores/${idProfessor}/disciplinas`))
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Erro ao carregar disciplinas: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(disciplinas => {
+            console.log(`Carregadas ${disciplinas.length} disciplinas para o professor ${idProfessor}:`, disciplinas);
+            
+            // Processar as disciplinas para garantir formato consistente
+            return disciplinas.map(disciplina => {
+                const id = disciplina.id_disciplina || disciplina.id;
+                let nome = disciplina.nome_disciplina || disciplina.nome;
+                
+                // Se não tiver nome definido, usar o ID
+                if (!nome) {
+                    nome = id;
+                }
+                
+                console.log(`Disciplina processada: id=${id}, nome=${nome}`);
+                
+                return {
+                    id: id,
+                    nome: nome
+                };
+            });
+        })
+        .catch(error => {
+            console.error('Erro em carregarDisciplinasDoProfessor:', error);
+            throw error;
+        });
+}
+
+// Função para carregar alunos de uma turma - Precisa estar definida antes de ser usada
+function carregarAlunosDaTurma(idTurma) {
+    console.log('Função carregarAlunosDaTurma chamada para turma:', idTurma);
+    
+    if (!idTurma) {
+        console.error('ID da turma não fornecido para carregarAlunosDaTurma');
+        return Promise.reject(new Error('ID da turma é obrigatório'));
+    }
+    
+    // Retornar uma promessa para permitir encadeamento
+    return fetch(CONFIG.getApiUrl(`/turmas/${idTurma}/alunos`))
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Erro ao carregar alunos: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(alunos => {
+            console.log(`Carregados ${alunos.length} alunos para a turma ${idTurma}:`, alunos);
+            
+            // Processar os alunos para garantir formato consistente
+            return alunos.map(aluno => {
+                const id = aluno.id_aluno || aluno.id;
+                let nome = aluno.nome_aluno || aluno.nome;
+                
+                // Se não tiver nome definido, usar o ID
+                if (!nome) {
+                    nome = id;
+                }
+                
+                return {
+                    id: id,
+                    nome: nome,
+                    turma: aluno.id_turma || idTurma
+                };
+            });
+        })
+        .catch(error => {
+            console.error('Erro em carregarAlunosDaTurma:', error);
+            throw error;
+        });
+}
+
+// Registrar funções globalmente logo no início
+window.carregarTurmasDoProfessor = carregarTurmasDoProfessor;
+window.carregarDisciplinasDoProfessor = carregarDisciplinasDoProfessor;
+window.carregarAlunosDaTurma = carregarAlunosDaTurma;
+
 // Inicialização quando o DOM estiver pronto
 document.addEventListener('DOMContentLoaded', function() {
     console.log("#### PROFESSOR DASHBOARD MOBILE FIRST v1 ####");
@@ -1535,6 +1681,33 @@ function initAlunos() {
 // Inicialização do módulo de notas
 function initNotas() {
     console.log('=== INICIALIZANDO MÓDULO DE NOTAS ===');
+    
+    // Verificar se as funções necessárias estão disponíveis
+    const requisitosFaltantes = [];
+    
+    if (typeof window.carregarTurmasDoProfessor !== 'function') requisitosFaltantes.push('carregarTurmasDoProfessor');
+    if (typeof window.carregarDisciplinasParaFiltro !== 'function') requisitosFaltantes.push('carregarDisciplinasParaFiltro');
+    if (typeof window.carregarAlunosParaFiltro !== 'function') requisitosFaltantes.push('carregarAlunosParaFiltro');
+    if (typeof window.inicializarTabelaNotas !== 'function') requisitosFaltantes.push('inicializarTabelaNotas');
+    if (typeof window.carregarNotas !== 'function') requisitosFaltantes.push('carregarNotas');
+    
+    if (requisitosFaltantes.length > 0) {
+        console.error('Funções necessárias não estão disponíveis:', requisitosFaltantes.join(', '));
+        
+        // Tentar novamente após um pequeno atraso (para dar tempo de carregar)
+        if (!window.tentativasInitNotas) window.tentativasInitNotas = 0;
+        window.tentativasInitNotas++;
+        
+        if (window.tentativasInitNotas < 3) {
+            console.log(`Tentando inicializar notas novamente em 500ms (tentativa ${window.tentativasInitNotas}/3)`);
+            setTimeout(initNotas, 500);
+            return;
+        } else {
+            console.error('Falha na inicialização após 3 tentativas');
+            alert('Erro ao inicializar filtros de notas. Por favor, recarregue a página.');
+            return;
+        }
+    }
     
     try {
         // Inicializar a tabela de notas primeiro (importante para estrutura da página)
@@ -4564,3 +4737,274 @@ function novaNota() {
 
 // Registrar a função novaNota globalmente
 window.novaNota = novaNota;
+
+// Função para carregar disciplinas para o filtro
+function carregarDisciplinasParaFiltro(idTurma = null) {
+    console.log('Função carregarDisciplinasParaFiltro chamada para turma:', idTurma);
+    
+    // Verificar se filtroDisciplina está disponível
+    if (!window.filtroDisciplina && !filtroDisciplina) {
+        console.error('Elemento filtroDisciplina não encontrado');
+        filtroDisciplina = document.getElementById('filtro-disciplina-notas');
+        
+        if (!filtroDisciplina) {
+            console.error('Impossível encontrar o elemento filtroDisciplina');
+            return Promise.reject(new Error('Elemento filtroDisciplina não encontrado'));
+        }
+    }
+    
+    // Usar a referência global ou local
+    const disciplinaSelect = window.filtroDisciplina || filtroDisciplina;
+    
+    // Desabilitar enquanto carrega
+    disciplinaSelect.disabled = true;
+    disciplinaSelect.innerHTML = '<option value="">Carregando disciplinas...</option>';
+    
+    // Construir URL da API baseada na seleção de turma
+    let apiUrl = '';
+    if (idTurma) {
+        console.log('Carregando disciplinas para a turma:', idTurma);
+        apiUrl = CONFIG.getApiUrl(`/professores/${CONFIG.professorId}/turmas/${idTurma}/disciplinas`);
+    } else {
+        console.log('Carregando todas as disciplinas do professor');
+        apiUrl = CONFIG.getApiUrl(`/professores/${CONFIG.professorId}/disciplinas`);
+    }
+    
+    // Retornar uma promessa para permitir encadeamento
+    return fetch(apiUrl)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Erro ao carregar disciplinas: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(disciplinas => {
+            console.log('Disciplinas carregadas para filtro:', disciplinas);
+            
+            // Processar as disciplinas para garantir formato consistente
+            const processarDisciplinas = (dados) => {
+                // Ordenar por nome da disciplina
+                dados.sort((a, b) => {
+                    const nomeA = a.nome_disciplina || a.nome || a.id_disciplina || '';
+                    const nomeB = b.nome_disciplina || b.nome || b.id_disciplina || '';
+                    return nomeA.localeCompare(nomeB);
+                });
+                
+                let options = '<option value="">Todas as disciplinas</option>';
+                dados.forEach(disciplina => {
+                    const id = disciplina.id_disciplina || disciplina.id;
+                    const nome = disciplina.nome_disciplina || disciplina.nome || id;
+                    options += `<option value="${id}">${nome}</option>`;
+                });
+                
+                disciplinaSelect.innerHTML = options;
+                disciplinaSelect.disabled = false;
+                
+                // Se houver um valor pré-selecionado, restaurá-lo
+                const valorAnterior = disciplinaSelect.getAttribute('data-valor-anterior');
+                if (valorAnterior) {
+                    disciplinaSelect.value = valorAnterior;
+                    disciplinaSelect.removeAttribute('data-valor-anterior');
+                }
+                
+                return disciplinas;
+            };
+            
+            return processarDisciplinas(disciplinas);
+        })
+        .catch(error => {
+            console.error('Erro ao carregar disciplinas para filtro:', error);
+            
+            // Tentar URL alternativa se for o caso
+            if (error.message.includes('404') && idTurma) {
+                console.log('Tentando URL alternativa para disciplinas');
+                return fetch(CONFIG.getApiUrl(`/disciplinas?turma_id=${idTurma}`))
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`Erro na requisição alternativa: ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(disciplinas => {
+                        console.log('Disciplinas carregadas da URL alternativa:', disciplinas);
+                        
+                        // Processar as disciplinas da URL alternativa
+                        const processarDisciplinas = (dados) => {
+                            let options = '<option value="">Todas as disciplinas</option>';
+                            dados.forEach(disciplina => {
+                                const id = disciplina.id_disciplina || disciplina.id;
+                                const nome = disciplina.nome_disciplina || disciplina.nome || id;
+                                options += `<option value="${id}">${nome}</option>`;
+                            });
+                            
+                            disciplinaSelect.innerHTML = options;
+                            disciplinaSelect.disabled = false;
+                            
+                            return disciplinas;
+                        };
+                        
+                        return processarDisciplinas(disciplinas);
+                    })
+                    .catch(segundoErro => {
+                        console.error('Erro ao carregar disciplinas da URL alternativa:', segundoErro);
+                        disciplinaSelect.innerHTML = '<option value="">Erro ao carregar disciplinas</option>';
+                        disciplinaSelect.disabled = false;
+                        throw segundoErro;
+                    });
+            } else {
+                disciplinaSelect.innerHTML = '<option value="">Erro ao carregar disciplinas</option>';
+                disciplinaSelect.disabled = false;
+                throw error;
+            }
+        });
+}
+
+// Função para carregar alunos para o filtro
+function carregarAlunosParaFiltro(idTurma = null, idDisciplina = null) {
+    console.log('Função carregarAlunosParaFiltro chamada para turma:', idTurma, 'disciplina:', idDisciplina);
+    
+    // Verificar se filtroAluno está disponível
+    if (!window.filtroAluno && !filtroAluno) {
+        console.error('Elemento filtroAluno não encontrado');
+        filtroAluno = document.getElementById('filtro-aluno-notas');
+        
+        if (!filtroAluno) {
+            console.error('Impossível encontrar o elemento filtroAluno');
+            return Promise.reject(new Error('Elemento filtroAluno não encontrado'));
+        }
+    }
+    
+    // Usar a referência global ou local
+    const alunoSelect = window.filtroAluno || filtroAluno;
+    
+    // Desabilitar enquanto carrega
+    alunoSelect.disabled = true;
+    alunoSelect.innerHTML = '<option value="">Carregando alunos...</option>';
+    
+    // Construir URL da API baseada na seleção de turma e disciplina
+    let apiUrl = '';
+    if (idTurma) {
+        console.log('Carregando alunos para a turma:', idTurma);
+        apiUrl = CONFIG.getApiUrl(`/turmas/${idTurma}/alunos`);
+        
+        if (idDisciplina) {
+            console.log('Filtrando alunos pela disciplina:', idDisciplina);
+            apiUrl = CONFIG.getApiUrl(`/turmas/${idTurma}/disciplinas/${idDisciplina}/alunos`);
+        }
+    } else {
+        console.log('Carregando todos os alunos');
+        apiUrl = CONFIG.getApiUrl(`/alunos`);
+    }
+    
+    // Retornar uma promessa para permitir encadeamento
+    return fetch(apiUrl)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Erro ao carregar alunos: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(alunos => {
+            console.log('Alunos carregados para filtro:', alunos);
+            
+            // Processar os alunos para garantir formato consistente
+            const processarAlunos = (dados) => {
+                // Ordenar por nome do aluno
+                dados.sort((a, b) => {
+                    const nomeA = a.nome_aluno || a.nome || a.id_aluno || '';
+                    const nomeB = b.nome_aluno || b.nome || b.id_aluno || '';
+                    return nomeA.localeCompare(nomeB);
+                });
+                
+                let options = '<option value="">Todos os alunos</option>';
+                dados.forEach(aluno => {
+                    const id = aluno.id_aluno || aluno.id;
+                    const nome = aluno.nome_aluno || aluno.nome || id;
+                    options += `<option value="${id}">${nome}</option>`;
+                });
+                
+                alunoSelect.innerHTML = options;
+                alunoSelect.disabled = false;
+                
+                // Se houver um valor pré-selecionado, restaurá-lo
+                const valorAnterior = alunoSelect.getAttribute('data-valor-anterior');
+                if (valorAnterior) {
+                    alunoSelect.value = valorAnterior;
+                    alunoSelect.removeAttribute('data-valor-anterior');
+                }
+                
+                return alunos;
+            };
+            
+            return processarAlunos(alunos);
+        })
+        .catch(error => {
+            console.error('Erro ao carregar alunos para filtro:', error);
+            
+            // Tentar URL alternativa se for o caso
+            if (error.message.includes('404') && idTurma) {
+                console.log('Tentando URL alternativa para alunos');
+                let urlAlternativa = idDisciplina 
+                    ? CONFIG.getApiUrl(`/alunos?turma_id=${idTurma}&disciplina_id=${idDisciplina}`)
+                    : CONFIG.getApiUrl(`/alunos?turma_id=${idTurma}`);
+                
+                return fetch(urlAlternativa)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`Erro na requisição alternativa: ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(alunos => {
+                        console.log('Alunos carregados da URL alternativa:', alunos);
+                        
+                        // Processar os alunos da URL alternativa
+                        const processarAlunos = (dados) => {
+                            // Ordenar por nome do aluno
+                            dados.sort((a, b) => {
+                                const nomeA = a.nome_aluno || a.nome || a.id_aluno || '';
+                                const nomeB = b.nome_aluno || b.nome || b.id_aluno || '';
+                                return nomeA.localeCompare(nomeB);
+                            });
+                            
+                            let options = '<option value="">Todos os alunos</option>';
+                            dados.forEach(aluno => {
+                                const id = aluno.id_aluno || aluno.id;
+                                const nome = aluno.nome_aluno || aluno.nome || id;
+                                options += `<option value="${id}">${nome}</option>`;
+                            });
+                            
+                            alunoSelect.innerHTML = options;
+                            alunoSelect.disabled = false;
+                            
+                            return alunos;
+                        };
+                        
+                        return processarAlunos(alunos);
+                    })
+                    .catch(segundoErro => {
+                        console.error('Erro ao carregar alunos da URL alternativa:', segundoErro);
+                        alunoSelect.innerHTML = '<option value="">Erro ao carregar alunos</option>';
+                        alunoSelect.disabled = false;
+                        throw segundoErro;
+                    });
+            } else {
+                alunoSelect.innerHTML = '<option value="">Erro ao carregar alunos</option>';
+                alunoSelect.disabled = false;
+                throw error;
+            }
+        });
+}
+
+// Adicionar estas funções à lista de funções globais
+window.carregarDisciplinasParaFiltro = carregarDisciplinasParaFiltro;
+window.carregarAlunosParaFiltro = carregarAlunosParaFiltro;
+window.initNotas = initNotas;
+window.inicializarTabelaNotas = inicializarTabelaNotas;
+window.carregarNotas = carregarNotas;
+window.handleFormSubmit = handleFormSubmit;
+window.abrirModoLancamentoEmMassa = abrirModoLancamentoEmMassa;
+window.editarNota = editarNota;
+window.novaNota = novaNota;
+
+// Inicialização quando o DOM estiver pronto
