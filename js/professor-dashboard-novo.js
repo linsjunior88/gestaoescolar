@@ -13,6 +13,12 @@ let notasTabela, filtroAno, filtroBimestre, filtroTurma, filtroDisciplina, filtr
 function carregarTurmasDoProfessor(idProfessor) {
     console.log('Função carregarTurmasDoProfessor chamada para professor:', idProfessor);
     
+    // Se não foi fornecido, tentar obter do sessionStorage
+    if (!idProfessor) {
+        idProfessor = sessionStorage.getItem('professorId');
+        console.log('Tentando recuperar professorId do sessionStorage:', idProfessor);
+    }
+    
     if (!idProfessor) {
         console.error('ID do professor não fornecido para carregarTurmasDoProfessor');
         return Promise.reject(new Error('ID do professor é obrigatório'));
@@ -66,6 +72,12 @@ function carregarTurmasDoProfessor(idProfessor) {
 // Função para carregar disciplinas do professor - Precisa estar definida antes de ser usada
 function carregarDisciplinasDoProfessor(idProfessor) {
     console.log('Função carregarDisciplinasDoProfessor chamada para professor:', idProfessor);
+    
+    // Se não foi fornecido, tentar obter do sessionStorage
+    if (!idProfessor) {
+        idProfessor = sessionStorage.getItem('professorId');
+        console.log('Tentando recuperar professorId do sessionStorage:', idProfessor);
+    }
     
     if (!idProfessor) {
         console.error('ID do professor não fornecido para carregarDisciplinasDoProfessor');
@@ -1681,6 +1693,14 @@ function initAlunos() {
 // Inicialização do módulo de notas
 function initNotas() {
     console.log('=== INICIALIZANDO MÓDULO DE NOTAS ===');
+    console.log('Valor atual de professorId:', professorId);
+    console.log('Valor em sessionStorage:', sessionStorage.getItem('professorId'));
+    
+    // Tentar obter novamente se não estiver definido
+    if (!professorId) {
+        professorId = sessionStorage.getItem('professorId');
+        console.log('Recuperado professorId do sessionStorage:', professorId);
+    }
     
     // Verificar se as funções necessárias estão disponíveis
     const requisitosFaltantes = [];
@@ -1953,22 +1973,29 @@ function initNotas() {
             if (filtroTurma.options.length <= 1) {
                 console.log('Carregando turmas para o filtro...');
                 if (typeof window.carregarTurmasDoProfessor === 'function') {
-                    window.carregarTurmasDoProfessor(CONFIG.professorId)
-                        .then(turmas => {
-                            console.log('Turmas carregadas com sucesso para filtro:', turmas);
-                            let options = '<option value="">Todas as turmas</option>';
-                            turmas.forEach(turma => {
-                                options += `<option value="${turma.id}">${turma.nome}</option>`;
+                    // Verificar se professorId existe e está definido
+                    if (!professorId) {
+                        console.error('professorId não está definido para carregarTurmasDoProfessor');
+                        filtroTurma.innerHTML = '<option value="">Erro: ID do professor não disponível</option>';
+                    } else {
+                        console.log('Chamando carregarTurmasDoProfessor com professorId:', professorId);
+                        window.carregarTurmasDoProfessor(professorId)
+                            .then(turmas => {
+                                console.log('Turmas carregadas com sucesso para filtro:', turmas);
+                                let options = '<option value="">Todas as turmas</option>';
+                                turmas.forEach(turma => {
+                                    options += `<option value="${turma.id}">${turma.nome}</option>`;
+                                });
+                                filtroTurma.innerHTML = options;
+                            })
+                            .catch(error => {
+                                console.error('Erro ao carregar turmas para filtro:', error);
+                                filtroTurma.innerHTML = '<option value="">Erro ao carregar turmas</option>';
                             });
-                            filtroTurma.innerHTML = options;
-                        })
-                        .catch(error => {
-                            console.error('Erro ao carregar turmas para filtro:', error);
-                            filtroTurma.innerHTML = '<option value="">Erro ao carregar turmas</option>';
-                        });
+                    }
                 } else {
                     console.error('Função carregarTurmasDoProfessor não está disponível globalmente');
-                    alert('Erro ao inicializar filtros de notas. Por favor, recarregue a página.');
+                    filtroTurma.innerHTML = '<option value="">Erro ao carregar turmas</option>';
                 }
             }
             
@@ -4762,12 +4789,27 @@ function carregarDisciplinasParaFiltro(idTurma = null) {
     
     // Construir URL da API baseada na seleção de turma
     let apiUrl = '';
+    
+    // Verificar o ID do professor
+    let idProfessor = professorId; 
+    if (!idProfessor) {
+        idProfessor = sessionStorage.getItem('professorId');
+        console.log('Recuperado professorId do sessionStorage:', idProfessor);
+    }
+    
+    if (!idProfessor) {
+        console.error('ID do professor não disponível para carregarDisciplinasParaFiltro');
+        disciplinaSelect.innerHTML = '<option value="">Erro: ID do professor não disponível</option>';
+        disciplinaSelect.disabled = false;
+        return Promise.reject(new Error('ID do professor não está disponível'));
+    }
+    
     if (idTurma) {
-        console.log('Carregando disciplinas para a turma:', idTurma);
-        apiUrl = CONFIG.getApiUrl(`/professores/${CONFIG.professorId}/turmas/${idTurma}/disciplinas`);
+        console.log('Carregando disciplinas para a turma:', idTurma, 'do professor:', idProfessor);
+        apiUrl = CONFIG.getApiUrl(`/professores/${idProfessor}/turmas/${idTurma}/disciplinas`);
     } else {
-        console.log('Carregando todas as disciplinas do professor');
-        apiUrl = CONFIG.getApiUrl(`/professores/${CONFIG.professorId}/disciplinas`);
+        console.log('Carregando todas as disciplinas do professor:', idProfessor);
+        apiUrl = CONFIG.getApiUrl(`/professores/${idProfessor}/disciplinas`);
     }
     
     // Retornar uma promessa para permitir encadeamento
