@@ -1581,17 +1581,18 @@ function initNotas() {
     
     // Inicializar preencher anos
     if (filtroAno) {
-        const anoAtual = new Date().getFullYear();
         filtroAno.innerHTML = '<option value="">Todos</option>';
         
-        for (let i = 0; i < 3; i++) {
-            const ano = anoAtual - i;
+        // Adicionar anos de 2025 a 2030
+        for (let ano = 2025; ano <= 2030; ano++) {
             const option = document.createElement('option');
             option.value = ano;
             option.textContent = ano;
-            if (i === 0) option.selected = true;
             filtroAno.appendChild(option);
         }
+        
+        // Selecionar 2025 por padrão
+        filtroAno.value = "2025";
     }
     
     // Inicializar filtros de dados
@@ -1706,14 +1707,15 @@ function carregarTurmasParaFiltro() {
 function carregarDisciplinasParaFiltro(idTurma = null) {
     console.log('Carregando disciplinas para filtro. Turma:', idTurma);
     
-    const disciplinaFiltroEl = document.getElementById('disciplina-filtro');
-    if (!disciplinaFiltroEl) return;
-    
-    // Armazenar a seleção atual
-    const disciplinaSelecionada = disciplinaFiltroEl.value;
+    // Verificar se o elemento existe
+    if (!filtroDisciplina) {
+        console.error('Elemento de filtro de disciplina não encontrado!');
+        return;
+    }
     
     // Desabilitar o select enquanto carrega
-    disciplinaFiltroEl.disabled = true;
+    filtroDisciplina.disabled = true;
+    filtroDisciplina.innerHTML = '<option value="">Carregando disciplinas...</option>';
     
     let url;
     if (!idTurma) {
@@ -1744,21 +1746,13 @@ function carregarDisciplinasParaFiltro(idTurma = null) {
                 });
             }
             
-            // Adicionar evento de mudança para carregar alunos quando a disciplina mudar
-            filtroDisciplina.addEventListener('change', function() {
-                carregarAlunosParaFiltro(filtroTurma.value, this.value);
-            });
-            
-            // Carregar alunos iniciais
-            carregarAlunosParaFiltro(filtroTurma.value, filtroDisciplina.value);
-            
             // Reativar o select
-            disciplinaFiltroEl.disabled = false;
+            filtroDisciplina.disabled = false;
         })
         .catch(error => {
             console.error('Erro ao carregar disciplinas para filtro:', error);
             filtroDisciplina.innerHTML = '<option value="">Erro ao carregar disciplinas</option>';
-            disciplinaFiltroEl.disabled = false;
+            filtroDisciplina.disabled = false;
         });
 }
 
@@ -1766,20 +1760,21 @@ function carregarDisciplinasParaFiltro(idTurma = null) {
 function carregarAlunosParaFiltro(idTurma = null, idDisciplina = null) {
     console.log('Carregando alunos para filtro. Turma:', idTurma, 'Disciplina:', idDisciplina);
     
-    const alunoFiltroEl = document.getElementById('aluno-filtro');
-    if (!alunoFiltroEl) return;
-    
-    // Armazenar a seleção atual
-    const alunoSelecionado = alunoFiltroEl.value;
+    // Verificar se o elemento existe
+    if (!filtroAluno) {
+        console.error('Elemento de filtro de aluno não encontrado!');
+        return;
+    }
     
     // Desabilitar o select enquanto carrega
-    alunoFiltroEl.disabled = true;
+    filtroAluno.disabled = true;
+    filtroAluno.innerHTML = '<option value="">Carregando alunos...</option>';
     
-    let url = CONFIG.getApiUrl(`/professores/${professorId}/alunos`);
-    
-    // Adicionar parâmetros de filtro
-    if (idTurma) {
-        url += `?turma_id=${encodeURIComponent(idTurma)}`;
+    let url;
+    if (!idTurma) {
+        url = CONFIG.getApiUrl(`/professores/${professorId}/alunos`);
+    } else {
+        url = CONFIG.getApiUrl(`/turmas/${idTurma}/alunos`);
     }
     
     // Buscar alunos
@@ -1812,12 +1807,12 @@ function carregarAlunosParaFiltro(idTurma = null, idDisciplina = null) {
             }
             
             // Reativar o select
-            alunoFiltroEl.disabled = false;
+            filtroAluno.disabled = false;
         })
         .catch(error => {
             console.error('Erro ao carregar alunos para filtro:', error);
             filtroAluno.innerHTML = '<option value="">Erro ao carregar alunos</option>';
-            alunoFiltroEl.disabled = false;
+            filtroAluno.disabled = false;
         });
 }
 
@@ -3744,6 +3739,13 @@ function novaNota() {
     const formNota = document.getElementById('form-nota');
     const idNotaInput = document.getElementById('id-nota');
     
+    // Campos do formulário
+    const turmaNota = document.getElementById('turma-nota');
+    const disciplinaNota = document.getElementById('disciplina-nota');
+    const alunoNota = document.getElementById('aluno-nota');
+    const bimestreNota = document.getElementById('bimestre-nota');
+    const anoNota = document.getElementById('ano-nota');
+    
     // Esconder o formulário de edição em massa se estiver visível
     const configuracaoMassa = document.getElementById('configuracao-massa');
     if (configuracaoMassa) {
@@ -3782,14 +3784,173 @@ function novaNota() {
         idNotaInput.value = '';
     }
     
+    // Inicializar anos (2025 a 2030)
+    if (anoNota) {
+        anoNota.innerHTML = '<option value="">Selecione o Ano</option>';
+        for (let ano = 2025; ano <= 2030; ano++) {
+            const option = document.createElement('option');
+            option.value = ano;
+            option.textContent = ano;
+            anoNota.appendChild(option);
+        }
+    }
+    
+    // Inicializar bimestres
+    if (bimestreNota) {
+        bimestreNota.innerHTML = '<option value="">Selecione o Bimestre</option>';
+        for (let i = 1; i <= 4; i++) {
+            const option = document.createElement('option');
+            option.value = i;
+            option.textContent = `${i}º Bimestre`;
+            bimestreNota.appendChild(option);
+        }
+    }
+    
+    // Carregar turmas
+    if (turmaNota) {
+        turmaNota.innerHTML = '<option value="">Carregando turmas...</option>';
+        turmaNota.disabled = true;
+        
+        fetch(CONFIG.getApiUrl(`/professores/${professorId}/turmas`))
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Erro na requisição: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(turmas => {
+                turmaNota.innerHTML = '<option value="">Selecione a Turma</option>';
+                
+                if (turmas.length > 0) {
+                    turmas.forEach(turma => {
+                        const option = document.createElement('option');
+                        option.value = turma.id_turma;
+                        option.textContent = `${turma.serie || ''} ${turma.turno || ''} (${turma.id_turma})`;
+                        turmaNota.appendChild(option);
+                    });
+                }
+                
+                turmaNota.disabled = false;
+                
+                // Adicionar evento para carregar disciplinas quando a turma for selecionada
+                turmaNota.addEventListener('change', function() {
+                    const idTurma = this.value;
+                    
+                    // Limpar e desabilitar os selects dependentes
+                    if (disciplinaNota) {
+                        disciplinaNota.innerHTML = '<option value="">Selecione a Disciplina</option>';
+                        disciplinaNota.disabled = !idTurma;
+                    }
+                    
+                    if (alunoNota) {
+                        alunoNota.innerHTML = '<option value="">Selecione o Aluno</option>';
+                        alunoNota.disabled = true;
+                    }
+                    
+                    if (idTurma) {
+                        // Carregar disciplinas para esta turma
+                        carregarDisciplinasFormulario(idTurma);
+                    }
+                });
+            })
+            .catch(error => {
+                console.error("Erro ao carregar turmas:", error);
+                turmaNota.innerHTML = '<option value="">Erro ao carregar turmas</option>';
+                turmaNota.disabled = false;
+            });
+    }
+    
     // Atualizar o status para não avaliado
     atualizarStatusNota(0);
+}
+
+// Função para carregar disciplinas no formulário
+function carregarDisciplinasFormulario(idTurma) {
+    const disciplinaNota = document.getElementById('disciplina-nota');
+    if (!disciplinaNota) return;
     
-    // Focar no primeiro campo do formulário
-    const primeiroInput = formNota.querySelector('select, input');
-    if (primeiroInput) {
-        primeiroInput.focus();
-    }
+    disciplinaNota.innerHTML = '<option value="">Carregando disciplinas...</option>';
+    disciplinaNota.disabled = true;
+    
+    fetch(CONFIG.getApiUrl(`/professores/${professorId}/turmas/${idTurma}/disciplinas`))
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Erro na requisição: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(disciplinas => {
+            disciplinaNota.innerHTML = '<option value="">Selecione a Disciplina</option>';
+            
+            if (disciplinas.length > 0) {
+                disciplinas.forEach(disciplina => {
+                    const option = document.createElement('option');
+                    option.value = disciplina.id_disciplina;
+                    option.textContent = disciplina.nome_disciplina;
+                    disciplinaNota.appendChild(option);
+                });
+            }
+            
+            disciplinaNota.disabled = false;
+            
+            // Adicionar evento para carregar alunos quando a disciplina for selecionada
+            disciplinaNota.addEventListener('change', function() {
+                const idDisciplina = this.value;
+                const idTurma = document.getElementById('turma-nota').value;
+                
+                if (idTurma && idDisciplina) {
+                    carregarAlunosFormulario(idTurma);
+                }
+            });
+        })
+        .catch(error => {
+            console.error("Erro ao carregar disciplinas:", error);
+            disciplinaNota.innerHTML = '<option value="">Erro ao carregar disciplinas</option>';
+            disciplinaNota.disabled = false;
+        });
+}
+
+// Função para carregar alunos no formulário
+function carregarAlunosFormulario(idTurma) {
+    const alunoNota = document.getElementById('aluno-nota');
+    if (!alunoNota) return;
+    
+    alunoNota.innerHTML = '<option value="">Carregando alunos...</option>';
+    alunoNota.disabled = true;
+    
+    fetch(CONFIG.getApiUrl(`/turmas/${idTurma}/alunos`))
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Erro na requisição: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(alunos => {
+            alunoNota.innerHTML = '<option value="">Selecione o Aluno</option>';
+            
+            if (alunos.length > 0) {
+                // Ordenar alunos por nome
+                alunos.sort((a, b) => {
+                    const nomeA = a.nome_aluno || '';
+                    const nomeB = b.nome_aluno || '';
+                    return nomeA.localeCompare(nomeB);
+                });
+                
+                alunos.forEach(aluno => {
+                    const option = document.createElement('option');
+                    option.value = aluno.id_aluno;
+                    option.textContent = aluno.nome_aluno || `Aluno ID: ${aluno.id_aluno}`;
+                    alunoNota.appendChild(option);
+                });
+            }
+            
+            alunoNota.disabled = false;
+        })
+        .catch(error => {
+            console.error("Erro ao carregar alunos:", error);
+            alunoNota.innerHTML = '<option value="">Erro ao carregar alunos</option>';
+            alunoNota.disabled = false;
+        });
 }
 
 // Função para salvar nota
@@ -3870,11 +4031,14 @@ function salvarNota() {
         console.log("Nota salva com sucesso:", data);
         
         // Registrar atividade
+        const alunoNome = document.getElementById('aluno-nota').options[document.getElementById('aluno-nota').selectedIndex]?.text || 'Desconhecido';
+        const disciplinaNome = document.getElementById('disciplina-nota').options[document.getElementById('disciplina-nota').selectedIndex]?.text || 'Desconhecida';
+        
         registrarAtividade(
             idNota ? 'atualização' : 'criação',
             'nota',
             `Nota ${idNota ? 'atualizada' : 'criada'} com sucesso`,
-            `Aluno: ${document.getElementById('aluno-nota').options[document.getElementById('aluno-nota').selectedIndex].text}, Disciplina: ${document.getElementById('disciplina-nota').options[document.getElementById('disciplina-nota').selectedIndex].text}`,
+            `Aluno: ${alunoNome}, Disciplina: ${disciplinaNome}`,
             'concluído'
         );
         
@@ -3949,4 +4113,71 @@ function cancelarEdicao() {
     
     // Limpar o formulário
     limparFormularioNota();
+}
+
+// Função para exibir mensagens toast
+function exibirMensagem(tipo, mensagem) {
+    // Criar container para as mensagens se não existir
+    let toastContainer = document.getElementById('toast-container');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'toast-container';
+        toastContainer.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+        document.body.appendChild(toastContainer);
+    }
+    
+    // Gerar ID único para o toast
+    const toastId = 'toast-' + Date.now();
+    
+    // Definir classe de cor com base no tipo
+    let bgClass = 'bg-primary text-white';
+    let iconClass = 'fas fa-info-circle';
+    
+    switch (tipo) {
+        case 'success':
+            bgClass = 'bg-success text-white';
+            iconClass = 'fas fa-check-circle';
+            break;
+        case 'danger':
+        case 'error':
+            bgClass = 'bg-danger text-white';
+            iconClass = 'fas fa-exclamation-circle';
+            break;
+        case 'warning':
+            bgClass = 'bg-warning text-dark';
+            iconClass = 'fas fa-exclamation-triangle';
+            break;
+    }
+    
+    // Criar o HTML do toast
+    const toastHTML = `
+        <div id="${toastId}" class="toast ${bgClass}" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header ${bgClass}">
+                <i class="${iconClass} me-2"></i>
+                <strong class="me-auto">Notificação</strong>
+                <small>${new Date().toLocaleTimeString()}</small>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Fechar"></button>
+            </div>
+            <div class="toast-body">
+                ${mensagem}
+            </div>
+        </div>
+    `;
+    
+    // Adicionar o toast ao container
+    toastContainer.insertAdjacentHTML('beforeend', toastHTML);
+    
+    // Inicializar e mostrar o toast
+    const toastElement = document.getElementById(toastId);
+    const toast = new bootstrap.Toast(toastElement, {
+        autohide: true,
+        delay: 5000
+    });
+    
+    toast.show();
+    
+    // Remover o toast do DOM após ser escondido
+    toastElement.addEventListener('hidden.bs.toast', function() {
+        toastElement.remove();
+    });
 }
