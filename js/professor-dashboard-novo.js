@@ -1095,6 +1095,19 @@ function initAlunos() {
                     option.textContent = `${turma.serie || ''} ${turma.turno || ''} (${turma.id_turma})`;
                     filtroTurma.appendChild(option);
                 });
+                
+                // Adicionar event listener para quando o usuário selecionar uma turma
+                filtroTurma.addEventListener('change', function() {
+                    const idTurma = this.value;
+                    console.log("Turma selecionada:", idTurma);
+                    
+                    // Chamar a função para carregar disciplinas da turma selecionada
+                    if (idTurma) {
+                        carregarDisciplinas(idTurma);
+                    } else {
+                        carregarDisciplinas(); // Carrega todas as disciplinas
+                    }
+                });
             }
             
             // Carregar todas as disciplinas inicialmente
@@ -1111,6 +1124,12 @@ function initAlunos() {
     function carregarDisciplinas(idTurma = null) {
         console.log('Carregando disciplinas para o professor... Turma:', idTurma);
         
+        // Limpar e desabilitar temporariamente o select de disciplinas
+        if (disciplinaSelect) {
+            disciplinaSelect.innerHTML = '<option value="">Carregando disciplinas...</option>';
+            disciplinaSelect.disabled = true;
+        }
+        
         let url;
         if (!idTurma) {
             url = CONFIG.getApiUrl(`/professores/${professorId}/disciplinas`);
@@ -1124,6 +1143,39 @@ function initAlunos() {
                     throw new Error(`Erro na requisição: ${response.status}`);
                 }
                 return response.json();
+            })
+            .then(disciplinas => {
+                console.log('Disciplinas carregadas:', disciplinas);
+                
+                // Atualizar o select de disciplinas com os resultados
+                if (disciplinaSelect) {
+                    disciplinaSelect.innerHTML = '<option value="">Todas as disciplinas</option>';
+                    
+                    if (disciplinas && disciplinas.length > 0) {
+                        disciplinas.forEach(disciplina => {
+                            const option = document.createElement('option');
+                            option.value = disciplina.id_disciplina;
+                            option.textContent = disciplina.nome_disciplina || `Disciplina ID: ${disciplina.id_disciplina}`;
+                            disciplinaSelect.appendChild(option);
+                        });
+                    }
+                    
+                    // Habilitar o select
+                    disciplinaSelect.disabled = false;
+                }
+                
+                return disciplinas;
+            })
+            .catch(error => {
+                console.error('Erro ao carregar disciplinas:', error);
+                
+                // Resetar o select com mensagem de erro
+                if (disciplinaSelect) {
+                    disciplinaSelect.innerHTML = '<option value="">Erro ao carregar disciplinas</option>';
+                    disciplinaSelect.disabled = false;
+                }
+                
+                return [];
             });
     }
     
@@ -1232,17 +1284,79 @@ function initAlunos() {
     function carregarAlunosFiltrados(idTurma, idDisciplina) {
         console.log(`Carregando alunos filtrados. Turma: ${idTurma}, Disciplina: ${idDisciplina}`);
         
-        let url = CONFIG.getApiUrl(`/professores/${professorId}/alunos`);
-        if (idTurma) {
-            url += `?turma_id=${encodeURIComponent(idTurma)}`;
+        // Verificar o container de resultados
+        if (!resultadosContainer) {
+            console.error("Container de resultados não encontrado!");
+            return Promise.reject(new Error("Container de resultados não encontrado"));
         }
         
+        // Mostrar indicador de carregamento
+        let tableBody = resultadosContainer.tagName === 'TABLE' 
+            ? resultadosContainer.querySelector('tbody') || resultadosContainer 
+            : resultadosContainer;
+        
+        tableBody.innerHTML = `
+            <tr class="text-center">
+                <td colspan="4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Carregando alunos...</span>
+                    </div>
+                    <p class="mt-2">Carregando alunos...</p>
+                </td>
+            </tr>
+        `;
+        
+        // Construir a URL com os parâmetros de filtro
+        let url = CONFIG.getApiUrl(`/professores/${professorId}/alunos`);
+        const params = new URLSearchParams();
+        
+        if (idTurma) {
+            params.append('turma_id', idTurma);
+        }
+        
+        if (idDisciplina) {
+            params.append('disciplina_id', idDisciplina);
+        }
+        
+        // Adicionar parâmetros à URL se houver algum
+        if (params.toString()) {
+            url += `?${params.toString()}`;
+        }
+        
+        // Realizar a requisição
         return fetch(url)
             .then(response => {
                 if (!response.ok) {
                     throw new Error(`Erro na requisição: ${response.status}`);
                 }
                 return response.json();
+            })
+            .then(alunos => {
+                console.log('Alunos filtrados carregados:', alunos);
+                
+                // Exibir os resultados
+                exibirResultados(alunos);
+                
+                return alunos;
+            })
+            .catch(error => {
+                console.error('Erro ao carregar alunos filtrados:', error);
+                
+                // Mostrar mensagem de erro
+                tableBody.innerHTML = `
+                    <tr class="text-center">
+                        <td colspan="4">
+                            <div class="alert alert-danger" role="alert">
+                                <h4 class="alert-heading">Erro ao carregar alunos!</h4>
+                                <p>Não foi possível carregar os alunos com os filtros selecionados.</p>
+                                <hr>
+                                <p class="mb-0">Detalhes: ${error.message}</p>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                
+                return [];
             });
     }
     
@@ -1296,7 +1410,7 @@ function initAlunos() {
                 <td>${aluno.nome_aluno || 'N/A'}</td>
                 <td>${aluno.nome_turma || aluno.id_turma || 'N/A'}</td>
                 <td>
-                    <button class="btn btn-sm btn-info" onclick="verAluno('${aluno.id_aluno}')">
+                    <button class="btn btn-sm btn-info" onclick="exibirFichaAluno('${aluno.id_aluno}')">
                         <i class="fas fa-eye"></i> Ver
                     </button>
                 </td>
@@ -1304,7 +1418,7 @@ function initAlunos() {
             tableBody.appendChild(row);
         });
         
-        // Registrar atividade - resultados encontrados
+        // Registrar atividade - consulta bem-sucedida
         registrarAtividade(
             'consulta',
             'alunos',
@@ -1374,7 +1488,11 @@ function initAlunos() {
                         console.error('Erro ao carregar aluno específico:', error);
                         // Mostrar mensagem de erro no container de resultados
                         if (resultadosContainer) {
-                            resultadosContainer.innerHTML = `
+                            let tableBody = resultadosContainer.tagName === 'TABLE' 
+                                ? resultadosContainer.querySelector('tbody') || resultadosContainer 
+                                : resultadosContainer;
+                                
+                            tableBody.innerHTML = `
                                 <tr class="text-center">
                                     <td colspan="4">
                                         <div class="alert alert-danger" role="alert">
@@ -2607,28 +2725,17 @@ function handleFormSubmit(event) {
     });
 }
 
+// Função para exibir a ficha detalhada do aluno
 function exibirFichaAluno(idAluno) {
-    console.log('Exibindo ficha do aluno:', idAluno);
+    console.log("Exibindo ficha do aluno:", idAluno);
     
-    // Limpar o conteúdo atual do modal
-    const modalBody = document.getElementById('alunoDetalhesModalBody');
-    if (!modalBody) return;
+    // Verificar se o ID do aluno é válido
+    if (!idAluno) {
+        alert('ID do aluno não fornecido.');
+        return;
+    }
     
-    // Mostrar indicador de carregamento
-    modalBody.innerHTML = `
-        <div class="d-flex justify-content-center my-5">
-            <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Carregando informações do aluno...</span>
-            </div>
-            <span class="ms-2">Carregando informações do aluno...</span>
-        </div>
-    `;
-    
-    // Abrir o modal enquanto carrega
-    const modal = new bootstrap.Modal(document.getElementById('alunoDetalhesModal'));
-    modal.show();
-    
-    // Buscar detalhes do aluno
+    // Buscar dados do aluno
     fetch(CONFIG.getApiUrl(`/alunos/${idAluno}`))
         .then(response => {
             if (!response.ok) {
@@ -2637,26 +2744,193 @@ function exibirFichaAluno(idAluno) {
             return response.json();
         })
         .then(aluno => {
-            // Atualizar o conteúdo do modal com os dados do aluno
-            modalBody.innerHTML = `
-                <div class="text-center">
-                    <h5>${aluno.nome_aluno}</h5>
-                    <p><strong>Turma:</strong> ${aluno.serie_turma} ${aluno.turno_turma}</p>
-                    <p><strong>Disciplina:</strong> ${aluno.nome_disciplina}</p>
-                    <p><strong>Nota Mensal:</strong> ${aluno.nota_mensal}</p>
-                    <p><strong>Nota Bimestral:</strong> ${aluno.nota_bimestral}</p>
-                    <p><strong>Recuperação:</strong> ${aluno.recuperacao}</p>
-                    <p><strong>Média:</strong> ${aluno.media}</p>
+            console.log("Dados do aluno:", aluno);
+            
+            // Criar conteúdo do modal
+            const modalContent = `
+                <div class="modal fade" id="alunoModal" tabindex="-1" aria-labelledby="alunoModalLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="alunoModalLabel">Ficha do Aluno</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="row">
+                                    <div class="col-md-4 text-center mb-3">
+                                        <i class="fas fa-user-graduate fa-5x text-primary mb-3"></i>
+                                        <h4>${aluno.nome_aluno || 'Nome não disponível'}</h4>
+                                        <p class="badge bg-info">${aluno.id_turma || 'Turma não informada'}</p>
+                                    </div>
+                                    <div class="col-md-8">
+                                        <h5>Informações do Aluno</h5>
+                                        <div class="table-responsive">
+                                            <table class="table table-bordered">
+                                                <tbody>
+                                                    <tr>
+                                                        <th>ID</th>
+                                                        <td>${aluno.id_aluno || 'N/A'}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <th>Nome</th>
+                                                        <td>${aluno.nome_aluno || 'N/A'}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <th>Turma</th>
+                                                        <td>${aluno.nome_turma || aluno.id_turma || 'N/A'}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <th>Data de Nascimento</th>
+                                                        <td>${aluno.data_nascimento ? new Date(aluno.data_nascimento).toLocaleDateString('pt-BR') : 'N/A'}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <th>Responsável</th>
+                                                        <td>${aluno.nome_responsavel || 'N/A'}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <th>Telefone</th>
+                                                        <td>${aluno.telefone_responsavel || 'N/A'}</td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="row mt-4">
+                                    <div class="col-12">
+                                        <h5>Notas do Aluno</h5>
+                                        <div class="table-responsive">
+                                            <table class="table table-bordered table-sm">
+                                                <thead class="table-light">
+                                                    <tr>
+                                                        <th>Disciplina</th>
+                                                        <th>Bimestre</th>
+                                                        <th>Nota Mensal</th>
+                                                        <th>Nota Bimestral</th>
+                                                        <th>Recuperação</th>
+                                                        <th>Média</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="notas-aluno-tbody">
+                                                    <tr>
+                                                        <td colspan="6" class="text-center">Carregando notas...</td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                                <button type="button" class="btn btn-primary" onclick="window.location.href='#conteudo-notas'">
+                                    <i class="fas fa-graduation-cap"></i> Ir para Gestão de Notas
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             `;
+            
+            // Remover modal anterior se existir
+            const modalAnterior = document.getElementById('alunoModal');
+            if (modalAnterior) {
+                modalAnterior.remove();
+            }
+            
+            // Adicionar o modal ao DOM
+            document.body.insertAdjacentHTML('beforeend', modalContent);
+            
+            // Exibir o modal
+            const modal = new bootstrap.Modal(document.getElementById('alunoModal'));
+            modal.show();
+            
+            // Carregar as notas do aluno
+            carregarNotasAluno(idAluno);
+            
+            // Registrar atividade
+            registrarAtividade('visualização', 'aluno', idAluno, `Aluno: ${aluno.nome_aluno || idAluno}`, 'concluído');
         })
         .catch(error => {
-            console.error('Erro ao carregar detalhes do aluno:', error);
-            modalBody.innerHTML = `
-                <div class="alert alert-danger" role="alert">
-                    <i class="fas fa-exclamation-circle"></i> 
-                    Não foi possível carregar as informações do aluno.
-                </div>
-            `;
+            console.error("Erro ao carregar dados do aluno:", error);
+            alert(`Erro ao carregar dados do aluno: ${error.message}`);
+        });
+}
+
+// Função para carregar as notas de um aluno específico
+function carregarNotasAluno(idAluno) {
+    fetch(CONFIG.getApiUrl(`/alunos/${idAluno}/notas`))
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Erro na requisição: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(notas => {
+            console.log("Notas do aluno:", notas);
+            
+            const tbody = document.getElementById('notas-aluno-tbody');
+            if (!tbody) {
+                console.error("Elemento notas-aluno-tbody não encontrado!");
+                return;
+            }
+            
+            if (!notas || notas.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="text-center">Nenhuma nota registrada para este aluno.</td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            // Limpar conteúdo atual
+            tbody.innerHTML = '';
+            
+            // Exibir as notas
+            notas.forEach(nota => {
+                const row = document.createElement('tr');
+                
+                // Determinar o status baseado na média
+                let statusClass = '';
+                const media = parseFloat(nota.media);
+                
+                if (!isNaN(media)) {
+                    if (media >= 7) {
+                        statusClass = 'status-aprovado';
+                    } else if (media >= 5) {
+                        statusClass = 'status-recuperacao';
+                    } else {
+                        statusClass = 'status-reprovado';
+                    }
+                }
+                
+                row.className = statusClass;
+                row.innerHTML = `
+                    <td>${nota.nome_disciplina || nota.id_disciplina || 'N/A'}</td>
+                    <td>${nota.bimestre ? nota.bimestre + 'º Bimestre' : 'N/A'}</td>
+                    <td>${nota.nota_mensal !== null && nota.nota_mensal !== undefined ? nota.nota_mensal.toFixed(1) : 'N/A'}</td>
+                    <td>${nota.nota_bimestral !== null && nota.nota_bimestral !== undefined ? nota.nota_bimestral.toFixed(1) : 'N/A'}</td>
+                    <td>${nota.recuperacao !== null && nota.recuperacao !== undefined ? nota.recuperacao.toFixed(1) : 'N/A'}</td>
+                    <td><strong>${nota.media !== null && nota.media !== undefined ? nota.media.toFixed(1) : 'N/A'}</strong></td>
+                `;
+                
+                tbody.appendChild(row);
+            });
+        })
+        .catch(error => {
+            console.error("Erro ao carregar notas do aluno:", error);
+            
+            const tbody = document.getElementById('notas-aluno-tbody');
+            if (tbody) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="text-center text-danger">
+                            Erro ao carregar notas: ${error.message}
+                        </td>
+                    </tr>
+                `;
+            }
         });
 }
