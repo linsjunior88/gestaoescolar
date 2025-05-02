@@ -52,7 +52,7 @@
                     
                     <div class="mt-5 mb-3 border-top pt-3">
                         <div class="text-center">
-                            <a href="#" id="sidebar-logout" class="btn btn-outline-light btn-sm" style="position: relative; z-index: 9999; pointer-events: auto;">
+                            <a href="index.html" id="sidebar-logout" class="btn btn-outline-light btn-sm" style="position: relative; z-index: 9999; pointer-events: auto;">
                                 <i class="fas fa-sign-out-alt"></i> <span class="menu-text">Sair</span>
                             </a>
                         </div>
@@ -65,12 +65,12 @@
                 <!-- Barra de navegação -->
                 <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4 w-100">
                     <div class="container-fluid">
-                        <a class="navbar-brand d-flex align-items-center ms-md-4" href="#">
-                            <img src="img/logo.png" alt="Logo Nazaré Rodrigues" class="me-3" style="max-height: 40px;">
-                            <span class="h5 mb-0 ms-2">EMEF Nazaré Rodrigues</span>
+                        <a class="navbar-brand d-flex align-items-center" href="#">
+                            <img src="img/logo.png" alt="Logo Nazaré Rodrigues" class="me-2" style="max-height: 40px;">
+                            <span class="h5 mb-0 d-none d-sm-inline">EMEF Nazaré Rodrigues</span>
                         </a>
                         <div class="d-flex align-items-center">
-                            <span class="text-white me-3 d-none d-md-block">Olá, <span id="professor-nome">Professor</span></span>
+                            <span class="text-dark me-3 d-none d-md-block">Olá, <span id="professor-nome">Professor</span></span>
                             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                                 <span class="navbar-toggler-icon"></span>
                             </button>
@@ -79,14 +79,19 @@
                         <div class="collapse navbar-collapse" id="navbarNav">
                             <ul class="navbar-nav ms-auto">
                                 <li class="nav-item dropdown" style="position: static;">
-                                    <a class="nav-link dropdown-toggle text-white" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" style="position: relative; z-index: 10001;">
+                                    <a class="nav-link dropdown-toggle text-dark" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" style="position: relative; z-index: 10001;">
                                         <i class="fas fa-user-circle"></i> Perfil
                                     </a>
                                     <div class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown" style="position: absolute; z-index: 10001; right: 0; left: auto; min-width: 200px; margin-top: 0.5rem; box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.175);">
                                         <a class="dropdown-item" href="#" id="perfil-professor-link" style="z-index: 10002; position: relative;"><i class="fas fa-id-card"></i> Meu Perfil</a>
                                         <div class="dropdown-divider"></div>
-                                        <a class="dropdown-item" href="#" id="btn-logout" style="z-index: 10002; position: relative; pointer-events: auto;"><i class="fas fa-sign-out-alt"></i> Sair</a>
+                                        <a class="dropdown-item" href="index.html" id="btn-logout" style="z-index: 10002; position: relative; pointer-events: auto;"><i class="fas fa-sign-out-alt"></i> Sair</a>
                                     </div>
+                                </li>
+                                <li class="nav-item d-md-none">
+                                    <a class="nav-link text-dark" href="index.html">
+                                        <i class="fas fa-sign-out-alt"></i> Sair
+                                    </a>
                                 </li>
                             </ul>
                         </div>

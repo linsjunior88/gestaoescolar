@@ -13,7 +13,7 @@
     overflow-y: auto;
     height: 100vh;
     width: 250px;
-    background-color: #0d6efd; /* Cor azul do Bootstrap (bg-primary) */
+    background-color: #7cb9e8; /* Azul pastel em vez de azul forte */
     color: white;
 }
 
@@ -42,13 +42,13 @@
 }
 
 .sidebar .nav-link:hover {
-    background-color: rgba(255, 255, 255, 0.2);
+    background-color: rgba(255, 255, 255, 0.3);
     color: #fff;
 }
 
 .sidebar .nav-link.active {
     color: #fff;
-    background-color: rgba(255, 255, 255, 0.3);
+    background-color: rgba(255, 255, 255, 0.4);
     font-weight: 600;
 }
 
@@ -78,21 +78,34 @@ main {
     z-index: 1030 !important;
 }
 
+.navbar-dark.bg-primary {
+    background-color: #7cb9e8 !important; /* Azul pastel para navbar */
+}
+
+.navbar-dark {
+    color: #333; /* Texto escuro para contraste com o fundo claro */
+}
+
+.navbar-dark .navbar-brand, 
+.navbar-dark .nav-link {
+    color: #333 !important; /* Texto escuro para navbar */
+}
+
 /* Cards de informações */
 .border-left-primary {
-    border-left: 0.25rem solid #4e73df !important;
+    border-left: 0.25rem solid #7cb9e8 !important; /* Azul pastel */
 }
 
 .border-left-success {
-    border-left: 0.25rem solid #1cc88a !important;
+    border-left: 0.25rem solid #b0e57c !important; /* Verde pastel */
 }
 
 .border-left-info {
-    border-left: 0.25rem solid #36b9cc !important;
+    border-left: 0.25rem solid #afcbfa !important; /* Azul info pastel */
 }
 
 .border-left-warning {
-    border-left: 0.25rem solid #f6c23e !important;
+    border-left: 0.25rem solid #fbe5a5 !important; /* Amarelo pastel */
 }
 
 .text-gray-300 {
@@ -148,7 +161,7 @@ main {
 /* Cards de gestão */
 .card-header h6 {
     font-weight: 700;
-    color: #4e73df;
+    color: #7cb9e8; /* Azul pastel */
 }
 
 .card {
@@ -162,14 +175,52 @@ main {
     border-bottom: 1px solid #e3e6f0;
 }
 
+/* Cards coloridos */
+.card.bg-primary {
+    background-color: #7cb9e8 !important; /* Azul pastel */
+}
+
+.card.bg-success {
+    background-color: #b0e57c !important; /* Verde pastel */
+}
+
+.card.bg-warning {
+    background-color: #fbe5a5 !important; /* Amarelo pastel */
+}
+
+.card.bg-info {
+    background-color: #afcbfa !important; /* Azul info pastel */
+}
+
+.card.bg-primary, .card.bg-success, .card.bg-warning, .card.bg-info {
+    color: #333 !important; /* Texto escuro para melhor legibilidade */
+}
+
 /* Botões personalizados */
 .btn-primary {
-    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    background: #7cb9e8; /* Azul pastel simples */
     border: none;
 }
 
 .btn-primary:hover {
-    background: linear-gradient(135deg, #2a5298 0%, #1e3c72 100%);
+    background: #5a9bd5; /* Um pouco mais escuro ao passar o mouse */
+}
+
+.btn-success {
+    background-color: #b0e57c !important; /* Verde pastel */
+    border: none;
+}
+
+.btn-warning {
+    background-color: #fbe5a5 !important; /* Amarelo pastel */
+    border: none;
+    color: #333;
+}
+
+.btn-info {
+    background-color: #afcbfa !important; /* Azul info pastel */
+    border: none;
+    color: #333;
 }
 
 /* Responsividade */

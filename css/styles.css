@@ -12,7 +12,7 @@ body {
 }
 
 .card-header {
-    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    background: #7cb9e8; /* Azul pastel mais suave */
     border-bottom: none;
 }
 
@@ -33,7 +33,7 @@ body {
 }
 
 .profile-card.selected {
-    border: 2px solid #4285f4;
+    border: 2px solid #7cb9e8; /* Azul pastel */
     background-color: #f0f7ff;
 }
 
@@ -69,20 +69,38 @@ body {
 
 /* Estilo para campos de formulário */
 .form-control:focus {
-    border-color: #4285f4;
-    box-shadow: 0 0 0 0.2rem rgba(66, 133, 244, 0.25);
+    border-color: #7cb9e8; /* Azul pastel */
+    box-shadow: 0 0 0 0.2rem rgba(124, 185, 232, 0.25);
 }
 
 .btn-primary {
-    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    background: #7cb9e8; /* Azul pastel simples */
     border: none;
     transition: all 0.3s ease;
 }
 
 .btn-primary:hover {
-    background: linear-gradient(135deg, #2a5298 0%, #1e3c72 100%);
+    background: #5a9bd5; /* Um pouco mais escuro ao passar o mouse */
     transform: translateY(-2px);
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+/* Cores pastéis para outros botões */
+.btn-success {
+    background-color: #b0e57c !important; /* Verde pastel */
+    border: none;
+}
+
+.btn-warning {
+    background-color: #fbe5a5 !important; /* Amarelo pastel */
+    border: none;
+    color: #333;
+}
+
+.btn-info {
+    background-color: #afcbfa !important; /* Azul info pastel */
+    border: none;
+    color: #333;
 }
 
 /* Responsividade para telas menores */
