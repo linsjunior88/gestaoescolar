@@ -2760,7 +2760,7 @@ function editarNota(notaId) {
     console.log('Iniciando edição da nota ID:', notaId);
     
     // Verificar se o formulário existe
-    const form = document.getElementById('form-nota');
+    let form = document.getElementById('form-nota');
     if (!form) {
         console.error('Formulário de notas não encontrado!');
         
@@ -3709,6 +3709,13 @@ function abrirModoLancamentoEmMassa() {
         return;
     }
     
+    // Define a classe de status (correção da variável não definida)
+    const statusClass = {
+        'Aprovado': 'text-success',
+        'Reprovado': 'text-danger',
+        'Em Recuperação': 'text-warning'
+    };
+    
     // Tentar encontrar o container para a tabela de notas usando vários métodos
     let cardBody = null;
     
@@ -3722,264 +3729,278 @@ function abrirModoLancamentoEmMassa() {
     
     // Método 1: Procurar pelo container específico
     cardBody = document.querySelector('.card-body.notas-container');
-    if (cardBody) {
-        console.log("Encontrado container '.card-body.notas-container'");
+    
+    // Método 2: Procurar pelo container com ID específico
+    if (!cardBody) {
+        cardBody = document.getElementById('notas-container');
     }
     
-    // Método 2: Procurar no segundo card (geralmente onde fica a tabela)
+    // Método 3: Procurar pela tabela de notas e pegar seu parent
     if (!cardBody) {
-        const cards = notasContainer.querySelectorAll('.card');
-        if (cards.length >= 2) {
-            cardBody = cards[1].querySelector('.card-body');
-            if (cardBody) {
-                console.log("Encontrado card-body no segundo card");
-            }
+        const tabelaNotas = document.getElementById('tabela-notas');
+        if (tabelaNotas) {
+            cardBody = tabelaNotas.closest('.card-body');
         }
     }
     
-    // Método 3: Procurar card que tenha tabela de notas
-    if (!cardBody) {
-        const allCards = notasContainer.querySelectorAll('.card');
-        for (const card of allCards) {
-            const table = card.querySelector('table#tabela-notas');
-            if (table) {
-                cardBody = card.querySelector('.card-body');
-                if (cardBody) {
-                    console.log("Encontrado card-body contendo tabela de notas");
-                    break;
-                }
-            }
-        }
-    }
-    
-    // Método 4: Qualquer card-body que não seja de filtros
-    if (!cardBody) {
-        cardBody = notasContainer.querySelector('.card-body:not(:has(#filtrosNotas))');
-        if (cardBody) {
-            console.log("Encontrado card-body que não contém filtros");
-        }
-    }
-    
-    // Método 5: Qualquer card-body
+    // Método 4: Último caso, usar qualquer card-body dentro de conteudo-notas
     if (!cardBody) {
         cardBody = notasContainer.querySelector('.card-body');
-        if (cardBody) {
-            console.log("Encontrado primeiro card-body disponível");
-        }
     }
     
-    // Se ainda não encontrou, criar um novo container
+    // Se ainda não encontramos um cardBody válido, criar um
     if (!cardBody) {
-        console.log("Criando novo card para lançamento em massa");
+        console.warn('Nenhum container de notas encontrado, criando um novo');
         
+        // Criar novo card e adicionar ao container
         const novoCard = document.createElement('div');
         novoCard.className = 'card shadow mb-4';
         novoCard.innerHTML = `
             <div class="card-header py-3">
-                <h6 class="m-0 font-weight-bold text-primary">Lançamento em Massa</h6>
+                <h6 class="m-0 font-weight-bold text-primary">Lançamento de Notas em Massa</h6>
             </div>
-            <div class="card-body notas-container"></div>
+            <div class="card-body notas-container" id="notas-container">
+                <!-- Aqui será inserido o formulário de lançamento em massa -->
+            </div>
         `;
         
         notasContainer.appendChild(novoCard);
         cardBody = novoCard.querySelector('.card-body');
     }
     
-    // Limpar o container existente
-    cardBody.innerHTML = `
-        <div class="d-flex justify-content-center align-items-center" style="height: 200px;">
-            <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Carregando...</span>
+    // Ocultar a tabela de notas se existir
+    const tabelaNotas = document.getElementById('tabela-notas');
+    if (tabelaNotas) {
+        console.log('Ocultando tabela de notas para mostrar formulário de lançamento em massa');
+        tabelaNotas.style.display = 'none';
+    }
+    
+    // Remover o formulário atual se já existir
+    const formExistente = document.getElementById('form-lancamento-massa');
+    if (formExistente) {
+        formExistente.remove();
+    }
+    
+    // Criar o formulário de lançamento em massa
+    const form = document.createElement('div');
+    form.id = 'form-lancamento-massa';
+    form.className = 'table-responsive mt-3';
+    
+    form.innerHTML = `
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="font-weight-bold text-primary">Lançamento em Massa - ${turmaId} / ${disciplinaId} - ${bimestre}º Bimestre ${ano}</h6>
+            <div>
+                <button type="button" class="btn btn-success" id="btn-salvar-lancamento-massa">
+                    <i class="fas fa-save"></i> Salvar
+                </button>
+                <button type="button" class="btn btn-secondary ms-2" id="btn-cancelar-lancamento-massa">
+                    <i class="fas fa-times"></i> Cancelar
+                </button>
             </div>
-            <span class="ms-2">Carregando dados dos alunos...</span>
         </div>
+        <table class="table table-bordered" id="tabela-lancamento-massa">
+            <thead>
+                <tr>
+                    <th>Aluno</th>
+                    <th style="width: 100px">Mensal</th>
+                    <th style="width: 100px">Bimestral</th>
+                    <th style="width: 100px">Recuperação</th>
+                    <th style="width: 80px">Média</th>
+                    <th style="width: 120px">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td colspan="6" class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Carregando alunos...</span>
+                        </div>
+                        <p class="mt-2">Carregando alunos da turma...</p>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
     `;
     
-    console.log(`Carregando alunos da turma ${turmaId} para lançamento em massa...`);
+    // Adicionar ao container
+    cardBody.appendChild(form);
     
-    // Carregar alunos da turma para o formulário
-    carregarAlunosDaTurma(turmaId)
-        .then(alunos => {
-            console.log(`Recebidos ${alunos ? alunos.length : 0} alunos para lançamento em massa`);
-            
-            if (!alunos || alunos.length === 0) {
-                cardBody.innerHTML = `
-                    <div class="alert alert-warning" role="alert">
-                        <h4 class="alert-heading">Nenhum aluno encontrado</h4>
-                        <p>Não foram encontrados alunos para a turma selecionada (${turmaId}).</p>
-                        <button class="btn btn-secondary mt-2" onclick="inicializarTabelaNotas()">Voltar</button>
-                    </div>
-                `;
-                return;
+    // Carregar os alunos da turma
+    fetch(CONFIG.getApiUrl(`/turmas/${turmaId}/alunos`))
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Erro ao carregar alunos: ${response.status}`);
             }
-            
+            return response.json();
+        })
+        .then(alunos => {
             // Ordenar alunos por nome
-            alunos.sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
+            alunos.sort((a, b) => {
+                const nomeA = (a.nome_aluno || a.nome || a.id_aluno || '').toString();
+                const nomeB = (b.nome_aluno || b.nome || b.id_aluno || '').toString();
+                return nomeA.localeCompare(nomeB);
+            });
             
-            console.log(`Buscando notas existentes para turma ${turmaId}, disciplina ${disciplinaId}, ano ${ano}, bimestre ${bimestre}`);
+            console.log(`Carregados ${alunos.length} alunos para lançamento em massa`);
             
-            // Carregar notas existentes para preencher o formulário
-            return fetch(CONFIG.getApiUrl(`/notas?turma_id=${turmaId}&disciplina_id=${disciplinaId}&ano=${ano}&bimestre=${bimestre}`))
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`Erro na requisição: ${response.status} - ${response.statusText}`);
-                    }
-                    return response.json();
-                })
-                .then(notasExistentes => {
-                    // Criar mapa de notas existentes por ID de aluno para fácil acesso
-                    const notasPorAluno = {};
-                    notasExistentes.forEach(nota => {
-                        const alunoId = nota.aluno_id || nota.id_aluno;
-                        if (alunoId) {
-                            notasPorAluno[alunoId] = nota;
+            // Para cada aluno, buscar se já existe nota
+            const promises = alunos.map(aluno => {
+                return fetch(CONFIG.getApiUrl(`/notas/buscar?turma=${turmaId}&disciplina=${disciplinaId}&aluno=${aluno.id_aluno}&ano=${ano}&bimestre=${bimestre}`))
+                    .then(response => {
+                        if (response.status === 404) {
+                            // Nota não existe
+                            return { aluno, nota: null };
                         }
+                        
+                        if (!response.ok) {
+                            throw new Error(`Erro ao buscar nota: ${response.status}`);
+                        }
+                        
+                        return response.json()
+                            .then(notaData => {
+                                return { aluno, nota: notaData };
+                            });
+                    })
+                    .catch(error => {
+                        console.warn(`Erro ao buscar nota para aluno ${aluno.id_aluno}:`, error);
+                        return { aluno, nota: null };
                     });
+            });
+            
+            Promise.all(promises)
+                .then(resultados => {
+                    const tbody = document.querySelector('#tabela-lancamento-massa tbody');
+                    if (!tbody) {
+                        throw new Error('Tabela de lançamento em massa não encontrada!');
+                    }
                     
-                    // Criar formulário de lançamento em massa
-                    let html = `
-                        <h4 class="mb-3">Lançamento em Massa de Notas</h4>
-                        <div class="d-flex justify-content-between mb-3">
-                            <div>
-                                <strong>Turma:</strong> ${filtroTurma.options[filtroTurma.selectedIndex].text}
-                                <strong class="ms-3">Disciplina:</strong> ${filtroDisciplina.options[filtroDisciplina.selectedIndex].text}
-                            </div>
-                            <div>
-                                <strong>Ano:</strong> ${ano}
-                                <strong class="ms-3">Bimestre:</strong> ${bimestre}º Bimestre
-                            </div>
-                        </div>
-                        
-                        <form id="form-lancamento-massa">
-                            <div class="table-responsive">
-                                <table class="table table-striped table-hover">
-                                    <thead class="table-secondary">
-                                        <tr>
-                                            <th>Aluno</th>
-                                            <th class="text-center">Nota Mensal</th>
-                                            <th class="text-center">Nota Bimestral</th>
-                                            <th class="text-center">Recuperação</th>
-                                            <th class="text-center">Média</th>
-                                            <th class="text-center">Status</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                    `;
+                    tbody.innerHTML = '';
                     
-                    // Adicionar linha para cada aluno
-                    alunos.forEach(aluno => {
-                        const alunoId = aluno.id || aluno.id_aluno;
-                        const notaExistente = notasPorAluno[alunoId] || {};
-                        const idNota = notaExistente.id || '';
-                        const notaMensal = notaExistente.nota_mensal !== undefined ? notaExistente.nota_mensal : '';
-                        const notaBimestral = notaExistente.nota_bimestral !== undefined ? notaExistente.nota_bimestral : '';
-                        const notaRecuperacao = notaExistente.recuperacao !== undefined ? notaExistente.recuperacao : '';
+                    resultados.forEach(({ aluno, nota }) => {
+                        const tr = document.createElement('tr');
+                        tr.dataset.alunoId = aluno.id_aluno;
                         
-                        // Calcular média se as notas existirem
-                        let media = null;
+                        // Valores iniciais da nota (ou vazio se não existir)
+                        const notaMensal = nota ? nota.nota_mensal || '' : '';
+                        const notaBimestral = nota ? nota.nota_bimestral || '' : '';
+                        const notaRecuperacao = nota ? nota.recuperacao || '' : '';
+                        
+                        // Calcular média e status
+                        let media = '';
                         let status = '';
                         
-                        // Calcular média apenas se pelo menos uma das notas existir
-                        if (notaMensal !== '' || notaBimestral !== '') {
-                            // Usar valores padrão de 0 para notas não informadas
-                            const nm = notaMensal !== '' ? parseFloat(notaMensal) : 0;
-                            const nb = notaBimestral !== '' ? parseFloat(notaBimestral) : 0;
+                        if (notaMensal !== '' && notaBimestral !== '') {
+                            const mensal = parseFloat(notaMensal) || 0;
+                            const bimestral = parseFloat(notaBimestral) || 0;
                             
-                            // Calcular média sem recuperação
-                            media = (nm + nb) / 2;
+                            // Calcular média básica
+                            let mediaCalculada = (mensal + bimestral) / 2;
                             
-                            // Se tem recuperação e é maior que a média calculada, usar a recuperação
+                            // Considerar recuperação se existir
                             if (notaRecuperacao !== '') {
-                                const rec = parseFloat(notaRecuperacao);
-                                if (rec > media) {
-                                    media = rec;
+                                const recuperacao = parseFloat(notaRecuperacao) || 0;
+                                // Se a recuperação for maior que a média, substitui
+                                if (recuperacao > mediaCalculada) {
+                                    mediaCalculada = recuperacao;
                                 }
                             }
                             
-                            // Formatar para uma casa decimal
-                            media = Math.round(media * 10) / 10;
+                            // Arredondar para uma casa decimal
+                            media = mediaCalculada.toFixed(1);
                             
-                            // Definir status com base na média
-                            status = media >= 6 ? 'Aprovado' : 'Reprovado';
-                        } else {
-                            media = '';
-                            status = '';
+                            // Definir status
+                            status = parseFloat(media) >= 6 ? 'Aprovado' : 'Reprovado';
                         }
                         
-                        html += `
+                        // Determinar a classe CSS para o status
+                        const statusClasse = statusClass[status] || '';
+                        
+                        tr.innerHTML = `
+                            <td>${aluno.nome_aluno || aluno.nome || aluno.id_aluno}</td>
+                            <td>
+                                <input type="number" class="form-control nota-mensal" min="0" max="10" step="0.1" value="${notaMensal}" 
+                                       onchange="atualizarMediaEStatus('${aluno.id_aluno}')">
+                            </td>
+                            <td>
+                                <input type="number" class="form-control nota-bimestral" min="0" max="10" step="0.1" value="${notaBimestral}"
+                                       onchange="atualizarMediaEStatus('${aluno.id_aluno}')">
+                            </td>
+                            <td>
+                                <input type="number" class="form-control nota-recuperacao" min="0" max="10" step="0.1" value="${notaRecuperacao}"
+                                       onchange="atualizarMediaEStatus('${aluno.id_aluno}')">
+                            </td>
+                            <td>
+                                <span class="media">${media}</span>
+                            </td>
+                            <td>
+                                <span class="status ${statusClasse}">${status}</span>
+                                ${nota ? `<input type="hidden" class="nota-id" value="${nota.id}">` : ''}
+                            </td>
+                        `;
+                        
+                        tbody.appendChild(tr);
+                    });
+                    
+                    // Adicionar eventos para os botões
+                    const btnSalvar = document.getElementById('btn-salvar-lancamento-massa');
+                    if (btnSalvar) {
+                        btnSalvar.addEventListener('click', function() {
+                            // Chamar a função para salvar o lançamento em massa
+                            salvarLancamentoEmMassa();
+                        });
+                    }
+                    
+                    const btnCancelar = document.getElementById('btn-cancelar-lancamento-massa');
+                    if (btnCancelar) {
+                        btnCancelar.addEventListener('click', function() {
+                            // Remover o formulário e mostrar a tabela de notas novamente
+                            const formLancamento = document.getElementById('form-lancamento-massa');
+                            if (formLancamento) {
+                                formLancamento.remove();
+                            }
+                            
+                            // Mostrar tabela de notas novamente
+                            const tabelaNotas = document.getElementById('tabela-notas');
+                            if (tabelaNotas) {
+                                tabelaNotas.style.display = '';
+                            }
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro ao processar notas para lançamento em massa:', error);
+                    
+                    const tbody = document.querySelector('#tabela-lancamento-massa tbody');
+                    if (tbody) {
+                        tbody.innerHTML = `
                             <tr>
-                                <td>
-                                    ${aluno.nome || aluno.nome_aluno || `Aluno ${alunoId}`}
-                                    <input type="hidden" name="aluno_id_${alunoId}" value="${alunoId}">
-                                    <input type="hidden" name="nota_id_${alunoId}" value="${idNota}">
-                                </td>
-                                <td>
-                                    <input type="number" class="form-control nota-mensal" name="nota_mensal_${alunoId}" 
-                                        value="${notaMensal}" min="0" max="10" step="0.1" data-aluno-id="${alunoId}">
-                                </td>
-                                <td>
-                                    <input type="number" class="form-control nota-bimestral" name="nota_bimestral_${alunoId}" 
-                                        value="${notaBimestral}" min="0" max="10" step="0.1" data-aluno-id="${alunoId}">
-                                </td>
-                                <td>
-                                    <input type="number" class="form-control nota-recuperacao" name="recuperacao_${alunoId}" 
-                                        value="${notaRecuperacao}" min="0" max="10" step="0.1" data-aluno-id="${alunoId}">
-                                </td>
-                                <td class="text-center media-container-${alunoId}">
-                                    ${media !== null ? media.toFixed(1) : '-'}
-                                </td>
-                                <td class="text-center status-container-${alunoId} ${statusClass}">
-                                    ${status}
+                                <td colspan="6" class="text-center">
+                                    <div class="alert alert-danger m-0">
+                                        <i class="fas fa-exclamation-circle"></i> 
+                                        Erro ao carregar dados: ${error.message}
+                                    </div>
                                 </td>
                             </tr>
                         `;
-                    });
-                    
-                    html += `
-                                    </tbody>
-                                </table>
-                            </div>
-                            
-                            <div class="d-flex justify-content-end mt-3">
-                                <button type="button" class="btn btn-secondary me-2" id="btn-cancelar-lancamento-massa">Cancelar</button>
-                                <button type="submit" class="btn btn-primary" id="btn-salvar-lancamento-massa">Salvar Notas</button>
-                            </div>
-                        </form>
-                    `;
-                    
-                    cardBody.innerHTML = html;
-                    
-                    // Adicionar listeners para calcular média em tempo real
-                    document.querySelectorAll('.nota-mensal, .nota-bimestral, .nota-recuperacao').forEach(input => {
-                        input.addEventListener('input', function() {
-                            const alunoId = this.dataset.alunoId;
-                            atualizarMediaEStatus(alunoId);
-                        });
-                    });
-                    
-                    // Adicionar listener para o botão cancelar
-                    document.getElementById('btn-cancelar-lancamento-massa').addEventListener('click', function() {
-                        // Restaurar a tabela de notas
-                        inicializarTabelaNotas();
-                        carregarNotas();
-                    });
-                    
-                    // Adicionar listener para o formulário
-                    document.getElementById('form-lancamento-massa').addEventListener('submit', function(e) {
-                        e.preventDefault();
-                        salvarLancamentoEmMassa();
-                    });
+                    }
                 });
         })
         .catch(error => {
-            console.error('Erro ao carregar dados para lançamento em massa:', error);
-            cardBody.innerHTML = `
-                <div class="alert alert-danger" role="alert">
-                    <h4 class="alert-heading">Erro ao carregar dados</h4>
-                    <p>${error.message}</p>
-                    <button class="btn btn-secondary mt-2" onclick="inicializarTabelaNotas()">Voltar</button>
-                </div>
-            `;
+            console.error('Erro ao carregar alunos para lançamento em massa:', error);
+            
+            const tbody = document.querySelector('#tabela-lancamento-massa tbody');
+            if (tbody) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="text-center">
+                            <div class="alert alert-danger m-0">
+                                <i class="fas fa-exclamation-circle"></i> 
+                                Erro ao carregar alunos: ${error.message}
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }
         });
 }
 
@@ -4745,46 +4766,80 @@ function carregarAlunosParaFormulario(idTurma, idDisciplina, selectElement) {
         return;
     }
     
-    // Construir URL com base nos parâmetros fornecidos
-    let url = idDisciplina
-        ? CONFIG.getApiUrl(`/turmas/${idTurma}/disciplinas/${idDisciplina}/alunos`)
-        : CONFIG.getApiUrl(`/turmas/${idTurma}/alunos`);
+    console.log(`Carregando alunos para o formulário. Turma: ${idTurma}, Disciplina: ${idDisciplina || 'não especificada'}`);
     
-    fetch(url)
-        .then(response => {
-            if (!response.ok) {
-                // Tentar URL alternativa se a principal falhar
-                if (response.status === 404) {
-                    let urlAlternativa = CONFIG.getApiUrl(`/alunos?turma_id=${idTurma}`);
-                    if (idDisciplina) {
-                        urlAlternativa += `&disciplina_id=${idDisciplina}`;
+    // Lista de URLs a tentar, em ordem de prioridade
+    const urls = [
+        // Primeiro tenta o endpoint específico por disciplina
+        idDisciplina 
+            ? CONFIG.getApiUrl(`/turmas/${idTurma}/disciplinas/${idDisciplina}/alunos`) 
+            : null,
+        // Depois tenta apenas pela turma
+        CONFIG.getApiUrl(`/turmas/${idTurma}/alunos`),
+        // Finalmente tenta com parâmetros de consulta
+        CONFIG.getApiUrl(`/alunos?turma_id=${idTurma}${idDisciplina ? `&disciplina_id=${idDisciplina}` : ''}`)
+    ].filter(Boolean); // Remove URLs null da lista
+    
+    // Função para tentar a próxima URL na lista
+    function tentarProximaUrl(index = 0) {
+        if (index >= urls.length) {
+            // Se nenhuma URL funcionou, tentar buscar todos os alunos e filtrar manualmente
+            console.log('Tentando obter todos os alunos como último recurso');
+            return fetch(CONFIG.getApiUrl('/alunos'))
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Erro ao carregar todos os alunos: ${response.status}`);
                     }
-                    
-                    return fetch(urlAlternativa)
-                        .then(altResponse => {
-                            if (!altResponse.ok) {
-                                throw new Error(`Erro na requisição alternativa: ${altResponse.status}`);
-                            }
-                            return altResponse.json();
-                        });
+                    return response.json();
+                })
+                .then(alunos => {
+                    // Filtrar manualmente para a turma especificada
+                    return alunos.filter(aluno => {
+                        const turmaDoAluno = aluno.id_turma || aluno.turma_id || '';
+                        return turmaDoAluno === idTurma || turmaDoAluno === parseInt(idTurma);
+                    });
+                });
+        }
+        
+        console.log(`Tentativa ${index + 1}/${urls.length}: ${urls[index]}`);
+        
+        return fetch(urls[index])
+            .then(response => {
+                if (!response.ok) {
+                    console.log(`URL ${urls[index]} falhou com status ${response.status}. Tentando próxima URL...`);
+                    return tentarProximaUrl(index + 1);
                 }
-                throw new Error(`Erro ao carregar alunos: ${response.status}`);
-            }
-            return response.json();
-        })
+                return response.json();
+            });
+    }
+    
+    // Iniciar tentativas de requisição
+    tentarProximaUrl()
         .then(alunos => {
             // Popular o select de alunos
             selectElement.innerHTML = '<option value="">Selecione o aluno</option>';
             
             if (alunos && alunos.length > 0) {
+                console.log(`Encontrados ${alunos.length} alunos para a turma ${idTurma}`);
+                
+                // Garantir que só mostra alunos da turma especificada
+                const alunosFiltrados = alunos.filter(aluno => {
+                    const turmaDoAluno = aluno.id_turma || aluno.turma_id || '';
+                    return turmaDoAluno === idTurma || turmaDoAluno === parseInt(idTurma) || !turmaDoAluno;
+                });
+                
+                if (alunosFiltrados.length < alunos.length) {
+                    console.log(`Filtrados ${alunosFiltrados.length} alunos de ${alunos.length} para a turma ${idTurma}`);
+                }
+                
                 // Ordenar alunos por nome
-                alunos.sort((a, b) => {
+                alunosFiltrados.sort((a, b) => {
                     const nomeA = a.nome_aluno || a.nome || '';
                     const nomeB = b.nome_aluno || b.nome || '';
                     return nomeA.localeCompare(nomeB);
                 });
                 
-                alunos.forEach(aluno => {
+                alunosFiltrados.forEach(aluno => {
                     const id = aluno.id_aluno || aluno.id;
                     const nome = aluno.nome_aluno || aluno.nome || `Aluno ID: ${id}`;
                     
@@ -4798,6 +4853,9 @@ function carregarAlunosParaFormulario(idTurma, idDisciplina, selectElement) {
                 if (filtroAluno && filtroAluno.value) {
                     selectElement.value = filtroAluno.value;
                 }
+            } else {
+                console.warn(`Nenhum aluno encontrado para a turma ${idTurma}`);
+                selectElement.innerHTML = '<option value="">Nenhum aluno encontrado para esta turma</option>';
             }
             
             selectElement.disabled = false;
