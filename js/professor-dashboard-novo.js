@@ -3939,50 +3939,52 @@ function abrirModoLancamentoEmMassa() {
     // Adicionar ao container
     cardBody.appendChild(form);
     
-    // Carregar os alunos da turma
-    fetch(CONFIG.getApiUrl(`/turmas/${turmaId}/alunos`))
+    // Primeiro, carregar todas as notas para a turma, disciplina, ano e bimestre
+    console.log(`Buscando notas existentes - Turma: ${turmaId}, Disciplina: ${disciplinaId}, Ano: ${ano}, Bimestre: ${bimestre}`);
+    
+    // Buscar todas as notas para a turma/disciplina/ano/bimestre selecionados
+    fetch(CONFIG.getApiUrl(`/notas?turma=${turmaId}&disciplina=${disciplinaId}&ano=${ano}&bimestre=${bimestre}`))
         .then(response => {
-            if (!response.ok) {
-                throw new Error(`Erro ao carregar alunos: ${response.status}`);
+            if (response.status === 404) {
+                console.log('Nenhuma nota encontrada para os filtros selecionados.');
+                return [];
             }
+            
+            if (!response.ok) {
+                console.warn(`Erro ao buscar notas existentes: ${response.status}`);
+                return [];
+            }
+            
             return response.json();
         })
-        .then(alunos => {
-            // Ordenar alunos por nome
-            alunos.sort((a, b) => {
-                const nomeA = (a.nome_aluno || a.nome || a.id_aluno || '').toString();
-                const nomeB = (b.nome_aluno || b.nome || b.id_aluno || '').toString();
-                return nomeA.localeCompare(nomeB);
+        .then(notasExistentes => {
+            console.log(`Encontradas ${notasExistentes.length} notas existentes para os filtros selecionados:`, notasExistentes);
+            
+            // Criar mapa para acesso rápido às notas por ID do aluno
+            const notasPorAluno = new Map();
+            notasExistentes.forEach(nota => {
+                notasPorAluno.set(nota.id_aluno, nota);
             });
             
-            console.log(`Carregados ${alunos.length} alunos para lançamento em massa`);
-            
-            // Para cada aluno, buscar se já existe nota
-            const promises = alunos.map(aluno => {
-                return fetch(CONFIG.getApiUrl(`/notas/buscar?turma=${turmaId}&disciplina=${disciplinaId}&aluno=${aluno.id_aluno}&ano=${ano}&bimestre=${bimestre}`))
-                    .then(response => {
-                        if (response.status === 404) {
-                            // Nota não existe
-                            return { aluno, nota: null };
-                        }
-                        
-                        if (!response.ok) {
-                            throw new Error(`Erro ao buscar nota: ${response.status}`);
-                        }
-                        
-                        return response.json()
-                            .then(notaData => {
-                                return { aluno, nota: notaData };
-                            });
-                    })
-                    .catch(error => {
-                        console.warn(`Erro ao buscar nota para aluno ${aluno.id_aluno}:`, error);
-                        return { aluno, nota: null };
+            // Carregar os alunos da turma
+            return fetch(CONFIG.getApiUrl(`/turmas/${turmaId}/alunos`))
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Erro ao carregar alunos: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(alunos => {
+                    // Ordenar alunos por nome
+                    alunos.sort((a, b) => {
+                        const nomeA = (a.nome_aluno || a.nome || a.id_aluno || '').toString();
+                        const nomeB = (b.nome_aluno || b.nome || b.id_aluno || '').toString();
+                        return nomeA.localeCompare(nomeB);
                     });
-            });
-            
-            Promise.all(promises)
-                .then(resultados => {
+                    
+                    console.log(`Carregados ${alunos.length} alunos para lançamento em massa`);
+                    
+                    // Preencher a tabela com os alunos e suas notas (se existirem)
                     const tbody = document.querySelector('#tabela-lancamento-massa tbody');
                     if (!tbody) {
                         throw new Error('Tabela de lançamento em massa não encontrada!');
@@ -3990,14 +3992,17 @@ function abrirModoLancamentoEmMassa() {
                     
                     tbody.innerHTML = '';
                     
-                    resultados.forEach(({ aluno, nota }) => {
+                    alunos.forEach(aluno => {
                         const tr = document.createElement('tr');
                         tr.dataset.alunoId = aluno.id_aluno;
                         
+                        // Buscar a nota existente para este aluno (se houver)
+                        const nota = notasPorAluno.get(aluno.id_aluno);
+                        
                         // Valores iniciais da nota (ou vazio se não existir)
-                        const notaMensal = nota ? nota.nota_mensal || '' : '';
-                        const notaBimestral = nota ? nota.nota_bimestral || '' : '';
-                        const notaRecuperacao = nota ? nota.recuperacao || '' : '';
+                        const notaMensal = nota ? (nota.nota_mensal !== null ? nota.nota_mensal : '') : '';
+                        const notaBimestral = nota ? (nota.nota_bimestral !== null ? nota.nota_bimestral : '') : '';
+                        const notaRecuperacao = nota ? (nota.recuperacao !== null ? nota.recuperacao : '') : '';
                         
                         // Calcular média e status
                         let media = '';
@@ -4029,8 +4034,15 @@ function abrirModoLancamentoEmMassa() {
                         // Determinar a classe CSS para o status
                         const statusClasse = statusClass[status] || '';
                         
+                        // Se temos nota existente, adicionar uma indicação visual
+                        const temNotaExistente = nota ? true : false;
+                        const rowClass = temNotaExistente ? 'has-existing-data' : '';
+                        const notaIndicator = temNotaExistente ? 
+                            '<span class="badge bg-info text-white ms-2" title="Nota existente">Existente</span>' : '';
+                        
+                        tr.className = rowClass;
                         tr.innerHTML = `
-                            <td>${aluno.nome_aluno || aluno.nome || aluno.id_aluno}</td>
+                            <td>${aluno.nome_aluno || aluno.nome || aluno.id_aluno}${notaIndicator}</td>
                             <td>
                                 <input type="number" class="form-control nota-mensal" min="0" max="10" step="0.1" value="${notaMensal}" 
                                        onchange="atualizarMediaEStatus('${aluno.id_aluno}')">
@@ -4054,6 +4066,38 @@ function abrirModoLancamentoEmMassa() {
                         
                         tbody.appendChild(tr);
                     });
+                    
+                    // Adicionar estilo para linhas com dados existentes
+                    const style = document.createElement('style');
+                    style.textContent = `
+                        .has-existing-data {
+                            background-color: rgba(232, 244, 248, 0.5);
+                        }
+                        .has-existing-data td {
+                            border-left: 3px solid #17a2b8;
+                        }
+                        
+                        .linha-modificada td {
+                            background-color: rgba(255, 251, 235, 0.5);
+                            border-left: 3px solid #ffc107;
+                        }
+                        
+                        .linha-modificada:not(.has-existing-data) td {
+                            background-color: rgba(255, 251, 235, 0.5);
+                            border-left: 3px solid #ffc107;
+                        }
+                        
+                        .has-existing-data.linha-modificada td {
+                            background-color: rgba(232, 244, 248, 0.3);
+                            border-left: 3px solid #28a745;
+                        }
+                        
+                        .icone-edicao i {
+                            font-size: 0.85em;
+                            color: #007bff;
+                        }
+                    `;
+                    document.head.appendChild(style);
                     
                     // Adicionar eventos para os botões
                     const btnSalvar = document.getElementById('btn-salvar-lancamento-massa');
@@ -4080,22 +4124,10 @@ function abrirModoLancamentoEmMassa() {
                             }
                         });
                     }
-                })
-                .catch(error => {
-                    console.error('Erro ao processar notas para lançamento em massa:', error);
                     
-                    const tbody = document.querySelector('#tabela-lancamento-massa tbody');
-                    if (tbody) {
-                        tbody.innerHTML = `
-                            <tr>
-                                <td colspan="6" class="text-center">
-                                    <div class="alert alert-danger m-0">
-                                        <i class="fas fa-exclamation-circle"></i> 
-                                        Erro ao carregar dados: ${error.message}
-                                    </div>
-                                </td>
-                            </tr>
-                        `;
+                    // Mensagem quando notas existentes são encontradas
+                    if (notasExistentes.length > 0) {
+                        mostrarMensagemFlutuante(`${notasExistentes.length} notas existentes foram carregadas.`, 'info');
                     }
                 });
         })
@@ -4109,7 +4141,7 @@ function abrirModoLancamentoEmMassa() {
                         <td colspan="6" class="text-center">
                             <div class="alert alert-danger m-0">
                                 <i class="fas fa-exclamation-circle"></i> 
-                                Erro ao carregar alunos: ${error.message}
+                                Erro ao carregar dados: ${error.message}
                             </div>
                         </td>
                     </tr>
@@ -4206,6 +4238,31 @@ function atualizarMediaEStatus(alunoId) {
             statusCelula.classList.add('text-danger');
         } else if (status === 'Em Recuperação') {
             statusCelula.classList.add('text-warning');
+        }
+        
+        // Marcar a linha como modificada para destacar visualmente
+        linha.classList.add('linha-modificada');
+        
+        // Se a linha também tem dados existentes, mostrar um ícone de edição
+        if (linha.classList.contains('has-existing-data')) {
+            // Adicionar ícone apenas se ainda não existe
+            if (!linha.querySelector('.icone-edicao')) {
+                const iconeEdicao = document.createElement('span');
+                iconeEdicao.className = 'icone-edicao ms-2';
+                iconeEdicao.innerHTML = '<i class="fas fa-pencil-alt text-primary" title="Nota modificada"></i>';
+                
+                // Adicionar ao primeiro td (célula do nome)
+                const primeiraCelula = linha.querySelector('td:first-child');
+                if (primeiraCelula) {
+                    primeiraCelula.appendChild(iconeEdicao);
+                }
+            }
+        }
+        
+        // Habilitar o botão de salvar
+        const btnSalvar = document.getElementById('btn-salvar-lancamento-massa');
+        if (btnSalvar) {
+            btnSalvar.disabled = false;
         }
         
         console.log('Média e status atualizados:', { 
