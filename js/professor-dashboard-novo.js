@@ -3960,9 +3960,44 @@ function abrirModoLancamentoEmMassa() {
         .then(notasExistentes => {
             console.log(`Encontradas ${notasExistentes.length} notas existentes para os filtros selecionados:`, notasExistentes);
             
+            // Filtrar para garantir que apenas notas do bimestre, ano, turma e disciplina selecionados sejam incluídas
+            const notasFiltradas = notasExistentes.filter(nota => {
+                // Converter valores para facilitar comparação
+                const notaBimestre = parseInt(nota.bimestre);
+                const bimestreAlvo = parseInt(bimestre);
+                const notaAno = parseInt(nota.ano);
+                const anoAlvo = parseInt(ano);
+                const notaTurma = nota.id_turma || '';
+                const notaDisciplina = nota.id_disciplina || '';
+                
+                // Verificar correspondência de cada filtro
+                const bimestreCorreto = notaBimestre === bimestreAlvo;
+                const anoCorreto = notaAno === anoAlvo;
+                const turmaCorreta = notaTurma === turmaId;
+                const disciplinaCorreta = notaDisciplina === disciplinaId;
+                
+                // Realizar verificação completa
+                const correspondenciaCorreta = bimestreCorreto && anoCorreto && turmaCorreta && disciplinaCorreta;
+                
+                // Logar para depuração se não corresponder
+                if (!correspondenciaCorreta) {
+                    console.warn(`Nota ID ${nota.id} ignorada: não corresponde aos filtros`, {
+                        aluno: nota.id_aluno,
+                        bimestre: `${nota.bimestre}/${bimestre} - ${bimestreCorreto ? 'OK' : 'INCORRETO'}`,
+                        ano: `${nota.ano}/${ano} - ${anoCorreto ? 'OK' : 'INCORRETO'}`,
+                        turma: `${nota.id_turma}/${turmaId} - ${turmaCorreta ? 'OK' : 'INCORRETO'}`,
+                        disciplina: `${nota.id_disciplina}/${disciplinaId} - ${disciplinaCorreta ? 'OK' : 'INCORRETO'}`
+                    });
+                }
+                
+                return correspondenciaCorreta;
+            });
+            
+            console.log(`Após filtragem completa, restaram ${notasFiltradas.length} notas válidas para exibição.`);
+            
             // Criar mapa para acesso rápido às notas por ID do aluno
             const notasPorAluno = new Map();
-            notasExistentes.forEach(nota => {
+            notasFiltradas.forEach(nota => {
                 notasPorAluno.set(nota.id_aluno, nota);
             });
             
