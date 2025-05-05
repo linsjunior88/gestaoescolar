@@ -88,26 +88,27 @@ function salvarLancamentoEmMassa() {
         }
         
         // Calcular média
-        let media = 0;
-        const nm = notaMensal ? parseFloat(notaMensal) : 0;
-        const nb = notaBimestral ? parseFloat(notaBimestral) : 0;
+        let media = null;
+        const nm = notaMensal ? parseFloat(notaMensal) : null;
+        const nb = notaBimestral ? parseFloat(notaBimestral) : null;
+        const rec = notaRecuperacao ? parseFloat(notaRecuperacao) : null;
         
-        // Calcular média sem recuperação
-        media = (nm + nb) / 2;
-        
-        // Se tem recuperação e é maior que a média calculada, usar a recuperação
-        if (notaRecuperacao) {
-            const rec = parseFloat(notaRecuperacao);
-            if (rec > media) {
+        // Calcular média apenas se ambas as notas estiverem preenchidas
+        if (nm !== null && nb !== null) {
+            // Calcular média sem recuperação
+            media = (nm + nb) / 2;
+            
+            // Se tem recuperação e é maior que a média, usar a recuperação
+            if (rec !== null && rec > media) {
                 media = rec;
             }
+            
+            // Limitar a 1 casa decimal
+            media = Math.round(media * 10) / 10;
         }
         
-        // Formatar para uma casa decimal
-        media = Math.round(media * 10) / 10;
-        
-        // Definir status baseado na média
-        const status = media >= 6 ? 'Aprovado' : 'Reprovado';
+        // Definir status baseado na média (apenas se média foi calculada)
+        const status = media !== null ? (media >= 6 ? 'Aprovado' : 'Reprovado') : null;
         
         // Criar objeto de nota
         const notaObj = {
@@ -191,13 +192,11 @@ function salvarLancamentoEmMassa() {
                 );
             }
             
-            alert(`Notas salvas com sucesso! (${resultados.length} registros)`);
-            
-            // Recarregar a tabela de notas
-            if (typeof carregarNotas === 'function') {
-                carregarNotas();
+            // Mostrar mensagem flutuante de sucesso
+            if (typeof mostrarMensagemFlutuante === 'function') {
+                mostrarMensagemFlutuante(`Notas salvas com sucesso! (${resultados.length} registros)`, 'success');
             } else {
-                console.warn('Função carregarNotas não encontrada. A tabela não será atualizada automaticamente.');
+                alert(`Notas salvas com sucesso! (${resultados.length} registros)`);
             }
             
             // Remover o formulário de lançamento em massa
@@ -210,6 +209,13 @@ function salvarLancamentoEmMassa() {
             const tabelaNotas = document.getElementById('tabela-notas');
             if (tabelaNotas) {
                 tabelaNotas.style.display = '';
+            }
+            
+            // Recarregar a tabela de notas
+            if (typeof carregarNotas === 'function') {
+                carregarNotas();
+            } else {
+                console.warn('Função carregarNotas não encontrada. A tabela não será atualizada automaticamente.');
             }
         })
         .catch(error => {
@@ -225,7 +231,12 @@ function salvarLancamentoEmMassa() {
                 btnCancelar.disabled = false;
             }
             
-            alert('Erro ao salvar notas. Por favor, verifique o console para mais detalhes e tente novamente.');
+            // Mostrar mensagem de erro
+            if (typeof mostrarMensagemFlutuante === 'function') {
+                mostrarMensagemFlutuante('Erro ao salvar notas. Consulte o console para detalhes.', 'error');
+            } else {
+                alert('Erro ao salvar notas. Por favor, verifique o console para mais detalhes e tente novamente.');
+            }
         });
 }
 

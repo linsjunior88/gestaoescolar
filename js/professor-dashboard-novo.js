@@ -2952,6 +2952,66 @@ function editarNota(notaId) {
         'em andamento'
     );
     
+    // Preencher o campo de ano com opções padrão
+    const anoSelect = document.getElementById('ano_nota');
+    if (anoSelect) {
+        anoSelect.innerHTML = '<option value="">Selecione...</option>';
+        
+        // Adicionar últimos 3 anos e próximos 3 anos
+        const anoAtual = new Date().getFullYear();
+        for (let ano = anoAtual - 3; ano <= anoAtual + 3; ano++) {
+            const option = document.createElement('option');
+            option.value = ano;
+            option.textContent = ano;
+            anoSelect.appendChild(option);
+        }
+    }
+    
+    // Preencher o campo de bimestre com opções padrão
+    const bimestreSelect = document.getElementById('bimestre');
+    if (bimestreSelect) {
+        bimestreSelect.innerHTML = '<option value="">Selecione...</option>';
+        
+        // Adicionar os 4 bimestres
+        for (let i = 1; i <= 4; i++) {
+            const option = document.createElement('option');
+            option.value = i;
+            option.textContent = `${i}º Bimestre`;
+            bimestreSelect.appendChild(option);
+        }
+    }
+    
+    // Carregar todas as turmas
+    const turmaSelect = document.getElementById('turma_nota');
+    if (turmaSelect) {
+        fetch(CONFIG.getApiUrl('/turmas'))
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Erro ao carregar turmas: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(turmas => {
+                turmaSelect.innerHTML = '<option value="">Selecione...</option>';
+                
+                if (turmas && turmas.length > 0) {
+                    turmas.forEach(turma => {
+                        const id = turma.id_turma || turma.id;
+                        const nome = turma.nome_turma || turma.nome || id;
+                        
+                        const option = document.createElement('option');
+                        option.value = id;
+                        option.textContent = nome;
+                        turmaSelect.appendChild(option);
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Erro ao carregar turmas:', error);
+                turmaSelect.innerHTML = '<option value="">Erro ao carregar turmas</option>';
+            });
+    }
+    
     // Carregar os dados da nota
     fetch(CONFIG.getApiUrl(`/notas/${notaId}`))
         .then(response => {
@@ -3209,19 +3269,18 @@ function handleFormSubmit(event) {
     const notaBimestralNum = notaBimestral ? parseFloat(notaBimestral) : null;
     const recuperacaoNum = recuperacao ? parseFloat(recuperacao) : null;
     
-    // Calcular média final
-    let mediaFinal = 0;
+    // Calcular média final apenas se tiver ambas as notas (mensal e bimestral)
+    let mediaFinal = null;
     if (notaMensalNum !== null && notaBimestralNum !== null) {
         mediaFinal = (notaMensalNum + notaBimestralNum) / 2;
-        if (recuperacaoNum !== null) {
-            mediaFinal = (mediaFinal + recuperacaoNum) / 2;
+        
+        // Se tem recuperação e é maior que a média, usar a recuperação
+        if (recuperacaoNum !== null && recuperacaoNum > mediaFinal) {
+            mediaFinal = recuperacaoNum;
         }
-        // Arredondar para cima com uma casa decimal
-        mediaFinal = Math.ceil(mediaFinal * 10) / 10;
-    } else if (notaMensalNum !== null) {
-        mediaFinal = notaMensalNum;
-    } else if (notaBimestralNum !== null) {
-        mediaFinal = notaBimestralNum;
+        
+        // Arredondar para uma casa decimal
+        mediaFinal = Math.round(mediaFinal * 10) / 10;
     }
     
     // Preparar dados para envio
@@ -3317,7 +3376,7 @@ function handleFormSubmit(event) {
         const disciplinaNome = document.getElementById('disciplina_nota').options[document.getElementById('disciplina_nota').selectedIndex].text;
         
         // Verificar se há discrepância na média
-        if (result.media !== undefined && Math.abs(mediaFinal - result.media) > 0.05) {
+        if (result.media !== null && mediaFinal !== null && Math.abs(mediaFinal - result.media) > 0.05) {
             console.warn('Discrepância na média calculada:', {
                 'calculada_no_cliente': mediaFinal,
                 'calculada_no_servidor': result.media
@@ -3337,6 +3396,21 @@ function handleFormSubmit(event) {
                 `${isEditMode ? 'Atualização' : 'Criação'} com discrepância de média - Aluno: ${alunoNome}, Turma: ${turmaNome}, Disciplina: ${disciplinaNome}, Bimestre: ${bimestre}`,
                 'concluído com aviso'
             );
+            
+            // Fechar o formulário após um breve atraso, mesmo com discrepância
+            setTimeout(() => {
+                // Procurar o card do formulário
+                const formCard = form.closest('.card');
+                if (formCard) {
+                    formCard.remove();
+                }
+                
+                // Recarregar a lista de notas
+                carregarNotas();
+                
+                // Mostrar mensagem flutuante de sucesso
+                mostrarMensagemFlutuante('Nota salva com sucesso!', 'success');
+            }, 2000);
         } else {
             // Mensagem de sucesso
             statusMsg.className = 'alert alert-success mt-3';
@@ -3351,24 +3425,20 @@ function handleFormSubmit(event) {
                 'concluído'
             );
             
-            // Limpar o formulário após 2 segundos
+            // Fechar o formulário após um breve atraso
             setTimeout(() => {
-                form.reset();
-                form.removeAttribute('data-mode');
-                form.removeAttribute('data-nota-id');
-                document.getElementById('form-nota-titulo').textContent = 'Lançamento de Notas';
-                
-                // Esconder o botão de cancelar
-                const btnCancelar = document.getElementById('btn-cancelar-nota');
-                if (btnCancelar) {
-                    btnCancelar.style.display = 'none';
+                // Procurar o card do formulário
+                const formCard = form.closest('.card');
+                if (formCard) {
+                    formCard.remove();
                 }
-                
-                statusMsg.remove();
                 
                 // Recarregar a lista de notas
                 carregarNotas();
-            }, 2000);
+                
+                // Mostrar mensagem flutuante de sucesso
+                mostrarMensagemFlutuante('Nota salva com sucesso!', 'success');
+            }, 1500);
         }
     })
     .catch(error => {
@@ -3394,6 +3464,50 @@ function handleFormSubmit(event) {
             saveButton.innerHTML = '<i class="fas fa-save"></i> Salvar Notas';
         }
     });
+}
+
+// Função para mostrar mensagem flutuante temporária
+function mostrarMensagemFlutuante(mensagem, tipo = 'success') {
+    // Remover mensagem anterior se existir
+    const msgAnterior = document.getElementById('mensagem-flutuante');
+    if (msgAnterior) {
+        msgAnterior.remove();
+    }
+    
+    // Criar elemento de mensagem
+    const msg = document.createElement('div');
+    msg.id = 'mensagem-flutuante';
+    msg.className = `mensagem-flutuante mensagem-${tipo}`;
+    msg.innerHTML = `<i class="fas fa-${tipo === 'success' ? 'check-circle' : 'exclamation-circle'}"></i> ${mensagem}`;
+    
+    // Adicionar estilo ao elemento
+    msg.style.position = 'fixed';
+    msg.style.top = '20px';
+    msg.style.right = '20px';
+    msg.style.padding = '10px 20px';
+    msg.style.borderRadius = '5px';
+    msg.style.backgroundColor = tipo === 'success' ? '#d4edda' : '#f8d7da';
+    msg.style.color = tipo === 'success' ? '#155724' : '#721c24';
+    msg.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)';
+    msg.style.zIndex = '9999';
+    msg.style.transition = 'all 0.3s ease-in-out';
+    msg.style.opacity = '0';
+    
+    // Adicionar ao corpo do documento
+    document.body.appendChild(msg);
+    
+    // Tornar visível com animação
+    setTimeout(() => {
+        msg.style.opacity = '1';
+    }, 10);
+    
+    // Remover após alguns segundos
+    setTimeout(() => {
+        msg.style.opacity = '0';
+        setTimeout(() => {
+            msg.remove();
+        }, 300);
+    }, 3000);
 }
 
 // Função para exibir a ficha detalhada do aluno
@@ -4039,73 +4153,66 @@ function atualizarMediaEStatus(alunoId) {
         }
         
         // Obter valores das notas
-        const notaMensal = parseFloat(notaMensalInput.value) || 0;
-        const notaBimestral = parseFloat(notaBimestralInput.value) || 0;
-        const notaRecuperacao = notaRecuperacaoInput ? (parseFloat(notaRecuperacaoInput.value) || 0) : 0;
+        const notaMensalValor = notaMensalInput.value.trim();
+        const notaBimestralValor = notaBimestralInput.value.trim();
+        const notaRecuperacaoValor = notaRecuperacaoInput ? notaRecuperacaoInput.value.trim() : '';
+        
+        // Converter para números
+        const notaMensal = parseFloat(notaMensalValor) || 0;
+        const notaBimestral = parseFloat(notaBimestralValor) || 0;
+        const notaRecuperacao = parseFloat(notaRecuperacaoValor) || 0;
         
         console.log('Valores de notas obtidos:', {
             aluno: alunoId,
             mensal: notaMensal,
             bimestral: notaBimestral,
-            recuperacao: notaRecuperacao
+            recuperacao: notaRecuperacao,
+            mensalValor: notaMensalValor,
+            bimestralValor: notaBimestralValor
         });
         
-        // Calcular média
-        let media = (notaMensal + notaBimestral) / 2;
+        // Calcular média apenas se ambas as notas estiverem preenchidas
+        let media = '';
+        let status = '';
         
-        // Se a recuperação for maior que a média, usa a recuperação
-        if (notaRecuperacao > 0 && notaRecuperacao > media) {
-            media = notaRecuperacao;
-        }
-        
-        // Formatar média com uma casa decimal
-        const mediaFormatada = media.toFixed(1);
-        
-        // Definir status baseado na média (aprovado se média >= 6)
-        const status = media >= 6 ? 'Aprovado' : 'Reprovado';
-        
-        // Atualizar células na tabela
-        if (mediaCelula.tagName === 'INPUT') {
-            mediaCelula.value = mediaFormatada;
-        } else {
-            mediaCelula.textContent = mediaFormatada;
-        }
-        
-        if (statusCelula.tagName === 'INPUT') {
-            statusCelula.value = status;
-        } else {
-            statusCelula.textContent = status;
+        if (notaMensalValor !== '' && notaBimestralValor !== '') {
+            // Calcular média
+            let mediaCalculada = (notaMensal + notaBimestral) / 2;
             
-            // Aplicar classes de estilo conforme o status
-            statusCelula.className = statusCelula.className.replace(/bg-\w+-subtle text-\w+|text-\w+/g, '');
-            
-            if (status === 'Aprovado') {
-                statusCelula.classList.add('text-success');
-                if (statusCelula.classList.contains('status-container')) {
-                    statusCelula.classList.add('bg-success-subtle');
-                }
-            } else {
-                statusCelula.classList.add('text-danger');
-                if (statusCelula.classList.contains('status-container')) {
-                    statusCelula.classList.add('bg-danger-subtle');
-                }
+            // Se a recuperação for maior que a média, usa a recuperação
+            if (notaRecuperacaoValor !== '' && notaRecuperacao > mediaCalculada) {
+                mediaCalculada = notaRecuperacao;
             }
+            
+            // Formatar média com uma casa decimal
+            media = mediaCalculada.toFixed(1);
+            
+            // Definir status baseado na média
+            status = parseFloat(media) >= 6 ? 'Aprovado' : 'Reprovado';
         }
         
-        console.log('Média e status atualizados:', {
-            aluno: alunoId,
-            media: mediaFormatada,
-            status: status
+        // Atualizar os campos de média e status
+        mediaCelula.textContent = media;
+        
+        // Atualizar o texto e a classe do status
+        statusCelula.textContent = status;
+        
+        // Definir classes de CSS baseado no status
+        statusCelula.classList.remove('text-success', 'text-danger', 'text-warning');
+        
+        if (status === 'Aprovado') {
+            statusCelula.classList.add('text-success');
+        } else if (status === 'Reprovado') {
+            statusCelula.classList.add('text-danger');
+        } else if (status === 'Em Recuperação') {
+            statusCelula.classList.add('text-warning');
+        }
+        
+        console.log('Média e status atualizados:', { 
+            aluno: alunoId, 
+            media: media, 
+            status: status 
         });
-        
-        // Marcar linha como modificada se estiver em um formulário
-        linha.classList.add('linha-modificada');
-        
-        // Habilitar botão de salvar se existir
-        const btnSalvar = document.getElementById('btn-salvar-lancamento-massa');
-        if (btnSalvar) {
-            btnSalvar.disabled = false;
-        }
     } catch (error) {
         console.error('Erro ao atualizar média e status:', error);
     }
@@ -4644,17 +4751,23 @@ function novaNota() {
                 const nb = parseFloat(notaBimestral.value) || 0;
                 const rec = parseFloat(recuperacao.value) || 0;
                 
-                let mediaFinal = (nm + nb) / 2;
-                
-                // Se tem recuperação e é maior que a média, usar a recuperação
-                if (rec > 0 && rec > mediaFinal) {
-                    mediaFinal = rec;
+                // Só calcular a média quando ambos estiverem preenchidos
+                if (notaMensal.value && notaBimestral.value) {
+                    let mediaFinal = (nm + nb) / 2;
+                    
+                    // Se tem recuperação e é maior que a média, usar a recuperação
+                    if (rec > 0 && rec > mediaFinal) {
+                        mediaFinal = rec;
+                    }
+                    
+                    // Limitar a 1 casa decimal
+                    mediaFinal = Math.round(mediaFinal * 10) / 10;
+                    
+                    media.value = mediaFinal;
+                } else {
+                    // Limpar o campo de média se não tem ambas as notas
+                    media.value = '';
                 }
-                
-                // Limitar a 1 casa decimal
-                mediaFinal = Math.round(mediaFinal * 10) / 10;
-                
-                media.value = mediaFinal;
             }
         };
         
