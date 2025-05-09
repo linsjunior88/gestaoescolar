@@ -2734,7 +2734,7 @@ function carregarNotas() {
                             
                             // Criar a linha da tabela
                 html += `
-                    <tr>
+                    <tr data-aluno-id="${alunoId}">
                                     <td>${nomeAluno}</td>
                                     <td>${nota.nome_disciplina || nota.id_disciplina || 'N/A'}</td>
                                     <td>${nota.nome_turma || nota.id_turma || 'N/A'}</td>
