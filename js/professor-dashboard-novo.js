@@ -2628,18 +2628,24 @@ function carregarNotas() {
                 
                 if (media === null) {
                     if (notaMensal !== null && notaBimestral !== null) {
-                        // Média simples: (mensal + bimestral) / 2
+                        // Calcular média inicial: (mensal + bimestral) / 2
                         const notaMensalNum = parseFloat(notaMensal);
                         const notaBimestralNum = parseFloat(notaBimestral);
                         
                         if (!isNaN(notaMensalNum) && !isNaN(notaBimestralNum)) {
-                            media = (notaMensalNum + notaBimestralNum) / 2;
+                            // Média inicial
+                            const mediaInicial = (notaMensalNum + notaBimestralNum) / 2;
+                            console.log(`Nota ${nota.id}: Média inicial (${notaMensalNum} + ${notaBimestralNum})/2 = ${mediaInicial.toFixed(1)}`);
                             
-                            // Se há recuperação, ajustar a média
+                            // Inicialmente, usar a média inicial
+                            media = mediaInicial;
+                            
+                            // Se há recuperação, calcular (média inicial + recuperação) / 2
                             if (recuperacao !== null) {
                                 const recNum = parseFloat(recuperacao);
                                 if (!isNaN(recNum)) {
-                                    media = (media + recNum) / 2;
+                                    media = (mediaInicial + recNum) / 2;
+                                    console.log(`Nota ${nota.id}: Média com recuperação (${mediaInicial.toFixed(1)} + ${recNum}) / 2 = ${media.toFixed(1)}`);
                                 }
                             }
                         }
@@ -2655,19 +2661,22 @@ function carregarNotas() {
                 let statusClass = '';
                 
                 if (media !== null) {
-                                const mediaNum = parseFloat(media);
-                                if (!isNaN(mediaNum)) {
-                                    if (mediaNum >= 7) {
-                                        status = 'Aprovado';
-                                        statusClass = 'bg-success text-white';
-                                    } else if (mediaNum >= 5) {
-                                        status = 'Recuperação';
-                                        statusClass = 'bg-warning';
-                    } else {
-                                        status = 'Reprovado';
-                                        statusClass = 'bg-danger text-white';
+                    const mediaNum = parseFloat(media);
+                    if (!isNaN(mediaNum)) {
+                        if (mediaNum >= 6) {
+                            // Se a média é 6 ou maior, o aluno está aprovado, independentemente de ter recuperação
+                            status = 'Aprovado';
+                            statusClass = 'bg-success text-white';
+                        } else if (recuperacao !== null) {
+                            // Se tem recuperação mas média < 6, está em recuperação
+                            status = 'Recuperação';
+                            statusClass = 'bg-warning';
+                        } else {
+                            // Se não tem recuperação e média < 6, está reprovado
+                            status = 'Reprovado';
+                            statusClass = 'bg-danger text-white';
+                        }
                     }
-                                }
                 }
                 
                             // Formatação para exibição
