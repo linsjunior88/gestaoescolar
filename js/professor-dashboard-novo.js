@@ -4047,18 +4047,19 @@ function abrirModoLancamentoEmMassa() {
                             const mensal = parseFloat(notaMensal) || 0;
                             const bimestral = parseFloat(notaBimestral) || 0;
                             
-                            // Calcular média básica
-                            let mediaCalculada = (mensal + bimestral) / 2;
-                            console.log(`Aluno ${aluno.id_aluno}: Média inicial (${mensal} + ${bimestral})/2 = ${mediaCalculada}`);
+                            // Calcular média básica (média inicial)
+                            let mediaInicial = (mensal + bimestral) / 2;
+                            console.log(`Aluno ${aluno.id_aluno}: Média inicial (${mensal} + ${bimestral})/2 = ${mediaInicial.toFixed(1)}`);
+                            
+                            // Inicialmente, usamos a média inicial
+                            let mediaCalculada = mediaInicial;
                             
                             // Considerar recuperação se existir
                             if (notaRecuperacao !== '') {
                                 const recuperacao = parseFloat(notaRecuperacao) || 0;
-                                // Se a recuperação for maior que a média, substitui
-                                if (recuperacao > mediaCalculada) {
-                                    console.log(`Aluno ${aluno.id_aluno}: Recuperação ${recuperacao} > média ${mediaCalculada}, usando recuperação como média final`);
-                                    mediaCalculada = recuperacao;
-                                }
+                                // Nova fórmula: (média inicial + recuperação) / 2
+                                mediaCalculada = (mediaInicial + recuperacao) / 2;
+                                console.log(`Aluno ${aluno.id_aluno}: Média com recuperação (${mediaInicial.toFixed(1)} + ${recuperacao}) / 2 = ${mediaCalculada.toFixed(1)}`);
                             }
                             
                             // Arredondar para uma casa decimal
@@ -4066,7 +4067,18 @@ function abrirModoLancamentoEmMassa() {
                             console.log(`Aluno ${aluno.id_aluno}: Média final = ${media}`);
                             
                             // Definir status
-                            status = parseFloat(media) >= 6 ? 'Aprovado' : 'Reprovado';
+                            if (parseFloat(media) >= 6) {
+                                status = 'Aprovado';
+                            } else {
+                                // Se tem nota de recuperação, o status é "Em Recuperação"
+                                // Se não tem e média < 6, é "Reprovado"
+                                status = notaRecuperacao !== '' ? 'Em Recuperação' : 'Reprovado';
+                                
+                                // Se já está em recuperação e ainda está abaixo de 6, então é "Reprovado"
+                                if (notaRecuperacao !== '' && parseFloat(media) < 6) {
+                                    status = 'Reprovado';
+                                }
+                            }
                         }
                         
                         // Determinar a classe CSS para o status
@@ -4197,9 +4209,9 @@ function atualizarMediaEStatus(alunoId) {
         const linha = document.querySelector(`tr[data-aluno-id="${alunoId}"]`);
         if (!linha) {
             console.error('Linha do aluno não encontrada:', alunoId);
-        return;
-    }
-    
+            return;
+        }
+        
         // Obter campos de notas
         const notaMensalInput = linha.querySelector('.nota-mensal') || 
                                 linha.querySelector('input[name^="nota_mensal_"]');
@@ -4246,15 +4258,18 @@ function atualizarMediaEStatus(alunoId) {
         let media = '';
         let status = '';
         
-    if (notaMensal !== null && notaBimestral !== null) {
+        if (notaMensal !== null && notaBimestral !== null) {
             // Calcular média inicial com notas mensal e bimestral
-            let mediaCalculada = (notaMensal + notaBimestral) / 2;
-            console.log(`Média inicial (mensal + bimestral)/2: ${mediaCalculada}`);
+            let mediaInicial = (notaMensal + notaBimestral) / 2;
+            console.log(`Média inicial (mensal + bimestral)/2: ${mediaInicial.toFixed(1)}`);
             
-            // Se tem recuperação e é maior que a média calculada, substituir pela nota de recuperação
-            if (notaRecuperacao !== null && notaRecuperacao > mediaCalculada) {
-                console.log(`Usando recuperação (${notaRecuperacao}) como média por ser maior que ${mediaCalculada}`);
-                mediaCalculada = notaRecuperacao;
+            // Calcular média final considerando recuperação, se existir
+            let mediaCalculada = mediaInicial;
+            
+            if (notaRecuperacao !== null) {
+                // Nova fórmula: (média inicial + recuperação) / 2
+                mediaCalculada = (mediaInicial + notaRecuperacao) / 2;
+                console.log(`Média com recuperação (${mediaInicial.toFixed(1)} + ${notaRecuperacao}) / 2 = ${mediaCalculada.toFixed(1)}`);
             }
             
             // Formatar média com uma casa decimal
@@ -4262,7 +4277,18 @@ function atualizarMediaEStatus(alunoId) {
             console.log(`Média final calculada: ${media}`);
             
             // Definir status baseado na média
-            status = parseFloat(media) >= 6 ? 'Aprovado' : 'Reprovado';
+            if (parseFloat(media) >= 6) {
+                status = 'Aprovado';
+            } else {
+                // Se tem nota de recuperação, o status é "Em Recuperação"
+                // Se não tem e média < 6, é "Reprovado"
+                status = notaRecuperacao !== null ? 'Em Recuperação' : 'Reprovado';
+                
+                // Se já está em recuperação e ainda está abaixo de 6, então é "Reprovado"
+                if (notaRecuperacao !== null && parseFloat(media) < 6) {
+                    status = 'Reprovado';
+                }
+            }
         }
         
         // Atualizar os campos de média e status

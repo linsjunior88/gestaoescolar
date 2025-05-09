@@ -95,14 +95,17 @@ function salvarLancamentoEmMassa() {
         
         // Calcular média apenas se ambas as notas estiverem preenchidas
         if (nm !== null && nb !== null) {
-            // Calcular média sem recuperação
-            media = (nm + nb) / 2;
-            console.log(`Aluno ${alunoId}: Média inicial (${nm} + ${nb})/2 = ${media}`);
+            // Calcular média inicial sem recuperação
+            const mediaInicial = (nm + nb) / 2;
+            console.log(`Aluno ${alunoId}: Média inicial (${nm} + ${nb})/2 = ${mediaInicial.toFixed(1)}`);
             
-            // Se tem recuperação e é maior que a média, usar a recuperação
-            if (rec !== null && rec > media) {
-                console.log(`Aluno ${alunoId}: Recuperação ${rec} > média ${media}, usando recuperação como média final`);
-                media = rec;
+            // Inicialmente, usamos a média inicial
+            media = mediaInicial;
+            
+            // Se tem recuperação, aplicar a fórmula: (média inicial + recuperação) / 2
+            if (rec !== null) {
+                media = (mediaInicial + rec) / 2;
+                console.log(`Aluno ${alunoId}: Média com recuperação (${mediaInicial.toFixed(1)} + ${rec}) / 2 = ${media.toFixed(1)}`);
             }
             
             // Limitar a 1 casa decimal
@@ -111,7 +114,21 @@ function salvarLancamentoEmMassa() {
         }
         
         // Definir status baseado na média (apenas se média foi calculada)
-        const status = media !== null ? (media >= 6 ? 'Aprovado' : 'Reprovado') : null;
+        let status = null;
+        if (media !== null) {
+            if (media >= 6) {
+                status = 'Aprovado';
+            } else {
+                // Se tem nota de recuperação, o status é "Em Recuperação"
+                // Se não tem e média < 6, é "Reprovado"
+                status = rec !== null ? 'Em Recuperação' : 'Reprovado';
+                
+                // Se já está em recuperação e ainda está abaixo de 6, então é "Reprovado"
+                if (rec !== null && media < 6) {
+                    status = 'Reprovado';
+                }
+            }
+        }
         
         // Criar objeto de nota
         const notaObj = {
