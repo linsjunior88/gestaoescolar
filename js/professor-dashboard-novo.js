@@ -227,25 +227,45 @@ document.addEventListener('DOMContentLoaded', function() {
     if (btnCancelarNota) {
         btnCancelarNota.addEventListener('click', function(e) {
             e.preventDefault();
-            
-            // Resetar o formulário
-            const form = document.getElementById('form-nota');
-            if (form) {
-                form.reset();
-                form.removeAttribute('data-mode');
-                form.removeAttribute('data-nota-id');
-            }
-            
-            // Atualizar o título do formulário
-            const formTitulo = document.getElementById('form-nota-titulo');
-            if (formTitulo) {
-                formTitulo.textContent = 'Lançamento de Notas';
-            }
-            
-            // Ocultar o botão de cancelar
-            this.style.display = 'none';
+            resetarFormularioNota();
         });
     }
+    
+    // Configurar botão para gerar PDF
+    const btnGerarPDF = document.getElementById('btn-gerar-pdf-notas');
+    if (btnGerarPDF) {
+        btnGerarPDF.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // Verificar se há notas carregadas
+            const notasLista = document.getElementById('notas-lista');
+            if (!notasLista || notasLista.querySelectorAll('tr').length === 0) {
+                alert("Não há notas para gerar o relatório. Por favor, filtre alguma turma primeiro.");
+                return;
+            }
+            
+            // Chamar a função de geração de PDF
+            if (typeof window.gerarPDFNotas === 'function') {
+                window.gerarPDFNotas();
+            } else {
+                console.error("Função gerarPDFNotas não está disponível");
+                alert("Função de geração de PDF não está disponível. Recarregue a página e tente novamente.");
+            }
+        });
+    }
+    
+    // Exportar funções para o escopo global
+    window.carregarTurmasDoProfessor = carregarTurmasDoProfessor;
+    window.carregarDisciplinasDoProfessor = carregarDisciplinasDoProfessor;
+    window.carregarAlunosDaTurma = carregarAlunosDaTurma;
+    window.inicializarTabelaNotas = inicializarTabelaNotas;
+    window.carregarNotas = carregarNotas;
+    window.editarNota = editarNota;
+    window.carregarDisciplinasParaFiltro = carregarDisciplinasParaFiltro;
+    window.carregarAlunosParaFiltro = carregarAlunosParaFiltro;
+    window.handleFormSubmit = handleFormSubmit;
+    window.abrirModoLancamentoEmMassa = abrirModoLancamentoEmMassa;
+    window.novaNota = novaNota;
 });
 
 // Função para inicializar os links do menu
@@ -2046,6 +2066,29 @@ function initNotas() {
                     window.carregarAlunosParaFiltro(idTurma, idDisciplina);
         } else {
                     console.error('Função carregarAlunosParaFiltro não está disponível globalmente');
+                }
+            });
+        }
+        
+        // Configurar botão para gerar PDF
+        const btnGerarPDF = document.getElementById('btn-gerar-pdf-notas');
+        if (btnGerarPDF) {
+            btnGerarPDF.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                // Verificar se há notas carregadas
+                const notasLista = document.getElementById('notas-lista');
+                if (!notasLista || notasLista.querySelectorAll('tr').length === 0) {
+                    alert("Não há notas para gerar o relatório. Por favor, filtre alguma turma primeiro.");
+                    return;
+                }
+                
+                // Chamar a função de geração de PDF
+                if (typeof window.gerarPDFNotas === 'function') {
+                    window.gerarPDFNotas();
+                } else {
+                    console.error("Função gerarPDFNotas não está disponível");
+                    alert("Função de geração de PDF não está disponível. Recarregue a página e tente novamente.");
                 }
             });
         }

@@ -81,14 +81,7 @@ function inicializarTabelaNotas() {
                                 </tr>
                             </thead>
                             <tbody id="notas-lista">
-                                <tr class="text-center">
-                                    <td colspan="10">
-                                        <div class="alert alert-info" role="alert">
-                                            <h4 class="alert-heading">Selecione os filtros</h4>
-                                            <p>Utilize os filtros acima para carregar as notas dos alunos.</p>
-                                        </div>
-                                    </td>
-                                </tr>
+                                <!-- As notas serão carregadas aqui -->
                             </tbody>
                         </table>
                     </div>
@@ -173,16 +166,7 @@ function inicializarTabelaNotas() {
             if (!tbodyExistente) {
                 tbodyExistente = document.createElement('tbody');
                 tbodyExistente.id = 'notas-lista';
-                tbodyExistente.innerHTML = `
-                    <tr class="text-center">
-                        <td colspan="10">
-                            <div class="alert alert-info" role="alert">
-                                <h4 class="alert-heading">Selecione os filtros</h4>
-                                <p>Utilize os filtros acima para carregar as notas dos alunos.</p>
-                            </div>
-                        </td>
-                    </tr>
-                `;
+                tbodyExistente.innerHTML = '<!-- As notas serão carregadas aqui -->';
                 tabelaExistente.appendChild(tbodyExistente);
             } else if (!tbodyExistente.id) {
                 tbodyExistente.id = 'notas-lista';
@@ -228,14 +212,7 @@ function inicializarTabelaNotas() {
                         </tr>
                     </thead>
                     <tbody id="notas-lista">
-                        <tr class="text-center">
-                            <td colspan="10">
-                                <div class="alert alert-info" role="alert">
-                                    <h4 class="alert-heading">Selecione os filtros</h4>
-                                    <p>Utilize os filtros acima para carregar as notas dos alunos.</p>
-                                </div>
-                            </td>
-                        </tr>
+                        <!-- As notas serão carregadas aqui -->
                     </tbody>
                 </table>
             </div>
