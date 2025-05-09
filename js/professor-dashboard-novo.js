@@ -2714,11 +2714,11 @@ function carregarNotas() {
                             // Se tem recuperação mas média < 6, está em recuperação
                             status = 'Recuperação';
                             statusClass = 'bg-warning';
-                        } else {
+                    } else {
                             // Se não tem recuperação e média < 6, está reprovado
                             status = 'Reprovado';
                             statusClass = 'bg-danger text-white';
-                        }
+                    }
                     }
                 }
                 
@@ -2734,7 +2734,7 @@ function carregarNotas() {
                             
                             // Criar a linha da tabela
                 html += `
-                    <tr data-aluno-id="${alunoId}">
+                    <tr>
                                     <td>${nomeAluno}</td>
                                     <td>${nota.nome_disciplina || nota.id_disciplina || 'N/A'}</td>
                                     <td>${nota.nome_turma || nota.id_turma || 'N/A'}</td>
@@ -4261,9 +4261,9 @@ function atualizarMediaEStatus(alunoId) {
         const linha = document.querySelector(`tr[data-aluno-id="${alunoId}"]`);
         if (!linha) {
             console.error('Linha do aluno não encontrada:', alunoId);
-            return;
-        }
-        
+        return;
+    }
+    
         // Obter campos de notas
         const notaMensalInput = linha.querySelector('.nota-mensal') || 
                                 linha.querySelector('input[name^="nota_mensal_"]');
@@ -4310,15 +4310,15 @@ function atualizarMediaEStatus(alunoId) {
         let media = '';
         let status = '';
         
-        if (notaMensal !== null && notaBimestral !== null) {
+    if (notaMensal !== null && notaBimestral !== null) {
             // Calcular média inicial com notas mensal e bimestral
             let mediaInicial = (notaMensal + notaBimestral) / 2;
             console.log(`Média inicial (mensal + bimestral)/2: ${mediaInicial.toFixed(1)}`);
             
             // Calcular média final considerando recuperação, se existir
             let mediaCalculada = mediaInicial;
-            
-            if (notaRecuperacao !== null) {
+        
+        if (notaRecuperacao !== null) {
                 // Nova fórmula: (média inicial + recuperação) / 2
                 mediaCalculada = (mediaInicial + notaRecuperacao) / 2;
                 console.log(`Média com recuperação (${mediaInicial.toFixed(1)} + ${notaRecuperacao}) / 2 = ${mediaCalculada.toFixed(1)}`);

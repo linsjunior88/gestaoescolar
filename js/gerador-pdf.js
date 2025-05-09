@@ -67,7 +67,6 @@ function gerarPDFNotas() {
         // Preparar dados para a tabela
         // Colunas da tabela no PDF
         const colunas = [
-            { header: 'Idaluno', dataKey: 'idaluno' },
             { header: 'Aluno', dataKey: 'aluno' },
             { header: 'Turma', dataKey: 'turma' },
             { header: 'Disciplina', dataKey: 'disciplina' },
@@ -108,12 +107,8 @@ function gerarPDFNotas() {
                     }
                 }
                 
-                // Obter o ID do aluno (matrícula)
-                const alunoId = linha.getAttribute('data-aluno-id') || linha.getAttribute('data-id') || 'N/A';
-                
                 // Adicionar linha à tabela
                 dados.push({
-                    idaluno: alunoId,
                     aluno: celulas[0].textContent.trim(),
                     turma: celulas[1].textContent.trim(),
                     disciplina: celulas[2].textContent.trim(),

@@ -53,16 +53,13 @@ function inicializarTabelaNotas() {
             novoCard.className = 'card shadow mb-4';
             novoCard.innerHTML = `
                 <div class="card-header py-3 d-flex justify-content-between align-items-center">
-                    <div></div>
+                    <h6 class="m-0 font-weight-bold text-primary">Notas Lançadas</h6>
                     <div class="d-flex">
                         <button class="btn btn-primary btn-sm me-2" id="btn-nova-nota">
                             <i class="fas fa-plus"></i> Novo Lançamento
                         </button>
-                        <button class="btn btn-success btn-sm me-2" id="btn-lancamento-massa">
+                        <button class="btn btn-success btn-sm" id="btn-lancamento-massa">
                             <i class="fas fa-list-ol"></i> Lançamento em Massa
-                        </button>
-                        <button class="btn btn-outline-success btn-sm" id="btn-gerar-pdf-notas">
-                            <i class="fas fa-file-pdf"></i> Gerar PDF
                         </button>
                     </div>
                 </div>
