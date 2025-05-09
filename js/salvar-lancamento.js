@@ -97,14 +97,17 @@ function salvarLancamentoEmMassa() {
         if (nm !== null && nb !== null) {
             // Calcular média sem recuperação
             media = (nm + nb) / 2;
+            console.log(`Aluno ${alunoId}: Média inicial (${nm} + ${nb})/2 = ${media}`);
             
             // Se tem recuperação e é maior que a média, usar a recuperação
             if (rec !== null && rec > media) {
+                console.log(`Aluno ${alunoId}: Recuperação ${rec} > média ${media}, usando recuperação como média final`);
                 media = rec;
             }
             
             // Limitar a 1 casa decimal
             media = Math.round(media * 10) / 10;
+            console.log(`Aluno ${alunoId}: Média final = ${media}`);
         }
         
         // Definir status baseado na média (apenas se média foi calculada)
