@@ -3,21 +3,86 @@
  * Utiliza as bibliotecas jsPDF e jspdf-autotable
  */
 
+// Função utilitária para carregar um script JS dinamicamente
+function carregarScript(url) {
+    return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = url;
+        script.onload = resolve;
+        script.onerror = () => reject(new Error(`Falha ao carregar o script: ${url}`));
+        document.head.appendChild(script);
+    });
+}
+
+// Função para garantir que as bibliotecas jsPDF e AutoTable estejam disponíveis
+async function garantirBibliotecasPDF() {
+    // Verificar se o jsPDF já está disponível
+    const jspdfDisponivel = typeof window.jspdf !== 'undefined' || typeof window.jsPDF !== 'undefined';
+    
+    // Se jsPDF não estiver disponível, tentar carregar
+    if (!jspdfDisponivel) {
+        console.log('jsPDF não encontrado, tentando carregar dinamicamente...');
+        try {
+            await carregarScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+            console.log('jsPDF carregado com sucesso!');
+        } catch (err) {
+            console.error('Erro ao carregar jsPDF:', err);
+            throw new Error('Não foi possível carregar a biblioteca jsPDF.');
+        }
+    }
+    
+    // Verificar se podemos criar um documento jsPDF
+    let jsPDFConstructor;
+    let testDoc;
+    
+    try {
+        if (typeof window.jspdf !== 'undefined' && typeof window.jspdf.jsPDF === 'function') {
+            jsPDFConstructor = window.jspdf.jsPDF;
+        } else if (typeof window.jsPDF === 'function') {
+            jsPDFConstructor = window.jsPDF;
+        } else {
+            throw new Error('Construtor jsPDF não encontrado mesmo após tentativa de carregamento.');
+        }
+        
+        // Testar criação de documento
+        testDoc = new jsPDFConstructor();
+    } catch (err) {
+        console.error('Erro ao criar documento jsPDF:', err);
+        throw new Error('Não foi possível criar um documento PDF.');
+    }
+    
+    // Verificar se o AutoTable está disponível
+    const autoTableDisponivel = typeof testDoc.autoTable === 'function';
+    
+    // Se AutoTable não estiver disponível, tentar carregar
+    if (!autoTableDisponivel) {
+        console.log('AutoTable não encontrado, tentando carregar dinamicamente...');
+        try {
+            await carregarScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js');
+            console.log('AutoTable carregado com sucesso!');
+        } catch (err) {
+            console.error('Erro ao carregar AutoTable:', err);
+            throw new Error('Não foi possível carregar o plugin AutoTable.');
+        }
+    }
+    
+    // Verificar novamente se o AutoTable está disponível após o carregamento
+    testDoc = new jsPDFConstructor();
+    if (typeof testDoc.autoTable !== 'function') {
+        throw new Error('Plugin AutoTable não está disponível mesmo após o carregamento.');
+    }
+    
+    console.log('Bibliotecas PDF carregadas e verificadas com sucesso!');
+    return true;
+}
+
 // Função para gerar um PDF com as notas da tabela
-function gerarPDFNotas() {
+async function gerarPDFNotas() {
     console.log('Iniciando geração de PDF das notas');
     
     try {
-        // Verificar se a biblioteca jsPDF está disponível
-        if (typeof window.jspdf === 'undefined' && typeof window.jsPDF === 'undefined') {
-            throw new Error('Biblioteca jsPDF não encontrada. Verifique se o script foi carregado corretamente.');
-        }
-        
-        // Verificar se o plugin AutoTable está disponível
-        if ((typeof window.jspdf !== 'undefined' && typeof window.jspdf.jsPDF.prototype.autoTable === 'undefined') ||
-            (typeof window.jsPDF !== 'undefined' && typeof window.jsPDF.prototype.autoTable === 'undefined')) {
-            throw new Error('Plugin AutoTable não encontrado. Verifique se o script foi carregado corretamente.');
-        }
+        // Primeiro garantir que as bibliotecas estejam disponíveis
+        await garantirBibliotecasPDF();
         
         // Verificar se a tabela de notas existe
         const tabela = document.getElementById('tabela-notas');
@@ -31,23 +96,38 @@ function gerarPDFNotas() {
             throw new Error('Nenhuma nota encontrada na tabela. Filtre uma turma primeiro.');
         }
         
-        // Criar uma nova instância do jsPDF
+        // Criar documento PDF usando a forma mais compatível possível
         let doc;
-        if (typeof window.jspdf !== 'undefined') {
-            const { jsPDF } = window.jspdf;
-            doc = new jsPDF({
-                orientation: 'landscape', // Usar orientação paisagem para caber mais colunas
-                unit: 'mm',
-                format: 'a4'
-            });
-        } else if (typeof window.jsPDF !== 'undefined') {
-            doc = new window.jsPDF({
-                orientation: 'landscape', // Usar orientação paisagem para caber mais colunas
-                unit: 'mm',
-                format: 'a4'
-            });
-        } else {
-            throw new Error('Não foi possível criar o documento PDF. Biblioteca jsPDF não encontrada.');
+        try {
+            // Primeiro método: usar window.jspdf.jsPDF (forma UMD padrão)
+            if (typeof window.jspdf !== 'undefined' && typeof window.jspdf.jsPDF === 'function') {
+                const { jsPDF } = window.jspdf;
+                doc = new jsPDF({
+                    orientation: 'landscape',
+                    unit: 'mm',
+                    format: 'a4'
+                });
+                console.log('PDF criado com jspdf.jsPDF');
+            } 
+            // Segundo método: usar window.jsPDF (forma global)
+            else if (typeof window.jsPDF === 'function') {
+                doc = new window.jsPDF({
+                    orientation: 'landscape',
+                    unit: 'mm',
+                    format: 'a4'
+                });
+                console.log('PDF criado com window.jsPDF');
+            } else {
+                throw new Error('Não foi possível encontrar o construtor jsPDF.');
+            }
+        } catch (err) {
+            console.error('Erro ao criar instância jsPDF:', err);
+            throw new Error(`Não foi possível criar o documento PDF: ${err.message}`);
+        }
+        
+        // Verificar se o AutoTable está disponível
+        if (typeof doc.autoTable !== 'function') {
+            throw new Error('Plugin AutoTable não encontrado. Tente carregar a página novamente.');
         }
         
         // Adicionar título
@@ -186,38 +266,45 @@ function gerarPDFNotas() {
                 recuperacao: { cellWidth: 20 },
                 media: { cellWidth: 20 },
                 status: { cellWidth: 25 }
-            },
-            // Estilo para células com status "Aprovado"
-            didDrawCell: function(data) {
-                if (data.column.dataKey === 'status' && data.cell.raw === 'Aprovado') {
-                    doc.setFillColor(200, 255, 200); // Verde claro
-                    doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height, 'F');
-                    doc.setTextColor(0, 100, 0); // Verde escuro
-                    doc.text(data.cell.raw, data.cell.x + data.cell.width / 2, data.cell.y + data.cell.height / 2, {
-                        align: 'center',
-                        baseline: 'middle'
-                    });
-                    return true; // Para evitar que o plugin desenhe o texto
-                }
-                else if (data.column.dataKey === 'status' && data.cell.raw === 'Reprovado') {
-                    doc.setFillColor(255, 200, 200); // Vermelho claro
-                    doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height, 'F');
-                    doc.setTextColor(100, 0, 0); // Vermelho escuro
-                    doc.text(data.cell.raw, data.cell.x + data.cell.width / 2, data.cell.y + data.cell.height / 2, {
-                        align: 'center',
-                        baseline: 'middle'
-                    });
-                    return true; // Para evitar que o plugin desenhe o texto
-                }
             }
         };
         
-        // Gerar a tabela
-        doc.autoTable({
-            columns: colunas,
-            body: dados,
-            ...options
-        });
+        // Tentar gerar a tabela
+        try {
+            doc.autoTable({
+                columns: colunas,
+                body: dados,
+                ...options,
+                // Estilo para células com status
+                didDrawCell: function(data) {
+                    if (data.column.dataKey === 'status') {
+                        if (data.cell.raw === 'Aprovado') {
+                            doc.setFillColor(200, 255, 200); // Verde claro
+                            doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height, 'F');
+                            doc.setTextColor(0, 100, 0); // Verde escuro
+                            doc.text(data.cell.raw, data.cell.x + data.cell.width / 2, data.cell.y + data.cell.height / 2, {
+                                align: 'center',
+                                baseline: 'middle'
+                            });
+                            return true; // Para evitar que o plugin desenhe o texto
+                        }
+                        else if (data.cell.raw === 'Reprovado') {
+                            doc.setFillColor(255, 200, 200); // Vermelho claro
+                            doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height, 'F');
+                            doc.setTextColor(100, 0, 0); // Vermelho escuro
+                            doc.text(data.cell.raw, data.cell.x + data.cell.width / 2, data.cell.y + data.cell.height / 2, {
+                                align: 'center',
+                                baseline: 'middle'
+                            });
+                            return true; // Para evitar que o plugin desenhe o texto
+                        }
+                    }
+                }
+            });
+        } catch (tableErr) {
+            console.error('Erro ao gerar tabela no PDF:', tableErr);
+            throw new Error(`Erro ao gerar tabela: ${tableErr.message}`);
+        }
         
         // Adicionar rodapé
         const numeroPaginas = doc.internal.getNumberOfPages();
