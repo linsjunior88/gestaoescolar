@@ -3414,15 +3414,30 @@ function exibirFichaAluno(idAluno) {
         return;
     }
     
+    // Remover quaisquer modais e backdrops antigos para evitar sobreposições
+    document.querySelectorAll('.modal-backdrop').forEach(backdrop => backdrop.remove());
+    
+    // Remover modal anterior se existir
+    const existingModal = document.getElementById('alunoModal');
+    if (existingModal) {
+        try {
+            const oldModal = bootstrap.Modal.getInstance(existingModal);
+            if (oldModal) oldModal.dispose();
+        } catch (e) {
+            console.warn('Erro ao remover modal antigo:', e);
+        }
+        existingModal.remove();
+    }
+    
     // Exibir um indicador de carregamento enquanto buscamos os dados
     const loadingModal = `
-        <div class="modal fade" id="loadingModal" tabindex="-1" aria-hidden="true">
+        <div class="modal fade" id="loadingModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content">
                     <div class="modal-body text-center p-5">
-            <div class="spinner-border text-primary" role="status">
+                        <div class="spinner-border text-primary" role="status">
                             <span class="visually-hidden">Carregando...</span>
-            </div>
+                        </div>
                         <p class="mt-3 mb-0">Carregando informações do aluno...</p>
                     </div>
                 </div>
@@ -3430,21 +3445,20 @@ function exibirFichaAluno(idAluno) {
         </div>
     `;
     
-    // Remover modal anterior se existir
-    const existingModal = document.getElementById('alunoModal');
-    if (existingModal) {
-        existingModal.remove();
-    }
-    
-    const existingLoadingModal = document.getElementById('loadingModal');
-    if (existingLoadingModal) {
-        existingLoadingModal.remove();
-    }
-    
     // Adicionar o modal de carregamento
     document.body.insertAdjacentHTML('beforeend', loadingModal);
     const loading = new bootstrap.Modal(document.getElementById('loadingModal'));
     loading.show();
+    
+    // Definir um timeout para garantir que o modal não fique travado indefinidamente
+    const timeoutId = setTimeout(() => {
+        try {
+            loading.hide();
+            alert('O carregamento dos dados está demorando mais que o esperado. Tente novamente.');
+        } catch (e) {
+            console.warn('Erro ao remover modal de loading após timeout:', e);
+        }
+    }, 15000); // 15 segundos de timeout
     
     // Buscar dados do aluno
     fetch(CONFIG.getApiUrl(`/alunos/${idAluno}`))
@@ -3457,8 +3471,17 @@ function exibirFichaAluno(idAluno) {
         .then(aluno => {
             console.log("Dados do aluno:", aluno);
             
+            // Limpar o timeout
+            clearTimeout(timeoutId);
+            
             // Fechar o modal de carregamento
-            loading.hide();
+            try {
+                loading.hide();
+            } catch (e) {
+                console.warn('Erro ao fechar modal de loading:', e);
+                document.getElementById('loadingModal')?.remove();
+                document.querySelectorAll('.modal-backdrop').forEach(backdrop => backdrop.remove());
+            }
             
             // Formatação de campos específicos
             const dataNascimento = aluno.data_nascimento || aluno.data_nasc;
@@ -3468,7 +3491,7 @@ function exibirFichaAluno(idAluno) {
             // Nome da mãe (pode estar em diferentes campos)
             const nomeMae = aluno.nome_mae || aluno.mae || aluno.responsavel || 'N/A';
             
-            // Criar conteúdo do modal
+            // Criar conteúdo do modal com IDs explícitos para os botões de fechamento
             const modalContent = `
                 <div class="modal fade" id="alunoModal" tabindex="-1" aria-labelledby="alunoModalLabel" aria-hidden="true">
                     <div class="modal-dialog modal-lg">
@@ -3477,7 +3500,7 @@ function exibirFichaAluno(idAluno) {
                                 <h5 class="modal-title" id="alunoModalLabel">
                                     <i class="fas fa-user-graduate me-2"></i>Ficha do Aluno
                                 </h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar" id="btnCloseModal"></button>
                             </div>
                             <div class="modal-body">
                                 <div class="row">
@@ -3554,10 +3577,10 @@ function exibirFichaAluno(idAluno) {
                                 </div>
                             </div>
                             <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="btnFecharAluno">
                                     <i class="fas fa-times me-1"></i>Fechar
                                 </button>
-                                <button type="button" class="btn btn-primary" data-bs-dismiss="modal" onclick="document.getElementById('notas-link').click()">
+                                <button type="button" class="btn btn-primary" onclick="document.getElementById('btnFecharAluno').click(); document.getElementById('notas-link').click();">
                                     <i class="fas fa-graduation-cap me-1"></i>Ir para Gestão de Notas
                                 </button>
                             </div>
@@ -3569,13 +3592,33 @@ function exibirFichaAluno(idAluno) {
             // Adicionar o modal ao DOM
             document.body.insertAdjacentHTML('beforeend', modalContent);
             
+            // Obter o modal e configurar evento de fechamento
+            const alunoModal = document.getElementById('alunoModal');
+            alunoModal.addEventListener('hidden.bs.modal', function() {
+                console.log('Modal fechado - removendo do DOM');
+                this.remove();
+            });
+            
+            // Configurar listener de ESC manualmente para garantir que funcione
+            document.addEventListener('keydown', function escHandler(e) {
+                if (e.key === 'Escape' && alunoModal) {
+                    const modal = bootstrap.Modal.getInstance(alunoModal);
+                    if (modal) modal.hide();
+                    document.removeEventListener('keydown', escHandler);
+                }
+            });
+            
             // Exibir o modal
-            const modal = new bootstrap.Modal(document.getElementById('alunoModal'));
+            const modal = new bootstrap.Modal(alunoModal);
             modal.show();
             
-            // Carregar as notas do aluno de forma independente 
-            // (não bloqueamos a exibição do modal se as notas falharem)
-            setTimeout(() => carregarNotasAluno(idAluno), 500);
+            // Dar tempo para o DOM processar e então tentar focar no modal
+            setTimeout(() => {
+                alunoModal.focus();
+            }, 500);
+            
+            // Carregar as notas do aluno
+            setTimeout(() => carregarNotasAluno(idAluno), 800);
             
             // Registrar atividade
             registrarAtividade('visualização', 'aluno', idAluno, `Aluno: ${aluno.nome_aluno || idAluno}`, 'concluído');
@@ -3583,11 +3626,46 @@ function exibirFichaAluno(idAluno) {
         .catch(error => {
             console.error("Erro ao carregar dados do aluno:", error);
             
-            // Fechar o modal de carregamento
-            loading.hide();
+            // Limpar o timeout
+            clearTimeout(timeoutId);
             
-            // Exibir um alerta mais amigável
-            alert(`Não foi possível carregar os dados do aluno no momento. Por favor, tente novamente mais tarde.`);
+            // Fechar o modal de carregamento
+            try {
+                loading.hide();
+            } catch (e) {
+                console.warn('Erro ao fechar modal de loading após erro:', e);
+                document.getElementById('loadingModal')?.remove();
+                document.querySelectorAll('.modal-backdrop').forEach(backdrop => backdrop.remove());
+            }
+            
+            // Exibir erro como um modal simples
+            const modalErro = `
+                <div class="modal fade" id="erroAlunoModal" tabindex="-1" aria-labelledby="erroAlunoModalLabel" aria-hidden="true">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header bg-warning">
+                                <h5 class="modal-title" id="erroAlunoModalLabel">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>Erro ao carregar dados
+                                </h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                            </div>
+                            <div class="modal-body">
+                                <p>Não foi possível carregar os dados do aluno no momento.</p>
+                                <p>Por favor, verifique sua conexão e tente novamente.</p>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                    <i class="fas fa-times me-1"></i>Fechar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', modalErro);
+            const erroModal = new bootstrap.Modal(document.getElementById('erroAlunoModal'));
+            erroModal.show();
         });
 }
 
@@ -3599,6 +3677,18 @@ function carregarNotasAluno(idAluno) {
     if (!tbody) {
         console.error("Elemento notas-aluno-tbody não encontrado!");
         return;
+    }
+    
+    // Garantir que o modal esteja com foco correto e possa ser fechado
+    const modal = document.getElementById('alunoModal');
+    if (modal) {
+        // Garantir que a tecla ESC funcione para fechar o modal
+        modal.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const bsModal = bootstrap.Modal.getInstance(modal);
+                if (bsModal) bsModal.hide();
+            }
+        });
     }
     
     // Exibir indicador de carregamento
@@ -3613,63 +3703,19 @@ function carregarNotasAluno(idAluno) {
         </tr>
     `;
     
-    fetch(CONFIG.getApiUrl(`/alunos/${idAluno}/notas`))
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`Erro na requisição: ${response.status}`);
-            }
-            return response.json();
-        })
-        .then(notasDoAluno => {
-            console.log("Notas do aluno:", notasDoAluno);
-            
-            if (!notasDoAluno || notasDoAluno.length === 0) {
-                tbody.innerHTML = `
-                    <tr>
-                        <td colspan="6" class="text-center">Nenhuma nota registrada para este aluno.</td>
-                    </tr>
-                `;
-                return;
-            }
-            
-            // Limpar conteúdo atual
-            tbody.innerHTML = '';
-            
-            // Exibir as notas
-            notasDoAluno.forEach(nota => {
-                const row = document.createElement('tr');
-                
-                // Determinar o status baseado na média
-                let statusClass = '';
-                const media = parseFloat(nota.media);
-                
-                if (!isNaN(media)) {
-                    if (media >= 7) {
-                        statusClass = 'status-aprovado';
-                    } else if (media >= 5) {
-                        statusClass = 'status-recuperacao';
-                    } else {
-                        statusClass = 'status-reprovado';
-                    }
-                }
-                
-                row.className = statusClass;
-                row.innerHTML = `
-                    <td>${nota.nome_disciplina || nota.id_disciplina || 'N/A'}</td>
-                    <td>${nota.bimestre ? nota.bimestre + 'º Bimestre' : 'N/A'}</td>
-                    <td>${nota.nota_mensal !== null && nota.nota_mensal !== undefined ? parseFloat(nota.nota_mensal).toFixed(1) : 'N/A'}</td>
-                    <td>${nota.nota_bimestral !== null && nota.nota_bimestral !== undefined ? parseFloat(nota.nota_bimestral).toFixed(1) : 'N/A'}</td>
-                    <td>${nota.recuperacao !== null && nota.recuperacao !== undefined ? parseFloat(nota.recuperacao).toFixed(1) : 'N/A'}</td>
-                    <td><strong>${nota.media !== null && nota.media !== undefined ? parseFloat(nota.media).toFixed(1) : 'N/A'}</strong></td>
-                `;
-                
-                tbody.appendChild(row);
-            });
-        })
-        .catch(error => {
-            console.error("Erro ao carregar notas do aluno:", error);
-            
-            // Tratar o erro exibindo uma mensagem amigável
+    // Lista de URLs a tentar para buscar as notas (em ordem de prioridade)
+    const urlsToTry = [
+        `/alunos/${idAluno}/notas`,        // URL padrão
+        `/notas/aluno/${idAluno}`,         // Formato alternativo
+        `/notas?id_aluno=${idAluno}`,      // Consulta por parâmetro
+        `/notas?aluno_id=${idAluno}`       // Outro formato de parâmetro
+    ];
+    
+    // Função para tentar próxima URL
+    function tentarProximaUrl(index = 0) {
+        if (index >= urlsToTry.length) {
+            console.error("Todas as tentativas de URLs falharam.");
+            // Exibir mensagem amigável de erro, mas permitir que o modal continue funcionando
             tbody.innerHTML = `
                 <tr>
                     <td colspan="6" class="text-center text-danger">
@@ -3677,12 +3723,197 @@ function carregarNotasAluno(idAluno) {
                             <i class="fas fa-exclamation-triangle me-2"></i>
                             Não foi possível carregar as notas deste aluno no momento.
                             <br>
-                            <small class="text-muted">Tente novamente mais tarde ou acesse a seção de Gestão de Notas.</small>
+                            <small>Verifique a seção de Gestão de Notas para visualizar o histórico completo.</small>
                         </div>
                     </td>
                 </tr>
             `;
-        });
+            return;
+        }
+        
+        const currentUrl = urlsToTry[index];
+        console.log(`Tentativa ${index + 1}/${urlsToTry.length}: Buscando notas em ${currentUrl}`);
+        
+        fetch(CONFIG.getApiUrl(currentUrl))
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Erro na requisição: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(notasDoAluno => {
+                console.log("Notas do aluno obtidas com sucesso:", notasDoAluno);
+                
+                // Normalizando o formato da resposta, pois pode vir em diferentes estruturas
+                let notas = notasDoAluno;
+                
+                // Se for um objeto com uma propriedade que contenha as notas
+                if (!Array.isArray(notasDoAluno) && typeof notasDoAluno === 'object') {
+                    // Tentar encontrar a propriedade que contém o array de notas
+                    const possibleArrayProps = ['notas', 'resultados', 'data', 'items', 'results'];
+                    for (const prop of possibleArrayProps) {
+                        if (Array.isArray(notasDoAluno[prop])) {
+                            notas = notasDoAluno[prop];
+                            break;
+                        }
+                    }
+                }
+                
+                if (!notas || notas.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="6" class="text-center">Nenhuma nota registrada para este aluno.</td>
+                        </tr>
+                    `;
+                    return;
+                }
+                
+                // Limpar conteúdo atual
+                tbody.innerHTML = '';
+                
+                // Exibir as notas
+                notas.forEach(nota => {
+                    const row = document.createElement('tr');
+                    
+                    // Determinar o status baseado na média
+                    let statusClass = '';
+                    const media = parseFloat(nota.media || nota.nota_media || nota.valor_media || 0);
+                    
+                    if (!isNaN(media)) {
+                        if (media >= 7) {
+                            statusClass = 'status-aprovado';
+                        } else if (media >= 5) {
+                            statusClass = 'status-recuperacao';
+                        } else {
+                            statusClass = 'status-reprovado';
+                        }
+                    }
+                    
+                    row.className = statusClass;
+                    row.innerHTML = `
+                        <td>${nota.nome_disciplina || nota.disciplina || nota.id_disciplina || 'N/A'}</td>
+                        <td>${nota.bimestre ? nota.bimestre + 'º Bimestre' : 'N/A'}</td>
+                        <td>${extrairNota(nota, 'nota_mensal', 'mensal')}</td>
+                        <td>${extrairNota(nota, 'nota_bimestral', 'bimestral')}</td>
+                        <td>${extrairNota(nota, 'recuperacao', 'rec')}</td>
+                        <td><strong>${extrairNota(nota, 'media', 'nota_media', 'valor_media')}</strong></td>
+                    `;
+                    
+                    tbody.appendChild(row);
+                });
+            })
+            .catch(error => {
+                console.warn(`Tentativa ${index + 1} falhou:`, error);
+                // Tentar a próxima URL
+                setTimeout(() => tentarProximaUrl(index + 1), 300);
+            });
+    }
+    
+    // Função auxiliar para extrair valores de notas, verificando várias propriedades possíveis
+    function extrairNota(nota, ...propNames) {
+        for (const prop of propNames) {
+            if (nota[prop] !== null && nota[prop] !== undefined) {
+                const valor = parseFloat(nota[prop]);
+                if (!isNaN(valor)) {
+                    return valor.toFixed(1);
+                }
+                return nota[prop];
+            }
+        }
+        return 'N/A';
+    }
+    
+    // Iniciar tentativas de buscar as notas
+    tentarProximaUrl(0);
+}
+
+// Função para permitir carregamento manual das notas caso falhe automaticamente
+function carregarNotasManualmente(idAluno) {
+    console.log("Tentando carregar notas manualmente para o aluno:", idAluno);
+    
+    // Verificar se o modal ainda está aberto
+    const modal = document.getElementById('alunoModal');
+    if (!modal) {
+        console.warn("Modal não encontrado, não é possível recarregar as notas.");
+        return;
+    }
+    
+    // Verificar se temos uma API local ou mock que possa ser usada
+    if (typeof window.mockNotas === 'function') {
+        console.log("Usando dados mock para exibir notas");
+        const notas = window.mockNotas(idAluno);
+        preencherTabelaNotas(notas);
+        return;
+    }
+    
+    // Tentar buscar da API novamente com um timeout maior
+    carregarNotasAluno(idAluno);
+}
+
+// Função auxiliar para preencher a tabela de notas
+function preencherTabelaNotas(notas) {
+    const tbody = document.getElementById('notas-aluno-tbody');
+    if (!tbody) {
+        console.error("Elemento notas-aluno-tbody não encontrado!");
+        return;
+    }
+    
+    if (!notas || notas.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" class="text-center">Nenhuma nota registrada para este aluno.</td>
+            </tr>
+        `;
+        return;
+    }
+    
+    // Limpar conteúdo atual
+    tbody.innerHTML = '';
+    
+    // Exibir as notas
+    notas.forEach(nota => {
+        const row = document.createElement('tr');
+        
+        // Determinar o status baseado na média
+        let statusClass = '';
+        const media = parseFloat(nota.media || nota.nota_media || nota.valor_media || 0);
+        
+        if (!isNaN(media)) {
+            if (media >= 7) {
+                statusClass = 'status-aprovado';
+            } else if (media >= 5) {
+                statusClass = 'status-recuperacao';
+            } else {
+                statusClass = 'status-reprovado';
+            }
+        }
+        
+        row.className = statusClass;
+        row.innerHTML = `
+            <td>${nota.nome_disciplina || nota.disciplina || nota.id_disciplina || 'N/A'}</td>
+            <td>${nota.bimestre ? nota.bimestre + 'º Bimestre' : 'N/A'}</td>
+            <td>${extrairNota(nota, 'nota_mensal', 'mensal')}</td>
+            <td>${extrairNota(nota, 'nota_bimestral', 'bimestral')}</td>
+            <td>${extrairNota(nota, 'recuperacao', 'rec')}</td>
+            <td><strong>${extrairNota(nota, 'media', 'nota_media', 'valor_media')}</strong></td>
+        `;
+        
+        tbody.appendChild(row);
+    });
+    
+    // Função auxiliar para extrair valores de notas, verificando várias propriedades possíveis
+    function extrairNota(nota, ...propNames) {
+        for (const prop of propNames) {
+            if (nota[prop] !== null && nota[prop] !== undefined) {
+                const valor = parseFloat(nota[prop]);
+                if (!isNaN(valor)) {
+                    return valor.toFixed(1);
+                }
+                return nota[prop];
+            }
+        }
+        return 'N/A';
+    }
 }
 
 // Função para abrir o modo de lançamento em massa
