@@ -172,8 +172,7 @@ const ProfessoresModule = {
             return;
         }
         
-        let html = '<div class="alert alert-info mb-3"><i class="fas fa-info-circle me-2"></i> Ao salvar, o professor será vinculado às disciplinas e turmas selecionadas. Este vínculo permite que diferentes professores lecionem a mesma disciplina em diferentes turmas.</div>';
-        html += '<div class="table-responsive mt-3">';
+        let html = '<div class="table-responsive mt-3">';
         html += '<table class="table table-sm table-bordered">';
         html += '<thead><tr><th>Disciplina</th><th>Turmas Vinculadas</th></tr></thead>';
         html += '<tbody>';
