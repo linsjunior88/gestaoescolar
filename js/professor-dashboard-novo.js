@@ -202,6 +202,9 @@ window.configurarBotaoGerarPDF = configurarBotaoGerarPDF;
 document.addEventListener('DOMContentLoaded', function() {
     console.log("#### PROFESSOR DASHBOARD MOBILE FIRST v1 ####");
     
+    // Configurar sistema de emergência para fechar modais travados
+    configurarFechamentoEmergenciaModal();
+    
     // Verificar se o usuário está autenticado como professor
     const userProfile = sessionStorage.getItem('userProfile');
     if (userProfile !== 'professor') {
@@ -3564,7 +3567,7 @@ function exibirFichaAluno(idAluno) {
                                                 <tbody id="notas-aluno-tbody">
                                                     <tr>
                                                         <td colspan="6" class="text-center">
-                                                            <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                                            <div class="spinner-border text-primary spinner-border-sm" role="status">
                                                                 <span class="visually-hidden">Carregando notas...</span>
                                                             </div>
                                                             <span class="ms-2">Carregando notas...</span>
@@ -3594,51 +3597,93 @@ function exibirFichaAluno(idAluno) {
             
             // Obter o modal e configurar evento de fechamento
             const alunoModal = document.getElementById('alunoModal');
+            
+            // Garantir que o modal tenha foco imediato
+            setTimeout(() => {
+                alunoModal.focus();
+                // Adicionar tabindex se não estiver presente
+                if (!alunoModal.hasAttribute('tabindex')) {
+                    alunoModal.setAttribute('tabindex', '-1');
+                }
+            }, 10);
+            
             alunoModal.addEventListener('hidden.bs.modal', function() {
                 console.log('Modal fechado - removendo do DOM');
                 
-                // Garantir limpeza completa
+                // Garantir limpeza completa de todos os elementos do modal
                 document.querySelectorAll('.modal-backdrop').forEach(backdrop => backdrop.remove());
-                document.querySelectorAll('.loading-overlay').forEach(overlay => overlay.remove());
+                document.querySelectorAll('.loading-overlay, .spinner-border, .loading-indicator').forEach(overlay => overlay.remove());
                 
-                // Restaurar o scroll e limpar classes do body
+                // Forçar restauração do estado do body
                 document.body.classList.remove('modal-open');
                 document.body.style.overflow = '';
                 document.body.style.paddingRight = '';
                 
-                // Remover o modal
+                // Verificar se há outros modais abertos
+                const otherModals = document.querySelectorAll('.modal.show');
+                if (otherModals.length === 0) {
+                    // Se não houver outros modais, garantir que o body esteja restaurado
+                    document.body.style.overflow = '';
+                    document.body.style.paddingRight = '';
+                }
+                
+                // Remover o modal do DOM
                 this.remove();
             });
             
-            // Configurar listener de ESC manualmente para garantir que funcione
-            document.addEventListener('keydown', function escHandler(e) {
-                if (e.key === 'Escape' && alunoModal) {
-                    console.log('Tecla ESC pressionada - fechando modal');
-                    const modal = bootstrap.Modal.getInstance(alunoModal);
+            // Configurar listener global de ESC para garantir que funcione
+            const escHandler = function(e) {
+                if (e.key === 'Escape') {
+                    console.log('Tecla ESC pressionada - tentando fechar modal');
                     
-                    // Remover qualquer indicador de carregamento
-                    const loadingSpinners = document.querySelectorAll('.spinner-border');
-                    loadingSpinners.forEach(spinner => {
-                        const row = spinner.closest('tr');
-                        if (row) row.remove();
-                    });
+                    // Verificar se o modal ainda existe
+                    const modalElement = document.getElementById('alunoModal');
+                    if (modalElement) {
+                        // Limpar qualquer indicador de carregamento primeiro
+                        const loadingIndicators = document.querySelectorAll('.spinner-border, .loading-indicator');
+                        loadingIndicators.forEach(indicator => {
+                            const row = indicator.closest('tr');
+                            if (row) row.remove();
+                        });
+                        
+                        // Forçar fechamento do modal
+                        try {
+                            const modal = bootstrap.Modal.getInstance(modalElement);
+                            if (modal) modal.hide();
+                        } catch (error) {
+                            console.error('Erro ao fechar modal:', error);
+                            // Forçar limpeza mesmo com erro
+                            document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
+                            modalElement.remove();
+                            document.body.classList.remove('modal-open');
+                            document.body.style.overflow = '';
+                        }
+                    } else {
+                        // Se o modal não existe mais, mas o backdrop ainda está presente
+                        document.querySelectorAll('.modal-backdrop').forEach(backdrop => backdrop.remove());
+                        document.body.classList.remove('modal-open');
+                        document.body.style.overflow = '';
+                    }
                     
-                    if (modal) modal.hide();
+                    // Remover este handler após uso
                     document.removeEventListener('keydown', escHandler);
                 }
-            });
+            };
+            
+            // Adicionar o handler de ESC globalmente
+            document.addEventListener('keydown', escHandler);
             
             // Exibir o modal
             const modal = new bootstrap.Modal(alunoModal);
             modal.show();
             
-            // Dar tempo para o DOM processar e então tentar focar no modal
+            // Garantir que o modal receba foco imediato
             setTimeout(() => {
-                alunoModal.focus();
-            }, 500);
+                if (alunoModal) alunoModal.focus();
+            }, 200);
             
             // Carregar as notas do aluno
-            setTimeout(() => carregarNotasAluno(idAluno), 800);
+            setTimeout(() => carregarNotasAluno(idAluno), 500);
             
             // Registrar atividade
             registrarAtividade('visualização', 'aluno', idAluno, `Aluno: ${aluno.nome_aluno || idAluno}`, 'concluído');
@@ -3702,37 +3747,31 @@ function carregarNotasAluno(idAluno) {
     // Garantir que o modal esteja com foco correto e possa ser fechado
     const modal = document.getElementById('alunoModal');
     if (modal) {
-        // Dar foco inicial ao modal para garantir que a tecla ESC funcione
+        // Forçar foco no modal para garantir que o ESC funcione
         modal.focus();
         if (!modal.hasAttribute('tabindex')) {
             modal.setAttribute('tabindex', '-1');
         }
         
-        // Verificar se já existe um evento keydown
-        const existingKeydownHandlers = modal._keydownHandlers || [];
-        if (existingKeydownHandlers.length === 0) {
-            // Garantir que a tecla ESC funcione para fechar o modal
-            const keydownHandler = (e) => {
-                if (e.key === 'Escape') {
-                    const bsModal = bootstrap.Modal.getInstance(modal);
-                    if (bsModal) {
-                        // Limpar indicadores de carregamento antes de fechar
-                        const loadingElements = modal.querySelectorAll('.spinner-border, .loading-indicator');
-                        loadingElements.forEach(el => {
-                            const parentRow = el.closest('tr');
-                            if (parentRow) parentRow.remove();
-                        });
-                        
-                        bsModal.hide();
-                    }
-                }
+        // Adicionar um botão de fechar de emergência caso o ESC falhe
+        const headerDiv = modal.querySelector('.modal-header');
+        if (headerDiv && !document.getElementById('emergency-close-btn')) {
+            const emergencyBtn = document.createElement('button');
+            emergencyBtn.id = 'emergency-close-btn';
+            emergencyBtn.className = 'btn btn-sm btn-danger ms-2';
+            emergencyBtn.innerHTML = '<i class="fas fa-times"></i> Forçar Fechamento';
+            emergencyBtn.onclick = function() {
+                // Forçar fechamento e limpeza completa
+                document.querySelectorAll('.modal-backdrop').forEach(backdrop => backdrop.remove());
+                document.body.classList.remove('modal-open');
+                document.body.style.overflow = '';
+                document.body.style.paddingRight = '';
+                if (modal) modal.remove();
             };
-            
-            modal.addEventListener('keydown', keydownHandler);
-            modal._keydownHandlers = [keydownHandler];
+            headerDiv.appendChild(emergencyBtn);
         }
     }
-
+    
     // Variável para controlar se a requisição foi bem-sucedida
     let requestSuccessful = false;
     
@@ -3782,8 +3821,11 @@ function carregarNotasAluno(idAluno) {
             // Remover qualquer outro indicador de carregamento no modal
             const modal = document.getElementById('alunoModal');
             if (modal) {
-                const otherLoaders = modal.querySelectorAll('.spinner-border:not(:has(ancestor::tr))');
-                otherLoaders.forEach(loader => loader.remove());
+                const loadingIndicators = modal.querySelectorAll('.spinner-border, .loading-indicator');
+                loadingIndicators.forEach(el => {
+                    if (el.closest('tr') !== null) return; // Pular se já estiver dentro de uma linha da tabela
+                    el.remove();
+                });
             }
             
             return;
@@ -3868,9 +3910,6 @@ function carregarNotasAluno(idAluno) {
             });
     }
     
-    // Iniciar tentativas de buscar as notas
-    tentarProximaUrl(0);
-    
     // Função auxiliar para extrair valores de notas, verificando várias propriedades possíveis
     function extrairNota(nota, ...propNames) {
         for (const prop of propNames) {
@@ -3885,37 +3924,36 @@ function carregarNotasAluno(idAluno) {
         return 'N/A';
     }
     
-    // Iniciar tentativas de buscar as notas
+    // Iniciar tentativas de buscar as notas - ÚNICA CHAMADA
     tentarProximaUrl(0);
     
-    // Garantir que o modal está acessível para navegação por teclado
-    if (modal) {
-        // Verificar periodicamente se o modal ainda está aberto após 3 segundos
-        setTimeout(() => {
-            const modalElement = document.getElementById('alunoModal');
-            if (modalElement && !requestSuccessful) {
-                // Se o modal ainda estiver aberto mas a requisição não foi bem-sucedida,
-                // remover qualquer indicador de carregamento
-                const loadingIndicators = modalElement.querySelectorAll('.spinner-border, .loading-indicator');
-                if (loadingIndicators.length > 0) {
-                    tbody.innerHTML = `
-                        <tr>
-                            <td colspan="6" class="text-center text-danger">
-                                <div class="alert alert-warning" role="alert">
-                                    <i class="fas fa-exclamation-triangle me-2"></i>
-                                    Tempo limite excedido ao carregar as notas.
-                                    <br>
-                                    <button class="btn btn-sm btn-outline-primary mt-2" onclick="carregarNotasManualmente('${idAluno}')">
+    // Verificar o estado do modal após um timeout
+    setTimeout(() => {
+        const modalElement = document.getElementById('alunoModal');
+        // Se o modal ainda estiver aberto e a requisição não foi bem-sucedida
+        if (modalElement && !requestSuccessful) {
+            // Verificar se ainda tem um spinner rodando
+            const spinner = modalElement.querySelector('.spinner-border');
+            if (spinner) {
+                const row = spinner.closest('tr');
+                if (row) {
+                    row.innerHTML = `
+                        <td colspan="6" class="text-center text-warning">
+                            <div class="alert alert-warning" role="alert">
+                                <i class="fas fa-clock me-2"></i>
+                                A operação está demorando mais que o esperado.
+                                <div class="mt-2">
+                                    <button class="btn btn-sm btn-outline-primary" onclick="carregarNotasManualmente('${idAluno}')">
                                         <i class="fas fa-sync-alt me-1"></i>Tentar novamente
                                     </button>
                                 </div>
-                            </td>
-                        </tr>
+                            </div>
+                        </td>
                     `;
                 }
             }
-        }, 5000);
-    }
+        }
+    }, 5000);
 }
 
 // Função para permitir carregamento manual das notas caso falhe automaticamente
@@ -5220,5 +5258,52 @@ window.handleFormSubmit = handleFormSubmit;
 window.abrirModoLancamentoEmMassa = abrirModoLancamentoEmMassa;
 window.editarNota = editarNota;
 window.novaNota = novaNota;
+
+// Função para configurar sistema de emergência para fechar modais travados
+function configurarFechamentoEmergenciaModal() {
+    console.log("Configurando sistema de emergência para fechar modais travados");
+    
+    let lastEscapeTime = 0;
+    const escapeInterval = 500; // ms - intervalo máximo entre dois pressionamentos de ESC
+    
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            const now = new Date().getTime();
+            
+            // Se foi pressionado ESC duas vezes em rápida sucessão
+            if (now - lastEscapeTime < escapeInterval) {
+                console.log('ESC pressionado duas vezes rapidamente - fechando qualquer modal travado');
+                
+                // Remover todos os backdrops e modais
+                document.querySelectorAll('.modal-backdrop').forEach(backdrop => backdrop.remove());
+                
+                // Tentar fechar cada modal via Bootstrap
+                document.querySelectorAll('.modal.show').forEach(modal => {
+                    try {
+                        const bsModal = bootstrap.Modal.getInstance(modal);
+                        if (bsModal) bsModal.hide();
+                    } catch (error) {
+                        console.warn('Erro ao fechar modal via bootstrap:', error);
+                        // Se falhar, remover o modal diretamente
+                        modal.remove();
+                    }
+                });
+                
+                // Restaurar o estado do body
+                document.body.classList.remove('modal-open');
+                document.body.style.overflow = '';
+                document.body.style.paddingRight = '';
+                
+                // Remover spinners que possam ter ficado
+                document.querySelectorAll('.spinner-border, .loading-indicator').forEach(el => el.remove());
+                
+                // Exibir mensagem de feedback para o usuário
+                mostrarMensagemFlutuante('Modais fechados com sucesso. Pressione ESC novamente se necessário.', 'info');
+            }
+            
+            lastEscapeTime = now;
+        }
+    });
+}
 
 // Inicialização quando o DOM estiver pronto
