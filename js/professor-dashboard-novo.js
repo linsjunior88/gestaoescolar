@@ -3610,31 +3610,25 @@ function exibirFichaAluno(idAluno) {
             alunoModal.addEventListener('hidden.bs.modal', function() {
                 console.log('Modal fechado - removendo do DOM');
                 
-                // Garantir limpeza completa de todos os elementos do modal
-                document.querySelectorAll('.modal-backdrop').forEach(backdrop => backdrop.remove());
-                document.querySelectorAll('.loading-overlay, .spinner-border, .loading-indicator').forEach(overlay => overlay.remove());
+                // Utilizar nossa função de limpeza completa
+                limparTodosModaisEBackdrops();
                 
-                // Forçar restauração do estado do body
-                document.body.classList.remove('modal-open');
-                document.body.style.overflow = '';
-                document.body.style.paddingRight = '';
-                
-                // Verificar se há outros modais abertos
-                const otherModals = document.querySelectorAll('.modal.show');
-                if (otherModals.length === 0) {
-                    // Se não houver outros modais, garantir que o body esteja restaurado
-                    document.body.style.overflow = '';
-                    document.body.style.paddingRight = '';
-                }
-                
-                // Remover o modal do DOM
+                // Remover o modal do DOM (este já está sendo removido na função limparTodosModaisEBackdrops,
+                // mas mantemos aqui por garantia para este modal específico)
                 this.remove();
+                
+                // Remover também qualquer botão de emergência específico deste modal
+                const emergencyBtn = document.getElementById('emergency-close-btn');
+                if (emergencyBtn) emergencyBtn.remove();
             });
             
             // Configurar listener global de ESC para garantir que funcione
             const escHandler = function(e) {
                 if (e.key === 'Escape') {
                     console.log('Tecla ESC pressionada - tentando fechar modal');
+                    
+                    // Limpar TUDO primeiro
+                    limparTodosModaisEBackdrops();
                     
                     // Verificar se o modal ainda existe
                     const modalElement = document.getElementById('alunoModal');
@@ -3653,20 +3647,15 @@ function exibirFichaAluno(idAluno) {
                         } catch (error) {
                             console.error('Erro ao fechar modal:', error);
                             // Forçar limpeza mesmo com erro
-                            document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
                             modalElement.remove();
-                            document.body.classList.remove('modal-open');
-                            document.body.style.overflow = '';
                         }
-                    } else {
-                        // Se o modal não existe mais, mas o backdrop ainda está presente
-                        document.querySelectorAll('.modal-backdrop').forEach(backdrop => backdrop.remove());
-                        document.body.classList.remove('modal-open');
-                        document.body.style.overflow = '';
                     }
                     
                     // Remover este handler após uso
                     document.removeEventListener('keydown', escHandler);
+                    
+                    // DUPLA verificação: Garantir que nada ficou preso
+                    setTimeout(() => limparTodosModaisEBackdrops(), 100);
                 }
             };
             
@@ -3758,17 +3747,26 @@ function carregarNotasAluno(idAluno) {
         if (headerDiv && !document.getElementById('emergency-close-btn')) {
             const emergencyBtn = document.createElement('button');
             emergencyBtn.id = 'emergency-close-btn';
-            emergencyBtn.className = 'btn btn-sm btn-danger ms-2';
+            emergencyBtn.className = 'btn btn-danger ms-2 position-fixed';
+            emergencyBtn.style.top = '10px';
+            emergencyBtn.style.right = '10px';
+            emergencyBtn.style.zIndex = '9999'; // Garantir que fique acima de tudo
             emergencyBtn.innerHTML = '<i class="fas fa-times"></i> Forçar Fechamento';
-            emergencyBtn.onclick = function() {
+            emergencyBtn.onclick = function(e) {
+                e.stopPropagation(); // Impedir propagação
+                console.log('Botão de emergência clicado - forçando fechamento');
+                
                 // Forçar fechamento e limpeza completa
-                document.querySelectorAll('.modal-backdrop').forEach(backdrop => backdrop.remove());
-                document.body.classList.remove('modal-open');
-                document.body.style.overflow = '';
-                document.body.style.paddingRight = '';
-                if (modal) modal.remove();
+                limparTodosModaisEBackdrops();
+                
+                // Feedback para o usuário
+                mostrarMensagemFlutuante('Modal fechado com sucesso', 'success');
+                
+                return false; // Prevenir comportamento padrão
             };
-            headerDiv.appendChild(emergencyBtn);
+            
+            // Adicionar ao body em vez do header para garantir visibilidade
+            document.body.appendChild(emergencyBtn);
         }
     }
     
@@ -5259,10 +5257,48 @@ window.abrirModoLancamentoEmMassa = abrirModoLancamentoEmMassa;
 window.editarNota = editarNota;
 window.novaNota = novaNota;
 
+// Função para limpar todos os modais, backdrops e restaurar o estado da página
+function limparTodosModaisEBackdrops() {
+    console.log("Executando limpeza completa de modais e backdrops");
+    
+    // 1. Fechar todos os modais via Bootstrap primeiro (abordagem suave)
+    document.querySelectorAll('.modal.show').forEach(modal => {
+        try {
+            const bsModal = bootstrap.Modal.getInstance(modal);
+            if (bsModal) bsModal.hide();
+        } catch (error) {
+            console.warn("Erro ao tentar fechar modal via Bootstrap:", error);
+        }
+    });
+    
+    // 2. Remover forcadamente todos os backdrops
+    document.querySelectorAll('.modal-backdrop').forEach(backdrop => backdrop.remove());
+    
+    // 3. Se ainda houver modais, removê-los diretamente
+    document.querySelectorAll('.modal').forEach(modal => modal.remove());
+    
+    // 4. Remover estilos e classes que podem bloquear scrolling
+    document.body.classList.remove('modal-open');
+    document.body.style.overflow = '';
+    document.body.style.paddingRight = '';
+    
+    // 5. Limpar qualquer indicador de carregamento
+    document.querySelectorAll('.spinner-border, .loading-indicator').forEach(loader => {
+        // Se não estiver dentro de uma tabela ou container específico, remover
+        if (!loader.closest('table') && !loader.closest('.preserve-loader')) {
+            loader.remove();
+        }
+    });
+    
+    // 6. Remover qualquer overlay restante
+    document.querySelectorAll('.modal-open-overlay, .loading-overlay').forEach(overlay => overlay.remove());
+}
+
 // Função para configurar sistema de emergência para fechar modais travados
 function configurarFechamentoEmergenciaModal() {
     console.log("Configurando sistema de emergência para fechar modais travados");
     
+    // Sistema 1: ESC duplo para forçar fechamento
     let lastEscapeTime = 0;
     const escapeInterval = 500; // ms - intervalo máximo entre dois pressionamentos de ESC
     
@@ -5274,36 +5310,104 @@ function configurarFechamentoEmergenciaModal() {
             if (now - lastEscapeTime < escapeInterval) {
                 console.log('ESC pressionado duas vezes rapidamente - fechando qualquer modal travado');
                 
-                // Remover todos os backdrops e modais
-                document.querySelectorAll('.modal-backdrop').forEach(backdrop => backdrop.remove());
-                
-                // Tentar fechar cada modal via Bootstrap
-                document.querySelectorAll('.modal.show').forEach(modal => {
-                    try {
-                        const bsModal = bootstrap.Modal.getInstance(modal);
-                        if (bsModal) bsModal.hide();
-                    } catch (error) {
-                        console.warn('Erro ao fechar modal via bootstrap:', error);
-                        // Se falhar, remover o modal diretamente
-                        modal.remove();
-                    }
-                });
-                
-                // Restaurar o estado do body
-                document.body.classList.remove('modal-open');
-                document.body.style.overflow = '';
-                document.body.style.paddingRight = '';
-                
-                // Remover spinners que possam ter ficado
-                document.querySelectorAll('.spinner-border, .loading-indicator').forEach(el => el.remove());
+                // Usar nossa função de limpeza completa
+                limparTodosModaisEBackdrops();
                 
                 // Exibir mensagem de feedback para o usuário
-                mostrarMensagemFlutuante('Modais fechados com sucesso. Pressione ESC novamente se necessário.', 'info');
+                mostrarMensagemFlutuante('Modais fechados com sucesso via ESC duplo', 'info');
             }
             
             lastEscapeTime = now;
         }
     });
+    
+    // Sistema 2: Permitir clique duplo no backdrop para fechar
+    let lastClickTime = 0;
+    const clickInterval = 300; // ms - intervalo máximo entre cliques
+    
+    // Delegamos o evento para o documento, já que backdrops podem ser adicionados depois
+    document.addEventListener('click', function(e) {
+        // Verificar se o clique foi no backdrop
+        if (e.target.classList.contains('modal-backdrop')) {
+            const now = new Date().getTime();
+            
+            // Se foi clicado duas vezes rapidamente no backdrop
+            if (now - lastClickTime < clickInterval) {
+                console.log('Clique duplo no backdrop detectado - limpando tudo');
+                
+                // Usar nossa função de limpeza completa
+                limparTodosModaisEBackdrops();
+                
+                // Exibir mensagem de feedback
+                mostrarMensagemFlutuante('Modal fechado com sucesso via clique duplo', 'info');
+            }
+            
+            lastClickTime = now;
+        }
+    });
+    
+    // Sistema 3: Botão flutuante de emergência
+    const addEmergencyButton = function() {
+        // Remover qualquer botão existente para evitar duplicação
+        const existingBtn = document.getElementById('global-emergency-btn');
+        if (existingBtn) existingBtn.remove();
+        
+        // Criar botão global de emergência que sempre estará visível no canto da tela
+        const emergencyBtn = document.createElement('button');
+        emergencyBtn.id = 'global-emergency-btn';
+        emergencyBtn.className = 'btn btn-sm btn-danger position-fixed';
+        emergencyBtn.style.bottom = '10px';
+        emergencyBtn.style.right = '10px';
+        emergencyBtn.style.zIndex = '99999'; // Valor extremamente alto
+        emergencyBtn.style.opacity = '0.8';
+        emergencyBtn.innerHTML = '<i class="fas fa-medkit"></i> SOS';
+        emergencyBtn.title = 'Clique aqui para forçar o fechamento de modais travados';
+        
+        // Adicionar evento de clique
+        emergencyBtn.addEventListener('click', function() {
+            limparTodosModaisEBackdrops();
+            mostrarMensagemFlutuante('Tela liberada com sucesso', 'success');
+        });
+        
+        // Adicionar ao body
+        document.body.appendChild(emergencyBtn);
+    };
+    
+    // Adicionar o botão SOS após um curto delay
+    setTimeout(addEmergencyButton, 1000);
+    
+    // Sistema 4: Detector de backdrops órfãos
+    setInterval(function() {
+        // Verificar se há backdrops sem modal associado
+        const backdrops = document.querySelectorAll('.modal-backdrop');
+        const modals = document.querySelectorAll('.modal.show');
+        
+        if (backdrops.length > 0 && modals.length === 0) {
+            console.log('Detectado backdrop órfão - removendo automaticamente');
+            limparTodosModaisEBackdrops();
+            mostrarMensagemFlutuante('Tela desbloqueada automaticamente', 'info');
+        }
+        
+        // Verificar se o backdrop está presente por muito tempo (mais de 30 segundos)
+        const backdrop = document.querySelector('.modal-backdrop');
+        if (backdrop && backdrop.getAttribute('data-time-check') === null) {
+            // Marcar o backdrop com o timestamp atual
+            backdrop.setAttribute('data-time-check', Date.now().toString());
+        } else if (backdrop) {
+            const timestampStr = backdrop.getAttribute('data-time-check');
+            if (timestampStr) {
+                const timestamp = parseInt(timestampStr);
+                const now = Date.now();
+                
+                // Se o backdrop estiver presente por mais de 30 segundos, removê-lo
+                if (now - timestamp > 30000) { // 30 segundos
+                    console.log('Backdrop presente por muito tempo - removendo automaticamente');
+                    limparTodosModaisEBackdrops();
+                    mostrarMensagemFlutuante('Tela desbloqueada por segurança', 'info');
+                }
+            }
+        }
+    }, 5000); // Verificar a cada 5 segundos
 }
 
 // Inicialização quando o DOM estiver pronto
