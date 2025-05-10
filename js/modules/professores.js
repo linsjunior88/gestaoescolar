@@ -172,7 +172,8 @@ const ProfessoresModule = {
             return;
         }
         
-        let html = '<div class="table-responsive mt-3">';
+        let html = '<div class="alert alert-info mb-3"><i class="fas fa-info-circle me-2"></i> Ao salvar, o professor será vinculado às disciplinas e turmas selecionadas. Este vínculo permite que diferentes professores lecionem a mesma disciplina em diferentes turmas.</div>';
+        html += '<div class="table-responsive mt-3">';
         html += '<table class="table table-sm table-bordered">';
         html += '<thead><tr><th>Disciplina</th><th>Turmas Vinculadas</th></tr></thead>';
         html += '<tbody>';
@@ -188,14 +189,14 @@ const ProfessoresModule = {
             html += `<td>${disciplina.nome}</td>`;
             
             if (turmas.length === 0) {
-                html += '<td><span class="text-warning">Nenhuma turma vinculada</span></td>';
+                html += '<td><span class="text-warning">Nenhuma turma vinculada. A disciplina poderá ser lecionada em todas as turmas.</span></td>';
             } else {
                 html += '<td>';
                 html += '<ul class="list-unstyled mb-0">';
                 turmas.forEach(turma => {
                     html += `<li>
                         <span class="badge bg-info">${turma.id_turma}</span> 
-                        ${turma.serie}
+                        ${turma.serie || ''} ${turma.turno ? `(${this.traduzirTurno(turma.turno)})` : ''}
                     </li>`;
                 });
                 html += '</ul>';
