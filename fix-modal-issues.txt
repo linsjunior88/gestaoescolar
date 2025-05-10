@@ -1,0 +1,149 @@
+### Correções a serem aplicadas para resolver o problema do modal travado no Sistema de Gestão Escolar
+
+1. O problema ocorre quando o modal é fechado, mas o indicador de carregamento e o backdrop continuam visíveis.
+
+2. As correções necessárias incluem:
+
+## No evento de fechamento do modal (linha ~3597)
+```javascript
+alunoModal.addEventListener('hidden.bs.modal', function() {
+    console.log('Modal fechado - removendo do DOM');
+    
+    // Garantir limpeza completa
+    document.querySelectorAll('.modal-backdrop').forEach(backdrop => backdrop.remove());
+    document.querySelectorAll('.loading-overlay').forEach(overlay => overlay.remove());
+    
+    // Restaurar o scroll e limpar classes do body
+    document.body.classList.remove('modal-open');
+    document.body.style.overflow = '';
+    document.body.style.paddingRight = '';
+    
+    // Remover o modal
+    this.remove();
+});
+```
+
+## No manipulador de tecla ESC (linha ~3603)
+```javascript
+document.addEventListener('keydown', function escHandler(e) {
+    if (e.key === 'Escape' && alunoModal) {
+        console.log('Tecla ESC pressionada - fechando modal');
+        const modal = bootstrap.Modal.getInstance(alunoModal);
+        
+        // Remover qualquer indicador de carregamento
+        const loadingSpinners = document.querySelectorAll('.spinner-border');
+        loadingSpinners.forEach(spinner => {
+            const row = spinner.closest('tr');
+            if (row) row.remove();
+        });
+        
+        if (modal) modal.hide();
+        document.removeEventListener('keydown', escHandler);
+    }
+});
+```
+
+## Na função carregarNotasAluno (linha ~3685), garantir foco no modal
+```javascript
+// Garantir que o modal esteja com foco correto e possa ser fechado
+const modal = document.getElementById('alunoModal');
+if (modal) {
+    // Dar foco inicial ao modal para garantir que a tecla ESC funcione
+    modal.focus();
+    if (!modal.hasAttribute('tabindex')) {
+        modal.setAttribute('tabindex', '-1');
+    }
+    
+    // Verificar se já existe um evento keydown
+    const existingKeydownHandlers = modal._keydownHandlers || [];
+    if (existingKeydownHandlers.length === 0) {
+        // Garantir que a tecla ESC funcione para fechar o modal
+        const keydownHandler = (e) => {
+            if (e.key === 'Escape') {
+                const bsModal = bootstrap.Modal.getInstance(modal);
+                if (bsModal) {
+                    // Limpar indicadores de carregamento antes de fechar
+                    const loadingElements = modal.querySelectorAll('.spinner-border, .loading-indicator');
+                    loadingElements.forEach(el => {
+                        const parentRow = el.closest('tr');
+                        if (parentRow) parentRow.remove();
+                    });
+                    
+                    bsModal.hide();
+                }
+            }
+        };
+        
+        modal.addEventListener('keydown', keydownHandler);
+        modal._keydownHandlers = [keydownHandler];
+    }
+}
+```
+
+## Na função tentarProximaUrl (linha ~3740), melhorar a mensagem de erro
+```javascript
+if (index >= urlsToTry.length) {
+    console.error("Todas as tentativas de URLs falharam.");
+    // Exibir mensagem amigável de erro, mas permitir que o modal continue funcionando
+    tbody.innerHTML = `
+        <tr>
+            <td colspan="6" class="text-center text-danger">
+                <div class="alert alert-warning" role="alert">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Não foi possível carregar as notas deste aluno no momento.
+                    <br>
+                    <small>Verifique a seção de Gestão de Notas para visualizar o histórico completo.</small>
+                    <div class="mt-2">
+                        <button class="btn btn-sm btn-outline-primary" onclick="carregarNotasManualmente('${idAluno}')">
+                            <i class="fas fa-sync-alt me-1"></i>Tentar novamente
+                        </button>
+                    </div>
+                </div>
+            </td>
+        </tr>
+    `;
+    
+    // Remover qualquer outro indicador de carregamento no modal
+    const modal = document.getElementById('alunoModal');
+    if (modal) {
+        const otherLoaders = modal.querySelectorAll('.spinner-border:not(:has(ancestor::tr))');
+        otherLoaders.forEach(loader => loader.remove());
+    }
+    
+    return;
+}
+```
+
+## Correção da duplicação (linha ~3871 e ~3888)
+Remover a linha duplicada `tentarProximaUrl(0);` em torno da linha 3888 e garantir que apenas uma chamada seja mantida.
+
+3. Implementar um timeout de segurança (linha ~3890)
+```javascript
+// Verificar o estado do modal após um timeout
+setTimeout(() => {
+    const modalElement = document.getElementById('alunoModal');
+    // Se o modal ainda estiver aberto e a requisição não foi bem-sucedida
+    if (modalElement && !requestSuccessful) {
+        // Verificar se ainda tem um spinner rodando
+        const spinner = modalElement.querySelector('.spinner-border');
+        if (spinner) {
+            const row = spinner.closest('tr');
+            if (row) {
+                row.innerHTML = `
+                    <td colspan="6" class="text-center text-warning">
+                        <div class="alert alert-warning" role="alert">
+                            <i class="fas fa-clock me-2"></i>
+                            A operação está demorando mais que o esperado.
+                            <div class="mt-2">
+                                <button class="btn btn-sm btn-outline-primary" onclick="carregarNotasManualmente('${idAluno}')">
+                                    <i class="fas fa-sync-alt me-1"></i>Tentar novamente
+                                </button>
+                            </div>
+                        </div>
+                    </td>
+                `;
+            }
+        }
+    }
+}, 5000);
+``` 

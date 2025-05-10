@@ -3596,13 +3596,33 @@ function exibirFichaAluno(idAluno) {
             const alunoModal = document.getElementById('alunoModal');
             alunoModal.addEventListener('hidden.bs.modal', function() {
                 console.log('Modal fechado - removendo do DOM');
+                
+                // Garantir limpeza completa
+                document.querySelectorAll('.modal-backdrop').forEach(backdrop => backdrop.remove());
+                document.querySelectorAll('.loading-overlay').forEach(overlay => overlay.remove());
+                
+                // Restaurar o scroll e limpar classes do body
+                document.body.classList.remove('modal-open');
+                document.body.style.overflow = '';
+                document.body.style.paddingRight = '';
+                
+                // Remover o modal
                 this.remove();
             });
             
             // Configurar listener de ESC manualmente para garantir que funcione
             document.addEventListener('keydown', function escHandler(e) {
                 if (e.key === 'Escape' && alunoModal) {
+                    console.log('Tecla ESC pressionada - fechando modal');
                     const modal = bootstrap.Modal.getInstance(alunoModal);
+                    
+                    // Remover qualquer indicador de carregamento
+                    const loadingSpinners = document.querySelectorAll('.spinner-border');
+                    loadingSpinners.forEach(spinner => {
+                        const row = spinner.closest('tr');
+                        if (row) row.remove();
+                    });
+                    
                     if (modal) modal.hide();
                     document.removeEventListener('keydown', escHandler);
                 }
@@ -3682,14 +3702,39 @@ function carregarNotasAluno(idAluno) {
     // Garantir que o modal esteja com foco correto e possa ser fechado
     const modal = document.getElementById('alunoModal');
     if (modal) {
-        // Garantir que a tecla ESC funcione para fechar o modal
-        modal.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                const bsModal = bootstrap.Modal.getInstance(modal);
-                if (bsModal) bsModal.hide();
-            }
-        });
+        // Dar foco inicial ao modal para garantir que a tecla ESC funcione
+        modal.focus();
+        if (!modal.hasAttribute('tabindex')) {
+            modal.setAttribute('tabindex', '-1');
+        }
+        
+        // Verificar se já existe um evento keydown
+        const existingKeydownHandlers = modal._keydownHandlers || [];
+        if (existingKeydownHandlers.length === 0) {
+            // Garantir que a tecla ESC funcione para fechar o modal
+            const keydownHandler = (e) => {
+                if (e.key === 'Escape') {
+                    const bsModal = bootstrap.Modal.getInstance(modal);
+                    if (bsModal) {
+                        // Limpar indicadores de carregamento antes de fechar
+                        const loadingElements = modal.querySelectorAll('.spinner-border, .loading-indicator');
+                        loadingElements.forEach(el => {
+                            const parentRow = el.closest('tr');
+                            if (parentRow) parentRow.remove();
+                        });
+                        
+                        bsModal.hide();
+                    }
+                }
+            };
+            
+            modal.addEventListener('keydown', keydownHandler);
+            modal._keydownHandlers = [keydownHandler];
+        }
     }
+
+    // Variável para controlar se a requisição foi bem-sucedida
+    let requestSuccessful = false;
     
     // Exibir indicador de carregamento
     tbody.innerHTML = `
@@ -3724,10 +3769,23 @@ function carregarNotasAluno(idAluno) {
                             Não foi possível carregar as notas deste aluno no momento.
                             <br>
                             <small>Verifique a seção de Gestão de Notas para visualizar o histórico completo.</small>
+                            <div class="mt-2">
+                                <button class="btn btn-sm btn-outline-primary" onclick="carregarNotasManualmente('${idAluno}')">
+                                    <i class="fas fa-sync-alt me-1"></i>Tentar novamente
+                                </button>
+                            </div>
                         </div>
                     </td>
                 </tr>
             `;
+            
+            // Remover qualquer outro indicador de carregamento no modal
+            const modal = document.getElementById('alunoModal');
+            if (modal) {
+                const otherLoaders = modal.querySelectorAll('.spinner-border:not(:has(ancestor::tr))');
+                otherLoaders.forEach(loader => loader.remove());
+            }
+            
             return;
         }
         
@@ -3743,6 +3801,7 @@ function carregarNotasAluno(idAluno) {
         })
         .then(notasDoAluno => {
                 console.log("Notas do aluno obtidas com sucesso:", notasDoAluno);
+                requestSuccessful = true;
                 
                 // Normalizando o formato da resposta, pois pode vir em diferentes estruturas
                 let notas = notasDoAluno;
@@ -3809,6 +3868,9 @@ function carregarNotasAluno(idAluno) {
             });
     }
     
+    // Iniciar tentativas de buscar as notas
+    tentarProximaUrl(0);
+    
     // Função auxiliar para extrair valores de notas, verificando várias propriedades possíveis
     function extrairNota(nota, ...propNames) {
         for (const prop of propNames) {
@@ -3825,6 +3887,35 @@ function carregarNotasAluno(idAluno) {
     
     // Iniciar tentativas de buscar as notas
     tentarProximaUrl(0);
+    
+    // Garantir que o modal está acessível para navegação por teclado
+    if (modal) {
+        // Verificar periodicamente se o modal ainda está aberto após 3 segundos
+        setTimeout(() => {
+            const modalElement = document.getElementById('alunoModal');
+            if (modalElement && !requestSuccessful) {
+                // Se o modal ainda estiver aberto mas a requisição não foi bem-sucedida,
+                // remover qualquer indicador de carregamento
+                const loadingIndicators = modalElement.querySelectorAll('.spinner-border, .loading-indicator');
+                if (loadingIndicators.length > 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="6" class="text-center text-danger">
+                                <div class="alert alert-warning" role="alert">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    Tempo limite excedido ao carregar as notas.
+                                    <br>
+                                    <button class="btn btn-sm btn-outline-primary mt-2" onclick="carregarNotasManualmente('${idAluno}')">
+                                        <i class="fas fa-sync-alt me-1"></i>Tentar novamente
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }
+            }
+        }, 5000);
+    }
 }
 
 // Função para permitir carregamento manual das notas caso falhe automaticamente
