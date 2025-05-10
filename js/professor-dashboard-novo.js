@@ -3414,6 +3414,15 @@ function exibirFichaAluno(idAluno) {
         return;
     }
     
+    // Limpar primeiro quaisquer elementos de carregamento que possam ter ficado de modais anteriores
+    document.querySelectorAll('.spinner-border').forEach(spinner => {
+        if (!spinner.closest('.modal')) {
+            const parent = spinner.closest('tr') || spinner.parentElement;
+            if (parent) parent.remove();
+            else spinner.remove();
+        }
+    });
+    
     // Remover quaisquer modais e backdrops antigos para evitar sobreposições
     document.querySelectorAll('.modal-backdrop').forEach(backdrop => backdrop.remove());
     
@@ -3428,6 +3437,17 @@ function exibirFichaAluno(idAluno) {
         }
         existingModal.remove();
     }
+    
+    // Remover qualquer outro modal que possa estar aberto
+    document.querySelectorAll('.modal').forEach(modal => {
+        try {
+            const bsModal = bootstrap.Modal.getInstance(modal);
+            if (bsModal) bsModal.dispose();
+            modal.remove();
+        } catch (e) {
+            console.warn('Erro ao remover modal:', e);
+        }
+    });
     
     // Exibir um indicador de carregamento enquanto buscamos os dados
     const loadingModal = `
@@ -3454,6 +3474,8 @@ function exibirFichaAluno(idAluno) {
     const timeoutId = setTimeout(() => {
         try {
             loading.hide();
+            document.querySelectorAll('.modal-backdrop').forEach(backdrop => backdrop.remove());
+            document.getElementById('loadingModal')?.remove();
             alert('O carregamento dos dados está demorando mais que o esperado. Tente novamente.');
         } catch (e) {
             console.warn('Erro ao remover modal de loading após timeout:', e);
@@ -3659,9 +3681,12 @@ function exibirFichaAluno(idAluno) {
                 if (btnFechar) btnFechar.focus();
             }, 500);
             
-            // Carregar as notas do aluno
+            // Carregar as notas do aluno, passando o ID correto para a matriz HTML
             if (idAluno) {
-                carregarNotasAluno(idAluno, alunoModal);
+                // Obter o ID real do aluno - pode estar em vários campos diferentes
+                const alunoIdReal = aluno.id_aluno || aluno.id || idAluno;
+                console.log(`Carregando notas com ID: ${alunoIdReal}`);
+                carregarNotasAluno(alunoIdReal, alunoModal);
             }
             
             // Registrar atividade
@@ -3728,54 +3753,111 @@ function carregarNotasAluno(idAluno, modalElement) {
         return;
     }
     
-    const tabelaNotas = modalElement.querySelector('#notasAluno');
-    if (!tabelaNotas) {
-        console.error('Tabela de notas não encontrada');
-        return;
-    }
+    // Procurar pelo tbody diretamente com ID correto
+    const tbody = document.getElementById('notas-aluno-tbody');
     
-    const tbody = tabelaNotas.querySelector('tbody');
     if (!tbody) {
-        console.error('Corpo da tabela de notas não encontrado');
+        console.error('Elemento tbody com ID notas-aluno-tbody não encontrado');
+        console.log('Procurando por outras possíveis tabelas de notas no modal...');
+        
+        // Tentar encontrar alguma tabela no modal
+        const todasTabelas = modalElement.querySelectorAll('table');
+        console.log(`Encontradas ${todasTabelas.length} tabelas no modal`);
+        
+        let tbodyAlternativo = null;
+        
+        // Buscar qualquer tbody dentro do modal
+        todasTabelas.forEach((tabela, index) => {
+            const tbodyNaTabela = tabela.querySelector('tbody');
+            if (tbodyNaTabela) {
+                console.log(`Tabela ${index+1} tem um tbody - tentando usar`);
+                tbodyAlternativo = tbodyNaTabela;
+            }
+        });
+        
+        if (!tbodyAlternativo) {
+            console.error('Não foi possível encontrar nenhuma tabela com tbody no modal');
+            // Tentar limpar os spinners mesmo sem achar a tabela
+            setTimeout(() => {
+                document.querySelectorAll('.spinner-border').forEach(spinner => {
+                    if (!spinner.closest('.modal')) {
+                        spinner.closest('tr')?.remove() || spinner.parentElement?.remove() || spinner.remove();
+                    }
+                });
+            }, 1000);
+            return;
+        }
+        
+        console.log('Usando tbody alternativo encontrado');
+        utilizarTbody(tbodyAlternativo);
         return;
     }
     
-    // Limpar a tabela e mostrar indicador de carregamento
-    tbody.innerHTML = `
-        <tr>
-            <td colspan="6" class="text-center">
-                <div class="d-flex justify-content-center align-items-center">
-                    <div class="spinner-border text-primary me-2" role="status">
-                        <span class="visually-hidden">Carregando...</span>
+    utilizarTbody(tbody);
+    
+    function utilizarTbody(tbodyElement) {
+        // Limpar a tabela e mostrar indicador de carregamento
+        tbodyElement.innerHTML = `
+            <tr>
+                <td colspan="6" class="text-center">
+                    <div class="d-flex justify-content-center align-items-center">
+                        <div class="spinner-border text-primary me-2" role="status">
+                            <span class="visually-hidden">Carregando...</span>
+                        </div>
+                        <span>Carregando notas do aluno...</span>
                     </div>
-                    <span>Carregando notas do aluno...</span>
-                </div>
-            </td>
-        </tr>
-    `;
-    
-    // Lista de URLs para tentar em ordem de prioridade
-    const urls = [
-        `/api/notas/aluno/${idAluno}`,
-        `/notas/aluno/${idAluno}`,
-        `/api/alunos/${idAluno}/notas`,
-        `/alunos/${idAluno}/notas`
-    ];
-    
-    const urlIndex = 0;
-    tentarProximaUrl(urls, urlIndex, idAluno, modalElement, tbody);
+                </td>
+            </tr>
+        `;
+        
+        // Lista de URLs para tentar em ordem de prioridade
+        const urls = [
+            `/api/notas/aluno/${idAluno}`,
+            `/notas/aluno/${idAluno}`,
+            `/api/alunos/${idAluno}/notas`,
+            `/alunos/${idAluno}/notas`
+        ];
+        
+        const urlIndex = 0;
+        tentarProximaUrl(urls, urlIndex, idAluno, modalElement, tbodyElement);
+    }
 }
 
 function tentarProximaUrl(urls, urlIndex, idAluno, modalElement, tbody) {
     // Verificar se o modal ainda está aberto
     if (!modalElement || !document.body.contains(modalElement)) {
         console.log('Modal não está mais presente no DOM - cancelando tentativa de carregar notas');
-        // Remover qualquer elemento de carregamento que possa ter ficado
-        document.querySelectorAll('.spinner-border').forEach(spinner => {
-            if (!spinner.closest('.modal')) {
-                spinner.closest('tr')?.remove() || spinner.parentElement?.remove() || spinner.remove();
-            }
-        });
+        
+        // Função robusta para limpar elementos de carregamento
+        function limparElementosOrfaos() {
+            console.log('Limpando elementos de carregamento órfãos...');
+            
+            // Remover spinners fora de modais
+            document.querySelectorAll('.spinner-border').forEach(spinner => {
+                if (!spinner.closest('.modal')) {
+                    const parent = spinner.closest('tr') || spinner.parentElement;
+                    if (parent) parent.remove();
+                    else spinner.remove();
+                }
+            });
+            
+            // Remover backdrops de modal
+            document.querySelectorAll('.modal-backdrop').forEach(backdrop => backdrop.remove());
+            
+            // Remover mensagens de carregamento
+            document.querySelectorAll('td[colspan="6"]').forEach(td => {
+                if (td.textContent.toLowerCase().includes('carregando') && !td.closest('.modal')) {
+                    td.closest('tr')?.remove();
+                }
+            });
+        }
+        
+        // Limpar imediatamente
+        limparElementosOrfaos();
+        
+        // E depois de um pequeno delay, para garantir
+        setTimeout(limparElementosOrfaos, 500);
+        
         return;
     }
     
@@ -3814,6 +3896,14 @@ function tentarProximaUrl(urls, urlIndex, idAluno, modalElement, tbody) {
             // Verificar se o modal ainda está aberto antes de processar
             if (!modalElement || !document.body.contains(modalElement)) {
                 console.log('Modal fechado antes de exibir notas - cancelando');
+                
+                // Limpar elementos órfãos
+                document.querySelectorAll('.spinner-border').forEach(spinner => {
+                    if (!spinner.closest('.modal')) {
+                        spinner.closest('tr')?.remove() || spinner.parentElement?.remove() || spinner.remove();
+                    }
+                });
+                
                 return;
             }
             
@@ -3840,6 +3930,21 @@ function tentarProximaUrl(urls, urlIndex, idAluno, modalElement, tbody) {
         })
         .catch(error => {
             console.error(`Erro ao buscar notas da URL ${url}:`, error);
+            
+            // Verificar se o modal ainda está aberto antes de tentar a próxima URL
+            if (!modalElement || !document.body.contains(modalElement)) {
+                console.log('Modal fechado durante erro - cancelando tentativas');
+                
+                // Limpar elementos órfãos
+                document.querySelectorAll('.spinner-border').forEach(spinner => {
+                    if (!spinner.closest('.modal')) {
+                        spinner.closest('tr')?.remove() || spinner.parentElement?.remove() || spinner.remove();
+                    }
+                });
+                
+                return;
+            }
+            
             // Tentar a próxima URL
             tentarProximaUrl(urls, urlIndex + 1, idAluno, modalElement, tbody);
         });
