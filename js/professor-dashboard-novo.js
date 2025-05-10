@@ -4413,182 +4413,78 @@ function corrigirHeaderNotas() {
     console.log('Verificando e corrigindo o header da card de notas');
     
     try {
-        // Primeiro, encontrar o container de notas principal
+        // Buscar o container de notas
         const notasContainer = document.querySelector('#conteudo-notas');
         if (!notasContainer) {
-            console.error('Container de notas (#conteudo-notas) não encontrado');
+            console.error('Container de notas (#conteudo-notas) não encontrado!');
             return;
         }
         
-        // Procurar por cards existentes no container
+        // Verificar se existem cards
         const cards = notasContainer.querySelectorAll('.card');
-        console.log(`Encontradas ${cards.length} cards no container de notas`);
-        
-        // Verificar se temos pelo menos 2 cards (filtros + conteúdo)
-        // Se não, a estrutura ainda não está completa
-        if (cards.length < 2) {
-            console.warn('Estrutura de cards incompleta, é necessário ter pelo menos 2 cards');
-            // Não retornaremos aqui, tentaremos corrigir
+        if (cards.length < 1) {
+            console.error('Nenhum card encontrado no container de notas!');
+            return;
         }
         
-        // A segunda card geralmente contém a tabela de notas
-        let cardNotas = cards.length >= 2 ? cards[1] : null;
+        // Pegar o primeiro card, que deve ser o de filtros
+        const cardFiltros = cards[0];
+        const cardHeader = cardFiltros.querySelector('.card-header');
         
-        // Se não encontramos a card ou ela não tem o header certo, buscamos manualmente
-        if (!cardNotas || !cardNotas.querySelector('.card-header')) {
-            console.log('Buscando card de notas alternativa');
-            
-            // Verificar todas as cards
-            for (const card of cards) {
-                // Verificar se há header com texto de notas
-                const header = card.querySelector('.card-header');
-                if (header && (
-                    header.textContent.includes('Notas') ||
-                    header.textContent.includes('notas') ||
-                    header.textContent.includes('Lançamento') ||
-                    header.textContent.includes('Gestão')
-                )) {
-                    cardNotas = card;
-                    console.log('Card de notas encontrada por texto no header');
-                    break;
-                }
-                
-                // Verificar se a card tem tabela com colunas típicas de notas
-                const tabela = card.querySelector('table');
-                if (tabela) {
-                    const cabecalhos = tabela.querySelectorAll('th');
-                    let ehTabelaNotas = false;
-                    
-                    cabecalhos.forEach(th => {
-                        if (
-                            th.textContent.includes('Nota') ||
-                            th.textContent.includes('Bimestre') ||
-                            th.textContent.includes('Média') ||
-                            th.textContent.includes('Aluno')
-                        ) {
-                            ehTabelaNotas = true;
-                        }
-                    });
-                    
-                    if (ehTabelaNotas) {
-                        cardNotas = card;
-                        console.log('Card de notas encontrada pela tabela');
-                        break;
-                    }
-                }
-            }
-        }
-        
-        // Se ainda não encontramos, criamos uma nova card
-        if (!cardNotas) {
-            console.log('Criando nova card para notas');
-            cardNotas = document.createElement('div');
-            cardNotas.className = 'card shadow mb-4';
-            
-            // Colocar a card no final do container
-            notasContainer.appendChild(cardNotas);
-        }
-        
-        // Verificar se a card tem um header
-        let cardHeader = cardNotas.querySelector('.card-header');
-        
-        // Se não tiver, criamos um novo
         if (!cardHeader) {
-            console.log('Criando novo header para card de notas');
-            cardHeader = document.createElement('div');
-            cardHeader.className = 'card-header py-3 lancamento-notas';
-            
-            // Verificar se a card tem algum elemento antes do corpo
-            const primeiroElemento = cardNotas.firstChild;
-            
-            // Inserir o header no início da card
-            if (primeiroElemento) {
-                cardNotas.insertBefore(cardHeader, primeiroElemento);
-            } else {
-                cardNotas.appendChild(cardHeader);
-            }
+            console.error('Header do card de filtros não encontrado!');
+            return;
         }
         
-        // Garantir que o header tenha a classe correta
-        if (!cardHeader.classList.contains('lancamento-notas')) {
-            cardHeader.classList.add('lancamento-notas');
-        }
+        // Verificar se já existe container para botões
+        let botoesContainer = cardHeader.querySelector('.d-flex:not(.justify-content-between)');
         
-        // Verificar se já existe um container flex para os elementos
-        let headerContainer = cardHeader.querySelector('.d-flex');
-        
-        // Se não existir, criar um novo
-        if (!headerContainer) {
-            console.log('Criando container flex para header de notas');
-            
-            // Salvar o conteúdo atual para recolocá-lo depois
-            const conteudoAtual = cardHeader.innerHTML;
-            
-            // Criar estrutura base do header
-            headerContainer = document.createElement('div');
-            headerContainer.className = 'd-flex justify-content-between align-items-center w-100';
-            
-            // Título
-            const titulo = document.createElement('h5');
-            titulo.className = 'card-title mb-0';
-            titulo.textContent = 'Gestão de Notas';
-            
-            // Container de botões
-            const botoesContainer = document.createElement('div');
-            botoesContainer.className = 'd-flex';
-            
-            // Adicionar título e botões ao container principal
-            headerContainer.appendChild(titulo);
-            headerContainer.appendChild(botoesContainer);
-            
-            // Limpar o header e adicionar a nova estrutura
-            cardHeader.innerHTML = '';
-            cardHeader.appendChild(headerContainer);
-        }
-        
-        // Garantir que temos o container de botões
-        let botoesContainer = headerContainer.querySelector('div.d-flex');
+        // Se não existir, criar container para botões
         if (!botoesContainer) {
+            console.log('Criando container para botões');
             botoesContainer = document.createElement('div');
             botoesContainer.className = 'd-flex';
-            headerContainer.appendChild(botoesContainer);
+            
+            // Inserir após o título e antes do botão de toggle (se houver)
+            const titulo = cardHeader.querySelector('.m-0');
+            if (titulo) {
+                titulo.insertAdjacentElement('afterend', botoesContainer);
+            } else {
+                // Se não houver título, inserir como primeiro filho
+                cardHeader.insertBefore(botoesContainer, cardHeader.firstChild);
+            }
         }
         
-        // Verificar se existe o título e criá-lo se necessário
-        let titulo = headerContainer.querySelector('h5.card-title');
-        if (!titulo) {
-            titulo = document.createElement('h5');
-            titulo.className = 'card-title mb-0';
-            titulo.textContent = 'Gestão de Notas';
-            headerContainer.insertBefore(titulo, botoesContainer);
-        }
-        
-        // Verificar se temos o botão de nova nota
-        let btnNovaNota = botoesContainer.querySelector('#btn-nova-nota');
-        if (!btnNovaNota) {
-            console.log('Criando botão de nova nota');
-            btnNovaNota = document.createElement('button');
-            btnNovaNota.id = 'btn-nova-nota';
-            btnNovaNota.className = 'btn btn-primary';
-            btnNovaNota.innerHTML = '<i class="fas fa-plus-circle me-1"></i> Novo Lançamento';
-            botoesContainer.appendChild(btnNovaNota);
+        // Verificar se temos o botão de novo lançamento
+        let btnNovoLancamento = botoesContainer.querySelector('#btn-novo-lancamento');
+        if (!btnNovoLancamento) {
+            console.log('Criando botão de novo lançamento');
+            btnNovoLancamento = document.createElement('button');
+            btnNovoLancamento.id = 'btn-novo-lancamento';
+            btnNovoLancamento.className = 'btn btn-primary btn-sm me-2';
+            btnNovoLancamento.innerHTML = '<i class="fas fa-plus"></i> <span class="d-none d-md-inline">Novo Lançamento</span>';
+            botoesContainer.appendChild(btnNovoLancamento);
             
             // Adicionar evento usando window.novaNota para referência global
-            btnNovaNota.addEventListener('click', function() {
-                console.log('Botão de nova nota clicado');
+            btnNovoLancamento.addEventListener('click', function() {
+                console.log('Botão novo lançamento clicado');
                 if (typeof window.novaNota === 'function') {
                     window.novaNota();
+                } else if (typeof novaNota === 'function') {
+                    novaNota();
                 } else {
                     console.error('Função novaNota não encontrada ou não está definida');
                     alert('Erro: Função para novo lançamento não está disponível');
                 }
             });
-        } else if (!btnNovaNota.onclick) {
+        } else if (!btnNovoLancamento.onclick) {
             // Se o botão já existe mas não tem evento
-            btnNovaNota.addEventListener('click', function() {
-                console.log('Botão de nova nota clicado');
+            btnNovoLancamento.addEventListener('click', function() {
+                console.log('Botão novo lançamento clicado');
                 if (typeof window.novaNota === 'function') {
                     window.novaNota();
+                } else if (typeof novaNota === 'function') {
+                    novaNota();
                 } else {
                     console.error('Função novaNota não encontrada ou não está definida');
                     alert('Erro: Função para novo lançamento não está disponível');
@@ -4602,8 +4498,8 @@ function corrigirHeaderNotas() {
             console.log('Criando botão de lançamento em massa');
             btnLancamentoMassa = document.createElement('button');
             btnLancamentoMassa.id = 'btn-lancamento-massa';
-            btnLancamentoMassa.className = 'btn btn-success ms-2';
-            btnLancamentoMassa.innerHTML = '<i class="fas fa-list-ol me-1"></i> Lançamento em Massa';
+            btnLancamentoMassa.className = 'btn btn-success btn-sm me-2';
+            btnLancamentoMassa.innerHTML = '<i class="fas fa-list-ol"></i> <span class="d-none d-md-inline">Lançamento em Massa</span>';
             botoesContainer.appendChild(btnLancamentoMassa);
             
             // Adicionar evento usando window.abrirModoLancamentoEmMassa para referência global
@@ -4625,6 +4521,39 @@ function corrigirHeaderNotas() {
                 } else {
                     console.error('Função abrirModoLancamentoEmMassa não encontrada ou não está definida');
                     alert('Erro: Função para lançamento em massa não está disponível');
+                }
+            });
+        }
+        
+        // Verificar se temos o botão de gerar PDF
+        let btnGerarPDF = botoesContainer.querySelector('#btn-gerar-pdf-notas');
+        if (!btnGerarPDF) {
+            console.log('Criando botão de gerar PDF');
+            btnGerarPDF = document.createElement('button');
+            btnGerarPDF.id = 'btn-gerar-pdf-notas';
+            btnGerarPDF.className = 'btn btn-outline-success btn-sm';
+            btnGerarPDF.innerHTML = '<i class="fas fa-file-pdf"></i> <span class="d-none d-md-inline">Gerar PDF</span>';
+            botoesContainer.appendChild(btnGerarPDF);
+            
+            // Adicionar evento usando window.gerarPDFNotas para referência global
+            btnGerarPDF.addEventListener('click', function() {
+                console.log('Botão de gerar PDF clicado');
+                if (typeof window.gerarPDFNotas === 'function') {
+                    window.gerarPDFNotas();
+                } else {
+                    console.error('Função gerarPDFNotas não encontrada ou não está definida');
+                    alert('Erro: Função para gerar PDF não está disponível');
+                }
+            });
+        } else if (!btnGerarPDF.onclick) {
+            // Se o botão já existe mas não tem evento
+            btnGerarPDF.addEventListener('click', function() {
+                console.log('Botão de gerar PDF clicado');
+                if (typeof window.gerarPDFNotas === 'function') {
+                    window.gerarPDFNotas();
+                } else {
+                    console.error('Função gerarPDFNotas não encontrada ou não está definida');
+                    alert('Erro: Função para gerar PDF não está disponível');
                 }
             });
         }
