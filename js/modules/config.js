@@ -77,151 +77,34 @@ const ConfigModule = {
     fetchApi: async function(endpoint, options = {}) {
         const url = this.getApiUrl(endpoint);
         
-        // Configuração padrão para requisições
+        // Configuração padrão das requisições
         const defaultOptions = {
-            mode: 'cors',
-            cache: 'no-cache',
             headers: {
                 'Content-Type': 'application/json'
             }
         };
         
-        // Combinar opções padrão com as opções fornecidas
+        // Mesclar opções
         const fetchOptions = { ...defaultOptions, ...options };
         
-        // Adicionar headers para contornar CORS se necessário
-        if (this.state.usarProxy) {
-            fetchOptions.headers = {
-                ...fetchOptions.headers,
-                'X-Requested-With': 'XMLHttpRequest' // Header necessário para o cors-anywhere
-            };
-        }
-        
         try {
-            if (this.state.debug) {
-                console.log(`Fazendo requisição para: ${url}`, fetchOptions);
-            }
+            const response = await fetch(url, fetchOptions);
             
-            let response;
-            
-            // Se já tivemos muitos erros de CORS, use diretamente o CORSBypassModule
-            if (this.state.corsErrorCount >= this.state.maxCorsRetries) {
-                console.log(`Usando CORSBypassModule após ${this.state.corsErrorCount} falhas de CORS`);
-                response = await CORSBypassModule.fetchWithCORS(url, fetchOptions);
-            } else {
-                // Fazer a requisição normal
-                response = await fetch(url, fetchOptions);
-            }
-            
-            // Verificar por erros HTTP
+            // Verificar se a resposta foi bem-sucedida
             if (!response.ok) {
-                const errorData = await response.json().catch(() => {
-                    return { message: `Erro HTTP: ${response.status} ${response.statusText}` };
-                });
-                
-                throw new Error(errorData.message || `Erro HTTP: ${response.status}`);
+                const errorText = await response.text();
+                throw new Error(`Erro ${response.status}: ${errorText}`);
             }
             
-            // Verificar se há conteúdo na resposta
+            // Verificar se a resposta está vazia
             const contentType = response.headers.get('content-type');
             if (contentType && contentType.includes('application/json')) {
                 return await response.json();
-            } else if (response.status === 204) { // No Content
-                return { success: true };
             } else {
                 return await response.text();
             }
         } catch (error) {
-            console.error(`Erro na requisição para ${endpoint}:`, error);
-            
-            // Verificar se é um erro de CORS
-            const isCORSError = error.message && (
-                error.message.includes('CORS') || 
-                error.message.includes('cross-origin') || 
-                error.message.includes('networkerror') ||
-                error.message.includes('NetworkError')
-            );
-            
-            if (isCORSError) {
-                this.state.corsErrorCount++;
-                console.warn(`Erro de CORS detectado (#${this.state.corsErrorCount}). Tentando alternativa...`);
-                
-                // Tente uma abordagem alternativa para contornar CORS
-                if (this.state.corsErrorCount <= this.state.maxCorsRetries) {
-                    // Tente com um proxy CORS
-                    this.state.usarProxy = true;
-                    
-                    console.log(`Tentativa ${this.state.corsErrorCount}/${this.state.maxCorsRetries}: Usando proxy CORS`);
-                    return this.fetchApi(endpoint, options);
-                } else {
-                    // Se já tentamos com proxy e falhou, use o módulo de bypass mais avançado
-                    console.log(`Tentativas com proxy esgotadas. Usando CORSBypassModule...`);
-                    
-                    try {
-                        const bypassUrl = this.state.apiUrl + '/' + (endpoint.startsWith('/') ? endpoint.substring(1) : endpoint);
-                        
-                        // Tentar com fetchWithCORS
-                        const response = await CORSBypassModule.fetchWithCORS(bypassUrl, options);
-                        
-                        if (!response.ok) {
-                            throw new Error(`Erro HTTP: ${response.status}`);
-                        }
-                        
-                        // Verificar se há conteúdo na resposta
-                        const contentType = response.headers.get('content-type');
-                        if (contentType && contentType.includes('application/json')) {
-                            return await response.json();
-                        } else if (response.status === 204) { // No Content
-                            return { success: true };
-                        } else {
-                            return await response.text();
-                        }
-                    } catch (bypassError) {
-                        console.error("Erro ao usar CORSBypassModule:", bypassError);
-                        
-                        // Se falhar com fetchWithCORS, tente com iframe como último recurso
-                        try {
-                            console.log("Tentando com iframe como último recurso...");
-                            const bypassUrl = this.state.apiUrl + '/' + (endpoint.startsWith('/') ? endpoint.substring(1) : endpoint);
-                            
-                            return await CORSBypassModule.requestViaIframe(
-                                bypassUrl, 
-                                options.method || 'GET', 
-                                options.body ? JSON.parse(options.body) : null
-                            );
-                        } catch (iframeError) {
-                            console.error("Todas as tentativas de contornar CORS falharam:", iframeError);
-                            
-                            // Se a opção catchError for true, retornar o erro como objeto
-                            if (options.catchError) {
-                                return { 
-                                    error: true, 
-                                    message: "Não foi possível acessar o servidor devido a restrições de segurança (CORS). Todas as alternativas falharam." 
-                                };
-                            }
-                            
-                            // Caso contrário, propagar o erro
-                            throw new Error("Falha em todas as tentativas de contornar CORS. Servidor inacessível.");
-                        }
-                    }
-                }
-            }
-            
-            // Se temos a opção de capturar o erro e a requisição falhou sem proxy, tentar com proxy
-            if (!this.state.usarProxy && !options.catchError && !isCORSError) {
-                console.log(`Tentando novamente com proxy para outros erros: ${endpoint}`);
-                this.state.usarProxy = true;
-                
-                // Tentar novamente com proxy
-                return this.fetchApi(endpoint, { ...options, catchError: true });
-            }
-            
-            // Se a opção catchError for true, retornar o erro como objeto
-            if (options.catchError) {
-                return { error: true, message: error.message };
-            }
-            
-            // Caso contrário, propagar o erro
+            console.error(`Erro na requisição para ${url}:`, error);
             throw error;
         }
     },

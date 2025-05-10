@@ -46,6 +46,9 @@ const App = {
             // Inicializar módulo inicial (dashboard)
             await this.ativarSecao('dashboard-link');
             
+            // Criar container para toasts
+            this.criarToastContainer();
+            
             console.log("Aplicação inicializada com sucesso!");
         } catch (error) {
             console.error("Erro ao inicializar aplicação:", error);
@@ -243,6 +246,21 @@ const App = {
                 </div>
             `;
         }
+    },
+    
+    // Criar container para mensagens toast
+    criarToastContainer: function() {
+        // Verificar se já existe
+        if (document.getElementById('toast-container')) return;
+        
+        // Criar container
+        const toastContainer = document.createElement('div');
+        toastContainer.id = 'toast-container';
+        toastContainer.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+        toastContainer.style.zIndex = '11';
+        
+        // Adicionar ao body
+        document.body.appendChild(toastContainer);
     }
 };
 
