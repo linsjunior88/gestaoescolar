@@ -9,6 +9,36 @@ let professorDisciplinas = [];
 let turmasFiltro, disciplinasFiltro, alunosFiltro;
 let notasTabela, filtroAno, filtroBimestre, filtroTurma, filtroDisciplina, filtroAluno, btnFiltrar;
 
+// Função para configurar o botão de gerar PDF (centralizada)
+function configurarBotaoGerarPDF(btnGerarPDF) {
+    // Verificar se o botão existe e se ainda não tem um evento registrado
+    if (btnGerarPDF && !btnGerarPDF.dataset.pdfConfigured) {
+        console.log('Configurando botão de gerar PDF');
+        
+        btnGerarPDF.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('Botão de gerar PDF clicado');
+            
+            // Verificar se há notas carregadas
+            const notasLista = document.getElementById('tabela-notas');
+            if (!notasLista || notasLista.querySelectorAll('tbody tr').length === 0) {
+                alert("Não há notas para gerar o relatório. Por favor, filtre alguma turma primeiro.");
+                return;
+            }
+            
+            if (typeof window.gerarPDFNotas === 'function') {
+                window.gerarPDFNotas();
+            } else {
+                console.error("Função gerarPDFNotas não está disponível");
+                alert("Erro: A função para gerar PDF não está disponível. Atualize a página e tente novamente.");
+            }
+        });
+        
+        // Marcar que o botão já foi configurado
+        btnGerarPDF.dataset.pdfConfigured = 'true';
+    }
+}
+
 // Função para carregar turmas do professor - Precisa estar definida antes de ser usada
 function carregarTurmasDoProfessor(idProfessor) {
     console.log('Função carregarTurmasDoProfessor chamada para professor:', idProfessor);
@@ -166,6 +196,7 @@ function carregarAlunosDaTurma(idTurma) {
 window.carregarTurmasDoProfessor = carregarTurmasDoProfessor;
 window.carregarDisciplinasDoProfessor = carregarDisciplinasDoProfessor;
 window.carregarAlunosDaTurma = carregarAlunosDaTurma;
+window.configurarBotaoGerarPDF = configurarBotaoGerarPDF;
 
 // Inicialização quando o DOM estiver pronto
 document.addEventListener('DOMContentLoaded', function() {
@@ -234,24 +265,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Configurar botão para gerar PDF
     const btnGerarPDF = document.getElementById('btn-gerar-pdf-notas');
     if (btnGerarPDF) {
-        btnGerarPDF.addEventListener('click', function(e) {
-            e.preventDefault();
-            
-            // Verificar se há notas carregadas
-            const notasLista = document.getElementById('notas-lista');
-            if (!notasLista || notasLista.querySelectorAll('tr').length === 0) {
-                alert("Não há notas para gerar o relatório. Por favor, filtre alguma turma primeiro.");
-                return;
-            }
-            
-            // Chamar a função de geração de PDF
-            if (typeof window.gerarPDFNotas === 'function') {
-                window.gerarPDFNotas();
-            } else {
-                console.error("Função gerarPDFNotas não está disponível");
-                alert("Função de geração de PDF não está disponível. Recarregue a página e tente novamente.");
-            }
-        });
+        configurarBotaoGerarPDF(btnGerarPDF);
     }
     
     // Exportar funções para o escopo global
@@ -2128,24 +2142,7 @@ function initNotas() {
         // Configurar botão para gerar PDF
         const btnGerarPDF = document.getElementById('btn-gerar-pdf-notas');
         if (btnGerarPDF) {
-            btnGerarPDF.addEventListener('click', function(e) {
-                e.preventDefault();
-                
-                // Verificar se há notas carregadas
-                const notasLista = document.getElementById('notas-lista');
-                if (!notasLista || notasLista.querySelectorAll('tr').length === 0) {
-                    alert("Não há notas para gerar o relatório. Por favor, filtre alguma turma primeiro.");
-                    return;
-                }
-                
-                // Chamar a função de geração de PDF
-                if (typeof window.gerarPDFNotas === 'function') {
-                    window.gerarPDFNotas();
-                } else {
-                    console.error("Função gerarPDFNotas não está disponível");
-                    alert("Função de geração de PDF não está disponível. Recarregue a página e tente novamente.");
-                }
-            });
+            configurarBotaoGerarPDF(btnGerarPDF);
         }
         
         console.log('Módulo de notas inicializado com sucesso!');
@@ -4373,35 +4370,16 @@ function corrigirHeaderNotas() {
         // Verificar se temos o botão de gerar PDF
         let btnGerarPDF = botoesContainer.querySelector('#btn-gerar-pdf-notas');
         if (!btnGerarPDF) {
-            console.log('Criando botão de gerar PDF');
+            // Criar botão se não existir
             btnGerarPDF = document.createElement('button');
             btnGerarPDF.id = 'btn-gerar-pdf-notas';
             btnGerarPDF.className = 'btn btn-outline-success btn-sm';
             btnGerarPDF.innerHTML = '<i class="fas fa-file-pdf"></i> <span class="d-none d-md-inline">Gerar PDF</span>';
             botoesContainer.appendChild(btnGerarPDF);
-            
-            // Adicionar evento usando window.gerarPDFNotas para referência global
-            btnGerarPDF.addEventListener('click', function() {
-                console.log('Botão de gerar PDF clicado');
-                if (typeof window.gerarPDFNotas === 'function') {
-                    window.gerarPDFNotas();
-                } else {
-                    console.error('Função gerarPDFNotas não encontrada ou não está definida');
-                    alert('Erro: Função para gerar PDF não está disponível');
-                }
-            });
-        } else if (!btnGerarPDF.onclick) {
-            // Se o botão já existe mas não tem evento
-            btnGerarPDF.addEventListener('click', function() {
-                console.log('Botão de gerar PDF clicado');
-                if (typeof window.gerarPDFNotas === 'function') {
-                    window.gerarPDFNotas();
-                } else {
-                    console.error('Função gerarPDFNotas não encontrada ou não está definida');
-                    alert('Erro: Função para gerar PDF não está disponível');
-                }
-            });
         }
+        
+        // Aplicar configuração centralizada
+        configurarBotaoGerarPDF(btnGerarPDF);
         
         console.log('Header da card de notas corrigido com sucesso');
     } catch (error) {

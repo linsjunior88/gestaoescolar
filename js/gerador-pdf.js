@@ -3,6 +3,9 @@
  * Utiliza as bibliotecas jsPDF e jspdf-autotable
  */
 
+// Variável para controlar se a geração de PDF já está em andamento
+let gerandoPDF = false;
+
 // Função utilitária para carregar um script JS dinamicamente
 function carregarScript(url) {
     return new Promise((resolve, reject) => {
@@ -78,6 +81,15 @@ async function garantirBibliotecasPDF() {
 
 // Função para gerar um PDF com as notas da tabela
 async function gerarPDFNotas() {
+    // Verificar se já está gerando PDF para evitar múltiplas execuções
+    if (gerandoPDF) {
+        console.log('Já existe uma geração de PDF em andamento. Aguarde...');
+        return;
+    }
+    
+    // Marcar que está gerando o PDF
+    gerandoPDF = true;
+    
     console.log('Iniciando geração de PDF das notas');
     
     try {
@@ -187,15 +199,15 @@ async function gerarPDFNotas() {
             doc.text(filtroInfo, doc.internal.pageSize.getWidth() / 2, 23, { align: 'center' });
         }
         
-        // Definir colunas para o PDF
+        // Definir colunas para o PDF - Alterado "Idaluno" para "Matric."
         const colunas = [
-            { header: 'Idaluno', dataKey: 'idaluno' },
+            { header: 'Matric.', dataKey: 'idaluno' },
             { header: 'Aluno', dataKey: 'aluno' },
             { header: 'Disciplina', dataKey: 'disciplina' },
             { header: 'Turma', dataKey: 'turma' },
             { header: 'Bimestre', dataKey: 'bimestre' },
-            { header: 'N. Mensal', dataKey: 'mensal' },
-            { header: 'N. Bimestral', dataKey: 'bimestral' },
+            { header: 'N.Mensal', dataKey: 'mensal' },
+            { header: 'N.Bimestral', dataKey: 'bimestral' },
             { header: 'Recuperação', dataKey: 'recuperacao' },
             { header: 'Média', dataKey: 'media' },
             { header: 'Status', dataKey: 'status' }
@@ -209,8 +221,35 @@ async function gerarPDFNotas() {
             // Pular linhas de mensagem (como "Nenhum resultado encontrado")
             if (linha.cells.length <= 1) return;
             
-            // Obter o ID do aluno do atributo data-aluno-id ou data-id
-            const alunoId = linha.getAttribute('data-aluno-id') || linha.getAttribute('data-id') || 'N/A';
+            // Melhorar a obtenção do ID do aluno - verificar primeiro se está na linha
+            let alunoId = 'N/A';
+            try {
+                // Tentar extrair do atributo data-aluno-id
+                alunoId = linha.getAttribute('data-aluno-id');
+                
+                // Se não encontrou, tentar do data-id
+                if (!alunoId) {
+                    alunoId = linha.getAttribute('data-id');
+                }
+                
+                // Se ainda não encontrou, procurar em células da tabela que possam conter o ID
+                if (!alunoId) {
+                    // Verifica se a primeira célula tem um atributo data-id
+                    const primeiraCell = linha.cells[0];
+                    if (primeiraCell && primeiraCell.hasAttribute('data-id')) {
+                        alunoId = primeiraCell.getAttribute('data-id');
+                    }
+                }
+                
+                // Verificar se o ID foi encontrado
+                if (!alunoId) {
+                    console.warn('Não foi possível encontrar o ID do aluno para a linha:', linha);
+                    alunoId = 'N/A';
+                }
+            } catch (err) {
+                console.error('Erro ao tentar extrair ID do aluno:', err);
+                alunoId = 'N/A';
+            }
             
             // Obter os dados das células
             const aluno = linha.cells[0].textContent.trim();
@@ -243,29 +282,39 @@ async function gerarPDFNotas() {
             throw new Error('Nenhum dado válido encontrado na tabela.');
         }
         
-        // Configurações da tabela
+        // Configurações da tabela - Ajustado larguras das colunas
         const options = {
             startY: 30, // Posição inicial da tabela
             headStyles: {
                 fillColor: [41, 98, 255], // Cor azul para o cabeçalho
                 textColor: 255,
-                fontStyle: 'bold'
+                fontStyle: 'bold',
+                halign: 'center', // Centralizar cabeçalhos
+                valign: 'middle',  // Alinhar verticalmente ao meio
+                fontSize: 10,      // Reduzir tamanho da fonte para evitar quebras
+                cellPadding: 2     // Reduzir padding
             },
             alternateRowStyles: {
                 fillColor: [240, 240, 240] // Cor cinza claro para linhas alternadas
             },
             // Definir larguras das colunas para melhor visualização
             columnStyles: {
-                idaluno: { cellWidth: 20 },
-                aluno: { cellWidth: 40 },
-                disciplina: { cellWidth: 40 },
-                turma: { cellWidth: 20 },
-                bimestre: { cellWidth: 20 },
-                mensal: { cellWidth: 20 },
-                bimestral: { cellWidth: 20 },
-                recuperacao: { cellWidth: 20 },
-                media: { cellWidth: 20 },
-                status: { cellWidth: 25 }
+                idaluno: { cellWidth: 18, halign: 'center' },
+                aluno: { cellWidth: 40, halign: 'left' },
+                disciplina: { cellWidth: 35, halign: 'left' },
+                turma: { cellWidth: 18, halign: 'center' },
+                bimestre: { cellWidth: 15, halign: 'center' },
+                mensal: { cellWidth: 18, halign: 'center' },
+                bimestral: { cellWidth: 18, halign: 'center' },
+                recuperacao: { cellWidth: 18, halign: 'center' },
+                media: { cellWidth: 15, halign: 'center' },
+                status: { cellWidth: 20, halign: 'center' }
+            },
+            // Impedir quebra de linha nos textos
+            styles: {
+                overflow: 'ellipsize',
+                cellWidth: 'wrap',
+                fontSize: 8
             }
         };
         
@@ -338,6 +387,9 @@ async function gerarPDFNotas() {
     } catch (error) {
         console.error('Erro ao gerar PDF:', error);
         alert(`Erro ao gerar PDF: ${error.message}`);
+    } finally {
+        // Sempre liberar o controle quando terminar
+        gerandoPDF = false;
     }
 }
 

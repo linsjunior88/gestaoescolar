@@ -102,17 +102,23 @@ function inicializarTabelaNotas() {
             // Configurar o botão de gerar PDF
             const btnGerarPDF = document.getElementById('btn-gerar-pdf-notas');
             if (btnGerarPDF && !btnGerarPDF.hasEventListener) {
-                btnGerarPDF.addEventListener('click', function() {
-                    console.log('Botão gerar PDF clicado');
-                    if (typeof window.gerarPDFNotas === 'function') {
-                        window.gerarPDFNotas();
-                    } else if (typeof gerarPDFNotas === 'function') {
-                        gerarPDFNotas();
-                    } else {
-                        console.error('Função gerarPDFNotas não encontrada');
-                        alert('Erro: Função de geração de PDF não encontrada');
-                    }
-                });
+                // Usar a função centralizada se estiver disponível
+                if (typeof window.configurarBotaoGerarPDF === 'function') {
+                    window.configurarBotaoGerarPDF(btnGerarPDF);
+                } else {
+                    console.log('Função centralizada configurarBotaoGerarPDF não disponível, configurando localmente');
+                    btnGerarPDF.addEventListener('click', function() {
+                        console.log('Botão gerar PDF clicado');
+                        if (typeof window.gerarPDFNotas === 'function') {
+                            window.gerarPDFNotas();
+                        } else if (typeof gerarPDFNotas === 'function') {
+                            gerarPDFNotas();
+                        } else {
+                            console.error('Função gerarPDFNotas não encontrada');
+                            alert('Erro: Função de geração de PDF não encontrada');
+                        }
+                    });
+                }
                 btnGerarPDF.hasEventListener = true;
             }
         }, 100);
