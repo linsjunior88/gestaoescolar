@@ -79,6 +79,181 @@ async function garantirBibliotecasPDF() {
     return true;
 }
 
+// Função para obter o ID do aluno usando várias estratégias
+function obterIdAluno(linha) {
+    // Primeiro verifica o atributo data-aluno-id da linha
+    let alunoId = linha.getAttribute('data-aluno-id');
+    if (alunoId) return alunoId;
+    
+    // Tenta obter do atributo data-id da linha
+    alunoId = linha.getAttribute('data-id');
+    if (alunoId) return alunoId;
+    
+    // Verifica se existe algum atributo na linha que contenha 'aluno' e 'id'
+    for (let i = 0; i < linha.attributes.length; i++) {
+        const attrName = linha.attributes[i].name;
+        if (attrName.includes('aluno') && attrName.includes('id')) {
+            return linha.attributes[i].value;
+        }
+    }
+    
+    // Verifica se a primeira célula contém o ID do aluno (comumente o caso)
+    try {
+        const alunoCelula = linha.cells[0];
+        if (alunoCelula) {
+            // Verifica se a célula tem algum elemento interno com um ID
+            const elementos = alunoCelula.querySelectorAll('[id], [data-id]');
+            if (elementos.length > 0) {
+                const elemento = elementos[0];
+                const elementoId = elemento.id || elemento.getAttribute('data-id');
+                if (elementoId) return elementoId;
+            }
+            
+            // Verifica se a célula tem um texto que parece ser um ID (ALUxxx ou apenas números)
+            const texto = alunoCelula.textContent.trim();
+            if (/^ALU\d+$/i.test(texto) || /^A\d+$/i.test(texto) || /^\d+$/.test(texto)) {
+                return texto;
+            }
+        }
+    } catch (err) {
+        console.error('Erro ao analisar célula do aluno:', err);
+    }
+    
+    // Tenta extrair o ID do aluno com base no texto da tabela
+    // Busca padrões como "ID: ALU001" ou similares no texto
+    try {
+        const textoCompleto = linha.textContent;
+        const matchId = textoCompleto.match(/ID\s*[:]\s*([A-Z0-9]+)/i);
+        if (matchId && matchId[1]) {
+            return matchId[1];
+        }
+        
+        // Procura por padrões que poderiam ser IDs de aluno
+        const matchAluId = textoCompleto.match(/ALU[0-9]+/i);
+        if (matchAluId) {
+            return matchAluId[0];
+        }
+    } catch (err) {
+        console.error('Erro ao analisar texto para extração de ID:', err);
+    }
+    
+    // Se ainda não encontrou, busca em cada célula da linha
+    try {
+        for (let i = 0; i < linha.cells.length; i++) {
+            const celula = linha.cells[i];
+            
+            // Tenta encontrar IDs nos atributos
+            if (celula.hasAttribute('data-aluno-id')) {
+                return celula.getAttribute('data-aluno-id');
+            }
+            if (celula.hasAttribute('data-id')) {
+                return celula.getAttribute('data-id');
+            }
+            
+            // Verifica elementos filhos que podem ter IDs
+            const elementos = celula.querySelectorAll('[data-id], [data-aluno-id], [id]');
+            for (let j = 0; j < elementos.length; j++) {
+                const elemento = elementos[j];
+                const elementoId = elemento.getAttribute('data-aluno-id') || 
+                                  elemento.getAttribute('data-id') || 
+                                  elemento.id;
+                if (elementoId && (elementoId.includes('ALU') || /^\d+$/.test(elementoId))) {
+                    return elementoId;
+                }
+            }
+            
+            // Verifica o texto da célula
+            const textoCelula = celula.textContent.trim();
+            if (/^ALU\d+$/i.test(textoCelula) || /^A\d+$/i.test(textoCelula)) {
+                return textoCelula;
+            }
+        }
+    } catch (err) {
+        console.error('Erro ao procurar ID em células:', err);
+    }
+    
+    console.warn('Não foi possível encontrar o ID do aluno para a linha:', linha);
+    return 'N/A';
+}
+
+// Função auxiliar para extrair a matrícula do aluno da tabela
+function extrairMatriculasAlunos() {
+    console.log('Buscando IDs de alunos na tabela...');
+    const tabela = document.getElementById('tabela-notas');
+    if (!tabela) return {};
+    
+    const tbody = tabela.querySelector('tbody');
+    if (!tbody) return {};
+    
+    const linhas = tbody.querySelectorAll('tr');
+    const alunos = {};
+    
+    linhas.forEach((linha, index) => {
+        if (linha.cells.length <= 1) return;
+        
+        try {
+            // Pegar o nome do aluno (geralmente na primeira célula)
+            const nomeAluno = linha.cells[0].textContent.trim();
+            
+            // Tentar várias abordagens para obter o ID
+            // 1. Atributos da linha
+            const matriculaDosDados = linha.getAttribute('data-aluno-id') || 
+                                      linha.getAttribute('data-id');
+            
+            // 2. Verificar células específicas que possam conter IDs
+            const idDaPrimeiraCelula = linha.cells[0].getAttribute('data-id') || 
+                                      (linha.cells[0].querySelector('[data-id]') ? 
+                                      linha.cells[0].querySelector('[data-id]').getAttribute('data-id') : null);
+            
+            // 3. Verificar elementos com classe ou ID específicos
+            const elementosComID = linha.querySelectorAll('[id*="aluno"], [class*="aluno"]');
+            let idDosElementos = null;
+            if (elementosComID.length > 0) {
+                for (const elem of elementosComID) {
+                    if (elem.id && elem.id.includes('ALU')) {
+                        idDosElementos = elem.id;
+                        break;
+                    }
+                    if (elem.getAttribute('data-id')) {
+                        idDosElementos = elem.getAttribute('data-id');
+                        break;
+                    }
+                }
+            }
+            
+            // 4. Verificar botões ou links que podem ter o ID nos eventos
+            const botoes = linha.querySelectorAll('button, a');
+            let idDosBotoes = null;
+            if (botoes.length > 0) {
+                for (const botao of botoes) {
+                    const onclick = botao.getAttribute('onclick');
+                    if (onclick && onclick.includes('ALU')) {
+                        const match = onclick.match(/['"]([A-Z0-9]+)['"]/i);
+                        if (match && match[1]) {
+                            idDosBotoes = match[1];
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            // Consolidar todas as tentativas
+            const idFinal = matriculaDosDados || idDaPrimeiraCelula || idDosElementos || idDosBotoes || 'N/A';
+            
+            alunos[nomeAluno] = {
+                linha: index + 1,
+                matricula: idFinal
+            };
+            
+        } catch (err) {
+            console.error('Erro ao processar linha:', err);
+        }
+    });
+    
+    console.log('Matrículas encontradas:', alunos);
+    return alunos;
+}
+
 // Função para gerar um PDF com as notas da tabela
 async function gerarPDFNotas() {
     // Verificar se já está gerando PDF para evitar múltiplas execuções
@@ -93,9 +268,6 @@ async function gerarPDFNotas() {
     console.log('Iniciando geração de PDF das notas');
     
     try {
-        // Primeiro garantir que as bibliotecas estejam disponíveis
-        await garantirBibliotecasPDF();
-        
         // Verificar se a tabela de notas existe
         const tabela = document.getElementById('tabela-notas');
         if (!tabela) {
@@ -107,6 +279,13 @@ async function gerarPDFNotas() {
         if (!tbody || tbody.querySelectorAll('tr').length === 0) {
             throw new Error('Nenhuma nota encontrada na tabela. Filtre uma turma primeiro.');
         }
+        
+        // Extrair e mostrar no console as matrículas dos alunos antes de gerar o PDF
+        const matriculas = extrairMatriculasAlunos();
+        console.log('Matrículas dos alunos encontradas:', matriculas);
+        
+        // Garantir que as bibliotecas estejam disponíveis
+        await garantirBibliotecasPDF();
         
         // Criar documento PDF usando a forma mais compatível possível
         let doc;
@@ -208,7 +387,7 @@ async function gerarPDFNotas() {
             { header: 'Bimestre', dataKey: 'bimestre' },
             { header: 'N.Mensal', dataKey: 'mensal' },
             { header: 'N.Bimestral', dataKey: 'bimestral' },
-            { header: 'Recuperação', dataKey: 'recuperacao' },
+            { header: 'Recup.', dataKey: 'recuperacao' },
             { header: 'Média', dataKey: 'media' },
             { header: 'Status', dataKey: 'status' }
         ];
@@ -217,39 +396,13 @@ async function gerarPDFNotas() {
         const dados = [];
         const linhas = tbody.querySelectorAll('tr');
         
+        // Excluir qualquer linha que não tenha conteúdo ou seja apenas de mensagem
         linhas.forEach(linha => {
             // Pular linhas de mensagem (como "Nenhum resultado encontrado")
             if (linha.cells.length <= 1) return;
             
-            // Melhorar a obtenção do ID do aluno - verificar primeiro se está na linha
-            let alunoId = 'N/A';
-            try {
-                // Tentar extrair do atributo data-aluno-id
-                alunoId = linha.getAttribute('data-aluno-id');
-                
-                // Se não encontrou, tentar do data-id
-                if (!alunoId) {
-                    alunoId = linha.getAttribute('data-id');
-                }
-                
-                // Se ainda não encontrou, procurar em células da tabela que possam conter o ID
-                if (!alunoId) {
-                    // Verifica se a primeira célula tem um atributo data-id
-                    const primeiraCell = linha.cells[0];
-                    if (primeiraCell && primeiraCell.hasAttribute('data-id')) {
-                        alunoId = primeiraCell.getAttribute('data-id');
-                    }
-                }
-                
-                // Verificar se o ID foi encontrado
-                if (!alunoId) {
-                    console.warn('Não foi possível encontrar o ID do aluno para a linha:', linha);
-                    alunoId = 'N/A';
-                }
-            } catch (err) {
-                console.error('Erro ao tentar extrair ID do aluno:', err);
-                alunoId = 'N/A';
-            }
+            // Obter o ID do aluno usando a função específica
+            const alunoId = obterIdAluno(linha);
             
             // Obter os dados das células
             const aluno = linha.cells[0].textContent.trim();
@@ -260,7 +413,14 @@ async function gerarPDFNotas() {
             const bimestral = linha.cells[5].textContent.trim();
             const recuperacao = linha.cells[6].textContent.trim();
             const media = linha.cells[7].textContent.trim();
-            const status = linha.cells[8].textContent.trim();
+            
+            // Verificação para evitar status duplicado
+            let status = linha.cells[8].textContent.trim();
+            // Corrigir texto duplicado "AprovadoAprovado" ou "ReprovadoReprovado"
+            status = status.replace(/Aprovado{2,}/g, 'Aprovado')
+                          .replace(/Reprovado{2,}/g, 'Reprovado');
+            if (status.includes('Aprovado')) status = 'Aprovado';
+            if (status.includes('Reprovado')) status = 'Reprovado';
             
             // Adicionar linha ao array de dados
             dados.push({
@@ -282,7 +442,7 @@ async function gerarPDFNotas() {
             throw new Error('Nenhum dado válido encontrado na tabela.');
         }
         
-        // Configurações da tabela - Ajustado larguras das colunas
+        // Configurações da tabela - Ajustado larguras das colunas para não truncar
         const options = {
             startY: 30, // Posição inicial da tabela
             headStyles: {
@@ -291,30 +451,50 @@ async function gerarPDFNotas() {
                 fontStyle: 'bold',
                 halign: 'center', // Centralizar cabeçalhos
                 valign: 'middle',  // Alinhar verticalmente ao meio
-                fontSize: 10,      // Reduzir tamanho da fonte para evitar quebras
-                cellPadding: 2     // Reduzir padding
+                fontSize: 9,       // Reduzir tamanho da fonte para evitar quebras
+                cellPadding: {top: 3, right: 2, bottom: 3, left: 2} // Padding mais preciso
+            },
+            bodyStyles: {
+                fontSize: 8       // Tamanho de fonte para o corpo da tabela
             },
             alternateRowStyles: {
                 fillColor: [240, 240, 240] // Cor cinza claro para linhas alternadas
             },
             // Definir larguras das colunas para melhor visualização
             columnStyles: {
-                idaluno: { cellWidth: 18, halign: 'center' },
-                aluno: { cellWidth: 40, halign: 'left' },
-                disciplina: { cellWidth: 35, halign: 'left' },
-                turma: { cellWidth: 18, halign: 'center' },
-                bimestre: { cellWidth: 15, halign: 'center' },
-                mensal: { cellWidth: 18, halign: 'center' },
-                bimestral: { cellWidth: 18, halign: 'center' },
-                recuperacao: { cellWidth: 18, halign: 'center' },
-                media: { cellWidth: 15, halign: 'center' },
-                status: { cellWidth: 20, halign: 'center' }
+                idaluno: { cellWidth: 15, halign: 'center' },
+                aluno: { cellWidth: 35, halign: 'left' },
+                disciplina: { cellWidth: 30, halign: 'left' },
+                turma: { cellWidth: 15, halign: 'center' },
+                bimestre: { cellWidth: 18, halign: 'center' },
+                mensal: { cellWidth: 15, halign: 'center' },
+                bimestral: { cellWidth: 20, halign: 'center' },
+                recuperacao: { cellWidth: 15, halign: 'center' },
+                media: { cellWidth: 12, halign: 'center' },
+                status: { cellWidth: 18, halign: 'center' }
             },
-            // Impedir quebra de linha nos textos
+            // Impedir quebra de linha nos textos e lidar com células muito estreitas
             styles: {
-                overflow: 'ellipsize',
-                cellWidth: 'wrap',
-                fontSize: 8
+                overflow: 'ellipsize',  // Truncar com ... se não couber
+                cellWidth: 'auto',      // Usar a largura disponível sem quebrar palavras
+                fontSize: 8,
+                minCellHeight: 8
+            },
+            // Garantir que todos os textos caibam dentro das células
+            willDrawCell: function(data) {
+                // Reduzir o tamanho da fonte se o texto for muito longo para a célula
+                if (data.cell.text && typeof data.cell.text === 'string') {
+                    const text = data.cell.text;
+                    const maxWidth = data.cell.styles.cellWidth;
+                    
+                    // Aproximação do tamanho do texto baseado na fonte atual
+                    const textWidth = text.length * data.cell.styles.fontSize * 0.5;
+                    
+                    if (textWidth > maxWidth) {
+                        // Reduzir a fonte para caber
+                        data.cell.styles.fontSize = Math.floor(maxWidth / (text.length * 0.5));
+                    }
+                }
             }
         };
         
@@ -327,21 +507,24 @@ async function gerarPDFNotas() {
                 // Estilo para células com status
                 didDrawCell: function(data) {
                     if (data.column.dataKey === 'status') {
-                        if (data.cell.raw === 'Aprovado') {
+                        const statusText = data.cell.raw;
+                        
+                        // Garantir que temos um status válido e não duplicado
+                        if (statusText === 'Aprovado') {
                             doc.setFillColor(200, 255, 200); // Verde claro
                             doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height, 'F');
                             doc.setTextColor(0, 100, 0); // Verde escuro
-                            doc.text(data.cell.raw, data.cell.x + data.cell.width / 2, data.cell.y + data.cell.height / 2, {
+                            doc.text('Aprovado', data.cell.x + data.cell.width / 2, data.cell.y + data.cell.height / 2, {
                                 align: 'center',
                                 baseline: 'middle'
                             });
                             return true; // Para evitar que o plugin desenhe o texto
                         }
-                        else if (data.cell.raw === 'Reprovado') {
+                        else if (statusText === 'Reprovado' || statusText.includes('Reprovado')) {
                             doc.setFillColor(255, 200, 200); // Vermelho claro
                             doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height, 'F');
                             doc.setTextColor(100, 0, 0); // Vermelho escuro
-                            doc.text(data.cell.raw, data.cell.x + data.cell.width / 2, data.cell.y + data.cell.height / 2, {
+                            doc.text('Reprovado', data.cell.x + data.cell.width / 2, data.cell.y + data.cell.height / 2, {
                                 align: 'center',
                                 baseline: 'middle'
                             });
@@ -380,9 +563,6 @@ async function gerarPDFNotas() {
         doc.save(nomeArquivo);
         
         console.log(`PDF gerado com sucesso: ${nomeArquivo}`);
-        
-        // Mostrar mensagem de sucesso
-        alert(`PDF gerado com sucesso: ${nomeArquivo}`);
         
     } catch (error) {
         console.error('Erro ao gerar PDF:', error);
