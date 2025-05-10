@@ -1773,8 +1773,8 @@ function initNotas() {
         }
         
         // Corrigir o header da card depois que a tabela foi inicializada
-        corrigirHeaderNotas();
-        
+    corrigirHeaderNotas();
+    
         // Encontrar o container de notas
         const notas_container = document.querySelector('#conteudo-notas');
         if (!notas_container) {
@@ -1977,11 +1977,11 @@ function initNotas() {
             }
             
             return;
-        }
-        
-        // Inicializar valores padrão para o ano
-        if (filtroAno) {
-            const anoAtual = new Date().getFullYear();
+    }
+    
+    // Inicializar valores padrão para o ano
+    if (filtroAno) {
+        const anoAtual = new Date().getFullYear();
         let opcoesAnos = '';
         
             for (let ano = anoAtual - 1; ano <= anoAtual + 2; ano++) {
@@ -2054,7 +2054,7 @@ function initNotas() {
                                     options += `<option value="${turma.id}">${turma.nome}</option>`;
                 });
                                 filtroTurma.innerHTML = options;
-                                
+                
                                 // Validar os filtros após carregar
                                 validarFiltrosNotas();
             })
@@ -2084,7 +2084,7 @@ function initNotas() {
                 // Atualizar select de alunos
                 if (typeof window.carregarAlunosParaFiltro === 'function') {
                     window.carregarAlunosParaFiltro(idTurma);
-                } else {
+            } else {
                     console.error('Função carregarAlunosParaFiltro não está disponível globalmente');
                 }
                 
@@ -2116,7 +2116,7 @@ function initNotas() {
                 console.log('Botão de filtrar notas clicado');
                 if (typeof window.carregarNotas === 'function') {
                     window.carregarNotas();
-            } else {
+    } else {
                     console.error('Função carregarNotas não está disponível globalmente');
                     alert('Erro ao filtrar notas. Por favor, recarregue a página.');
             }
@@ -2880,24 +2880,24 @@ function editarNota(id) {
         
         // Mostrar o card
         cardLancamento.classList.remove('d-none');
-        
-        // Verificar se o formulário existe
-        const form = document.getElementById('form-nota');
-        if (!form) {
-            console.error('Formulário de notas não encontrado!');
+    
+    // Verificar se o formulário existe
+    const form = document.getElementById('form-nota');
+    if (!form) {
+        console.error('Formulário de notas não encontrado!');
             alert('Erro: Formulário de notas não encontrado.');
-            return;
-        }
-        
-        // Atualizar o título do formulário
+        return;
+    }
+    
+    // Atualizar o título do formulário
         const formTitulo = document.getElementById('form-nota-titulo');
         if (formTitulo) {
             formTitulo.textContent = 'Editar Lançamento de Notas';
         }
-        
+    
         // Configurar o cancelamento
-        const btnCancelar = document.getElementById('btn-cancelar-nota');
-        if (btnCancelar) {
+    const btnCancelar = document.getElementById('btn-cancelar-nota');
+    if (btnCancelar) {
             // Remover eventos existentes
             const clonedBtn = btnCancelar.cloneNode(true);
             btnCancelar.parentNode.replaceChild(clonedBtn, btnCancelar);
@@ -2914,7 +2914,7 @@ function editarNota(id) {
         }
         
         // Configurar o formulário para edição
-        form.setAttribute('data-mode', 'edit');
+    form.setAttribute('data-mode', 'edit');
         form.setAttribute('data-nota-id', id);
         
         // Garantir que o evento de submit está configurado
@@ -2931,12 +2931,12 @@ function editarNota(id) {
         
         // Buscar os dados da nota pelo ID
         fetch(CONFIG.getApiUrl(`/notas/${id}`))
-            .then(response => {
-                if (!response.ok) {
+        .then(response => {
+            if (!response.ok) {
                     throw new Error(`Erro ao obter dados da nota: ${response.status}`);
-                }
-                return response.json();
-            })
+            }
+            return response.json();
+        })
             .then(nota => {
                 console.log('Dados da nota obtidos:', nota);
                 
@@ -3097,8 +3097,8 @@ function editarNota(id) {
                 
                 // Rolar para o formulário
                 cardLancamento.scrollIntoView({ behavior: 'smooth' });
-            })
-            .catch(error => {
+        })
+        .catch(error => {
                 console.error('Erro ao obter dados da nota para edição:', error);
                 alert('Erro ao obter dados da nota. Por favor, tente novamente.');
             });
@@ -4397,9 +4397,9 @@ function novaNota() {
         if (!cardLancamento) {
             console.error('Card de lançamento de notas não encontrado!');
             alert('Erro: Card de lançamento de notas não encontrado.');
-            return;
-        }
-        
+        return;
+    }
+    
         // Mostrar o card
         cardLancamento.classList.remove('d-none');
         
@@ -4515,13 +4515,13 @@ function novaNota() {
             
             // Carregar turmas do professor
             fetch(CONFIG.getApiUrl(`/professores/${idProfessor}/turmas`))
-                .then(response => {
-                    if (!response.ok) {
+        .then(response => {
+            if (!response.ok) {
                         throw new Error(`Erro ao carregar turmas: ${response.status}`);
-                    }
-                    return response.json();
-                })
-                .then(turmas => {
+            }
+            return response.json();
+        })
+        .then(turmas => {
                     // Popular o select de turmas
                     turmaSelect.innerHTML = '<option value="">Selecione a turma</option>';
                     

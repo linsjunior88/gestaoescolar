@@ -544,13 +544,12 @@ async function gerarPDFNotas() {
             throw new Error('Nenhum dado válido encontrado na tabela.');
         }
         
-        // Configurações da tabela - Ajustado para centralizar na página
+        // Configurações da tabela - Ajustado larguras das colunas para não truncar
         const options = {
             startY: 30, // Posição inicial da tabela
-            // Centralizar a tabela na página definindo margens automáticas
-            margin: { left: 'auto', right: 'auto' },
-            // Definir uma largura fixa para a tabela um pouco menor que a página para garantir centralização
-            tableWidth: doc.internal.pageSize.getWidth() - 20, // 10mm de cada lado para margens
+            // Ajuste para usar toda a largura disponível da página (margem de 5mm em cada lado para se estender até a data)
+            margin: { left: 5, right: 5 },
+            tableWidth: 'auto', // Isso fará com que a tabela ocupe toda a largura disponível
             headStyles: {
                 fillColor: [41, 98, 255], // Cor azul para o cabeçalho
                 textColor: 255,
