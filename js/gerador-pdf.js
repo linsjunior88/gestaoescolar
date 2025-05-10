@@ -79,105 +79,185 @@ async function garantirBibliotecasPDF() {
     return true;
 }
 
-// Função para obter o ID do aluno usando várias estratégias
+// Função principal para obter ID do aluno (melhorada para buscar na API)
 function obterIdAluno(linha) {
-    // Primeiro verifica o atributo data-aluno-id da linha
-    let alunoId = linha.getAttribute('data-aluno-id');
-    if (alunoId) return alunoId;
+    console.log('Tentando obter ID do aluno para a linha:', linha);
     
-    // Tenta obter do atributo data-id da linha
-    alunoId = linha.getAttribute('data-id');
-    if (alunoId) return alunoId;
+    // 1. ESTRATÉGIA: Verificar se o DOM tem o ID diretamente no atributo data-id
+    const dataId = linha.getAttribute('data-id') || linha.getAttribute('data-aluno-id');
+    if (dataId && dataId !== 'undefined') {
+        console.log('Encontrado ID direto no atributo data-id:', dataId);
+        return dataId;
+    }
     
-    // Verifica se existe algum atributo na linha que contenha 'aluno' e 'id'
-    for (let i = 0; i < linha.attributes.length; i++) {
-        const attrName = linha.attributes[i].name;
-        if (attrName.includes('aluno') && attrName.includes('id')) {
-            return linha.attributes[i].value;
+    // 2. ESTRATÉGIA: Verificar se existe um elemento span ou div com a classe "aluno-id" ou "matricula"
+    const idElement = linha.querySelector('.aluno-id, .matricula, [data-aluno-id], .id-aluno');
+    if (idElement) {
+        const idFromElement = idElement.textContent.trim() || idElement.getAttribute('data-id') || idElement.getAttribute('data-aluno-id');
+        if (idFromElement && idFromElement !== 'undefined') {
+            console.log('Encontrado ID em elemento específico:', idFromElement);
+            return idFromElement;
         }
     }
     
-    // Verifica se a primeira célula contém o ID do aluno (comumente o caso)
-    try {
-        const alunoCelula = linha.cells[0];
-        if (alunoCelula) {
-            // Verifica se a célula tem algum elemento interno com um ID
-            const elementos = alunoCelula.querySelectorAll('[id], [data-id]');
-            if (elementos.length > 0) {
-                const elemento = elementos[0];
-                const elementoId = elemento.id || elemento.getAttribute('data-id');
-                if (elementoId) return elementoId;
-            }
-            
-            // Verifica se a célula tem um texto que parece ser um ID (ALUxxx ou apenas números)
-            const texto = alunoCelula.textContent.trim();
-            if (/^ALU\d+$/i.test(texto) || /^A\d+$/i.test(texto) || /^\d+$/.test(texto)) {
-                return texto;
-            }
-        }
-    } catch (err) {
-        console.error('Erro ao analisar célula do aluno:', err);
-    }
-    
-    // Tenta extrair o ID do aluno com base no texto da tabela
-    // Busca padrões como "ID: ALU001" ou similares no texto
-    try {
-        const textoCompleto = linha.textContent;
-        const matchId = textoCompleto.match(/ID\s*[:]\s*([A-Z0-9]+)/i);
-        if (matchId && matchId[1]) {
-            return matchId[1];
+    // 3. ESTRATÉGIA: Verificar data attribute em todas as células
+    for (let i = 0; i < linha.cells.length; i++) {
+        const cell = linha.cells[i];
+        const cellDataId = cell.getAttribute('data-id') || cell.getAttribute('data-aluno-id');
+        if (cellDataId && cellDataId !== 'undefined') {
+            console.log('Encontrado ID na célula', i, ':', cellDataId);
+            return cellDataId;
         }
         
-        // Procura por padrões que poderiam ser IDs de aluno
-        const matchAluId = textoCompleto.match(/ALU[0-9]+/i);
-        if (matchAluId) {
-            return matchAluId[0];
+        // Verificar também dentro das células
+        const innerIdElement = cell.querySelector('[data-id], [data-aluno-id]');
+        if (innerIdElement) {
+            const innerDataId = innerIdElement.getAttribute('data-id') || innerIdElement.getAttribute('data-aluno-id');
+            if (innerDataId && innerDataId !== 'undefined') {
+                console.log('Encontrado ID em elemento dentro da célula', i, ':', innerDataId);
+                return innerDataId;
+            }
         }
-    } catch (err) {
-        console.error('Erro ao analisar texto para extração de ID:', err);
     }
     
-    // Se ainda não encontrou, busca em cada célula da linha
+    // 4. ESTRATÉGIA: Buscar o ID no dataset do elemento TR ou seus filhos
+    for (const key in linha.dataset) {
+        if (key.toLowerCase().includes('aluno') || key.toLowerCase().includes('id')) {
+            const datasetId = linha.dataset[key];
+            if (datasetId && datasetId !== 'undefined') {
+                console.log('Encontrado ID no dataset:', key, datasetId);
+                return datasetId;
+            }
+        }
+    }
+    
+    // 5. ESTRATÉGIA: Tentar extrair de classe que possa conter o ID
+    const classesLine = linha.className.split(' ');
+    for (const cls of classesLine) {
+        if (/aluno-(\w+)/i.test(cls)) {
+            const match = cls.match(/aluno-(\w+)/i);
+            if (match && match[1]) {
+                console.log('Encontrado ID na classe:', match[1]);
+                return match[1];
+            }
+        }
+    }
+    
+    // 6. ESTRATÉGIA: Verificar se há um input escondido com o ID
+    const hiddenInput = linha.querySelector('input[type="hidden"][name*="aluno"], input[type="hidden"][name*="id"]');
+    if (hiddenInput) {
+        const hiddenId = hiddenInput.value;
+        if (hiddenId && hiddenId !== 'undefined') {
+            console.log('Encontrado ID em input escondido:', hiddenId);
+            return hiddenId;
+        }
+    }
+    
+    // 7. ESTRATÉGIA: Consultar API ou dicionário global se disponível
+    if (typeof window.alunosCache === 'object') {
+        // Se há um cache global de alunos, tenta encontrar pelo nome
+        const nomeAluno = linha.cells[0].textContent.trim();
+        for (const id in window.alunosCache) {
+            if (window.alunosCache[id].nome === nomeAluno) {
+                console.log('Encontrado ID no cache global de alunos:', id);
+                return id;
+            }
+        }
+    }
+    
+    // 8. ESTRATÉGIA: Verificar data attributes específicos em qualquer elemento da linha
+    const elements = linha.querySelectorAll('*');
+    for (const elem of elements) {
+        for (const attr of elem.attributes) {
+            if (attr.name.startsWith('data-') && 
+                (attr.name.includes('aluno') || attr.name.includes('id')) && 
+                attr.value && attr.value !== 'undefined') {
+                console.log('Encontrado ID em atributo', attr.name, ':', attr.value);
+                return attr.value;
+            }
+        }
+    }
+    
+    // 9. ESTRATÉGIA: Tentar extrair direto do ID do elemento TR (comum em listagens)
+    if (linha.id && (linha.id.includes('aluno') || /row-\d+/.test(linha.id))) {
+        const rowId = linha.id.replace(/^.*?(\d+).*$/, '$1');
+        if (rowId) {
+            console.log('Extraído ID do próprio ID da linha:', rowId);
+            return rowId;
+        }
+    }
+    
+    // 10. ESTRATÉGIA: Tentar obter o valor da primeira célula se for numérico ou seguir padrão de ID
     try {
-        for (let i = 0; i < linha.cells.length; i++) {
-            const celula = linha.cells[i];
-            
-            // Tenta encontrar IDs nos atributos
-            if (celula.hasAttribute('data-aluno-id')) {
-                return celula.getAttribute('data-aluno-id');
-            }
-            if (celula.hasAttribute('data-id')) {
-                return celula.getAttribute('data-id');
-            }
-            
-            // Verifica elementos filhos que podem ter IDs
-            const elementos = celula.querySelectorAll('[data-id], [data-aluno-id], [id]');
-            for (let j = 0; j < elementos.length; j++) {
-                const elemento = elementos[j];
-                const elementoId = elemento.getAttribute('data-aluno-id') || 
-                                  elemento.getAttribute('data-id') || 
-                                  elemento.id;
-                if (elementoId && (elementoId.includes('ALU') || /^\d+$/.test(elementoId))) {
-                    return elementoId;
-                }
-            }
-            
-            // Verifica o texto da célula
-            const textoCelula = celula.textContent.trim();
-            if (/^ALU\d+$/i.test(textoCelula) || /^A\d+$/i.test(textoCelula)) {
-                return textoCelula;
-            }
+        const firstCellText = linha.cells[0].textContent.trim();
+        if (/^[A-Z]{0,3}\d+$/.test(firstCellText)) { // Padrão como A123, ALU123 ou apenas 123
+            console.log('Usando texto da primeira célula como ID:', firstCellText);
+            return firstCellText;
         }
-    } catch (err) {
-        console.error('Erro ao procurar ID em células:', err);
+    } catch (e) {
+        console.error('Erro ao verificar primeira célula:', e);
     }
     
-    console.warn('Não foi possível encontrar o ID do aluno para a linha:', linha);
-    return 'N/A';
+    // 11. ESTRATÉGIA: Verificar botões ou links com onclick que possam ter o ID
+    const actionElements = linha.querySelectorAll('button, a');
+    for (const elem of actionElements) {
+        const onclick = elem.getAttribute('onclick');
+        if (onclick) {
+            // Procurar padrões como editarAluno('ALU001') ou similar
+            const match = onclick.match(/[\'\"]([A-Z0-9]+)[\'\"]/i);
+            if (match && match[1]) {
+                console.log('Extraído ID do evento onclick:', match[1]);
+                return match[1];
+            }
+        }
+    }
+    
+    // ÚLTIMA ESTRATÉGIA: Gerar um ID baseado no índice da linha
+    // Isso deve ser usado apenas como último recurso
+    console.warn('Não foi possível encontrar um ID. Usando índice da linha + tempo como fallback');
+    return `TMP${Array.from(linha.parentNode.children).indexOf(linha)}_${Date.now().toString().slice(-4)}`;
 }
 
-// Função auxiliar para extrair a matrícula do aluno da tabela
-function extrairMatriculasAlunos() {
+// Função para buscar ID do aluno via API
+async function buscarIdAlunoViaAPI(nomeAluno) {
+    if (!nomeAluno || nomeAluno.length < 3) return null;
+    
+    console.log('Tentando buscar ID do aluno via API para:', nomeAluno);
+    
+    try {
+        // Verificar se temos uma função global para buscar alunos
+        if (typeof window.buscarAlunosPorNome === 'function') {
+            const alunos = await window.buscarAlunosPorNome(nomeAluno);
+            if (alunos && alunos.length > 0) {
+                console.log(`Encontrado ID via API para ${nomeAluno}:`, alunos[0].id_aluno);
+                return alunos[0].id_aluno;
+            }
+        }
+        
+        // Verificar se temos uma URL padrão para a API
+        const apiUrl = window.apiBaseUrl || '/api';
+        const url = `${apiUrl}/alunos/buscar?nome=${encodeURIComponent(nomeAluno)}`;
+        
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`Erro ao buscar aluno: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        if (data && data.length > 0) {
+            console.log(`Encontrado ID via API para ${nomeAluno}:`, data[0].id_aluno);
+            return data[0].id_aluno;
+        }
+        
+        return null;
+    } catch (error) {
+        console.warn('Erro ao buscar aluno via API:', error);
+        return null;
+    }
+}
+
+// Melhorar a função extrairMatriculasAlunos para buscar IDs via API
+async function extrairMatriculasAlunos() {
     console.log('Buscando IDs de alunos na tabela...');
     const tabela = document.getElementById('tabela-notas');
     if (!tabela) return {};
@@ -188,67 +268,54 @@ function extrairMatriculasAlunos() {
     const linhas = tbody.querySelectorAll('tr');
     const alunos = {};
     
+    // Criar um cache local para evitar múltiplas requisições para o mesmo aluno
+    const cacheLocal = {};
+    
+    // Coletar promessas para buscar IDs de todos os alunos ao mesmo tempo
+    const promessas = [];
+    
     linhas.forEach((linha, index) => {
         if (linha.cells.length <= 1) return;
         
-        try {
-            // Pegar o nome do aluno (geralmente na primeira célula)
-            const nomeAluno = linha.cells[0].textContent.trim();
-            
-            // Tentar várias abordagens para obter o ID
-            // 1. Atributos da linha
-            const matriculaDosDados = linha.getAttribute('data-aluno-id') || 
-                                      linha.getAttribute('data-id');
-            
-            // 2. Verificar células específicas que possam conter IDs
-            const idDaPrimeiraCelula = linha.cells[0].getAttribute('data-id') || 
-                                      (linha.cells[0].querySelector('[data-id]') ? 
-                                      linha.cells[0].querySelector('[data-id]').getAttribute('data-id') : null);
-            
-            // 3. Verificar elementos com classe ou ID específicos
-            const elementosComID = linha.querySelectorAll('[id*="aluno"], [class*="aluno"]');
-            let idDosElementos = null;
-            if (elementosComID.length > 0) {
-                for (const elem of elementosComID) {
-                    if (elem.id && elem.id.includes('ALU')) {
-                        idDosElementos = elem.id;
-                        break;
-                    }
-                    if (elem.getAttribute('data-id')) {
-                        idDosElementos = elem.getAttribute('data-id');
-                        break;
-                    }
-                }
-            }
-            
-            // 4. Verificar botões ou links que podem ter o ID nos eventos
-            const botoes = linha.querySelectorAll('button, a');
-            let idDosBotoes = null;
-            if (botoes.length > 0) {
-                for (const botao of botoes) {
-                    const onclick = botao.getAttribute('onclick');
-                    if (onclick && onclick.includes('ALU')) {
-                        const match = onclick.match(/['"]([A-Z0-9]+)['"]/i);
-                        if (match && match[1]) {
-                            idDosBotoes = match[1];
-                            break;
+        const promessa = (async () => {
+            try {
+                // Pegar o nome do aluno (geralmente na primeira célula)
+                const nomeAluno = linha.cells[0].textContent.trim();
+                
+                // Primeiro tentar obter o ID usando métodos DOM
+                let idAluno = obterIdAluno(linha);
+                
+                // Se não conseguiu um ID válido, tentar via API
+                if (idAluno === 'N/A' || idAluno.startsWith('TMP')) {
+                    // Verificar se já temos este aluno no cache local
+                    if (cacheLocal[nomeAluno]) {
+                        idAluno = cacheLocal[nomeAluno];
+                    } else {
+                        // Buscar via API
+                        const idViaAPI = await buscarIdAlunoViaAPI(nomeAluno);
+                        if (idViaAPI) {
+                            idAluno = idViaAPI;
+                            cacheLocal[nomeAluno] = idViaAPI;
                         }
                     }
                 }
+                
+                // Atualizar o registro global
+                alunos[nomeAluno] = {
+                    linha: index + 1,
+                    matricula: idAluno
+                };
+                
+            } catch (err) {
+                console.error('Erro ao processar linha:', err);
             }
-            
-            // Consolidar todas as tentativas
-            const idFinal = matriculaDosDados || idDaPrimeiraCelula || idDosElementos || idDosBotoes || 'N/A';
-            
-            alunos[nomeAluno] = {
-                linha: index + 1,
-                matricula: idFinal
-            };
-            
-        } catch (err) {
-            console.error('Erro ao processar linha:', err);
-        }
+        })();
+        
+        promessas.push(promessa);
     });
+    
+    // Esperar todas as promessas terminarem
+    await Promise.all(promessas);
     
     console.log('Matrículas encontradas:', alunos);
     return alunos;
@@ -280,9 +347,44 @@ async function gerarPDFNotas() {
             throw new Error('Nenhuma nota encontrada na tabela. Filtre uma turma primeiro.');
         }
         
+        // Investigar a estrutura da tabela e attributes disponíveis
+        console.log('=== INVESTIGAÇÃO DA TABELA DE NOTAS ===');
+        console.log('ID da tabela:', tabela.id);
+        console.log('Classes da tabela:', tabela.className);
+        console.log('Data attributes da tabela:', Object.keys(tabela.dataset).map(k => `data-${k}=${tabela.dataset[k]}`).join(', '));
+        
+        // Inspecionar a primeira linha para entender a estrutura
+        const primeiraLinha = tbody.querySelector('tr');
+        if (primeiraLinha) {
+            console.log('=== ANÁLISE DA PRIMEIRA LINHA ===');
+            console.log('HTML da primeira linha:', primeiraLinha.outerHTML);
+            console.log('Atributos da primeira linha:', Array.from(primeiraLinha.attributes).map(a => `${a.name}="${a.value}"`).join(', '));
+            console.log('Dataset da primeira linha:', Object.keys(primeiraLinha.dataset).map(k => `${k}: ${primeiraLinha.dataset[k]}`).join(', '));
+            
+            // Inspecionar cada célula da primeira linha
+            Array.from(primeiraLinha.cells).forEach((cell, index) => {
+                console.log(`Célula ${index}:`, {
+                    texto: cell.textContent.trim(),
+                    html: cell.innerHTML,
+                    attrs: Array.from(cell.attributes).map(a => `${a.name}="${a.value}"`).join(', '),
+                    dataset: Object.keys(cell.dataset).map(k => `${k}: ${cell.dataset[k]}`).join(', ')
+                });
+            });
+        }
+        
         // Extrair e mostrar no console as matrículas dos alunos antes de gerar o PDF
-        const matriculas = extrairMatriculasAlunos();
-        console.log('Matrículas dos alunos encontradas:', matriculas);
+        console.log('Estrutura da tabela que estamos tentando processar:', tabela.outerHTML);
+        
+        // Console.log de debug para inspecionar todas as linhas
+        const linhasDebug = tbody.querySelectorAll('tr');
+        console.log(`Encontradas ${linhasDebug.length} linhas na tabela`);
+        linhasDebug.forEach((linha, idx) => {
+            console.log(`Linha ${idx+1}:`, linha.outerHTML);
+        });
+        
+        // Buscar os IDs dos alunos com suporte a API
+        const matriculas = await extrairMatriculasAlunos();
+        console.log('Matrículas encontradas (incluindo via API):', matriculas);
         
         // Garantir que as bibliotecas estejam disponíveis
         await garantirBibliotecasPDF();
@@ -385,7 +487,7 @@ async function gerarPDFNotas() {
             { header: 'Disciplina', dataKey: 'disciplina' },
             { header: 'Turma', dataKey: 'turma' },
             { header: 'Bimestre', dataKey: 'bimestre' },
-            { header: 'N.Mensal', dataKey: 'mensal' },
+            { header: 'N. Mensal', dataKey: 'mensal' },
             { header: 'N.Bimestral', dataKey: 'bimestral' },
             { header: 'Recup.', dataKey: 'recuperacao' },
             { header: 'Média', dataKey: 'media' },
@@ -445,6 +547,9 @@ async function gerarPDFNotas() {
         // Configurações da tabela - Ajustado larguras das colunas para não truncar
         const options = {
             startY: 30, // Posição inicial da tabela
+            // Ajuste para usar toda a largura disponível da página (margem de 5mm em cada lado para se estender até a data)
+            margin: { left: 5, right: 5 },
+            tableWidth: 'auto', // Isso fará com que a tabela ocupe toda a largura disponível
             headStyles: {
                 fillColor: [41, 98, 255], // Cor azul para o cabeçalho
                 textColor: 255,
@@ -460,18 +565,18 @@ async function gerarPDFNotas() {
             alternateRowStyles: {
                 fillColor: [240, 240, 240] // Cor cinza claro para linhas alternadas
             },
-            // Definir larguras das colunas para melhor visualização
+            // Definir larguras das colunas para melhor visualização - ajustadas para aproveitar melhor o espaço
             columnStyles: {
-                idaluno: { cellWidth: 15, halign: 'center' },
-                aluno: { cellWidth: 35, halign: 'left' },
-                disciplina: { cellWidth: 30, halign: 'left' },
-                turma: { cellWidth: 15, halign: 'center' },
-                bimestre: { cellWidth: 18, halign: 'center' },
-                mensal: { cellWidth: 15, halign: 'center' },
-                bimestral: { cellWidth: 20, halign: 'center' },
-                recuperacao: { cellWidth: 15, halign: 'center' },
-                media: { cellWidth: 12, halign: 'center' },
-                status: { cellWidth: 18, halign: 'center' }
+                idaluno: { cellWidth: 18, halign: 'center' },
+                aluno: { cellWidth: 38, halign: 'left' },
+                disciplina: { cellWidth: 35, halign: 'left' },
+                turma: { cellWidth: 18, halign: 'center' },
+                bimestre: { cellWidth: 20, halign: 'center' },
+                mensal: { cellWidth: 20, halign: 'center' },
+                bimestral: { cellWidth: 25, halign: 'center' },
+                recuperacao: { cellWidth: 16, halign: 'center' },
+                media: { cellWidth: 16, halign: 'center' },
+                status: { cellWidth: 22, halign: 'center' }
             },
             // Impedir quebra de linha nos textos e lidar com células muito estreitas
             styles: {
