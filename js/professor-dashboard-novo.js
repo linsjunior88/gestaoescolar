@@ -3039,24 +3039,31 @@ function editarNota(id) {
                                 turmaSelect.value = idTurma;
                                 console.log(`Turma ID ${idTurma} selecionada com sucesso`);
                                 
-                                // Disparar o evento change para carregar disciplinas
-                                const event = new Event('change');
-                                turmaSelect.dispatchEvent(event);
+                                // Identificar os IDs de disciplina e aluno da nota
+                                const idDisciplina = nota.id_disciplina || nota.disciplina_id;
+                                const idAluno = nota.id_aluno || nota.aluno_id;
                                 
-                                // Carregar disciplinas para esta turma
-                                carregarDisciplinasParaFormulario(idTurma, disciplinaSelect, nota.id_disciplina || nota.disciplina_id, () => {
-                                    // Após carregar disciplinas, carregar alunos
-                                    if (disciplinaSelect && disciplinaSelect.value) {
-                                        carregarAlunosParaFormulario(
-                                            idTurma, 
-                                            disciplinaSelect.value, 
-                                            alunoSelect, 
-                                            nota.id_aluno || nota.aluno_id
-                                        );
+                                console.log(`Carregando disciplina ID ${idDisciplina} e aluno ID ${idAluno}`);
+                                
+                                // Carregar disciplinas para esta turma com callback para carregar alunos depois
+                                carregarDisciplinasParaFormulario(idTurma, disciplinaSelect, idDisciplina, (disciplinaEncontrada) => {
+                                    if (disciplinaEncontrada) {
+                                        // Se a disciplina foi encontrada, carregar os alunos
+                                        carregarAlunosParaFormulario(idTurma, idDisciplina, alunoSelect, idAluno);
                                     }
                                 });
                             } else {
                                 console.warn(`Turma ID ${idTurma} não encontrada nas turmas do professor`);
+                                
+                                // Tenta carregar disciplinas e alunos mesmo assim
+                                const idDisciplina = nota.id_disciplina || nota.disciplina_id;
+                                const idAluno = nota.id_aluno || nota.aluno_id;
+                                
+                                carregarDisciplinasParaFormulario(idTurma, disciplinaSelect, idDisciplina, (disciplinaEncontrada) => {
+                                    if (disciplinaEncontrada) {
+                                        carregarAlunosParaFormulario(idTurma, idDisciplina, alunoSelect, idAluno);
+                                    }
+                                });
                             }
                             
                             turmaSelect.disabled = false;
@@ -4580,8 +4587,15 @@ function novaNota() {
                         disciplinaSelect.disabled = true;
                         
                         if (idTurma) {
-                            // Carregar disciplinas para esta turma
-                            carregarDisciplinasParaFormulario(idTurma, disciplinaSelect);
+                            // Carregar disciplinas para esta turma com o valor do filtro se existir
+                            const valorFiltro = filtroDisciplina && filtroDisciplina.value ? filtroDisciplina.value : null;
+                            carregarDisciplinasParaFormulario(idTurma, disciplinaSelect, valorFiltro, (disciplinaEncontrada) => {
+                                // Se a disciplina foi carregada e existe um filtro de aluno,
+                                // podemos tentar pré-carregar o aluno também
+                                if (disciplinaEncontrada && filtroAluno && filtroAluno.value && alunoSelect) {
+                                    carregarAlunosParaFormulario(idTurma, disciplinaSelect.value, alunoSelect, filtroAluno.value);
+                                }
+                            });
                         }
                     }
                     
@@ -4607,8 +4621,9 @@ function novaNota() {
                     alunoSelect.disabled = true;
                     
                     if (idTurma && idDisciplina) {
-                        // Carregar alunos para esta turma e disciplina
-                        carregarAlunosParaFormulario(idTurma, idDisciplina, alunoSelect);
+                        // Carregar alunos para esta turma e disciplina, usando o ID do aluno do filtro se disponível
+                        const idAlunoFiltro = filtroAluno && filtroAluno.value ? filtroAluno.value : null;
+                        carregarAlunosParaFormulario(idTurma, idDisciplina, alunoSelect, idAlunoFiltro);
                     }
                 }
             });
@@ -4669,7 +4684,7 @@ function novaNota() {
 }
 
 // Função auxiliar para carregar disciplinas no formulário
-function carregarDisciplinasParaFormulario(idTurma, selectElement) {
+function carregarDisciplinasParaFormulario(idTurma, selectElement, idDisciplinaSelecionada = null, callback = null) {
     if (!selectElement) return;
     
     // Desabilitar o select enquanto carrega
@@ -4705,6 +4720,8 @@ function carregarDisciplinasParaFormulario(idTurma, selectElement) {
             // Popular o select de disciplinas
             selectElement.innerHTML = '<option value="">Selecione a disciplina</option>';
             
+            let disciplinaEncontrada = false;
+            
             if (disciplinas && disciplinas.length > 0) {
                 disciplinas.forEach(disciplina => {
                     const id = disciplina.id_disciplina || disciplina.id;
@@ -4713,30 +4730,53 @@ function carregarDisciplinasParaFormulario(idTurma, selectElement) {
                     const option = document.createElement('option');
                     option.value = id;
                     option.textContent = nome;
+                    
+                    // Verificar se esta é a disciplina a ser selecionada
+                    if (idDisciplinaSelecionada && id == idDisciplinaSelecionada) {
+                        option.selected = true;
+                        disciplinaEncontrada = true;
+                    }
+                    
                     selectElement.appendChild(option);
                 });
                 
-                // Preencher com o valor do filtro global, se existir
-                if (filtroDisciplina && filtroDisciplina.value) {
+                // Se não encontrou a disciplina pelo ID selecionado, tenta pelo filtro global
+                if (!disciplinaEncontrada && !idDisciplinaSelecionada && filtroDisciplina && filtroDisciplina.value) {
                     selectElement.value = filtroDisciplina.value;
-                    
-                    // Disparar o evento change
+                    disciplinaEncontrada = true;
+                } else if (idDisciplinaSelecionada) {
+                    selectElement.value = idDisciplinaSelecionada;
+                    disciplinaEncontrada = true;
+                }
+                
+                // Disparar o evento change
+                if (disciplinaEncontrada) {
                     const event = new Event('change');
                     selectElement.dispatchEvent(event);
                 }
             }
             
             selectElement.disabled = false;
+            
+            // Chamar o callback se fornecido
+            if (typeof callback === 'function') {
+                callback(disciplinaEncontrada);
+            }
         })
         .catch(error => {
             console.error('Erro ao carregar disciplinas para o formulário:', error);
             selectElement.innerHTML = '<option value="">Erro ao carregar disciplinas</option>';
             selectElement.disabled = false;
+            
+            // Chamar o callback mesmo em caso de erro
+            if (typeof callback === 'function') {
+                callback(false);
+            }
         });
 }
 
 // Função auxiliar para carregar alunos no formulário
-function carregarAlunosParaFormulario(idTurma, idDisciplina, selectElement) {
+function carregarAlunosParaFormulario(idTurma, idDisciplina, selectElement, idAlunoSelecionado = null) {
     if (!selectElement) return;
     
     // Desabilitar o select enquanto carrega
@@ -4750,7 +4790,7 @@ function carregarAlunosParaFormulario(idTurma, idDisciplina, selectElement) {
         return;
     }
     
-    console.log(`Carregando alunos para o formulário. Turma: ${idTurma}, Disciplina: ${idDisciplina || 'não especificada'}`);
+    console.log(`Carregando alunos para o formulário. Turma: ${idTurma}, Disciplina: ${idDisciplina || 'não especificada'}, Aluno selecionado: ${idAlunoSelecionado || 'nenhum'}`);
     
     // Lista de URLs a tentar, em ordem de prioridade
     const urls = [
@@ -4803,6 +4843,8 @@ function carregarAlunosParaFormulario(idTurma, idDisciplina, selectElement) {
             // Popular o select de alunos
             selectElement.innerHTML = '<option value="">Selecione o aluno</option>';
             
+            let alunoEncontrado = false;
+            
             if (alunos && alunos.length > 0) {
                 console.log(`Encontrados ${alunos.length} alunos para a turma ${idTurma}`);
                 
@@ -4830,12 +4872,29 @@ function carregarAlunosParaFormulario(idTurma, idDisciplina, selectElement) {
                     const option = document.createElement('option');
                     option.value = id;
                     option.textContent = nome;
+                    
+                    // Verificar se este é o aluno a ser selecionado
+                    if (idAlunoSelecionado && id == idAlunoSelecionado) {
+                        option.selected = true;
+                        alunoEncontrado = true;
+                    }
+                    
                     selectElement.appendChild(option);
                 });
                 
-                // Preencher com o valor do filtro global, se existir
-                if (filtroAluno && filtroAluno.value) {
+                // Se não encontrou o aluno pelo ID selecionado, tenta pelo filtro global
+                if (!alunoEncontrado && !idAlunoSelecionado && filtroAluno && filtroAluno.value) {
                     selectElement.value = filtroAluno.value;
+                    alunoEncontrado = true;
+                } else if (idAlunoSelecionado) {
+                    selectElement.value = idAlunoSelecionado;
+                    alunoEncontrado = true;
+                }
+                
+                if (alunoEncontrado) {
+                    console.log(`Aluno ID ${idAlunoSelecionado} selecionado com sucesso no formulário`);
+                } else if (idAlunoSelecionado) {
+                    console.warn(`Aluno ID ${idAlunoSelecionado} não encontrado na lista de alunos`);
                 }
             } else {
                 console.warn(`Nenhum aluno encontrado para a turma ${idTurma}`);
