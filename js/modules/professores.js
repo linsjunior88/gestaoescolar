@@ -52,8 +52,59 @@ const ProfessoresModule = {
                 inputEmailProfessor: document.getElementById('email-professor'),
                 inputSenhaProfessor: document.getElementById('senha-professor'),
                 selectDisciplinas: document.getElementById('disciplinas-professor'),
-                vinculosContainer: document.getElementById('vinculos-professor-container')
+                vinculosContainer: document.getElementById('vinculos-container')
             };
+            
+            // Verificar qual ID o container de vínculos está usando
+            const possiveisIds = ['vinculos-container', 'vinculos-professor-container'];
+            
+            if (!this.elements.vinculosContainer) {
+                console.log("Container de vínculos não encontrado, procurando alternativas...");
+                
+                for (const id of possiveisIds) {
+                    const elemento = document.getElementById(id);
+                    if (elemento) {
+                        console.log(`Container de vínculos encontrado com ID: ${id}`);
+                        this.elements.vinculosContainer = elemento;
+                        break;
+                    }
+                }
+                
+                // Se ainda não encontrou, procurar por outros meios
+                if (!this.elements.vinculosContainer) {
+                    console.log("Tentando encontrar container por proximidade ao select...");
+                    
+                    // Procurar pelo container próximo ao select de disciplinas
+                    if (this.elements.selectDisciplinas) {
+                        // Procurar um container próximo ao select
+                        const formGroup = this.elements.selectDisciplinas.closest('.form-group');
+                        if (formGroup) {
+                            const nextContainer = formGroup.nextElementSibling;
+                            if (nextContainer) {
+                                console.log("Encontrado possível container por proximidade");
+                                this.elements.vinculosContainer = nextContainer;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Verificar a existência de elementos importantes
+            const elementosImportantes = [
+                { nome: 'listaProfessores', id: 'lista-professores' },
+                { nome: 'formProfessor', id: 'form-professor' },
+                { nome: 'selectDisciplinas', id: 'disciplinas-professor' },
+                { nome: 'vinculosContainer', id: 'Container de vínculos' }
+            ];
+            
+            let elementosFaltando = elementosImportantes.filter(el => !this.elements[el.nome]);
+            
+            if (elementosFaltando.length > 0) {
+                console.warn("Elementos importantes não encontrados:", elementosFaltando);
+            }
+            
+            // Dump dos elementos encontrados para debug
+            console.log("Elementos inicializados:", this.elements);
             
             // Verificar se elementos necessários existem
             if (!this.elements.listaProfessores || !this.elements.formProfessor) {
@@ -196,9 +247,16 @@ const ProfessoresModule = {
     
     // Atualizar visualização das turmas vinculadas à disciplina selecionada
     atualizarTurmasVinculadas: function() {
-        if (!this.elements.vinculosContainer) return;
+        console.log("Atualizando turmas vinculadas...");
+        console.log("Container:", this.elements.vinculosContainer);
+        
+        if (!this.elements.vinculosContainer) {
+            console.error("Container de vínculos não encontrado");
+            return;
+        }
         
         const disciplinasSelecionadas = Array.from(this.elements.selectDisciplinas.selectedOptions).map(opt => opt.value);
+        console.log("Disciplinas selecionadas:", disciplinasSelecionadas);
         
         if (disciplinasSelecionadas.length === 0) {
             this.elements.vinculosContainer.innerHTML = '<p class="text-muted">Nenhuma disciplina selecionada</p>';
@@ -220,6 +278,7 @@ const ProfessoresModule = {
             
             // Obter TODAS as turmas disponíveis no sistema
             const allTurmas = this.state.turmas || [];
+            console.log(`Turmas disponíveis para disciplina ${disciplinaId}:`, allTurmas);
             
             html += '<tr>';
             html += `<td>${nomeDisciplina}</td>`;
@@ -291,6 +350,7 @@ const ProfessoresModule = {
         
         html += '</tbody></table></div>';
         
+        console.log("HTML gerado para turmas:", html);
         this.elements.vinculosContainer.innerHTML = html;
         
         // Adicionar event listeners para os botões de selecionar/desmarcar todas
@@ -914,9 +974,14 @@ const ProfessoresModule = {
 
     // Configurar eventos
     configurarEventos: function() {
+        console.log("Configurando eventos do módulo de professores");
+        
         // Evento para criar novo professor
         if (this.elements.btnNovoProfessor) {
             this.elements.btnNovoProfessor.addEventListener('click', () => this.novoProfessor());
+            console.log("Event listener adicionado: btnNovoProfessor");
+        } else {
+            console.warn("Elemento não encontrado: btnNovoProfessor");
         }
         
         // Evento para salvar professor
@@ -925,16 +990,41 @@ const ProfessoresModule = {
                 e.preventDefault();
                 this.salvarProfessor();
             });
+            console.log("Event listener adicionado: formProfessor (submit)");
+        } else {
+            console.warn("Elemento não encontrado: formProfessor");
         }
         
         // Evento para cancelar edição
         if (this.elements.btnCancelarProfessor) {
             this.elements.btnCancelarProfessor.addEventListener('click', () => this.cancelarEdicao());
+            console.log("Event listener adicionado: btnCancelarProfessor");
+        } else {
+            console.warn("Elemento não encontrado: btnCancelarProfessor");
         }
         
         // Evento para quando disciplinas são selecionadas
         if (this.elements.selectDisciplinas) {
-            this.elements.selectDisciplinas.addEventListener('change', () => this.atualizarTurmasVinculadas());
+            // Remover event listeners anteriores para evitar duplicação
+            this.elements.selectDisciplinas.removeEventListener('change', this.atualizarTurmasVinculadasHandler);
+            
+            // Criar uma função de handler que podemos referênciar para remoção
+            this.atualizarTurmasVinculadasHandler = () => {
+                console.log("Event change acionado no select de disciplinas");
+                this.atualizarTurmasVinculadas();
+            };
+            
+            // Adicionar o novo event listener
+            this.elements.selectDisciplinas.addEventListener('change', this.atualizarTurmasVinculadasHandler);
+            console.log("Event listener adicionado: selectDisciplinas (change)");
+            
+            // Disparar o evento manualmente para carregar as turmas se já houverem disciplinas selecionadas
+            if (this.elements.selectDisciplinas.selectedOptions.length > 0) {
+                console.log("Disciplinas já selecionadas, atualizando turmas iniciais...");
+                this.atualizarTurmasVinculadas();
+            }
+        } else {
+            console.warn("Elemento não encontrado: selectDisciplinas");
         }
         
         console.log("Eventos configurados para o módulo de professores");
@@ -968,6 +1058,8 @@ const ProfessoresModule = {
     // Editar professor existente
     editarProfessor: async function(id) {
         try {
+            console.log(`Editando professor com ID ${id}`);
+            
             // Carregar detalhes completos do professor
             const professor = await ConfigModule.fetchApi(`/professores/${id}`);
             if (!professor) {
@@ -1019,14 +1111,22 @@ const ProfessoresModule = {
                             opt => opt.value === disciplinaId.toString()
                         );
                         
-                        if (option) option.selected = true;
+                        if (option) {
+                            option.selected = true;
+                            console.log(`Disciplina ${disciplinaId} selecionada`);
+                        } else {
+                            console.warn(`Disciplina ${disciplinaId} não encontrada no select`);
+                        }
                     });
                     
-                    // Atualizar visualização de turmas
-                    this.atualizarTurmasVinculadas();
+                    // Atualizar visualização de turmas de forma explícita
+                    console.log("Atualizando turmas vinculadas após selecionar disciplinas");
+                    setTimeout(() => this.atualizarTurmasVinculadas(), 100);
                 }
                 
                 this.elements.inputNomeProfessor.focus();
+            } else {
+                console.error("Formulário do professor não encontrado");
             }
         } catch (error) {
             console.error("Erro ao editar professor:", error);
