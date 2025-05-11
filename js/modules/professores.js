@@ -327,18 +327,30 @@ const ProfessoresModule = {
     // Carregar vínculos de um professor (disciplinas e turmas)
     carregarVinculosProfessor: async function(idProfessor) {
         try {
-            // Tentar buscar diretamente os vínculos do professor da tabela professor_disciplina_turma
+            // Estratégia 1: Tentar buscar diretamente os vínculos do professor da tabela professor_disciplina_turma
             try {
                 const vinculos = await ConfigModule.fetchApi(`/professores/${idProfessor}/vinculos`);
                 if (Array.isArray(vinculos) && vinculos.length > 0) {
-                    console.log("Vínculos encontrados na API:", vinculos);
+                    console.log("Vínculos encontrados na API (estratégia 1):", vinculos);
                     return vinculos;
                 }
             } catch (error) {
-                console.warn("Endpoint de vínculos não disponível, tentando método alternativo:", error);
+                console.warn("Endpoint '/professores/{id}/vinculos' não disponível:", error);
             }
             
-            // Método alternativo: Buscar professor e disciplinas
+            // Estratégia 2: Tentar buscar da tabela professor_disciplina_turma diretamente
+            try {
+                const vinculosDireta = await ConfigModule.fetchApi(`/professor_disciplina_turma?professor=${idProfessor}`);
+                if (Array.isArray(vinculosDireta) && vinculosDireta.length > 0) {
+                    console.log("Vínculos encontrados na API (estratégia 2):", vinculosDireta);
+                    return vinculosDireta;
+                }
+            } catch (error) {
+                console.warn("Endpoint '/professor_disciplina_turma' não disponível:", error);
+            }
+            
+            // Estratégia 3: Método alternativo - buscar professor e disciplinas
+            console.log("Utilizando estratégia 3: buscar disciplinas do professor");
             const professor = await ConfigModule.fetchApi(`/professores/${idProfessor}`);
             
             // Verificar se o professor possui dados de disciplinas
@@ -393,7 +405,7 @@ const ProfessoresModule = {
                 }
             }
             
-            console.log("Vínculos gerados para o professor:", vinculos);
+            console.log("Vínculos gerados para o professor (estratégia 3):", vinculos);
             return vinculos;
         } catch (error) {
             console.error(`Erro ao carregar vínculos do professor ${idProfessor}:`, error);
@@ -716,19 +728,21 @@ const ProfessoresModule = {
                 });
             });
             
-            // Adicionar vínculos aos dados do professor
-            professorDados.vinculos = vinculos;
+            // Armazenar vínculos para uso posterior
+            const vinculosSalvar = vinculos;
             
             console.log("Dados do professor a serem salvos:", professorDados);
+            console.log("Vínculos a serem salvos:", vinculosSalvar);
             
             let response;
+            let idProfessor;
             
             if (this.state.modoEdicao && this.state.professorSelecionado) {
                 // ID para atualização
-                const professorId = this.state.professorSelecionado.id_professor || this.state.professorSelecionado.id;
+                idProfessor = this.state.professorSelecionado.id_professor || this.state.professorSelecionado.id;
                 
                 // Atualizar professor existente
-                response = await ConfigModule.fetchApi(`/professores/${professorId}`, {
+                response = await ConfigModule.fetchApi(`/professores/${idProfessor}`, {
                     method: 'PUT',
                     body: JSON.stringify(professorDados)
                 });
@@ -741,10 +755,120 @@ const ProfessoresModule = {
                     body: JSON.stringify(professorDados)
                 });
                 
+                // Obter ID do professor recém-criado
+                idProfessor = response.id_professor || response.id;
+                
                 this.mostrarSucesso("Professor criado com sucesso!");
             }
             
             console.log("Resposta da API:", response);
+            
+            // Agora vamos salvar os vínculos explicitamente
+            if (vinculosSalvar.length > 0 && idProfessor) {
+                try {
+                    // Primeiro, vamos tentar excluir os vínculos existentes
+                    try {
+                        await ConfigModule.fetchApi(`/professores/${idProfessor}/vinculos`, {
+                            method: 'DELETE'
+                        });
+                        console.log("Vínculos anteriores excluídos com sucesso");
+                    } catch (error) {
+                        console.warn("Não foi possível excluir vínculos anteriores, continuando mesmo assim:", error);
+                    }
+                    
+                    // Preparar objeto com o ID do professor e a lista de vínculos
+                    const dadosVinculos = {
+                        professor_id: idProfessor,
+                        vinculos: vinculosSalvar.map(v => ({
+                            ...v,
+                            id_professor: idProfessor
+                        }))
+                    };
+                    
+                    console.log("Enviando vínculos para a API:", dadosVinculos);
+                    
+                    // Tentar diferentes formatos de endpoints e payloads
+                    let vinculosResponse;
+                    try {
+                        // Método 1: Enviar para endpoint específico de vínculos
+                        vinculosResponse = await ConfigModule.fetchApi(`/professores/${idProfessor}/vinculos`, {
+                            method: 'POST',
+                            body: JSON.stringify(dadosVinculos)
+                        });
+                        console.log("Vínculos salvos com sucesso (método 1):", vinculosResponse);
+                    } catch (error) {
+                        console.warn("Erro ao salvar vínculos com método 1:", error);
+                        
+                        try {
+                            // Método 2: Enviar diretamente a lista de vínculos
+                            vinculosResponse = await ConfigModule.fetchApi(`/professores/${idProfessor}/vinculos`, {
+                                method: 'POST',
+                                body: JSON.stringify(vinculosSalvar)
+                            });
+                            console.log("Vínculos salvos com sucesso (método 2):", vinculosResponse);
+                        } catch (error2) {
+                            console.warn("Erro ao salvar vínculos com método 2:", error2);
+                            
+                            try {
+                                // Método 3: Enviar para endpoint de professor_disciplina_turma
+                                vinculosResponse = await ConfigModule.fetchApi(`/professor_disciplina_turma`, {
+                                    method: 'POST',
+                                    body: JSON.stringify({
+                                        id_professor: idProfessor,
+                                        vinculos: vinculosSalvar
+                                    })
+                                });
+                                console.log("Vínculos salvos com sucesso (método 3):", vinculosResponse);
+                            } catch (error3) {
+                                console.warn("Erro ao salvar vínculos com método 3:", error3);
+                                
+                                try {
+                                    // Método 4: Enviar cada vínculo individualmente
+                                    console.log("Tentando método 4: salvar vínculos individualmente");
+                                    const resultados = [];
+                                    
+                                    for (const vinculo of vinculosSalvar) {
+                                        try {
+                                            // Preparar dados do vínculo com id_professor
+                                            const dadosVinculo = {
+                                                id_professor: idProfessor,
+                                                id_disciplina: vinculo.id_disciplina,
+                                                id_turma: vinculo.id_turma
+                                            };
+                                            
+                                            // Enviar solicitação
+                                            const resultado = await ConfigModule.fetchApi('/professor_disciplina_turma', {
+                                                method: 'POST',
+                                                body: JSON.stringify(dadosVinculo)
+                                            });
+                                            
+                                            resultados.push(resultado);
+                                            console.log(`Vínculo salvo com sucesso: ${vinculo.id_disciplina} - ${vinculo.id_turma}`);
+                                        } catch (err) {
+                                            console.error(`Erro ao salvar vínculo individual: ${vinculo.id_disciplina} - ${vinculo.id_turma}`, err);
+                                        }
+                                    }
+                                    
+                                    if (resultados.length > 0) {
+                                        console.log("Alguns vínculos foram salvos com sucesso (método 4):", resultados);
+                                    } else {
+                                        throw new Error("Nenhum vínculo pôde ser salvo individualmente");
+                                    }
+                                    
+                                } catch (error4) {
+                                    console.error("Todos os métodos de salvar vínculos falharam:", error4);
+                                    throw new Error("Não foi possível salvar os vínculos do professor");
+                                }
+                            }
+                        }
+                    }
+                    
+                    this.mostrarSucesso("Vínculos do professor atualizados com sucesso!");
+                } catch (vinculosError) {
+                    console.error("Erro ao salvar vínculos:", vinculosError);
+                    this.mostrarErro("Professor salvo, mas ocorreu um erro ao salvar os vínculos com disciplinas e turmas.");
+                }
+            }
             
             // Resetar formulário e estado
             this.cancelarEdicao();
