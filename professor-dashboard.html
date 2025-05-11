@@ -543,10 +543,63 @@
     </script>
     
     <!-- Scripts da aplicação -->
+    <!-- UIModule carregado primeiro para garantir disponibilidade -->
     <script src="js/modules/ui.js"></script>
+    <script>
+        // Garantir que o UIModule esteja disponível globalmente
+        if (typeof UIModule === 'undefined') {
+            // Se o módulo foi carregado como módulo ES, vamos expô-lo globalmente
+            window.UIModule = UIModule || {};
+            console.log("UIModule disponibilizado globalmente:", window.UIModule);
+        }
+    </script>
     <script src="js/config.js"></script>
     <script src="js/notas-inicializacao.js"></script>
-    <script src="js/professor-dashboard-novo.js?v=5"></script>
+    <!-- Script para remover botão SOS e limpar modais -->
+    <script>
+        // Script para verificar UIModule e remover botão SOS imediatamente
+        document.addEventListener("DOMContentLoaded", function() {
+            console.log("Verificando UIModule...");
+            if (typeof window.UIModule !== 'undefined' && window.UIModule) {
+                console.log("UIModule disponível! Removendo elementos de emergência...");
+                // Remover botão SOS existente
+                const sosBtn = document.getElementById('global-emergency-btn');
+                if (sosBtn) {
+                    console.log("Removendo botão SOS...");
+                    sosBtn.remove();
+                }
+                
+                // Limpar quaisquer modais abertos ou órfãos
+                if (typeof UIModule.limparModais === 'function') {
+                    console.log("Limpando modais com UIModule...");
+                    UIModule.limparModais();
+                }
+                
+                // Remover eventos emergenciais
+                console.log("Sistema de emergência não necessário com UIModule disponível");
+            } else {
+                console.warn("UIModule não disponível! Sistema de emergência será mantido.");
+            }
+            
+            // Limpar qualquer backdrop órfão que possa existir de uma sessão anterior
+            document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
+                console.log("Removendo backdrop existente...");
+                backdrop.remove();
+            });
+            
+            // Restaurar o scroll e limpar classes do body
+            document.body.classList.remove('modal-open');
+            document.body.style.overflow = '';
+            document.body.style.paddingRight = '';
+            
+            // Remover qualquer overlay restante
+            document.querySelectorAll('.modal-open-overlay, .loading-overlay').forEach(overlay => {
+                console.log("Removendo overlay existente...");
+                overlay.remove();
+            });
+        });
+    </script>
+    <script src="js/professor-dashboard-novo.js?v=6"></script>
     <script src="js/salvar-lancamento.js"></script>
     <script src="js/gerador-pdf.js"></script>
     

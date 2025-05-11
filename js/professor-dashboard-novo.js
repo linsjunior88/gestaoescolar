@@ -200,239 +200,267 @@ window.configurarBotaoGerarPDF = configurarBotaoGerarPDF;
 
 // Inicialização quando o DOM estiver pronto
 document.addEventListener('DOMContentLoaded', function() {
-    console.log("#### PROFESSOR DASHBOARD MOBILE FIRST v1 ####");
+    console.log("DOM Carregado - Inicializando Professor Dashboard");
     
-    // Configurar sistema de emergência para fechar modais travados
+    // Configurar sistema de emergência para modais
     configurarFechamentoEmergenciaModal();
     
-    // Verificar se o usuário está autenticado como professor
-    const userProfile = sessionStorage.getItem('userProfile');
-    if (userProfile !== 'professor') {
-        // Redirecionar para a página de login se não estiver autenticado como professor
-        alert('Você precisa fazer login como professor para acessar esta página.');
-        window.location.href = 'index.html';
-        return;
-    }
+    // Inicializar links de navegação
+    initLinks();
     
-    // Buscar dados do professor da sessão
+    // Recuperar informações do professor da sessão
     professorId = sessionStorage.getItem('professorId');
     professorNome = sessionStorage.getItem('professorNome');
     
-    try {
-        const disciplinasJson = sessionStorage.getItem('professorDisciplinas');
-        professorDisciplinas = disciplinasJson ? JSON.parse(disciplinasJson) : [];
-    } catch (e) {
-        console.error('Erro ao carregar disciplinas do professor da sessão:', e);
-        professorDisciplinas = [];
-    }
+    console.log(`Sessão recuperada: professorId=${professorId}, professorNome=${professorNome}`);
     
-    // Verificar se temos o ID do professor
+    // Verificar se as informações do professor estão disponíveis
     if (!professorId) {
-        alert('Erro ao carregar dados do professor. Por favor, faça login novamente.');
-        window.location.href = 'index.html';
+        console.warn('ID do professor não encontrado na sessão. Redirecionando para a página de login...');
+        
+        if (window.UIModule) {
+            UIModule.mostrarErro('Sessão expirada ou inválida. Por favor, faça login novamente.', 'Acesso Negado');
+        }
+        
+        // Redirecionar para a página de login após um breve delay
+        setTimeout(() => {
+            window.location.href = 'index.html';
+        }, 2000);
+        
         return;
     }
     
-    // Exibir nome do professor no cabeçalho
-    document.getElementById('professor-nome').textContent = professorNome || 'Professor';
+    // Definir nome do professor na interface
+    if (professorNome) {
+        const nomeElement = document.getElementById('professor-nome');
+        if (nomeElement) nomeElement.textContent = professorNome;
+    }
     
-    // Inicializar componentes do dashboard
-    initLinks();
-    
-    // Inicializar o dashboard automaticamente na carga da página
+    // Inicializar seções
     initDashboard();
+    initAlunos();
+    initNotas();
     
-    // Configurar logout
-    const btnLogout = document.getElementById('btn-logout');
-    if (btnLogout) {
-        btnLogout.addEventListener('click', function(e) {
-            e.preventDefault();
-        if (confirm('Tem certeza que deseja sair?')) {
-            // Limpar sessão
-            sessionStorage.clear();
-            // Redirecionar para a página de login
-            window.location.href = 'index.html';
-        }
-    });
-    }
+    // Exibir sessão inicial (dashboard)
+    ativarSecao('dashboard-link');
     
-    // Adicionar evento ao botão de cancelar nota
-    const btnCancelarNota = document.getElementById('btn-cancelar-nota');
-    if (btnCancelarNota) {
-        btnCancelarNota.addEventListener('click', function(e) {
-            e.preventDefault();
-            resetarFormularioNota();
-        });
-    }
-    
-    // Configurar botão para gerar PDF
-    const btnGerarPDF = document.getElementById('btn-gerar-pdf-notas');
-    if (btnGerarPDF) {
-        configurarBotaoGerarPDF(btnGerarPDF);
-    }
-    
-    // Exportar funções para o escopo global
-    window.carregarTurmasDoProfessor = carregarTurmasDoProfessor;
-    window.carregarDisciplinasDoProfessor = carregarDisciplinasDoProfessor;
-    window.carregarAlunosDaTurma = carregarAlunosDaTurma;
-    window.inicializarTabelaNotas = inicializarTabelaNotas;
-    window.carregarNotas = carregarNotas;
-    window.editarNota = editarNota;
-    window.carregarDisciplinasParaFiltro = carregarDisciplinasParaFiltro;
-    window.carregarAlunosParaFiltro = carregarAlunosParaFiltro;
-    window.handleFormSubmit = handleFormSubmit;
-    window.abrirModoLancamentoEmMassa = abrirModoLancamentoEmMassa;
-    window.novaNota = novaNota;
+    console.log("Inicialização do Professor Dashboard concluída");
 });
 
 // Função para inicializar os links do menu
 function initLinks() {
-    // Mapear os links do menu para seus respectivos conteúdos
-    links['dashboard-link'] = document.getElementById('dashboard-link');
-    links['alunos-link'] = document.getElementById('alunos-link');
-    links['notas-link'] = document.getElementById('notas-link');
+    console.log('Inicializando links de navegação');
     
-    conteudos['dashboard-link'] = document.getElementById('conteudo-dashboard');
-    conteudos['alunos-link'] = document.getElementById('conteudo-alunos');
-    conteudos['notas-link'] = document.getElementById('conteudo-notas');
+    // Links de navegação principal
+    links.dashboard = document.getElementById('dashboard-link');
+    links.alunos = document.getElementById('alunos-link');
+    links.notas = document.getElementById('notas-link');
+    links.perfil = document.getElementById('perfil-professor-link');
     
-    // Adicionar eventos de clique para alternar entre as seções
-    for (const key in links) {
-        if (links[key]) {
-            links[key].addEventListener('click', function(e) {
-                e.preventDefault();
-                ativarSecao(key);
-                
-                // Fechar o menu de navegação mobile se estiver aberto
-                const navbarCollapse = document.getElementById('navbarNav');
-                if (navbarCollapse && navbarCollapse.classList.contains('show')) {
-                    document.querySelector('.navbar-toggler').click();
-                }
-            });
-        }
+    // Links de navegação mobile
+    links.dashboardMobile = document.getElementById('bottom-dashboard-link');
+    links.alunosMobile = document.getElementById('bottom-alunos-link');
+    links.notasMobile = document.getElementById('bottom-notas-link');
+    links.perfilMobile = document.getElementById('bottom-perfil-link');
+    
+    // Seções de conteúdo
+    conteudos.dashboard = document.getElementById('conteudo-dashboard');
+    conteudos.alunos = document.getElementById('conteudo-alunos');
+    conteudos.notas = document.getElementById('conteudo-notas');
+    
+    // Adicionar eventos aos links
+    if (links.dashboard) {
+        links.dashboard.addEventListener('click', function(e) {
+            e.preventDefault();
+            ativarSecao('dashboard-link');
+        });
     }
     
-    // Mapear links da navegação inferior mobile
-    const bottomNavLinks = {
-        'bottom-dashboard-link': 'dashboard-link',
-        'bottom-alunos-link': 'alunos-link',
-        'bottom-notas-link': 'notas-link'
-    };
-    
-    // Adicionar eventos para a navegação inferior
-    for (const bottomId in bottomNavLinks) {
-        const bottomLink = document.getElementById(bottomId);
-        if (bottomLink) {
-            bottomLink.addEventListener('click', function(e) {
-                e.preventDefault();
-                
-                // Ativar a seção correspondente
-                const mainLinkId = bottomNavLinks[bottomId];
-                ativarSecao(mainLinkId);
-                
-                // Atualizar estado ativo na navegação inferior
-                document.querySelectorAll('.bottom-nav-item').forEach(item => {
-                    item.classList.remove('active');
-                });
-                this.classList.add('active');
-            });
-        }
+    if (links.alunos) {
+        links.alunos.addEventListener('click', function(e) {
+            e.preventDefault();
+            ativarSecao('alunos-link');
+        });
     }
     
-    // Configurar link de perfil mobile
-    const perfilMobileLink = document.getElementById('bottom-perfil-link');
-    if (perfilMobileLink) {
-        perfilMobileLink.addEventListener('click', function(e) {
+    if (links.notas) {
+        links.notas.addEventListener('click', function(e) {
+            e.preventDefault();
+            ativarSecao('notas-link');
+        });
+    }
+    
+    // Link para perfil do professor
+    if (links.perfil) {
+        links.perfil.addEventListener('click', function(e) {
             e.preventDefault();
             
-            // Rolar até a seção de perfil no dashboard
-            document.getElementById('dashboard-link').click();
-            const perfilCard = document.querySelector('.card:has(#perfil-id)');
-            if (perfilCard) {
-                setTimeout(() => {
-                    perfilCard.scrollIntoView({ behavior: 'smooth' });
-                }, 300);
+            // Limpar quaisquer modais existentes antes de mostrar o perfil
+            limparTodosModaisEBackdrops();
+            
+            // Mostrar perfil do professor em um modal
+            setTimeout(() => {
+                mostrarPerfilProfessor();
+            }, 200);
+        });
+    }
+    
+    // Adicionar eventos aos links mobile
+    if (links.dashboardMobile) {
+        links.dashboardMobile.addEventListener('click', function(e) {
+            e.preventDefault();
+            ativarSecao('dashboard-link');
+        });
+    }
+    
+    if (links.alunosMobile) {
+        links.alunosMobile.addEventListener('click', function(e) {
+            e.preventDefault();
+            ativarSecao('alunos-link');
+        });
+    }
+    
+    if (links.notasMobile) {
+        links.notasMobile.addEventListener('click', function(e) {
+            e.preventDefault();
+            ativarSecao('notas-link');
+        });
+    }
+    
+    if (links.perfilMobile) {
+        links.perfilMobile.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // Limpar quaisquer modais existentes antes de mostrar o perfil
+            limparTodosModaisEBackdrops();
+            
+            // Mostrar perfil do professor em um modal
+            setTimeout(() => {
+                mostrarPerfilProfessor();
+            }, 200);
+        });
+    }
+    
+    // Configurar evento de logout
+    const btnLogout = document.getElementById('btn-logout');
+    if (btnLogout) {
+        btnLogout.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // Confirmar logout
+            if (window.UIModule) {
+                UIModule.confirmar({
+                    titulo: 'Confirmar Saída',
+                    mensagem: 'Tem certeza que deseja encerrar sua sessão?',
+                    btnSim: 'Sim, sair',
+                    btnNao: 'Cancelar',
+                    aoConfirmar: () => {
+                        // Limpar sessão e redirecionar
+                        sessionStorage.clear();
+                        window.location.href = 'index.html';
+                    }
+                });
+            } else {
+                if (confirm('Tem certeza que deseja sair?')) {
+                    // Limpar sessão e redirecionar
+                    sessionStorage.clear();
+                    window.location.href = 'index.html';
+                }
             }
         });
     }
 }
 
-// Função para ativar a seção selecionada
+// Função para ativar uma seção específica
 function ativarSecao(linkId) {
-    console.log("Ativando seção para o link:", linkId);
+    console.log(`Ativando seção: ${linkId}`);
     
-    // Atualizar título da página
-    const pageTitleEl = document.getElementById('page-title');
-    if (pageTitleEl) {
-        switch (linkId) {
-            case 'dashboard-link':
-                pageTitleEl.textContent = 'Dashboard';
-                break;
-            case 'alunos-link':
-                pageTitleEl.textContent = 'Meus Alunos';
-                break;
-            case 'notas-link':
-                pageTitleEl.textContent = 'Gestão de Notas';
-                break;
-            default:
-                pageTitleEl.textContent = 'Dashboard';
-        }
-    }
-    
-    // Remover classe ativa de todos os links no navbar
+    // Remover classe ativa de todos os links
     for (const key in links) {
         if (links[key]) {
             links[key].classList.remove('active');
         }
     }
     
-    // Adicionar classe ativa ao link clicado no navbar
-    if (links[linkId]) {
-        links[linkId].classList.add('active');
-    }
-    
-    // Atualizar navegação mobile
-    const bottomNavMap = {
-        'dashboard-link': 'bottom-dashboard-link',
-        'alunos-link': 'bottom-alunos-link',
-        'notas-link': 'bottom-notas-link'
-    };
-    
-    document.querySelectorAll('.bottom-nav-item').forEach(item => {
-        item.classList.remove('active');
-    });
-    
-    const bottomLinkId = bottomNavMap[linkId];
-    if (bottomLinkId) {
-        const bottomLink = document.getElementById(bottomLinkId);
-        if (bottomLink) {
-            bottomLink.classList.add('active');
-        }
-    }
-    
-    // Ocultar todos os conteúdos
+    // Esconder todas as seções de conteúdo
     for (const key in conteudos) {
         if (conteudos[key]) {
             conteudos[key].classList.remove('active');
+            conteudos[key].style.display = 'none';
         }
     }
     
-    // Mostrar o conteúdo correspondente
-    if (conteudos[linkId]) {
-        conteudos[linkId].classList.add('active');
-        
-        // Voltar ao topo para melhor experiência em mobile
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        
-        // Ações específicas por seção
-        if (linkId === 'dashboard-link') {
-            initDashboard();
-        } else if (linkId === 'alunos-link') {
-            initAlunos();
-        } else if (linkId === 'notas-link') {
-            initNotas();
+    // Mapear o linkId para os objetos corretos em links e conteudos
+    let activeLink, activeContent;
+    
+    switch (linkId) {
+        case 'dashboard-link':
+            activeLink = links.dashboard;
+            activeContent = conteudos.dashboard;
+            break;
+        case 'alunos-link':
+            activeLink = links.alunos;
+            activeContent = conteudos.alunos;
+            break;
+        case 'notas-link':
+            activeLink = links.notas;
+            activeContent = conteudos.notas;
+            break;
+        default:
+            console.warn(`Link não reconhecido: ${linkId}`);
+            return;
+    }
+    
+    // Atualizar título e subtítulo da página
+    const pageTitle = document.getElementById('page-title');
+    const pageSubtitle = document.getElementById('page-subtitle');
+    
+    if (pageTitle && pageSubtitle) {
+        switch (linkId) {
+            case 'dashboard-link':
+                pageTitle.textContent = 'Dashboard';
+                pageSubtitle.textContent = 'Resumo das suas atividades';
+                break;
+            case 'alunos-link':
+                pageTitle.textContent = 'Meus Alunos';
+                pageSubtitle.textContent = 'Consulte seus alunos em cada turma';
+                break;
+            case 'notas-link':
+                pageTitle.textContent = 'Gestão de Notas';
+                pageSubtitle.textContent = 'Cadastre e consulte notas dos alunos';
+                break;
         }
     }
+    
+    // Ativar o link e conteúdo correspondentes
+    if (activeLink) {
+        activeLink.classList.add('active');
+    }
+    
+    if (activeContent) {
+        activeContent.classList.add('active');
+        activeContent.style.display = 'block';
+    }
+    
+    // Atualizar navegação mobile
+    const bottomLinkMap = {
+        'dashboard-link': links.dashboardMobile,
+        'alunos-link': links.alunosMobile,
+        'notas-link': links.notasMobile
+    };
+    
+    // Remover classe ativa de todos os links mobile
+    Object.values(bottomLinkMap).forEach(link => {
+        if (link) link.classList.remove('active');
+    });
+    
+    // Ativar o link mobile correspondente
+    if (bottomLinkMap[linkId]) {
+        bottomLinkMap[linkId].classList.add('active');
+    }
+    
+    // Rolar para o topo da página
+    window.scrollTo(0, 0);
 }
 
 // Função para inicializar o Dashboard
@@ -3379,27 +3407,61 @@ function limparTodosModaisEBackdrops() {
         }
     });
     
-    // 2. Remover forcadamente todos os backdrops
-    document.querySelectorAll('.modal-backdrop').forEach(backdrop => backdrop.remove());
-    
-    // 3. Se ainda houver modais, removê-los diretamente
-    document.querySelectorAll('.modal').forEach(modal => modal.remove());
-    
-    // 4. Remover estilos e classes que podem bloquear scrolling
-    document.body.classList.remove('modal-open');
-    document.body.style.overflow = '';
-    document.body.style.paddingRight = '';
-    
-    // 5. Limpar qualquer indicador de carregamento
-    document.querySelectorAll('.spinner-border, .loading-indicator').forEach(loader => {
-        // Se não estiver dentro de uma tabela ou container específico, remover
-        if (!loader.closest('table') && !loader.closest('.preserve-loader')) {
-            loader.remove();
-        }
-    });
-    
-    // 6. Remover qualquer overlay restante
-    document.querySelectorAll('.modal-open-overlay, .loading-overlay').forEach(overlay => overlay.remove());
+    // 2. Forçar remoção de todos os backdrops após pequeno delay
+    setTimeout(() => {
+        document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
+            try {
+                backdrop.classList.remove('show');
+                backdrop.remove();
+            } catch (e) {
+                console.warn("Erro ao remover backdrop:", e);
+            }
+        });
+        
+        // 3. Se ainda houver modais, removê-los diretamente
+        document.querySelectorAll('.modal').forEach(modal => {
+            try {
+                // Primeiro tentar fechar normalmente
+                const bsModal = bootstrap.Modal.getInstance(modal);
+                if (bsModal) {
+                    bsModal.hide();
+                    setTimeout(() => {
+                        try { modal.remove(); } catch (e) { /* ignorar */ }
+                    }, 300);
+                } else {
+                    modal.classList.remove('show');
+                    modal.style.display = 'none';
+                    modal.setAttribute('aria-hidden', 'true');
+                    modal.removeAttribute('aria-modal');
+                    modal.removeAttribute('role');
+                    setTimeout(() => {
+                        try { modal.remove(); } catch (e) { /* ignorar */ }
+                    }, 300);
+                }
+            } catch (e) {
+                console.warn("Erro ao remover modal:", e);
+                try { modal.remove(); } catch (e) { /* tentar remover diretamente */ }
+            }
+        });
+        
+        // 4. Remover estilos e classes que podem bloquear scrolling
+        document.body.classList.remove('modal-open');
+        document.body.style.overflow = '';
+        document.body.style.paddingRight = '';
+        
+        // 5. Limpar qualquer indicador de carregamento
+        document.querySelectorAll('.spinner-border, .loading-indicator').forEach(loader => {
+            // Se não estiver dentro de uma tabela ou container específico, remover
+            if (!loader.closest('table') && !loader.closest('.preserve-loader')) {
+                try { loader.remove(); } catch (e) { /* ignorar */ }
+            }
+        });
+        
+        // 6. Remover qualquer overlay restante
+        document.querySelectorAll('.modal-open-overlay, .loading-overlay').forEach(overlay => {
+            try { overlay.remove(); } catch (e) { /* ignorar */ }
+        });
+    }, 100);
 }
 
 // Função para configurar sistema de emergência para fechar modais travados
@@ -3575,6 +3637,12 @@ function exibirFichaAluno(idAluno) {
         UIModule.mostrarInfo('Carregando dados do aluno...', 'Aguarde');
     }
     
+    // Antes de criar um novo modal, garantir que não haja modais travados
+    limparTodosModaisEBackdrops();
+    
+    // Variável de controle para rastrear se a requisição foi bem-sucedida
+    let requestSuccessful = false;
+    
     // Buscar dados do aluno
     fetch(CONFIG.getApiUrl(`/alunos/${idAluno}`))
         .then(response => {
@@ -3586,8 +3654,9 @@ function exibirFichaAluno(idAluno) {
         .then(aluno => {
             console.log('Dados do aluno carregados:', aluno);
             
-            // Buscar notas do aluno (opcional)
-            return fetch(CONFIG.getApiUrl(`/alunos/${idAluno}/notas?professor_id=${professorId}`))
+            // Buscar notas do aluno - usando o endpoint correto
+            // Nota: A API espera o ID do professor sem o "professor_id" no query
+            return fetch(CONFIG.getApiUrl(`/notas?aluno_id=${idAluno}`))
                 .then(response => {
                     if (!response.ok) {
                         // Se não conseguir carregar notas, continuar com os dados do aluno
@@ -3595,7 +3664,15 @@ function exibirFichaAluno(idAluno) {
                         return { aluno, notas: [] };
                     }
                     return response.json().then(notas => {
-                        return { aluno, notas };
+                        // Filtrar apenas as notas deste professor
+                        const notasDoAluno = Array.isArray(notas) ? notas.filter(nota => 
+                            nota.professor_id === professorId || 
+                            nota.id_professor === professorId
+                        ) : [];
+                        
+                        console.log(`Notas encontradas para o aluno: ${notasDoAluno.length}`);
+                        requestSuccessful = true;
+                        return { aluno, notas: notasDoAluno };
                     });
                 });
         })
@@ -3621,8 +3698,8 @@ function exibirFichaAluno(idAluno) {
                                     <p><strong>Turma:</strong> ${aluno.id_turma || 'N/A'}</p>
                                 </div>
                                 <div class="col-md-6">
-                                    <p><strong>Data de Nascimento:</strong> ${aluno.data_nascimento || 'N/A'}</p>
-                                    <p><strong>Contato:</strong> ${aluno.contato || 'N/A'}</p>
+                                    <p><strong>Data de Nascimento:</strong> ${aluno.data_nasc || aluno.data_nascimento || 'N/A'}</p>
+                                    <p><strong>Mãe:</strong> ${aluno.mae || aluno.mae_aluno || 'N/A'}</p>
                                 </div>
                             </div>
                         </div>
@@ -3644,6 +3721,7 @@ function exibirFichaAluno(idAluno) {
                                                 <th>Bimestral</th>
                                                 <th>Recuperação</th>
                                                 <th>Média</th>
+                                                <th>Ano</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -3669,9 +3747,11 @@ function exibirFichaAluno(idAluno) {
                                                     mediaClass = 'text-success';
                                                 } else if (media >= 5) {
                                                     mediaClass = 'text-warning';
-                                                } else {
+                                                } else if (media > 0) {
                                                     mediaClass = 'text-danger';
                                                 }
+                                                
+                                                const ano = nota.ano || new Date().getFullYear();
                                                 
                                                 return `
                                                     <tr>
@@ -3681,6 +3761,7 @@ function exibirFichaAluno(idAluno) {
                                                         <td>${nota.nota_bimestral !== null ? nota.nota_bimestral : '-'}</td>
                                                         <td>${nota.recuperacao !== null ? nota.recuperacao : '-'}</td>
                                                         <td class="${mediaClass}"><strong>${media !== null ? media.toFixed(1) : '-'}</strong></td>
+                                                        <td>${ano}</td>
                                                     </tr>
                                                 `;
                                             }).join('')}
@@ -3693,19 +3774,38 @@ function exibirFichaAluno(idAluno) {
                 </div>
             `;
             
-            // Usar o UIModule para criar o modal se disponível, ou criar um modal Bootstrap manualmente
+            // Usar o UIModule para criar o modal se disponível
             if (window.UIModule) {
-                UIModule.criarModal({
+                const alunoModal = UIModule.criarModal({
+                    id: `modal-aluno-${idAluno}`,
                     titulo: `Ficha do Aluno - ${aluno.nome_aluno || aluno.nome || 'Detalhes'}`,
                     conteudo: modalHtml,
-                    tamanho: 'lg',
+                    tamanho: 'modal-lg',
                     botoes: [
                         {
                             texto: 'Fechar',
                             classe: 'btn-secondary',
-                            onClick: () => {}
+                            fecharModal: true
                         }
                     ]
+                });
+                
+                // Adicionar evento para limpeza completa quando o modal for fechado
+                const modalElement = document.getElementById(`modal-aluno-${idAluno}`);
+                modalElement.addEventListener('hidden.bs.modal', function() {
+                    console.log('Modal fechado - removendo do DOM');
+                    
+                    // Garantir limpeza completa
+                    document.querySelectorAll('.modal-backdrop').forEach(backdrop => backdrop.remove());
+                    document.querySelectorAll('.loading-overlay').forEach(overlay => overlay.remove());
+                    
+                    // Restaurar o scroll e limpar classes do body
+                    document.body.classList.remove('modal-open');
+                    document.body.style.overflow = '';
+                    document.body.style.paddingRight = '';
+                    
+                    // Remover o modal
+                    this.remove();
                 });
             } else {
                 // Fallback para modal Bootstrap tradicional
@@ -3746,7 +3846,69 @@ function exibirFichaAluno(idAluno) {
                 // Inicializar e abrir o modal
                 const modalObj = new bootstrap.Modal(modalEl);
                 modalObj.show();
+                
+                // Configurar tecla ESC para fechar o modal
+                document.addEventListener('keydown', function escHandler(e) {
+                    if (e.key === 'Escape' && document.getElementById(modalId)) {
+                        console.log('Tecla ESC pressionada - fechando modal');
+                        
+                        // Remover qualquer indicador de carregamento
+                        const loadingSpinners = document.querySelectorAll('.spinner-border');
+                        loadingSpinners.forEach(spinner => {
+                            const row = spinner.closest('tr');
+                            if (row) row.remove();
+                        });
+                        
+                        modalObj.hide();
+                        document.removeEventListener('keydown', escHandler);
+                    }
+                });
+                
+                // Garantir limpeza quando o modal for fechado
+                modalEl.addEventListener('hidden.bs.modal', function() {
+                    console.log('Modal fechado - removendo do DOM');
+                    
+                    // Garantir limpeza completa
+                    document.querySelectorAll('.modal-backdrop').forEach(backdrop => backdrop.remove());
+                    document.querySelectorAll('.loading-overlay').forEach(overlay => overlay.remove());
+                    
+                    // Restaurar o scroll e limpar classes do body
+                    document.body.classList.remove('modal-open');
+                    document.body.style.overflow = '';
+                    document.body.style.paddingRight = '';
+                    
+                    // Remover o modal
+                    this.remove();
+                });
             }
+            
+            // Verificar o estado do modal após um timeout
+            setTimeout(() => {
+                const modalElement = document.getElementById(`modal-aluno-${idAluno}`);
+                // Se o modal ainda estiver aberto e a requisição não foi bem-sucedida
+                if (modalElement && !requestSuccessful) {
+                    // Verificar se ainda tem um spinner rodando
+                    const spinner = modalElement.querySelector('.spinner-border');
+                    if (spinner) {
+                        const row = spinner.closest('tr');
+                        if (row) {
+                            row.innerHTML = `
+                                <td colspan="6" class="text-center text-warning">
+                                    <div class="alert alert-warning" role="alert">
+                                        <i class="fas fa-clock me-2"></i>
+                                        A operação está demorando mais que o esperado.
+                                        <div class="mt-2">
+                                            <button class="btn btn-sm btn-outline-primary" onclick="carregarNotasManualmente('${idAluno}')">
+                                                <i class="fas fa-sync-alt me-1"></i>Tentar novamente
+                                            </button>
+                                        </div>
+                                    </div>
+                                </td>
+                            `;
+                        }
+                    }
+                }
+            }, 5000);
         })
         .catch(error => {
             console.error('Erro ao exibir ficha do aluno:', error);
@@ -3756,6 +3918,9 @@ function exibirFichaAluno(idAluno) {
             } else {
                 alert('Erro: Não foi possível carregar os dados do aluno.');
             }
+            
+            // Em caso de erro, garantir que todas as indicações de carregamento sejam removidas
+            limparTodosModaisEBackdrops();
         });
 }
 
@@ -3851,3 +4016,392 @@ function mostrarMensagemFlutuante(mensagem, tipo = 'info') {
 // Registrar funções globalmente
 window.exibirFichaAluno = exibirFichaAluno;
 window.mostrarMensagemFlutuante = mostrarMensagemFlutuante;
+
+// Função para carregar notas de um aluno manualmente (utilizada no timeout do modal)
+function carregarNotasManualmente(idAluno) {
+    console.log(`Tentando carregar notas manualmente para o aluno ID: ${idAluno}`);
+    
+    if (!idAluno) {
+        console.error('ID do aluno não fornecido para carregarNotasManualmente');
+        return;
+    }
+    
+    // Atualizar a linha de carregamento
+    const modalElement = document.getElementById(`modal-aluno-${idAluno}`);
+    if (!modalElement) {
+        console.error('Modal do aluno não encontrado');
+        return;
+    }
+    
+    // Encontrar o corpo da tabela onde as notas são exibidas
+    const tbody = modalElement.querySelector('tbody');
+    if (!tbody) {
+        console.error('Tabela de notas não encontrada no modal');
+        return;
+    }
+    
+    // Mostrar loading na primeira linha
+    tbody.innerHTML = `
+        <tr>
+            <td colspan="7" class="text-center">
+                <div class="d-flex justify-content-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Carregando...</span>
+                    </div>
+                </div>
+                <p class="mt-2">Carregando notas...</p>
+            </td>
+        </tr>
+    `;
+    
+    // Buscar notas do aluno
+    const urlsToTry = [
+        `/notas?aluno_id=${idAluno}`,
+        `/alunos/${idAluno}/notas`
+    ];
+    
+    // Função recursiva para tentar múltiplas URLs
+    function tentarProximaUrl(index = 0) {
+        if (index >= urlsToTry.length) {
+            console.error("Todas as tentativas de URLs falharam.");
+            // Exibir mensagem amigável de erro, mas permitir que o modal continue funcionando
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="7" class="text-center text-danger">
+                        <div class="alert alert-warning" role="alert">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Não foi possível carregar as notas deste aluno no momento.
+                            <br>
+                            <small>Verifique a seção de Gestão de Notas para visualizar o histórico completo.</small>
+                            <div class="mt-2">
+                                <button class="btn btn-sm btn-outline-primary" onclick="carregarNotasManualmente('${idAluno}')">
+                                    <i class="fas fa-sync-alt me-1"></i>Tentar novamente
+                                </button>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            `;
+            
+            // Remover qualquer outro indicador de carregamento no modal
+            const otherLoaders = modalElement.querySelectorAll('.spinner-border:not(:has(ancestor::tr))');
+            otherLoaders.forEach(loader => {
+                try { loader.remove(); } catch (e) { /* ignorar */ }
+            });
+            
+            return;
+        }
+        
+        fetch(CONFIG.getApiUrl(urlsToTry[index]))
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Erro ${response.status} ao carregar notas`);
+                }
+                return response.json();
+            })
+            .then(notas => {
+                // Filtrar apenas as notas deste professor
+                const notasDoAluno = Array.isArray(notas) ? notas.filter(nota => 
+                    nota.professor_id === professorId || 
+                    nota.id_professor === professorId
+                ) : [];
+                
+                console.log(`Notas encontradas para o aluno: ${notasDoAluno.length}`);
+                
+                if (notasDoAluno.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="7" class="text-center">
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    Nenhuma nota registrada para este aluno.
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+                
+                // Renderizar as notas na tabela
+                tbody.innerHTML = notasDoAluno.map(nota => {
+                    // Calcular média se não estiver definida
+                    let media = nota.media;
+                    if (!media && (nota.nota_mensal || nota.nota_bimestral)) {
+                        const notaMensal = parseFloat(nota.nota_mensal) || 0;
+                        const notaBimestral = parseFloat(nota.nota_bimestral) || 0;
+                        media = (notaMensal + notaBimestral) / 2;
+                        
+                        if (nota.recuperacao) {
+                            const recuperacao = parseFloat(nota.recuperacao);
+                            media = (media + recuperacao) / 2;
+                        }
+                        
+                        media = Math.round(media * 10) / 10; // Arredondar para 1 casa decimal
+                    }
+                    
+                    // Determinar classe de cor com base na média
+                    let mediaClass = '';
+                    if (media >= 7) {
+                        mediaClass = 'text-success';
+                    } else if (media >= 5) {
+                        mediaClass = 'text-warning';
+                    } else if (media > 0) {
+                        mediaClass = 'text-danger';
+                    }
+                    
+                    const ano = nota.ano || new Date().getFullYear();
+                    
+                    return `
+                        <tr>
+                            <td>${nota.nome_disciplina || nota.id_disciplina}</td>
+                            <td>${nota.bimestre}º</td>
+                            <td>${nota.nota_mensal !== null ? nota.nota_mensal : '-'}</td>
+                            <td>${nota.nota_bimestral !== null ? nota.nota_bimestral : '-'}</td>
+                            <td>${nota.recuperacao !== null ? nota.recuperacao : '-'}</td>
+                            <td class="${mediaClass}"><strong>${media !== null ? media.toFixed(1) : '-'}</strong></td>
+                            <td>${ano}</td>
+                        </tr>
+                    `;
+                }).join('');
+                
+                // Registrar atividade
+                registrarAtividade('consulta', 'aluno', idAluno, 'Recarga manual de notas');
+            })
+            .catch(error => {
+                console.error(`Erro ao carregar notas (tentativa ${index + 1}):`, error);
+                // Tentar próxima URL
+                tentarProximaUrl(index + 1);
+            });
+    }
+    
+    // Iniciar tentativas de carregamento
+    tentarProximaUrl(0);
+}
+
+// Garantir que a função esteja disponível globalmente
+window.carregarNotasManualmente = carregarNotasManualmente;
+
+// Função para mostrar o perfil do professor em um modal
+function mostrarPerfilProfessor() {
+    console.log('Mostrando perfil do professor em modal');
+    
+    // Buscar dados completos do professor
+    fetch(CONFIG.getApiUrl(`/professores/${professorId}`))
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Erro ao carregar dados do professor: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(professor => {
+            console.log('Dados do professor:', professor);
+            
+            // Preparar conteúdo do modal
+            const modalHtml = `
+                <div class="text-center mb-4">
+                    <i class="fas fa-user-circle fa-5x text-primary"></i>
+                </div>
+                <div class="row">
+                    <div class="col-md-12">
+                        <ul class="list-group mb-4">
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <strong>ID:</strong>
+                                <span>${professor.id_professor || professor.id || professorId}</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <strong>Nome:</strong>
+                                <span>${professor.nome_professor || professor.nome || professorNome || 'Não disponível'}</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <strong>Email:</strong>
+                                <span>${professor.email || 'Não disponível'}</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <strong>Disciplinas:</strong>
+                                <span id="modal-disciplinas">${professor.disciplinas?.length || 0} disciplina(s)</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <strong>Turmas:</strong>
+                                <span id="modal-turmas">Carregando...</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-12">
+                        <h5><i class="fas fa-graduation-cap me-2"></i>Disciplinas Ministradas</h5>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Disciplina</th>
+                                        <th>Turmas</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="modal-tbody-disciplinas">
+                                    <tr>
+                                        <td colspan="3" class="text-center">
+                                            <div class="spinner-border spinner-border-sm" role="status">
+                                                <span class="visually-hidden">Carregando...</span>
+                                            </div>
+                                            Carregando disciplinas...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Usar UIModule se disponível, ou fallback para Bootstrap
+            if (window.UIModule) {
+                const perfilModal = UIModule.criarModal({
+                    id: 'modal-perfil-professor',
+                    titulo: 'Meu Perfil',
+                    conteudo: modalHtml,
+                    tamanho: 'modal-lg',
+                    botoes: [
+                        {
+                            texto: 'Fechar',
+                            classe: 'btn-secondary',
+                            fecharModal: true
+                        }
+                    ]
+                });
+                
+                // Adicionar evento para limpeza completa quando o modal for fechado
+                const modalElement = document.getElementById('modal-perfil-professor');
+                modalElement.addEventListener('hidden.bs.modal', function() {
+                    console.log('Modal de perfil fechado - removendo do DOM');
+                    
+                    // Garantir limpeza completa
+                    document.querySelectorAll('.modal-backdrop').forEach(backdrop => backdrop.remove());
+                    document.querySelectorAll('.loading-overlay').forEach(overlay => overlay.remove());
+                    
+                    // Restaurar o scroll e limpar classes do body
+                    document.body.classList.remove('modal-open');
+                    document.body.style.overflow = '';
+                    document.body.style.paddingRight = '';
+                    
+                    // Remover o modal
+                    this.remove();
+                });
+            } else {
+                // Fallback para modal Bootstrap tradicional
+                const modalId = 'modal-perfil-professor';
+                
+                // Remover modal anterior se existir
+                const modalAnterior = document.getElementById(modalId);
+                if (modalAnterior) modalAnterior.remove();
+                
+                // Criar elemento do modal
+                const modalEl = document.createElement('div');
+                modalEl.className = 'modal fade';
+                modalEl.id = modalId;
+                modalEl.setAttribute('tabindex', '-1');
+                modalEl.setAttribute('aria-labelledby', `${modalId}-label`);
+                modalEl.setAttribute('aria-hidden', 'true');
+                
+                modalEl.innerHTML = `
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="${modalId}-label">Ficha do Aluno - ${aluno.nome_aluno || aluno.nome || 'Detalhes'}</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                            </div>
+                            <div class="modal-body">
+                                ${modalHtml}
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // Adicionar ao body
+                document.body.appendChild(modalEl);
+                
+                // Inicializar e abrir o modal
+                const modalObj = new bootstrap.Modal(modalEl);
+                modalObj.show();
+                
+                // Configurar tecla ESC para fechar o modal
+                document.addEventListener('keydown', function escHandler(e) {
+                    if (e.key === 'Escape' && document.getElementById(modalId)) {
+                        console.log('Tecla ESC pressionada - fechando modal');
+                        
+                        // Remover qualquer indicador de carregamento
+                        const loadingSpinners = document.querySelectorAll('.spinner-border');
+                        loadingSpinners.forEach(spinner => {
+                            const row = spinner.closest('tr');
+                            if (row) row.remove();
+                        });
+                        
+                        modalObj.hide();
+                        document.removeEventListener('keydown', escHandler);
+                    }
+                });
+                
+                // Garantir limpeza quando o modal for fechado
+                modalEl.addEventListener('hidden.bs.modal', function() {
+                    console.log('Modal fechado - removendo do DOM');
+                    
+                    // Garantir limpeza completa
+                    document.querySelectorAll('.modal-backdrop').forEach(backdrop => backdrop.remove());
+                    document.querySelectorAll('.loading-overlay').forEach(overlay => overlay.remove());
+                    
+                    // Restaurar o scroll e limpar classes do body
+                    document.body.classList.remove('modal-open');
+                    document.body.style.overflow = '';
+                    document.body.style.paddingRight = '';
+                    
+                    // Remover o modal
+                    this.remove();
+                });
+            }
+            
+            // Verificar o estado do modal após um timeout
+            setTimeout(() => {
+                const modalElement = document.getElementById(`modal-aluno-${idAluno}`);
+                // Se o modal ainda estiver aberto e a requisição não foi bem-sucedida
+                if (modalElement && !requestSuccessful) {
+                    // Verificar se ainda tem um spinner rodando
+                    const spinner = modalElement.querySelector('.spinner-border');
+                    if (spinner) {
+                        const row = spinner.closest('tr');
+                        if (row) {
+                            row.innerHTML = `
+                                <td colspan="6" class="text-center text-warning">
+                                    <div class="alert alert-warning" role="alert">
+                                        <i class="fas fa-clock me-2"></i>
+                                        A operação está demorando mais que o esperado.
+                                        <div class="mt-2">
+                                            <button class="btn btn-sm btn-outline-primary" onclick="carregarNotasManualmente('${idAluno}')">
+                                                <i class="fas fa-sync-alt me-1"></i>Tentar novamente
+                                            </button>
+                                        </div>
+                                    </div>
+                                </td>
+                            `;
+                        }
+                    }
+                }
+            }, 5000);
+        })
+        .catch(error => {
+            console.error('Erro ao exibir ficha do aluno:', error);
+            
+            if (window.UIModule) {
+                UIModule.mostrarErro('Não foi possível carregar os dados do aluno. ' + error.message, 'Erro');
+            } else {
+                alert('Erro: Não foi possível carregar os dados do aluno.');
+            }
+            
+            // Em caso de erro, garantir que todas as indicações de carregamento sejam removidas
+            limparTodosModaisEBackdrops();
+        });
+}
