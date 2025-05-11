@@ -73,38 +73,70 @@ const ConfigModule = {
         }
     },
     
-    // Função para fazer requisições à API
+    /**
+     * Realiza uma requisição para a API
+     * @param {string} endpoint - Endpoint da API
+     * @param {Object} options - Opções da requisição
+     * @returns {Promise<any>} - Resposta da API
+     */
     fetchApi: async function(endpoint, options = {}) {
-        const url = this.getApiUrl(endpoint);
-        
-        // Configuração padrão das requisições
-        const defaultOptions = {
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        };
-        
-        // Mesclar opções
-        const fetchOptions = { ...defaultOptions, ...options };
-        
         try {
+            const baseUrl = this.state.apiUrl;
+            const url = `${baseUrl}${endpoint}`;
+            
+            console.log(`Fazendo requisição para: ${url}`);
+            
+            // Configurar headers
+            const headers = {
+                'Content-Type': 'application/json',
+                ...options.headers
+            };
+            
+            // Configurar opções de requisição
+            const fetchOptions = {
+                ...options,
+                headers
+            };
+            
+            // Log de informações para debug
+            console.log(`Método: ${fetchOptions.method || 'GET'}`);
+            if (fetchOptions.body) {
+                console.log(`Payload: ${fetchOptions.body}`);
+            }
+            
             const response = await fetch(url, fetchOptions);
             
-            // Verificar se a resposta foi bem-sucedida
             if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(`Erro ${response.status}: ${errorText}`);
+                // Tentar obter detalhes do erro
+                let errorDetails;
+                try {
+                    errorDetails = await response.json();
+                } catch (e) {
+                    errorDetails = await response.text();
+                }
+                
+                throw new Error(`Erro ${response.status}: ${JSON.stringify(errorDetails)}`);
             }
             
             // Verificar se a resposta está vazia
-            const contentType = response.headers.get('content-type');
-            if (contentType && contentType.includes('application/json')) {
-                return await response.json();
-            } else {
-                return await response.text();
+            const text = await response.text();
+            
+            // Se a resposta for vazia, retornar um objeto vazio
+            if (!text) {
+                console.log(`Resposta vazia do servidor para: ${url}`);
+                return {};
+            }
+            
+            try {
+                const data = JSON.parse(text);
+                console.log(`Resposta recebida de ${url}:`, data);
+                return data;
+            } catch (e) {
+                console.warn(`Resposta não é um JSON válido: ${text}`);
+                return text;
             }
         } catch (error) {
-            console.error(`Erro na requisição para ${url}:`, error);
+            console.error(`Erro na requisição para ${this.state.apiUrl}${endpoint}:`, error);
             throw error;
         }
     },

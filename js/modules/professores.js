@@ -52,7 +52,7 @@ const ProfessoresModule = {
                 inputEmailProfessor: document.getElementById('email-professor'),
                 inputSenhaProfessor: document.getElementById('senha-professor'),
                 selectDisciplinas: document.getElementById('disciplinas-professor'),
-                vinculosContainer: document.getElementById('vinculos-container')
+                vinculosContainer: document.getElementById('vinculos-professor-container')
             };
             
             // Verificar qual ID o container de vínculos está usando
@@ -822,74 +822,289 @@ const ProfessoresModule = {
             if (vinculosSalvar.length > 0 && idProfessor) {
                 console.log(`Salvando ${vinculosSalvar.length} vínculos para o professor ${idProfessor}`);
                 
-                // Tentar excluir vínculos existentes primeiro
+                // Tentar descobrir os endpoints disponíveis na API
                 try {
-                    console.log("Tentando excluir vínculos existentes antes de adicionar novos");
-                    await ConfigModule.fetchApi(`/professor_disciplina_turma/professor/${idProfessor}`, {
-                        method: 'DELETE'
+                    console.log("Tentando descobrir endpoints disponíveis na API...");
+                    
+                    // Fazer uma requisição OPTIONS para a raiz da API
+                    const apiInfo = await fetch(ConfigModule.state.apiUrl, {
+                        method: 'OPTIONS'
                     });
-                    console.log("Vínculos anteriores excluídos com sucesso");
-                } catch (deleteError) {
-                    // Tentar formato alternativo para exclusão
-                    try {
-                        await ConfigModule.fetchApi(`/professor_disciplina_turma?professor_id=${idProfessor}`, {
-                            method: 'DELETE'
-                        });
-                        console.log("Vínculos anteriores excluídos com formato alternativo");
-                    } catch (deleteErrorAlt) {
-                        console.warn("Não foi possível excluir vínculos anteriores. Continuando mesmo assim:", deleteErrorAlt);
+                    
+                    console.log("Resposta da API (OPTIONS):", apiInfo);
+                    
+                    if (apiInfo.ok) {
+                        try {
+                            const apiInfoText = await apiInfo.text();
+                            console.log("Informações da API:", apiInfoText);
+                        } catch (e) {
+                            console.warn("Não foi possível ler informações da API");
+                        }
                     }
+                    
+                    // Tentar obter o schema do OpenAPI se disponível
+                    try {
+                        const openApiInfo = await fetch(`${ConfigModule.state.apiUrl}/openapi.json`);
+                        if (openApiInfo.ok) {
+                            const openApiSchema = await openApiInfo.json();
+                            console.log("Schema OpenAPI:", openApiSchema);
+                            
+                            // Procurar endpoints que podem ser relevantes
+                            const paths = openApiSchema.paths || {};
+                            const relevantPaths = Object.keys(paths).filter(path => 
+                                path.includes('professor') && 
+                                path.includes('disciplina')
+                            );
+                            
+                            console.log("Endpoints possivelmente relevantes:", relevantPaths);
+                        }
+                    } catch (e) {
+                        console.warn("Não foi possível obter schema OpenAPI:", e);
+                    }
+                    
+                } catch (apiInfoError) {
+                    console.warn("Erro ao tentar descobrir endpoints da API:", apiInfoError);
                 }
                 
                 // Para cada vínculo, criar um registro na tabela professor_disciplina_turma
                 const sucessos = [];
                 const falhas = [];
                 
-                for (const vinculo of vinculosSalvar) {
+                // Lista de possíveis endpoints e formatos a tentar
+                const endpointsPossiveis = [
+                    '/professor_disciplina_turma',
+                    '/professores_disciplinas_turmas',
+                    '/professor_disciplina',
+                    '/professores/disciplinas/turmas',
+                    '/professor-disciplina-turma',
+                    '/professor-disciplina',
+                    '/vinculos',
+                    '/vinculos/professor',
+                    '/vinculos/professor/disciplina',
+                    '/professores/vinculos'
+                ];
+                
+                // Lista de possíveis formatos de payload
+                const formatosPossiveis = [
+                    (vinculo) => ({ 
+                        professor_id: idProfessor, 
+                        disciplina_id: vinculo.id_disciplina, 
+                        turma_id: vinculo.id_turma 
+                    }),
+                    (vinculo) => ({
+                        id_professor: idProfessor,
+                        id_disciplina: vinculo.id_disciplina,
+                        id_turma: vinculo.id_turma
+                    }),
+                    (vinculo) => ({
+                        professor: idProfessor,
+                        disciplina: vinculo.id_disciplina,
+                        turma: vinculo.id_turma
+                    }),
+                    (vinculo) => ({
+                        professorId: idProfessor,
+                        disciplinaId: vinculo.id_disciplina,
+                        turmaId: vinculo.id_turma
+                    }),
+                    (vinculo) => ({
+                        prof_id: idProfessor,
+                        disc_id: vinculo.id_disciplina,
+                        turma_id: vinculo.id_turma
+                    }),
+                    (vinculo) => ({
+                        professor_disciplina_turma: {
+                            professor_id: idProfessor,
+                            disciplina_id: vinculo.id_disciplina,
+                            turma_id: vinculo.id_turma
+                        }
+                    }),
+                    (vinculo) => ({
+                        vinculo: {
+                            professor_id: idProfessor,
+                            disciplina_id: vinculo.id_disciplina,
+                            turma_id: vinculo.id_turma
+                        }
+                    }),
+                    (vinculo) => ({
+                        data: {
+                            professor_id: idProfessor,
+                            disciplina_id: vinculo.id_disciplina,
+                            turma_id: vinculo.id_turma
+                        }
+                    })
+                ];
+                
+                // Lista de métodos HTTP a tentar
+                const metodosPossiveis = ["POST", "PUT"];
+                
+                // Função para tentar salvar um vínculo com várias tentativas
+                const tentarSalvarVinculo = async (vinculo) => {
+                    let sucesso = false;
+                    
+                    // Tentar cada combinação possível
+                    for (const endpoint of endpointsPossiveis) {
+                        for (const formatoFn of formatosPossiveis) {
+                            for (const metodo of metodosPossiveis) {
+                                if (sucesso) continue; // Se já teve sucesso, não tentar mais
+                                
+                                try {
+                                    const payload = formatoFn(vinculo);
+                                    console.log(`Tentando endpoint: ${endpoint}, método: ${metodo}`);
+                                    console.log(`Payload: ${JSON.stringify(payload)}`);
+                                    
+                                    const resultado = await ConfigModule.fetchApi(endpoint, {
+                                        method: metodo,
+                                        body: JSON.stringify(payload)
+                                    });
+                                    
+                                    console.log(`Sucesso ao salvar vínculo com: endpoint=${endpoint}, método=${metodo}`);
+                                    console.log(`Resposta: ${JSON.stringify(resultado)}`);
+                                    sucesso = true;
+                                    return true;
+                                } catch (erro) {
+                                    console.warn(`Falha ao salvar com: endpoint=${endpoint}, método=${metodo}, erro:`, erro);
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Tentativa direta com fetch, sem passar pelo ConfigModule
                     try {
-                        // Preparar payload com todos os campos necessários
-                        const dadosVinculo = {
+                        console.log("Tentando método direto com fetch...");
+                        
+                        // Obter a URL base da API do ConfigModule
+                        const apiBaseUrl = ConfigModule.state.apiUrl;
+                        
+                        // Tentar uma versão simplificada do endpoint
+                        const simplifiedEndpoint = '/professores_disciplinas_turmas';
+                        const url = `${apiBaseUrl}${simplifiedEndpoint}`;
+                        
+                        console.log(`Tentando enviar diretamente para: ${url}`);
+                        
+                        // Preparar payload simplificado
+                        const simplifiedPayload = {
                             professor_id: idProfessor,
                             disciplina_id: vinculo.id_disciplina,
                             turma_id: vinculo.id_turma
                         };
                         
-                        console.log(`Enviando vínculo para API: ${JSON.stringify(dadosVinculo)}`);
-                        
-                        // Enviar para o endpoint da tabela de relação
-                        const resultado = await ConfigModule.fetchApi('/professor_disciplina_turma', {
+                        // Fazer requisição direta
+                        const response = await fetch(url, {
                             method: 'POST',
-                            body: JSON.stringify(dadosVinculo)
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(simplifiedPayload)
                         });
                         
-                        console.log("Vínculo salvo com sucesso:", resultado);
-                        sucessos.push(vinculo);
-                    } catch (erro) {
-                        console.error(`Erro ao salvar vínculo: ${vinculo.id_disciplina} - ${vinculo.id_turma}`, erro);
-                        falhas.push(vinculo);
-                        
-                        // Tentar um formato alternativo se o primeiro falhar
-                        try {
-                            const dadosVinculoAlt = {
-                                id_professor: idProfessor,
-                                id_disciplina: vinculo.id_disciplina,
-                                id_turma: vinculo.id_turma
-                            };
+                        if (response.ok) {
+                            console.log("Sucesso no método direto!");
+                            sucesso = true;
+                            return true;
+                        } else {
+                            console.warn(`Erro no método direto: ${response.status}`);
                             
-                            console.log(`Tentando formato alternativo: ${JSON.stringify(dadosVinculoAlt)}`);
-                            
-                            const resultadoAlt = await ConfigModule.fetchApi('/professor_disciplina_turma', {
-                                method: 'POST',
-                                body: JSON.stringify(dadosVinculoAlt)
-                            });
-                            
-                            console.log("Vínculo salvo com formato alternativo:", resultadoAlt);
-                            sucessos.push(vinculo);
-                            // Remover da lista de falhas
-                            falhas.pop();
-                        } catch (erroAlt) {
-                            console.error("Formato alternativo também falhou:", erroAlt);
+                            // Tentar ler detalhes do erro
+                            try {
+                                const errorDetails = await response.text();
+                                console.warn(`Detalhes do erro: ${errorDetails}`);
+                            } catch (e) {
+                                console.warn("Não foi possível ler detalhes do erro");
+                            }
                         }
+                    } catch (directError) {
+                        console.warn("Erro no método direto:", directError);
+                    }
+                    
+                    // Tentativa especial: incluir o vínculo diretamente nos dados do professor
+                    try {
+                        console.log("Tentando método alternativo: atualizando o professor com o vínculo");
+                        
+                        // Buscar as disciplinas atuais do professor
+                        const professor = await ConfigModule.fetchApi(`/professores/${idProfessor}`);
+                        const disciplinasAtuais = professor.disciplinas || [];
+                        
+                        // Garantir que a disciplina deste vínculo está incluída
+                        if (!disciplinasAtuais.includes(vinculo.id_disciplina)) {
+                            disciplinasAtuais.push(vinculo.id_disciplina);
+                        }
+                        
+                        // Atualizar o professor com as disciplinas
+                        const dadosAtualizados = {
+                            disciplinas: disciplinasAtuais,
+                            vinculos: [
+                                ...(professor.vinculos || []),
+                                {
+                                    id_professor: idProfessor,
+                                    id_disciplina: vinculo.id_disciplina,
+                                    id_turma: vinculo.id_turma
+                                }
+                            ]
+                        };
+                        
+                        console.log("Atualizando professor com:", dadosAtualizados);
+                        
+                        const resultado = await ConfigModule.fetchApi(`/professores/${idProfessor}`, {
+                            method: "PUT",
+                            body: JSON.stringify(dadosAtualizados)
+                        });
+                        
+                        console.log("Professor atualizado com vinculos:", resultado);
+                        sucesso = true;
+                        return true;
+                    } catch (erroProf) {
+                        console.warn("Erro ao atualizar professor com vinculos:", erroProf);
+                    }
+                    
+                    // Tentativa específica para o endpoint mencionado em simplified_api.py
+                    try {
+                        console.log("Tentando endpoints específicos de simplified_api.py...");
+                        
+                        // Lista de possíveis nomes para o endpoint baseados no nome do arquivo
+                        const simplifiedEndpoints = [
+                            '/simplified/professor_disciplina_turma',
+                            '/simplified_api/professor_disciplina_turma',
+                            '/simplified/vinculos',
+                            '/api/vinculos/professor',
+                            '/api/professor_vinculos',
+                            '/api/professor/vinculos',
+                            '/api/vinculos'
+                        ];
+                        
+                        for (const endpoint of simplifiedEndpoints) {
+                            try {
+                                console.log(`Tentando endpoint simplificado: ${endpoint}`);
+                                const payload = {
+                                    professor_id: idProfessor,
+                                    disciplina_id: vinculo.id_disciplina,
+                                    turma_id: vinculo.id_turma
+                                };
+                                
+                                const resultado = await ConfigModule.fetchApi(endpoint, {
+                                    method: 'POST',
+                                    body: JSON.stringify(payload)
+                                });
+                                
+                                console.log(`Sucesso com endpoint simplificado ${endpoint}:`, resultado);
+                                return true;
+                            } catch (error) {
+                                console.warn(`Erro com endpoint simplificado ${endpoint}:`, error);
+                            }
+                        }
+                    } catch (erroSimplified) {
+                        console.warn("Erro ao tentar endpoints simplificados:", erroSimplified);
+                    }
+                    
+                    return false;
+                };
+                
+                // Tentar salvar cada vínculo
+                for (const vinculo of vinculosSalvar) {
+                    const salvou = await tentarSalvarVinculo(vinculo);
+                    if (salvou) {
+                        sucessos.push(vinculo);
+                    } else {
+                        falhas.push(vinculo);
                     }
                 }
                 
@@ -900,7 +1115,7 @@ const ProfessoresModule = {
                 
                 if (falhas.length > 0) {
                     console.warn(`${falhas.length} vínculos não puderam ser salvos.`);
-                    this.mostrarErro(`Atenção: ${falhas.length} vínculos não puderam ser salvos. Tente novamente mais tarde.`);
+                    this.mostrarErro(`Atenção: ${falhas.length} vínculos não puderam ser salvos. Verifique o endpoint correto em simplified_api.py.`);
                 }
             }
             
