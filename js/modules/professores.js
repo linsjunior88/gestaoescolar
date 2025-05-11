@@ -76,17 +76,6 @@ const ProfessoresModule = {
             // Configurar eventos
             this.configurarEventos();
             
-            // Inicializar selectize para disciplinas
-            if (this.elements.selectDisciplinas) {
-                $(this.elements.selectDisciplinas).selectize({
-                    plugins: ['remove_button'],
-                    delimiter: ',',
-                    placeholder: 'Selecione as disciplinas',
-                    onItemAdd: () => this.atualizarTurmasVinculadas(),
-                    onItemRemove: () => this.atualizarTurmasVinculadas()
-                });
-            }
-            
             console.log("Módulo de professores inicializado com sucesso");
         } catch (error) {
             console.error("Erro ao inicializar módulo de professores:", error);
@@ -154,39 +143,30 @@ const ProfessoresModule = {
     // Carregar disciplinas e turmas vinculadas
     carregarDisciplinasTurmas: async function() {
         try {
-            // Carregar disciplinas
-            const disciplinas = await ConfigModule.fetchApi('/disciplinas');
-            console.log("Disciplinas carregadas:", disciplinas);
+            // Em vez de chamar um endpoint específico para vínculos, vamos usar os dados que já temos
+            this.state.disciplinasTurmas = [];
             
-            // Normalizar os dados de disciplinas
-            this.state.disciplinas = disciplinas.map(d => ({
-                id: d.id,
-                id_disciplina: d.id_disciplina,
-                nome: d.nome_disciplina || d.nome,
-                carga_horaria: d.carga_horaria
-            }));
-            
-            // Carregar relacionamentos disciplina-turma para cada disciplina
+            // Para cada disciplina, vamos buscar as turmas associadas
             for (const disciplina of this.state.disciplinas) {
                 try {
+                    // Buscar turmas para esta disciplina
                     const turmas = await ConfigModule.fetchApi(`/disciplinas/${disciplina.id_disciplina}/turmas`);
+                    
                     if (Array.isArray(turmas) && turmas.length > 0) {
                         this.state.disciplinasTurmas.push({
                             disciplina: disciplina.id_disciplina,
                             turmas: turmas
                         });
                     }
-                } catch (err) {
-                    console.warn(`Não foi possível carregar turmas para a disciplina ${disciplina.id_disciplina}:`, err);
+                } catch (erro) {
+                    console.warn(`Não foi possível carregar turmas para a disciplina ${disciplina.id_disciplina}:`, erro);
                 }
             }
             
-            console.log("Disciplinas e turmas carregadas:", this.state.disciplinasTurmas);
-            this.popularSelectDisciplinas();
-            
+            console.log("Vínculos de disciplinas e turmas carregados:", this.state.disciplinasTurmas);
         } catch (error) {
-            console.error("Erro ao carregar disciplinas e turmas:", error);
-            this.mostrarErro("Não foi possível carregar as disciplinas e turmas vinculadas.");
+            console.error("Erro ao carregar vínculos de disciplinas e turmas:", error);
+            this.mostrarErro("Não foi possível carregar os vínculos entre disciplinas e turmas.");
         }
     },
     
@@ -350,9 +330,46 @@ const ProfessoresModule = {
     // Carregar vínculos de um professor (disciplinas e turmas)
     carregarVinculosProfessor: async function(idProfessor) {
         try {
-            // Fazer uma chamada à API para obter os vínculos do professor
-            const vinculos = await ConfigModule.fetchApi(`/professores/${idProfessor}/vinculos`);
-            return Array.isArray(vinculos) ? vinculos : [];
+            // Como o endpoint específico de vínculos pode não existir, vamos usar o endpoint do professor
+            // e extrair as informações de disciplinas e turmas de lá
+            const professor = await ConfigModule.fetchApi(`/professores/${idProfessor}`);
+            
+            // Verificar se o professor possui dados de disciplinas
+            if (!professor || !professor.disciplinas || !Array.isArray(professor.disciplinas)) {
+                return [];
+            }
+            
+            // Construir os vínculos manualmente baseado nas disciplinas do professor
+            const vinculos = [];
+            
+            // Para cada disciplina do professor, verificar se há turmas associadas
+            for (const disciplina of professor.disciplinas) {
+                const disciplinaId = typeof disciplina === 'object' ? disciplina.id_disciplina : disciplina;
+                
+                try {
+                    // Buscar turmas para esta disciplina especificamente para este professor
+                    // Como esse endpoint pode não existir, vamos buscar todas as turmas da disciplina
+                    const turmas = await ConfigModule.fetchApi(`/disciplinas/${disciplinaId}/turmas`);
+                    
+                    if (Array.isArray(turmas) && turmas.length > 0) {
+                        // Adicionar cada turma como um vínculo
+                        turmas.forEach(turma => {
+                            vinculos.push({
+                                id_professor: idProfessor,
+                                id_disciplina: disciplinaId,
+                                id_turma: turma.id_turma,
+                                serie: turma.serie,
+                                turno: turma.turno
+                            });
+                        });
+                    }
+                } catch (error) {
+                    console.warn(`Erro ao buscar turmas para disciplina ${disciplinaId}:`, error);
+                }
+            }
+            
+            console.log("Vínculos gerados para o professor:", vinculos);
+            return vinculos;
         } catch (error) {
             console.error(`Erro ao carregar vínculos do professor ${idProfessor}:`, error);
             return [];
@@ -546,11 +563,6 @@ const ProfessoresModule = {
                 Array.from(this.elements.selectDisciplinas.options).forEach(option => {
                     option.selected = false;
                 });
-                
-                // Reinicializar select com selectize se estiver usando
-                if ($(this.elements.selectDisciplinas).data('selectize')) {
-                    $(this.elements.selectDisciplinas).data('selectize').clear();
-                }
             }
             
             // Limpar container de turmas vinculadas
@@ -684,38 +696,60 @@ const ProfessoresModule = {
         }
     },
     
-    // Mostrar mensagem de sucesso
-    mostrarSucesso: function(mensagem) {
-        const alertContainer = document.createElement('div');
-        alertContainer.className = 'alert alert-success alert-dismissible fade show';
-        alertContainer.innerHTML = `
-            ${mensagem}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
-        `;
-        
-        document.querySelector('#conteudo-professores').insertBefore(alertContainer, document.querySelector('#conteudo-professores').firstChild);
-        
-        // Auto-remover após 5 segundos
-        setTimeout(() => {
-            alertContainer.remove();
-        }, 5000);
-    },
-    
-    // Mostrar mensagem de erro
+    // Exibir mensagem de erro
     mostrarErro: function(mensagem) {
+        console.error(mensagem);
+        
+        // Criar alerta de erro
         const alertContainer = document.createElement('div');
         alertContainer.className = 'alert alert-danger alert-dismissible fade show';
+        alertContainer.role = 'alert';
         alertContainer.innerHTML = `
-            ${mensagem}
+            <strong>Erro!</strong> ${mensagem}
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
         `;
         
-        document.querySelector('#conteudo-professores').insertBefore(alertContainer, document.querySelector('#conteudo-professores').firstChild);
+        // Inserir no topo do conteúdo
+        const conteudo = this.elements.conteudoProfessores;
+        if (conteudo) {
+            conteudo.insertBefore(alertContainer, conteudo.firstChild);
+            
+            // Auto-remover após alguns segundos
+            setTimeout(() => {
+                alertContainer.remove();
+            }, 5000);
+        } else {
+            // Fallback para alert padrão
+            alert(`Erro: ${mensagem}`);
+        }
+    },
+
+    // Exibir mensagem de sucesso
+    mostrarSucesso: function(mensagem) {
+        console.log(mensagem);
         
-        // Auto-remover após 5 segundos
-        setTimeout(() => {
-            alertContainer.remove();
-        }, 5000);
+        // Criar alerta de sucesso
+        const alertContainer = document.createElement('div');
+        alertContainer.className = 'alert alert-success alert-dismissible fade show';
+        alertContainer.role = 'alert';
+        alertContainer.innerHTML = `
+            <strong>Sucesso!</strong> ${mensagem}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+        `;
+        
+        // Inserir no topo do conteúdo
+        const conteudo = this.elements.conteudoProfessores;
+        if (conteudo) {
+            conteudo.insertBefore(alertContainer, conteudo.firstChild);
+            
+            // Auto-remover após alguns segundos
+            setTimeout(() => {
+                alertContainer.remove();
+            }, 5000);
+        } else {
+            // Fallback para alert padrão
+            alert(`Sucesso: ${mensagem}`);
+        }
     },
 
     // Configurar eventos
@@ -771,81 +805,72 @@ const ProfessoresModule = {
         }
     },
 
-    // Carregar vínculos entre disciplinas e turmas
-    carregarDisciplinasTurmas: async function() {
+    // Editar professor existente
+    editarProfessor: async function(id) {
         try {
-            const disciplinasTurmas = await ConfigModule.fetchApi('/disciplinas-turmas');
-            this.state.disciplinasTurmas = disciplinasTurmas;
-            console.log("Vínculos de disciplinas e turmas carregados com sucesso:", disciplinasTurmas);
+            // Carregar detalhes completos do professor
+            const professor = await ConfigModule.fetchApi(`/professores/${id}`);
+            if (!professor) {
+                this.mostrarErro("Professor não encontrado.");
+                return;
+            }
+            
+            console.log("Editando professor:", professor);
+            
+            // Carregar vínculos do professor para uso posterior
+            this.state.vinculos = await this.carregarVinculosProfessor(id);
+            console.log("Vínculos carregados:", this.state.vinculos);
+            
+            this.state.modoEdicao = true;
+            this.state.professorSelecionado = professor;
+            
+            if (this.elements.formProfessor) {
+                this.elements.formProfessor.classList.remove('d-none');
+                
+                // Preencher campos
+                if (this.elements.inputIdProfessor) {
+                    this.elements.inputIdProfessor.value = professor.id_professor || '';
+                    this.elements.inputIdProfessor.disabled = true; // Não permitir alterar o ID
+                }
+                
+                this.elements.inputNomeProfessor.value = professor.nome_professor || professor.nome || '';
+                this.elements.inputEmailProfessor.value = professor.email_professor || professor.email || '';
+                
+                // Campo de senha não é obrigatório na edição
+                if (this.elements.inputSenhaProfessor) {
+                    this.elements.inputSenhaProfessor.required = false;
+                    this.elements.inputSenhaProfessor.value = '';
+                    this.elements.inputSenhaProfessor.closest('.mb-3').classList.add('d-none');
+                }
+                
+                // Selecionar disciplinas do professor
+                if (professor.disciplinas && Array.isArray(professor.disciplinas) && this.elements.selectDisciplinas) {
+                    console.log("Disciplinas do professor:", professor.disciplinas);
+                    
+                    // Limpar seleções anteriores
+                    Array.from(this.elements.selectDisciplinas.options).forEach(option => {
+                        option.selected = false;
+                    });
+                    
+                    // Selecionar disciplinas
+                    professor.disciplinas.forEach(disc => {
+                        const disciplinaId = typeof disc === 'object' ? (disc.id_disciplina || disc.id) : disc;
+                        const option = Array.from(this.elements.selectDisciplinas.options).find(
+                            opt => opt.value === disciplinaId.toString()
+                        );
+                        
+                        if (option) option.selected = true;
+                    });
+                    
+                    // Atualizar visualização de turmas
+                    this.atualizarTurmasVinculadas();
+                }
+                
+                this.elements.inputNomeProfessor.focus();
+            }
         } catch (error) {
-            console.error("Erro ao carregar vínculos de disciplinas e turmas:", error);
-            this.mostrarErro("Não foi possível carregar os vínculos entre disciplinas e turmas.");
-        }
-    },
-
-    // Exibir mensagem de erro
-    mostrarErro: function(mensagem) {
-        // Implementar exibição de mensagem de erro
-        console.error(mensagem);
-        // Exemplo usando Toast do Bootstrap
-        const toastContainer = document.getElementById('toast-container');
-        if (toastContainer) {
-            const toastId = `erro-${Date.now()}`;
-            const toast = `
-                <div class="toast" role="alert" aria-live="assertive" aria-atomic="true" id="${toastId}">
-                    <div class="toast-header bg-danger text-white">
-                        <strong class="me-auto">Erro</strong>
-                        <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Fechar"></button>
-                    </div>
-                    <div class="toast-body">
-                        ${mensagem}
-                    </div>
-                </div>
-            `;
-            toastContainer.insertAdjacentHTML('beforeend', toast);
-            const toastElement = document.getElementById(toastId);
-            const bsToast = new bootstrap.Toast(toastElement);
-            bsToast.show();
-            
-            // Remover toast após ser ocultado
-            toastElement.addEventListener('hidden.bs.toast', () => {
-                toastElement.remove();
-            });
-        } else {
-            alert(`Erro: ${mensagem}`);
-        }
-    },
-
-    // Exibir mensagem de sucesso
-    mostrarSucesso: function(mensagem) {
-        // Implementar exibição de mensagem de sucesso
-        console.log(mensagem);
-        // Exemplo usando Toast do Bootstrap
-        const toastContainer = document.getElementById('toast-container');
-        if (toastContainer) {
-            const toastId = `sucesso-${Date.now()}`;
-            const toast = `
-                <div class="toast" role="alert" aria-live="assertive" aria-atomic="true" id="${toastId}">
-                    <div class="toast-header bg-success text-white">
-                        <strong class="me-auto">Sucesso</strong>
-                        <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Fechar"></button>
-                    </div>
-                    <div class="toast-body">
-                        ${mensagem}
-                    </div>
-                </div>
-            `;
-            toastContainer.insertAdjacentHTML('beforeend', toast);
-            const toastElement = document.getElementById(toastId);
-            const bsToast = new bootstrap.Toast(toastElement);
-            bsToast.show();
-            
-            // Remover toast após ser ocultado
-            toastElement.addEventListener('hidden.bs.toast', () => {
-                toastElement.remove();
-            });
-        } else {
-            alert(`Sucesso: ${mensagem}`);
+            console.error("Erro ao editar professor:", error);
+            this.mostrarErro("Não foi possível carregar os dados do professor para edição.");
         }
     }
 };
