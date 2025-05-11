@@ -398,14 +398,23 @@ const ProfessoresModule = {
         try {
             console.log(`Buscando vínculos para o professor ${idProfessor}`);
             
+            // Garantir que idProfessor seja uma string para comparações consistentes
+            idProfessor = String(idProfessor);
+            
             // Tentar buscar diretamente da tabela professor_disciplina_turma
             try {
                 console.log("Tentando buscar da tabela professor_disciplina_turma");
                 const vinculosDireta = await ConfigModule.fetchApi(`/professor_disciplina_turma?professor_id=${idProfessor}`);
                 
                 if (Array.isArray(vinculosDireta) && vinculosDireta.length > 0) {
-                    console.log("Vínculos encontrados na tabela professor_disciplina_turma:", vinculosDireta);
-                    return vinculosDireta;
+                    // Filtrar para garantir que só retornamos vínculos deste professor
+                    const vinculosFiltrados = vinculosDireta.filter(v => 
+                        String(v.id_professor) === idProfessor || 
+                        String(v.professor) === idProfessor
+                    );
+                    
+                    console.log("Vínculos encontrados na tabela professor_disciplina_turma:", vinculosFiltrados);
+                    return vinculosFiltrados;
                 }
             } catch (error) {
                 console.warn("Erro ao buscar da tabela professor_disciplina_turma:", error);
@@ -416,8 +425,14 @@ const ProfessoresModule = {
                     const vinculosAlt = await ConfigModule.fetchApi(`/professor_disciplina_turma?id_professor=${idProfessor}`);
                     
                     if (Array.isArray(vinculosAlt) && vinculosAlt.length > 0) {
-                        console.log("Vínculos encontrados com formato alternativo:", vinculosAlt);
-                        return vinculosAlt;
+                        // Filtrar para garantir que só retornamos vínculos deste professor
+                        const vinculosFiltrados = vinculosAlt.filter(v => 
+                            String(v.id_professor) === idProfessor || 
+                            String(v.professor) === idProfessor
+                        );
+                        
+                        console.log("Vínculos encontrados com formato alternativo:", vinculosFiltrados);
+                        return vinculosFiltrados;
                     }
                 } catch (errorAlt) {
                     console.warn("Erro ao buscar com formato alternativo:", errorAlt);
@@ -597,9 +612,16 @@ const ProfessoresModule = {
             // Remover spinner
             document.getElementById('loading-vinculos')?.remove();
             
+            // CORREÇÃO: Garantir que estamos trabalhando apenas com os vínculos deste professor específico
+            const vinculosFiltrados = vinculos.filter(vinculo => 
+                (vinculo.id_professor === idProfessor || vinculo.professor === idProfessor)
+            );
+            
+            console.log(`Vínculos filtrados para o professor ${idProfessor}:`, vinculosFiltrados);
+            
             // Agrupar vínculos por disciplina
             const vinculosPorDisciplina = {};
-            vinculos.forEach(vinculo => {
+            vinculosFiltrados.forEach(vinculo => {
                 const disciplinaId = vinculo.id_disciplina || vinculo.disciplina;
                 if (!disciplinaId) return;
                 
@@ -735,6 +757,8 @@ const ProfessoresModule = {
     cancelarEdicao: function() {
         this.state.modoEdicao = false;
         this.state.professorSelecionado = null;
+        
+        // CORREÇÃO: Limpar explicitamente o array de vínculos para evitar dados residuais
         this.state.vinculos = [];
         
         if (this.elements.formProfessor) {
@@ -852,16 +876,16 @@ const ProfessoresModule = {
             const sucessos = [];
             const falhas = [];
             
-            // Função simplificada para salvar um vínculo
+            // Função simplificada para salvar um vínculo (já foi atualizada para usar String nos IDs)
             const tentarSalvarVinculo = async (vinculo) => {
                 try {
                     console.log(`Tentando salvar vínculo: Professor ${idProfessor}, Disciplina ${vinculo.id_disciplina}, Turma ${vinculo.id_turma}`);
                     
                     // Preparar payload com os dados do vínculo
                     const payload = {
-                        id_professor: idProfessor,
-                        id_disciplina: vinculo.id_disciplina,
-                        id_turma: vinculo.id_turma
+                        id_professor: String(idProfessor),
+                        id_disciplina: String(vinculo.id_disciplina),
+                        id_turma: String(vinculo.id_turma)
                     };
                     
                     // Usar o endpoint direto para professor_disciplina_turma
@@ -880,9 +904,9 @@ const ProfessoresModule = {
                         console.log("Tentando endpoint alternativo /vinculos...");
                         
                         const payload = {
-                            id_professor: idProfessor,
-                            id_disciplina: vinculo.id_disciplina,
-                            id_turma: vinculo.id_turma
+                            id_professor: String(idProfessor),
+                            id_disciplina: String(vinculo.id_disciplina),
+                            id_turma: String(vinculo.id_turma)
                         };
                         
                         const resultado = await ConfigModule.fetchApi('/vinculos', {
@@ -918,9 +942,9 @@ const ProfessoresModule = {
                                 dadosAtualizados.vinculos = [
                                     ...(professor.vinculos || []),
                                     {
-                                        id_professor: idProfessor,
-                                        id_disciplina: vinculo.id_disciplina,
-                                        id_turma: vinculo.id_turma
+                                        id_professor: String(idProfessor),
+                                        id_disciplina: String(vinculo.id_disciplina),
+                                        id_turma: String(vinculo.id_turma)
                                     }
                                 ];
                             }
@@ -961,6 +985,9 @@ const ProfessoresModule = {
                 console.warn(`${falhas.length} vínculos não puderam ser salvos.`);
                 this.mostrarErro(`Atenção: ${falhas.length} vínculos não puderam ser salvos. Verifique a conexão com a API.`);
             }
+            
+            // CORREÇÃO: Limpar o cache de vínculos para evitar problemas de exibição
+            this.state.vinculos = [];
             
             // Resetar formulário e estado
             this.cancelarEdicao();
