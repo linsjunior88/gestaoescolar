@@ -3360,13 +3360,14 @@ function limparTodosModaisEBackdrops() {
     console.log("Executando limpeza completa de modais e backdrops");
     
     // Verificar se o UIModule está disponível para gerenciar modais
-    if (window.UIModule && typeof UIModule.limparModais === 'function') {
+    if (typeof window.UIModule !== 'undefined' && window.UIModule && typeof UIModule.limparModais === 'function') {
         console.log("Usando UIModule.limparModais para limpeza");
         UIModule.limparModais();
         return;
     }
     
     // Fallback: Método tradicional de limpeza
+    console.log("UIModule não disponível, usando método tradicional de limpeza");
     
     // 1. Fechar todos os modais via Bootstrap primeiro (abordagem suave)
     document.querySelectorAll('.modal.show').forEach(modal => {
@@ -3403,19 +3404,37 @@ function limparTodosModaisEBackdrops() {
 
 // Função para configurar sistema de emergência para fechar modais travados
 function configurarFechamentoEmergenciaModal() {
-    console.log("Configurando sistema de emergência para fechar modais travados");
+    console.log("Verificando necessidade de sistema de emergência para modais");
     
-    // Se o UIModule estiver disponível, não precisamos do sistema de emergência
-    if (window.UIModule) {
-        console.log("UIModule disponível - sistema de emergência para modais não é necessário");
+    // Verificar se o UIModule está disponível e tem a função necessária
+    // Verificamos várias vezes para garantir que mesmo se o UIModule for carregado depois, 
+    // não teremos sistemas de emergência redundantes
+    if (typeof window.UIModule !== 'undefined' && window.UIModule && typeof UIModule.limparModais === 'function') {
+        console.log("UIModule está disponível com função limparModais - sistema de emergência não será ativado");
+        
+        // Remover qualquer botão de emergência existente
+        const existingBtn = document.getElementById('global-emergency-btn');
+        if (existingBtn) {
+            console.log("Removendo botão SOS existente");
+            existingBtn.remove();
+        }
+        
         return;
     }
+    
+    // Se chegarmos aqui, o UIModule não está disponível ou não tem a função necessária
+    console.log("UIModule não disponível - ativando sistema de emergência para modais");
     
     // Sistema 1: ESC duplo para forçar fechamento
     let lastEscapeTime = 0;
     const escapeInterval = 500; // ms - intervalo máximo entre dois pressionamentos de ESC
     
     document.addEventListener('keydown', function(e) {
+        // Verificar novamente se o UIModule ficou disponível
+        if (typeof window.UIModule !== 'undefined' && window.UIModule && typeof UIModule.limparModais === 'function') {
+            return;
+        }
+        
         if (e.key === 'Escape') {
             const now = new Date().getTime();
             
@@ -3440,6 +3459,11 @@ function configurarFechamentoEmergenciaModal() {
     
     // Delegamos o evento para o documento, já que backdrops podem ser adicionados depois
     document.addEventListener('click', function(e) {
+        // Verificar novamente se o UIModule ficou disponível
+        if (typeof window.UIModule !== 'undefined' && window.UIModule && typeof UIModule.limparModais === 'function') {
+            return;
+        }
+        
         // Verificar se o clique foi no backdrop
         if (e.target.classList.contains('modal-backdrop')) {
             const now = new Date().getTime();
@@ -3461,6 +3485,17 @@ function configurarFechamentoEmergenciaModal() {
     
     // Sistema 3: Botão flutuante de emergência
     const addEmergencyButton = function() {
+        // Verificar novamente se o UIModule ficou disponível
+        if (typeof window.UIModule !== 'undefined' && window.UIModule && typeof UIModule.limparModais === 'function') {
+            // Remover botão existente se o UIModule estiver disponível
+            const existingBtn = document.getElementById('global-emergency-btn');
+            if (existingBtn) {
+                console.log("UIModule disponível - removendo botão SOS");
+                existingBtn.remove();
+            }
+            return;
+        }
+        
         // Remover qualquer botão existente para evitar duplicação
         const existingBtn = document.getElementById('global-emergency-btn');
         if (existingBtn) existingBtn.remove();
@@ -3489,8 +3524,25 @@ function configurarFechamentoEmergenciaModal() {
     // Adicionar o botão SOS após um curto delay
     setTimeout(addEmergencyButton, 1000);
     
+    // Verificar periodicamente se o UIModule foi carregado depois e remover o botão se necessário
+    const checkUIModuleInterval = setInterval(function() {
+        if (typeof window.UIModule !== 'undefined' && window.UIModule && typeof UIModule.limparModais === 'function') {
+            const existingBtn = document.getElementById('global-emergency-btn');
+            if (existingBtn) {
+                console.log("UIModule carregado após inicialização - removendo botão SOS");
+                existingBtn.remove();
+            }
+            clearInterval(checkUIModuleInterval);
+        }
+    }, 2000);
+    
     // Sistema 4: Detector de backdrops órfãos
     setInterval(function() {
+        // Verificar novamente se o UIModule ficou disponível
+        if (typeof window.UIModule !== 'undefined' && window.UIModule && typeof UIModule.limparModais === 'function') {
+            return;
+        }
+        
         // Verificar se há backdrops sem modal associado
         const backdrops = document.querySelectorAll('.modal-backdrop');
         const modals = document.querySelectorAll('.modal.show');
@@ -3504,3 +3556,298 @@ function configurarFechamentoEmergenciaModal() {
 }
 
 // Inicialização quando o DOM estiver pronto
+
+// Função para exibir ficha detalhada do aluno em um modal
+function exibirFichaAluno(idAluno) {
+    console.log(`Exibindo ficha do aluno ID: ${idAluno}`);
+    
+    if (!idAluno) {
+        if (window.UIModule) {
+            UIModule.mostrarErro('ID do aluno não fornecido', 'Erro');
+        } else {
+            alert('Erro: ID do aluno não fornecido');
+        }
+        return;
+    }
+    
+    // Mostrar indicador de carregamento
+    if (window.UIModule) {
+        UIModule.mostrarInfo('Carregando dados do aluno...', 'Aguarde');
+    }
+    
+    // Buscar dados do aluno
+    fetch(CONFIG.getApiUrl(`/alunos/${idAluno}`))
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Erro ao carregar dados do aluno: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(aluno => {
+            console.log('Dados do aluno carregados:', aluno);
+            
+            // Buscar notas do aluno (opcional)
+            return fetch(CONFIG.getApiUrl(`/alunos/${idAluno}/notas?professor_id=${professorId}`))
+                .then(response => {
+                    if (!response.ok) {
+                        // Se não conseguir carregar notas, continuar com os dados do aluno
+                        console.warn(`Não foi possível carregar notas do aluno: ${response.status}`);
+                        return { aluno, notas: [] };
+                    }
+                    return response.json().then(notas => {
+                        return { aluno, notas };
+                    });
+                });
+        })
+        .then(({ aluno, notas }) => {
+            // Registrar atividade
+            registrarAtividade('consulta', 'aluno', idAluno, 'Visualização de ficha detalhada do aluno');
+            
+            // Criar conteúdo HTML para o modal
+            const modalHtml = `
+                <div class="container-fluid">
+                    <div class="row mb-3">
+                        <div class="col-md-3 text-center mb-3">
+                            <div class="avatar-container mb-2">
+                                <i class="fas fa-user-graduate fa-5x text-primary"></i>
+                            </div>
+                            <div class="badge bg-primary">${aluno.matricula || 'Sem matrícula'}</div>
+                        </div>
+                        <div class="col-md-9">
+                            <h4 class="mb-2">${aluno.nome_aluno || aluno.nome || 'Nome não disponível'}</h4>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p><strong>ID:</strong> ${aluno.id_aluno || aluno.id || 'N/A'}</p>
+                                    <p><strong>Turma:</strong> ${aluno.id_turma || 'N/A'}</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p><strong>Data de Nascimento:</strong> ${aluno.data_nascimento || 'N/A'}</p>
+                                    <p><strong>Contato:</strong> ${aluno.contato || 'N/A'}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <div class="row">
+                        <div class="col-12">
+                            <h5><i class="fas fa-graduation-cap me-2"></i>Notas do Aluno</h5>
+                            ${notas && notas.length > 0 ? `
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-striped">
+                                        <thead>
+                                            <tr>
+                                                <th>Disciplina</th>
+                                                <th>Bimestre</th>
+                                                <th>Mensal</th>
+                                                <th>Bimestral</th>
+                                                <th>Recuperação</th>
+                                                <th>Média</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${notas.map(nota => {
+                                                // Calcular média se não estiver definida
+                                                let media = nota.media;
+                                                if (!media && (nota.nota_mensal || nota.nota_bimestral)) {
+                                                    const notaMensal = parseFloat(nota.nota_mensal) || 0;
+                                                    const notaBimestral = parseFloat(nota.nota_bimestral) || 0;
+                                                    media = (notaMensal + notaBimestral) / 2;
+                                                    
+                                                    if (nota.recuperacao) {
+                                                        const recuperacao = parseFloat(nota.recuperacao);
+                                                        media = (media + recuperacao) / 2;
+                                                    }
+                                                    
+                                                    media = Math.round(media * 10) / 10; // Arredondar para 1 casa decimal
+                                                }
+                                                
+                                                // Determinar classe de cor com base na média
+                                                let mediaClass = '';
+                                                if (media >= 7) {
+                                                    mediaClass = 'text-success';
+                                                } else if (media >= 5) {
+                                                    mediaClass = 'text-warning';
+                                                } else {
+                                                    mediaClass = 'text-danger';
+                                                }
+                                                
+                                                return `
+                                                    <tr>
+                                                        <td>${nota.nome_disciplina || nota.id_disciplina}</td>
+                                                        <td>${nota.bimestre}º</td>
+                                                        <td>${nota.nota_mensal !== null ? nota.nota_mensal : '-'}</td>
+                                                        <td>${nota.nota_bimestral !== null ? nota.nota_bimestral : '-'}</td>
+                                                        <td>${nota.recuperacao !== null ? nota.recuperacao : '-'}</td>
+                                                        <td class="${mediaClass}"><strong>${media !== null ? media.toFixed(1) : '-'}</strong></td>
+                                                    </tr>
+                                                `;
+                                            }).join('')}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            ` : '<div class="alert alert-info">Nenhuma nota registrada para este aluno.</div>'}
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Usar o UIModule para criar o modal se disponível, ou criar um modal Bootstrap manualmente
+            if (window.UIModule) {
+                UIModule.criarModal({
+                    titulo: `Ficha do Aluno - ${aluno.nome_aluno || aluno.nome || 'Detalhes'}`,
+                    conteudo: modalHtml,
+                    tamanho: 'lg',
+                    botoes: [
+                        {
+                            texto: 'Fechar',
+                            classe: 'btn-secondary',
+                            onClick: () => {}
+                        }
+                    ]
+                });
+            } else {
+                // Fallback para modal Bootstrap tradicional
+                const modalId = `modal-aluno-${idAluno}`;
+                
+                // Remover modal anterior se existir
+                const modalAnterior = document.getElementById(modalId);
+                if (modalAnterior) modalAnterior.remove();
+                
+                // Criar elemento do modal
+                const modalEl = document.createElement('div');
+                modalEl.className = 'modal fade';
+                modalEl.id = modalId;
+                modalEl.setAttribute('tabindex', '-1');
+                modalEl.setAttribute('aria-labelledby', `${modalId}-label`);
+                modalEl.setAttribute('aria-hidden', 'true');
+                
+                modalEl.innerHTML = `
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="${modalId}-label">Ficha do Aluno - ${aluno.nome_aluno || aluno.nome || 'Detalhes'}</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                            </div>
+                            <div class="modal-body">
+                                ${modalHtml}
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // Adicionar ao body
+                document.body.appendChild(modalEl);
+                
+                // Inicializar e abrir o modal
+                const modalObj = new bootstrap.Modal(modalEl);
+                modalObj.show();
+            }
+        })
+        .catch(error => {
+            console.error('Erro ao exibir ficha do aluno:', error);
+            
+            if (window.UIModule) {
+                UIModule.mostrarErro('Não foi possível carregar os dados do aluno. ' + error.message, 'Erro');
+            } else {
+                alert('Erro: Não foi possível carregar os dados do aluno.');
+            }
+        });
+}
+
+// Função para mostrar mensagem flutuante de feedback (usando UIModule se disponível)
+function mostrarMensagemFlutuante(mensagem, tipo = 'info') {
+    console.log(`Mensagem flutuante: ${mensagem} (${tipo})`);
+    
+    // Usar UIModule se disponível
+    if (window.UIModule) {
+        switch (tipo.toLowerCase()) {
+            case 'success':
+                UIModule.mostrarSucesso(mensagem);
+                break;
+            case 'error':
+                UIModule.mostrarErro(mensagem);
+                break;
+            case 'warning':
+                UIModule.mostrarAlerta(mensagem);
+                break;
+            case 'info':
+            default:
+                UIModule.mostrarInfo(mensagem);
+                break;
+        }
+        return;
+    }
+    
+    // Implementação fallback para mostrar toast Bootstrap
+    const toastId = 'toast-' + Date.now();
+    
+    // Remover qualquer toast anterior com mesmo ID
+    const toastAnterior = document.getElementById(toastId);
+    if (toastAnterior) toastAnterior.remove();
+    
+    // Definir classe com base no tipo
+    let bgClass = 'bg-info text-white';
+    let iconClass = 'fas fa-info-circle';
+    
+    switch (tipo.toLowerCase()) {
+        case 'success':
+            bgClass = 'bg-success text-white';
+            iconClass = 'fas fa-check-circle';
+            break;
+        case 'error':
+            bgClass = 'bg-danger text-white';
+            iconClass = 'fas fa-exclamation-circle';
+            break;
+        case 'warning':
+            bgClass = 'bg-warning';
+            iconClass = 'fas fa-exclamation-triangle';
+            break;
+    }
+    
+    // Criar o container de toasts se não existir
+    let toastContainer = document.querySelector('.toast-container');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+        toastContainer.style.zIndex = 1050;
+        document.body.appendChild(toastContainer);
+    }
+    
+    // Criar elemento do toast
+    const toastEl = document.createElement('div');
+    toastEl.className = `toast ${bgClass}`;
+    toastEl.id = toastId;
+    toastEl.setAttribute('role', 'alert');
+    toastEl.setAttribute('aria-live', 'assertive');
+    toastEl.setAttribute('aria-atomic', 'true');
+    
+    toastEl.innerHTML = `
+        <div class="toast-header ${bgClass}">
+            <i class="${iconClass} me-2"></i>
+            <strong class="me-auto">Notificação</strong>
+            <small>Agora</small>
+            <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Fechar"></button>
+        </div>
+        <div class="toast-body">
+            ${mensagem}
+        </div>
+    `;
+    
+    // Adicionar ao container
+    toastContainer.appendChild(toastEl);
+    
+    // Inicializar o toast e mostrá-lo
+    const toast = new bootstrap.Toast(toastEl, {
+        delay: 5000
+    });
+    toast.show();
+}
+
+// Registrar funções globalmente
+window.exibirFichaAluno = exibirFichaAluno;
+window.mostrarMensagemFlutuante = mostrarMensagemFlutuante;
