@@ -888,16 +888,20 @@ const ProfessoresModule = {
                             
                             // Atualizar o professor com as disciplinas
                             const dadosAtualizados = {
-                                disciplinas: disciplinasAtuais,
-                                vinculos: [
+                                disciplinas: disciplinasAtuais
+                            };
+                            
+                            // Incluir também uma propriedade de vínculos se a API suportar
+                            if (professor.vinculos !== undefined) {
+                                dadosAtualizados.vinculos = [
                                     ...(professor.vinculos || []),
                                     {
                                         id_professor: idProfessor,
                                         id_disciplina: vinculo.id_disciplina,
                                         id_turma: vinculo.id_turma
                                     }
-                                ]
-                            };
+                                ];
+                            }
                             
                             console.log("Atualizando professor com:", dadosAtualizados);
                             

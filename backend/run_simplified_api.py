@@ -58,6 +58,14 @@ Endpoints disponíveis:
    - DELETE /api/notas/{id} - Remove uma nota
    - GET /api/boletim/{aluno_id} - Obtém o boletim de um aluno
 
+6. Vínculos Professor-Disciplina-Turma:
+   - POST /api/professor_disciplina_turma - Cria um novo vínculo
+   - GET /api/professor_disciplina_turma - Lista vínculos
+   - DELETE /api/professor_disciplina_turma/{id} - Remove um vínculo
+   - POST /api/vinculos - Cria um novo vínculo (alternativo)
+   - GET /api/vinculos - Lista vínculos (alternativo)
+   - DELETE /api/vinculos/{id} - Remove um vínculo (alternativo)
+
 A documentação completa está disponível em: http://localhost:4000/docs
 ==============================================================
 """)
@@ -66,7 +74,7 @@ A documentação completa está disponível em: http://localhost:4000/docs
 if __name__ == "__main__":
     try:
         # Iniciar o servidor FastAPI na porta 4000
-        uvicorn.run("simplified_api_complete:app", host="0.0.0.0", port=4000, reload=True)
+        uvicorn.run("simplified_api:app", host="0.0.0.0", port=4000, reload=True)
     except Exception as e:
         print(f"Erro ao iniciar o servidor: {e}")
         sys.exit(1) 
