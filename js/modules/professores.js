@@ -4,6 +4,7 @@
  */
 
 import ConfigModule from './config.js';
+import UIModule from './ui.js';
 
 // Namespace para evitar conflitos
 const ProfessoresModule = {
@@ -537,6 +538,38 @@ const ProfessoresModule = {
         });
     },
     
+    // Mostrar mensagem de erro
+    mostrarErro: function(mensagem) {
+        UIModule.mostrarErro(mensagem);
+    },
+    
+    // Mostrar mensagem de sucesso
+    mostrarSucesso: function(mensagem) {
+        UIModule.mostrarSucesso(mensagem);
+    },
+    
+    // Confirmar exclusão
+    confirmarExclusao: function(id) {
+        const professor = this.state.professores.find(p => (p.id_professor || p.id) === id);
+        if (!professor) {
+            return this.mostrarErro("Professor não encontrado.");
+        }
+        
+        const professorNome = professor.nome_professor || professor.nome || id;
+        
+        UIModule.confirmar(
+            `Tem certeza que deseja excluir o professor "${professorNome}"?`,
+            "Excluir Professor",
+            () => this.excluirProfessor(id),
+            null,
+            {
+                textoBotaoConfirmar: "Excluir",
+                classeBotaoConfirmar: "btn-danger",
+                icone: "trash"
+            }
+        );
+    },
+    
     // Mostrar vínculos de um professor em um modal
     mostrarVinculos: async function(idProfessor) {
         try {
@@ -576,20 +609,11 @@ const ProfessoresModule = {
                 vinculosPorDisciplina[disciplinaId].push(vinculo);
             });
             
-            // Criar conteúdo do modal
-            let modalContent = `
-                <div class="modal fade" id="modal-vinculos-professor" tabindex="-1" aria-hidden="true">
-                    <div class="modal-dialog modal-lg">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title">Vínculos do Professor: ${professor.nome_professor || professor.nome}</h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-                            </div>
-                            <div class="modal-body">
-            `;
+            // Criar conteúdo do corpo do modal
+            let modalBody = '';
             
             if (Object.keys(vinculosPorDisciplina).length === 0) {
-                modalContent += `
+                modalBody = `
                 <div class="alert alert-info">
                     <i class="fas fa-info-circle me-2"></i>
                     Este professor não possui vínculos com disciplinas e turmas.
@@ -602,7 +626,7 @@ const ProfessoresModule = {
                     <li>Salve as alterações</li>
                 </ul>`;
             } else {
-                modalContent += `<div class="table-responsive">
+                modalBody = `<div class="table-responsive">
                     <table class="table table-striped">
                         <thead>
                             <tr>
@@ -611,7 +635,7 @@ const ProfessoresModule = {
                             </tr>
                         </thead>
                         <tbody>`;
-                
+            
                 for (const disciplinaId in vinculosPorDisciplina) {
                     const disciplina = this.state.disciplinas.find(d => d.id_disciplina === disciplinaId);
                     const disciplinaNome = disciplina ? (disciplina.nome_disciplina || disciplina.nome || disciplinaId) : disciplinaId;
@@ -622,7 +646,7 @@ const ProfessoresModule = {
                         return turma ? `${turma.serie || id} (${turma.id_turma})` : id;
                     }).join(', ');
                     
-                    modalContent += `
+                    modalBody += `
                         <tr>
                             <td>${disciplinaNome}</td>
                             <td>${turmasTexto || 'Nenhuma turma vinculada'}</td>
@@ -630,40 +654,38 @@ const ProfessoresModule = {
                     `;
                 }
                 
-                modalContent += `</tbody></table></div>`;
+                modalBody += `</tbody></table></div>`;
             }
             
-            modalContent += `
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-primary btn-editar-vinculos" data-id="${idProfessor}">
-                                    <i class="fas fa-edit"></i> Editar Vínculos
-                                </button>
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            // Rodapé do modal
+            const modalFooter = `
+                <button type="button" class="btn btn-primary btn-editar-vinculos" data-id="${idProfessor}" autofocus>
+                    <i class="fas fa-edit"></i> Editar Vínculos
+                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
             `;
             
-            // Adicionar modal ao body e exibi-lo
-            const modalElement = document.createElement('div');
-            modalElement.innerHTML = modalContent;
-            document.body.appendChild(modalElement);
-            
-            const modal = new bootstrap.Modal(document.getElementById('modal-vinculos-professor'));
-            modal.show();
+            // Usar a função criarModal para gerar o modal com melhor usabilidade
+            const modal = UIModule.criarModal(
+                'modal-vinculos-professor',
+                `Vínculos do Professor: ${professor.nome_professor || professor.nome}`,
+                modalBody,
+                modalFooter
+            );
             
             // Adicionar evento para botão de editar vínculos
-            document.querySelector('.btn-editar-vinculos').addEventListener('click', () => {
-                modal.hide();
-                this.editarProfessor(idProfessor);
-            });
-            
-            // Remover modal quando fechado
-            document.getElementById('modal-vinculos-professor').addEventListener('hidden.bs.modal', function() {
-                this.remove();
-            });
+            const btnEditarVinculos = document.querySelector('.btn-editar-vinculos');
+            if (btnEditarVinculos) {
+                btnEditarVinculos.addEventListener('click', () => {
+                    modal.hide();
+                    this.editarProfessor(idProfessor);
+                });
+                
+                // Focar no botão de editar vínculos automaticamente
+                setTimeout(() => {
+                    btnEditarVinculos.focus();
+                }, 300);
+            }
             
         } catch (error) {
             console.error(`Erro ao mostrar vínculos do professor ${idProfessor}:`, error);
@@ -952,59 +974,82 @@ const ProfessoresModule = {
         }
     },
     
-    // Exibir mensagem de erro
-    mostrarErro: function(mensagem) {
-        console.error(mensagem);
-        
-        // Criar alerta de erro
-        const alertContainer = document.createElement('div');
-        alertContainer.className = 'alert alert-danger alert-dismissible fade show';
-        alertContainer.role = 'alert';
-        alertContainer.innerHTML = `
-            <strong>Erro!</strong> ${mensagem}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
-        `;
-        
-        // Inserir no topo do conteúdo
-        const conteudo = this.elements.conteudoProfessores;
-        if (conteudo) {
-            conteudo.insertBefore(alertContainer, conteudo.firstChild);
+    // Editar professor existente
+    editarProfessor: async function(id) {
+        try {
+            console.log(`Editando professor com ID ${id}`);
             
-            // Auto-remover após alguns segundos
-            setTimeout(() => {
-                alertContainer.remove();
-            }, 5000);
-        } else {
-            // Fallback para alert padrão
-            alert(`Erro: ${mensagem}`);
-        }
-    },
-
-    // Exibir mensagem de sucesso
-    mostrarSucesso: function(mensagem) {
-        console.log(mensagem);
-        
-        // Criar alerta de sucesso
-        const alertContainer = document.createElement('div');
-        alertContainer.className = 'alert alert-success alert-dismissible fade show';
-        alertContainer.role = 'alert';
-        alertContainer.innerHTML = `
-            <strong>Sucesso!</strong> ${mensagem}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
-        `;
-        
-        // Inserir no topo do conteúdo
-        const conteudo = this.elements.conteudoProfessores;
-        if (conteudo) {
-            conteudo.insertBefore(alertContainer, conteudo.firstChild);
+            // Carregar detalhes completos do professor
+            const professor = await ConfigModule.fetchApi(`/professores/${id}`);
+            if (!professor) {
+                this.mostrarErro("Professor não encontrado.");
+                return;
+            }
             
-            // Auto-remover após alguns segundos
-            setTimeout(() => {
-                alertContainer.remove();
-            }, 5000);
-        } else {
-            // Fallback para alert padrão
-            alert(`Sucesso: ${mensagem}`);
+            console.log("Editando professor:", professor);
+            
+            // Carregar vínculos do professor para uso posterior
+            this.state.vinculos = await this.carregarVinculosProfessor(id);
+            console.log("Vínculos carregados:", this.state.vinculos);
+            
+            this.state.modoEdicao = true;
+            this.state.professorSelecionado = professor;
+            
+            if (this.elements.formProfessor) {
+                this.elements.formProfessor.classList.remove('d-none');
+                
+                // Preencher campos
+                if (this.elements.inputIdProfessor) {
+                    this.elements.inputIdProfessor.value = professor.id_professor || '';
+                    this.elements.inputIdProfessor.disabled = true; // Não permitir alterar o ID
+                }
+                
+                this.elements.inputNomeProfessor.value = professor.nome_professor || professor.nome || '';
+                this.elements.inputEmailProfessor.value = professor.email_professor || professor.email || '';
+                
+                // Campo de senha não é obrigatório na edição
+                if (this.elements.inputSenhaProfessor) {
+                    this.elements.inputSenhaProfessor.required = false;
+                    this.elements.inputSenhaProfessor.value = '';
+                    this.elements.inputSenhaProfessor.closest('.mb-3').classList.add('d-none');
+                }
+                
+                // Selecionar disciplinas do professor
+                if (professor.disciplinas && Array.isArray(professor.disciplinas) && this.elements.selectDisciplinas) {
+                    console.log("Disciplinas do professor:", professor.disciplinas);
+                    
+                    // Limpar seleções anteriores
+                    Array.from(this.elements.selectDisciplinas.options).forEach(option => {
+                        option.selected = false;
+                    });
+                    
+                    // Selecionar disciplinas
+                    professor.disciplinas.forEach(disc => {
+                        const disciplinaId = typeof disc === 'object' ? (disc.id_disciplina || disc.id) : disc;
+                        const option = Array.from(this.elements.selectDisciplinas.options).find(
+                            opt => opt.value === disciplinaId.toString()
+                        );
+                        
+                        if (option) {
+                            option.selected = true;
+                            console.log(`Disciplina ${disciplinaId} selecionada`);
+                        } else {
+                            console.warn(`Disciplina ${disciplinaId} não encontrada no select`);
+                        }
+                    });
+                    
+                    // Atualizar visualização de turmas de forma explícita
+                    console.log("Atualizando turmas vinculadas após selecionar disciplinas");
+                    setTimeout(() => this.atualizarTurmasVinculadas(), 100);
+                }
+                
+                this.elements.inputNomeProfessor.focus();
+            } else {
+                console.error("Formulário do professor não encontrado");
+            }
+        } catch (error) {
+            console.error("Erro ao editar professor:", error);
+            this.mostrarErro("Não foi possível carregar os dados do professor para edição.");
         }
     },
 
@@ -1088,85 +1133,6 @@ const ProfessoresModule = {
         } catch (error) {
             console.error("Erro ao carregar turmas:", error);
             this.mostrarErro("Não foi possível carregar as turmas.");
-        }
-    },
-
-    // Editar professor existente
-    editarProfessor: async function(id) {
-        try {
-            console.log(`Editando professor com ID ${id}`);
-            
-            // Carregar detalhes completos do professor
-            const professor = await ConfigModule.fetchApi(`/professores/${id}`);
-            if (!professor) {
-                this.mostrarErro("Professor não encontrado.");
-                return;
-            }
-            
-            console.log("Editando professor:", professor);
-            
-            // Carregar vínculos do professor para uso posterior
-            this.state.vinculos = await this.carregarVinculosProfessor(id);
-            console.log("Vínculos carregados:", this.state.vinculos);
-            
-            this.state.modoEdicao = true;
-            this.state.professorSelecionado = professor;
-            
-            if (this.elements.formProfessor) {
-                this.elements.formProfessor.classList.remove('d-none');
-                
-                // Preencher campos
-                if (this.elements.inputIdProfessor) {
-                    this.elements.inputIdProfessor.value = professor.id_professor || '';
-                    this.elements.inputIdProfessor.disabled = true; // Não permitir alterar o ID
-                }
-                
-                this.elements.inputNomeProfessor.value = professor.nome_professor || professor.nome || '';
-                this.elements.inputEmailProfessor.value = professor.email_professor || professor.email || '';
-                
-                // Campo de senha não é obrigatório na edição
-                if (this.elements.inputSenhaProfessor) {
-                    this.elements.inputSenhaProfessor.required = false;
-                    this.elements.inputSenhaProfessor.value = '';
-                    this.elements.inputSenhaProfessor.closest('.mb-3').classList.add('d-none');
-                }
-                
-                // Selecionar disciplinas do professor
-                if (professor.disciplinas && Array.isArray(professor.disciplinas) && this.elements.selectDisciplinas) {
-                    console.log("Disciplinas do professor:", professor.disciplinas);
-                    
-                    // Limpar seleções anteriores
-                    Array.from(this.elements.selectDisciplinas.options).forEach(option => {
-                        option.selected = false;
-                    });
-                    
-                    // Selecionar disciplinas
-                    professor.disciplinas.forEach(disc => {
-                        const disciplinaId = typeof disc === 'object' ? (disc.id_disciplina || disc.id) : disc;
-                        const option = Array.from(this.elements.selectDisciplinas.options).find(
-                            opt => opt.value === disciplinaId.toString()
-                        );
-                        
-                        if (option) {
-                            option.selected = true;
-                            console.log(`Disciplina ${disciplinaId} selecionada`);
-                        } else {
-                            console.warn(`Disciplina ${disciplinaId} não encontrada no select`);
-                        }
-                    });
-                    
-                    // Atualizar visualização de turmas de forma explícita
-                    console.log("Atualizando turmas vinculadas após selecionar disciplinas");
-                    setTimeout(() => this.atualizarTurmasVinculadas(), 100);
-                }
-                
-                this.elements.inputNomeProfessor.focus();
-            } else {
-                console.error("Formulário do professor não encontrado");
-            }
-        } catch (error) {
-            console.error("Erro ao editar professor:", error);
-            this.mostrarErro("Não foi possível carregar os dados do professor para edição.");
         }
     }
 };

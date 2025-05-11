@@ -1,0 +1,137 @@
+/* 
+ * Melhorias para modais no Sistema de Gestão Escolar
+ * Este arquivo adiciona estilos para tornar os modais mais acessíveis e fáceis de usar
+ */
+
+/* Melhorar a visibilidade do modal */
+.modal {
+  z-index: 1060 !important;
+}
+
+.modal-dialog {
+  /* Garante que o modal esteja bem posicionado */
+  margin: 1.75rem auto;
+  /* Adiciona uma transição para suavizar o aparecimento */
+  transition: transform 0.3s ease-out;
+}
+
+.modal-content {
+  /* Adiciona uma borda sutil e sombra para profundidade */
+  border: 1px solid rgba(0,0,0,.2);
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+  /* Melhora o contraste com o fundo */
+  background-color: #fff;
+  /* Arredonda as bordas */
+  border-radius: 0.5rem;
+}
+
+.modal-header {
+  /* Adiciona uma linha de separação sutil */
+  border-bottom: 1px solid #dee2e6;
+  /* Adiciona padding consistente */
+  padding: 1rem;
+  /* Melhora a aparência do título */
+  background-color: #f8f9fa;
+  border-top-left-radius: 0.5rem;
+  border-top-right-radius: 0.5rem;
+}
+
+.modal-title {
+  /* Estilo consistente para títulos */
+  font-weight: 600;
+  color: #212529;
+}
+
+.modal-header .btn-close {
+  /* Torna o X mais visível */
+  opacity: 0.8;
+  font-size: 1.2rem;
+  padding: 0.75rem;
+  /* Efeito de hover */
+  transition: opacity 0.15s;
+}
+
+.modal-header .btn-close:hover {
+  opacity: 1;
+}
+
+.modal-body {
+  /* Padding consistente */
+  padding: 1rem;
+  /* Altura máxima com scroll */
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
+}
+
+.modal-footer {
+  /* Adiciona uma linha de separação sutil */
+  border-top: 1px solid #dee2e6;
+  /* Padding consistente */
+  padding: 1rem;
+  /* Garante espaçamento adequado entre botões */
+  gap: 0.5rem;
+}
+
+/* Melhora a visibilidade do backdrop (fundo escuro) */
+.modal-backdrop {
+  opacity: 0.5 !important;
+}
+
+/* Adiciona foco visual nos elementos dentro do modal */
+.modal button:focus, 
+.modal a:focus, 
+.modal input:focus, 
+.modal select:focus, 
+.modal textarea:focus {
+  outline: 2px solid #0d6efd;
+  outline-offset: 2px;
+}
+
+/* Animação de transição */
+.modal.fade .modal-dialog {
+  transform: translate(0, -50px);
+  transition: transform 0.3s ease-out;
+}
+
+.modal.show .modal-dialog {
+  transform: none;
+}
+
+/* Destaca o botão primário */
+.modal .btn-primary {
+  padding: 0.375rem 0.75rem;
+  font-weight: 500;
+}
+
+/* Melhora a responsividade */
+@media (max-width: 576px) {
+  .modal-dialog {
+    margin: 0.5rem;
+    max-width: calc(100% - 1rem);
+  }
+  
+  .modal-body {
+    max-height: calc(100vh - 160px);
+  }
+}
+
+/* Tema escuro para modais (se aplicável) */
+.dark-mode .modal-content {
+  background-color: #343a40;
+  color: #f8f9fa;
+  border-color: rgba(255,255,255,.1);
+}
+
+.dark-mode .modal-header,
+.dark-mode .modal-footer {
+  border-color: rgba(255,255,255,.1);
+  background-color: #2c3136;
+}
+
+.dark-mode .modal-header .close {
+  color: #f8f9fa;
+}
+
+.dark-mode .modal-title {
+  color: #f8f9fa;
+} 

@@ -4,6 +4,7 @@
  */
 
 import ConfigModule from './config.js';
+import UIModule from './ui.js';
 
 // Namespace para evitar conflitos
 const DisciplinasModule = {
@@ -108,7 +109,11 @@ const DisciplinasModule = {
             // Criar células para cada coluna
             row.innerHTML = `
                 <td>${disciplina.id_disciplina || disciplina.id}</td>
-                <td>${disciplina.nome_disciplina || disciplina.nome}</td>
+                <td>
+                    <a href="#" class="disciplina-nome" data-id="${disciplina.id_disciplina || disciplina.id}">
+                        ${disciplina.nome_disciplina || disciplina.nome}
+                    </a>
+                </td>
                 <td>${disciplina.carga_horaria || 'N/A'}</td>
                 <td>Gerenciado no cadastro de professores</td>
                 <td>
@@ -124,9 +129,14 @@ const DisciplinasModule = {
             // Adicionar eventos aos botões
             const btnEditar = row.querySelector('.btn-editar');
             const btnExcluir = row.querySelector('.btn-excluir');
+            const linkNome = row.querySelector('.disciplina-nome');
             
             btnEditar.addEventListener('click', () => this.editarDisciplina(disciplina.id_disciplina || disciplina.id));
             btnExcluir.addEventListener('click', () => this.confirmarExclusao(disciplina.id_disciplina || disciplina.id));
+            linkNome.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.mostrarInfoDisciplina(disciplina.id_disciplina || disciplina.id);
+            });
             
             this.elements.listaDisciplinas.appendChild(row);
         });
@@ -167,6 +177,53 @@ const DisciplinasModule = {
             this.elements.inputCargaHoraria.value = disciplina.carga_horaria || '';
             this.elements.inputIdDisciplina.focus();
         }
+    },
+    
+    // Mostrar modal de informações da disciplina
+    mostrarInfoDisciplina: function(id) {
+        const disciplina = this.state.disciplinas.find(d => 
+            (d.id_disciplina === id) || (d.id === id)
+        );
+        
+        if (!disciplina) {
+            console.error("Disciplina não encontrada:", id);
+            return;
+        }
+        
+        // Criar corpo do modal
+        const modalBody = `
+            <div class="mb-3">
+                <strong>ID:</strong> ${disciplina.id_disciplina || disciplina.id}
+            </div>
+            <div class="mb-3">
+                <strong>Nome:</strong> ${disciplina.nome_disciplina || disciplina.nome}
+            </div>
+            <div class="mb-3">
+                <strong>Carga Horária:</strong> ${disciplina.carga_horaria || 'N/A'} horas
+            </div>
+        `;
+        
+        // Rodapé do modal
+        const modalFooter = `
+            <button type="button" class="btn btn-primary btn-editar-disciplina" data-id="${disciplina.id_disciplina || disciplina.id}" autofocus>
+                <i class="fas fa-edit"></i> Editar
+            </button>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+        `;
+        
+        // Criar e mostrar modal usando UIModule
+        const modal = UIModule.criarModal(
+            'modal-info-disciplina',
+            `Informações da Disciplina: ${disciplina.nome_disciplina || disciplina.nome}`,
+            modalBody,
+            modalFooter
+        );
+        
+        // Adicionar evento ao botão de editar
+        document.querySelector('.btn-editar-disciplina').addEventListener('click', () => {
+            modal.hide();
+            this.editarDisciplina(disciplina.id_disciplina || disciplina.id);
+        });
     },
     
     // Salvar disciplina (criar nova ou atualizar existente)
@@ -241,23 +298,51 @@ const DisciplinasModule = {
     
     // Confirmar exclusão de disciplina
     confirmarExclusao: function(id) {
-        if (confirm("Tem certeza que deseja excluir esta disciplina? Esta ação não pode ser desfeita.")) {
-            this.excluirDisciplina(id);
+        const disciplina = this.state.disciplinas.find(d => 
+            (d.id_disciplina === id) || (d.id === id)
+        );
+        
+        if (!disciplina) {
+            return UIModule.mostrarErro("Disciplina não encontrada.");
         }
+        
+        const disciplinaNome = disciplina.nome_disciplina || disciplina.nome || id;
+        
+        UIModule.confirmar(
+            `Tem certeza que deseja excluir a disciplina "${disciplinaNome}"?`,
+            "Excluir Disciplina",
+            () => this.excluirDisciplina(id),
+            null,
+            {
+                textoBotaoConfirmar: "Excluir",
+                classeBotaoConfirmar: "btn-danger",
+                icone: "trash"
+            }
+        );
     },
     
     // Excluir disciplina
     excluirDisciplina: async function(id) {
         try {
-            const disciplinaId = id;
+            // Verificar se a disciplina existe
+            const disciplina = this.state.disciplinas.find(d => 
+                (d.id_disciplina === id) || (d.id === id)
+            );
             
-            await ConfigModule.fetchApi(`/disciplinas/${disciplinaId}`, {
+            if (!disciplina) {
+                console.error("Disciplina não encontrada para exclusão:", id);
+                this.mostrarErro("Disciplina não encontrada para exclusão.");
+                return;
+            }
+            
+            // Excluir disciplina na API
+            await ConfigModule.fetchApi(`/disciplinas/${id}`, {
                 method: 'DELETE'
             });
             
             // Remover disciplina da lista local
             this.state.disciplinas = this.state.disciplinas.filter(d => 
-                (d.id_disciplina !== disciplinaId) && (d.id !== disciplinaId)
+                (d.id_disciplina !== id) && (d.id !== id)
             );
             
             // Atualizar lista de disciplinas
@@ -270,38 +355,14 @@ const DisciplinasModule = {
         }
     },
     
-    // Mostrar mensagem de sucesso
-    mostrarSucesso: function(mensagem) {
-        const alertContainer = document.createElement('div');
-        alertContainer.className = 'alert alert-success alert-dismissible fade show';
-        alertContainer.innerHTML = `
-            ${mensagem}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
-        `;
-        
-        document.querySelector('#conteudo-disciplinas').insertBefore(alertContainer, document.querySelector('#conteudo-disciplinas').firstChild);
-        
-        // Auto-remover após 5 segundos
-        setTimeout(() => {
-            alertContainer.remove();
-        }, 5000);
-    },
-    
     // Mostrar mensagem de erro
     mostrarErro: function(mensagem) {
-        const alertContainer = document.createElement('div');
-        alertContainer.className = 'alert alert-danger alert-dismissible fade show';
-        alertContainer.innerHTML = `
-            ${mensagem}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
-        `;
-        
-        document.querySelector('#conteudo-disciplinas').insertBefore(alertContainer, document.querySelector('#conteudo-disciplinas').firstChild);
-        
-        // Auto-remover após 5 segundos
-        setTimeout(() => {
-            alertContainer.remove();
-        }, 5000);
+        UIModule.mostrarErro(mensagem);
+    },
+    
+    // Mostrar mensagem de sucesso
+    mostrarSucesso: function(mensagem) {
+        UIModule.mostrarSucesso(mensagem);
     }
 };
 
