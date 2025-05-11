@@ -327,12 +327,23 @@ const ProfessoresModule = {
     // Carregar vínculos de um professor (disciplinas e turmas)
     carregarVinculosProfessor: async function(idProfessor) {
         try {
-            // Como o endpoint específico de vínculos pode não existir, vamos usar o endpoint do professor
-            // e extrair as informações de disciplinas e turmas de lá
+            // Tentar buscar diretamente os vínculos do professor da tabela professor_disciplina_turma
+            try {
+                const vinculos = await ConfigModule.fetchApi(`/professores/${idProfessor}/vinculos`);
+                if (Array.isArray(vinculos) && vinculos.length > 0) {
+                    console.log("Vínculos encontrados na API:", vinculos);
+                    return vinculos;
+                }
+            } catch (error) {
+                console.warn("Endpoint de vínculos não disponível, tentando método alternativo:", error);
+            }
+            
+            // Método alternativo: Buscar professor e disciplinas
             const professor = await ConfigModule.fetchApi(`/professores/${idProfessor}`);
             
             // Verificar se o professor possui dados de disciplinas
             if (!professor || !professor.disciplinas || !Array.isArray(professor.disciplinas)) {
+                console.warn("Professor não possui disciplinas ou formato incorreto:", professor);
                 return [];
             }
             
@@ -345,8 +356,7 @@ const ProfessoresModule = {
                 
                 try {
                     // Buscar turmas para esta disciplina especificamente para este professor
-                    // Como esse endpoint pode não existir, vamos buscar todas as turmas da disciplina
-                    const turmas = await ConfigModule.fetchApi(`/disciplinas/${disciplinaId}/turmas`);
+                    const turmas = await ConfigModule.fetchApi(`/professores/${idProfessor}/disciplinas/${disciplinaId}/turmas`);
                     
                     if (Array.isArray(turmas) && turmas.length > 0) {
                         // Adicionar cada turma como um vínculo
@@ -362,6 +372,24 @@ const ProfessoresModule = {
                     }
                 } catch (error) {
                     console.warn(`Erro ao buscar turmas para disciplina ${disciplinaId}:`, error);
+                    
+                    // Tente outra alternativa se disponível
+                    try {
+                        const vinculosDisciplina = await ConfigModule.fetchApi(`/professores/${idProfessor}/disciplinas/${disciplinaId}`);
+                        if (vinculosDisciplina && Array.isArray(vinculosDisciplina.turmas)) {
+                            vinculosDisciplina.turmas.forEach(turma => {
+                                vinculos.push({
+                                    id_professor: idProfessor,
+                                    id_disciplina: disciplinaId,
+                                    id_turma: turma.id_turma || turma,
+                                    serie: typeof turma === 'object' ? turma.serie : null,
+                                    turno: typeof turma === 'object' ? turma.turno : null
+                                });
+                            });
+                        }
+                    } catch (innerError) {
+                        console.warn(`Alternativa para buscar vínculos falhou:`, innerError);
+                    }
                 }
             }
             
@@ -458,16 +486,33 @@ const ProfessoresModule = {
                 return;
             }
             
+            // Mostrar spinner durante o carregamento
+            const spinnerElement = document.createElement('div');
+            spinnerElement.innerHTML = `
+                <div id="loading-vinculos" class="position-fixed top-50 start-50 translate-middle">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Carregando...</span>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(spinnerElement);
+            
             // Carregar vínculos do professor
             const vinculos = await this.carregarVinculosProfessor(idProfessor);
+            
+            // Remover spinner
+            document.getElementById('loading-vinculos')?.remove();
             
             // Agrupar vínculos por disciplina
             const vinculosPorDisciplina = {};
             vinculos.forEach(vinculo => {
-                if (!vinculosPorDisciplina[vinculo.id_disciplina]) {
-                    vinculosPorDisciplina[vinculo.id_disciplina] = [];
+                const disciplinaId = vinculo.id_disciplina || vinculo.disciplina;
+                if (!disciplinaId) return;
+                
+                if (!vinculosPorDisciplina[disciplinaId]) {
+                    vinculosPorDisciplina[disciplinaId] = [];
                 }
-                vinculosPorDisciplina[vinculo.id_disciplina].push(vinculo);
+                vinculosPorDisciplina[disciplinaId].push(vinculo);
             });
             
             // Criar conteúdo do modal
@@ -483,7 +528,18 @@ const ProfessoresModule = {
             `;
             
             if (Object.keys(vinculosPorDisciplina).length === 0) {
-                modalContent += `<p class="text-muted">Este professor não possui vínculos com disciplinas e turmas.</p>`;
+                modalContent += `
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Este professor não possui vínculos com disciplinas e turmas.
+                </div>
+                <p>Dicas para vincular:</p>
+                <ul>
+                    <li>Edite o professor clicando no botão <button class="btn btn-sm btn-primary"><i class="fas fa-edit"></i></button></li>
+                    <li>Selecione as disciplinas desejadas</li>
+                    <li>Para cada disciplina, marque as turmas que este professor irá lecionar</li>
+                    <li>Salve as alterações</li>
+                </ul>`;
             } else {
                 modalContent += `<div class="table-responsive">
                     <table class="table table-striped">
@@ -499,7 +555,7 @@ const ProfessoresModule = {
                     const disciplina = this.state.disciplinas.find(d => d.id_disciplina === disciplinaId);
                     const disciplinaNome = disciplina ? (disciplina.nome_disciplina || disciplina.nome || disciplinaId) : disciplinaId;
                     
-                    const turmasIds = vinculosPorDisciplina[disciplinaId].map(v => v.id_turma);
+                    const turmasIds = vinculosPorDisciplina[disciplinaId].map(v => v.id_turma || v.turma);
                     const turmasTexto = turmasIds.map(id => {
                         const turma = this.state.turmas.find(t => t.id_turma === id);
                         return turma ? `${turma.serie || id} (${turma.id_turma})` : id;
@@ -519,6 +575,9 @@ const ProfessoresModule = {
             modalContent += `
                             </div>
                             <div class="modal-footer">
+                                <button type="button" class="btn btn-primary btn-editar-vinculos" data-id="${idProfessor}">
+                                    <i class="fas fa-edit"></i> Editar Vínculos
+                                </button>
                                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
                             </div>
                         </div>
@@ -533,6 +592,12 @@ const ProfessoresModule = {
             
             const modal = new bootstrap.Modal(document.getElementById('modal-vinculos-professor'));
             modal.show();
+            
+            // Adicionar evento para botão de editar vínculos
+            document.querySelector('.btn-editar-vinculos').addEventListener('click', () => {
+                modal.hide();
+                this.editarProfessor(idProfessor);
+            });
             
             // Remover modal quando fechado
             document.getElementById('modal-vinculos-professor').addEventListener('hidden.bs.modal', function() {
@@ -645,8 +710,8 @@ const ProfessoresModule = {
                 const checkboxes = this.elements.vinculosContainer.querySelectorAll(`.checkbox-turma[data-disciplina="${disciplinaId}"]:checked`);
                 checkboxes.forEach(cb => {
                     vinculos.push({
-                        disciplina: disciplinaId,
-                        turma: cb.dataset.turma
+                        id_disciplina: disciplinaId,
+                        id_turma: cb.dataset.turma
                     });
                 });
             });
