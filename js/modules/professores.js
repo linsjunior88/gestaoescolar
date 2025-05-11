@@ -186,7 +186,10 @@ const ProfessoresModule = {
             const disciplinaTurmas = this.state.disciplinasTurmas.find(dt => dt.disciplina === disciplina.id_disciplina);
             const numTurmas = disciplinaTurmas && disciplinaTurmas.turmas ? disciplinaTurmas.turmas.length : 0;
             
-            option.textContent = `${disciplina.nome} (${numTurmas} turmas)`;
+            // Verificar qual propriedade contém o nome da disciplina
+            const nomeDisciplina = disciplina.nome_disciplina || disciplina.nome || disciplina.id_disciplina;
+            
+            option.textContent = `${nomeDisciplina} (${numTurmas} turmas)`;
             this.elements.selectDisciplinas.appendChild(option);
         });
     },
@@ -212,20 +215,14 @@ const ProfessoresModule = {
             const disciplina = this.state.disciplinas.find(d => d.id_disciplina === disciplinaId);
             if (!disciplina) return;
             
-            // Obter todas as turmas da API (podemos filtrar depois se necessário)
-            const allTurmas = [];
-            this.state.disciplinasTurmas.forEach(dt => {
-                if (dt.turmas && Array.isArray(dt.turmas)) {
-                    dt.turmas.forEach(turma => {
-                        if (!allTurmas.some(t => t.id_turma === turma.id_turma)) {
-                            allTurmas.push(turma);
-                        }
-                    });
-                }
-            });
+            // Verificar qual propriedade contém o nome da disciplina
+            const nomeDisciplina = disciplina.nome_disciplina || disciplina.nome || disciplina.id_disciplina;
+            
+            // Obter TODAS as turmas disponíveis no sistema
+            const allTurmas = this.state.turmas || [];
             
             html += '<tr>';
-            html += `<td>${disciplina.nome}</td>`;
+            html += `<td>${nomeDisciplina}</td>`;
             
             if (allTurmas.length === 0) {
                 html += '<td><span class="text-warning">Nenhuma turma disponível no sistema.</span></td>';
@@ -409,7 +406,7 @@ const ProfessoresModule = {
             const disciplinasIds = (professor.disciplinas || []).map(d => typeof d === 'object' ? d.id_disciplina : d);
             const disciplinasNomes = disciplinasIds.map(id => {
                 const disc = this.state.disciplinas.find(d => d.id_disciplina === id);
-                return disc ? disc.nome : id;
+                return disc ? (disc.nome_disciplina || disc.nome || id) : id;
             }).join(', ');
             
             html += `
@@ -500,7 +497,7 @@ const ProfessoresModule = {
                 
                 for (const disciplinaId in vinculosPorDisciplina) {
                     const disciplina = this.state.disciplinas.find(d => d.id_disciplina === disciplinaId);
-                    const disciplinaNome = disciplina ? disciplina.nome : disciplinaId;
+                    const disciplinaNome = disciplina ? (disciplina.nome_disciplina || disciplina.nome || disciplinaId) : disciplinaId;
                     
                     const turmasIds = vinculosPorDisciplina[disciplinaId].map(v => v.id_turma);
                     const turmasTexto = turmasIds.map(id => {
