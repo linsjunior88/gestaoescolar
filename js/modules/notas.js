@@ -393,7 +393,7 @@ const NotasModule = {
                                                 <th>Nota Mensal</th>
                                                 <th>Nota Bimestral</th>
                                                 <th>Recuperação</th>
-                                                <th>Média</th>
+                                                <th>Média Final</th>
                                                 <th>Status</th>
                                             </tr>
                                         </thead>
@@ -740,9 +740,82 @@ const NotasModule = {
         }
         
         try {
+            console.log(`Carregando disciplinas para a turma ${turmaId} usando novo relacionamento`);
+            
+            // Tentar primeiro buscar disciplinas através do novo relacionamento na tabela professor_disciplina_turma
+            try {
+                // Buscar vínculos professor-disciplina-turma para esta turma
+                const vinculos = await ConfigModule.fetchApi(`/professor_disciplina_turma?id_turma=${turmaId}`);
+                
+                if (Array.isArray(vinculos) && vinculos.length > 0) {
+                    console.log(`Encontrados ${vinculos.length} vínculos para a turma ${turmaId}:`, vinculos);
+                    
+                    // Extrair IDs de disciplinas únicos dos vínculos
+                    const disciplinasIds = [...new Set(vinculos.map(v => v.id_disciplina || v.disciplina))];
+                    console.log(`IDs de disciplinas únicos: ${disciplinasIds.join(', ')}`);
+                    
+                    // Para cada ID de disciplina, buscar os detalhes completos
+                    const disciplinasPromises = disciplinasIds.map(id => 
+                        ConfigModule.fetchApi(`/disciplinas/${id}`)
+                            .catch(err => {
+                                console.warn(`Erro ao buscar detalhes da disciplina ${id}:`, err);
+                                // Retornar objeto mínimo com ID em caso de erro
+                                return { id_disciplina: id, nome_disciplina: `Disciplina ${id}` };
+                            })
+                    );
+                    
+                    const disciplinas = await Promise.all(disciplinasPromises);
+                    console.log(`Disciplinas completas carregadas via vínculos: ${disciplinas.length}`);
+                    
+                    this.state.disciplinasTurma = disciplinas;
+                    return disciplinas;
+                } else {
+                    console.log(`Nenhum vínculo encontrado para a turma ${turmaId}, tentando método alternativo`);
+                }
+            } catch (vincError) {
+                console.warn(`Erro ao buscar vínculos para turma ${turmaId}:`, vincError);
+                // Continuar para tentar método alternativo
+            }
+            
+            // Método alternativo: buscar vínculos usando endpoint alternativo
+            try {
+                const vinculosAlt = await ConfigModule.fetchApi(`/vinculos?id_turma=${turmaId}`);
+                
+                if (Array.isArray(vinculosAlt) && vinculosAlt.length > 0) {
+                    console.log(`Encontrados ${vinculosAlt.length} vínculos alternativos para a turma ${turmaId}`);
+                    
+                    // Extrair IDs de disciplinas únicos dos vínculos
+                    const disciplinasIds = [...new Set(vinculosAlt.map(v => v.id_disciplina || v.disciplina))];
+                    console.log(`IDs de disciplinas únicos (método alternativo): ${disciplinasIds.join(', ')}`);
+                    
+                    // Para cada ID de disciplina, buscar os detalhes completos
+                    const disciplinasPromises = disciplinasIds.map(id => 
+                        ConfigModule.fetchApi(`/disciplinas/${id}`)
+                            .catch(err => {
+                                console.warn(`Erro ao buscar detalhes da disciplina ${id}:`, err);
+                                // Retornar objeto mínimo com ID em caso de erro
+                                return { id_disciplina: id, nome_disciplina: `Disciplina ${id}` };
+                            })
+                    );
+                    
+                    const disciplinas = await Promise.all(disciplinasPromises);
+                    console.log(`Disciplinas completas carregadas via vínculos alternativos: ${disciplinas.length}`);
+                    
+                    this.state.disciplinasTurma = disciplinas;
+                    return disciplinas;
+                } else {
+                    console.log(`Nenhum vínculo alternativo encontrado para a turma ${turmaId}, tentando método legado`);
+                }
+            } catch (altError) {
+                console.warn(`Erro ao buscar vínculos alternativos para turma ${turmaId}:`, altError);
+                // Continuar para tentar método legado
+            }
+            
+            // Método legado (fallback): usar o endpoint direto de turmas/disciplinas
+            console.log(`Tentando método legado para obter disciplinas da turma ${turmaId}`);
             const disciplinas = await ConfigModule.fetchApi(`/turmas/${turmaId}/disciplinas`);
             this.state.disciplinasTurma = disciplinas;
-            console.log(`Disciplinas da turma ${turmaId} carregadas:`, disciplinas);
+            console.log(`Disciplinas da turma ${turmaId} carregadas via método legado:`, disciplinas);
             return disciplinas;
         } catch (error) {
             console.error(`Erro ao carregar disciplinas da turma ${turmaId}:`, error);
@@ -789,13 +862,14 @@ const NotasModule = {
         
         try {
             // Carregar disciplinas e alunos em paralelo
+            // Usamos nossa função atualizada para carregar disciplinas com o novo relacionamento
             const [disciplinas, alunos] = await Promise.all([
                 this.carregarDisciplinasDaTurma(turmaId),
                 this.carregarAlunosDaTurma(turmaId)
             ]);
             
-            console.log("Disciplinas recebidas:", disciplinas);
-            console.log("Alunos recebidos:", alunos);
+            console.log("Disciplinas recebidas para formulário:", disciplinas);
+            console.log("Alunos recebidos para formulário:", alunos);
             
             // Popular select de disciplinas
             if (disciplinas.length > 0 && this.elements.selectDisciplina) {
@@ -818,7 +892,7 @@ const NotasModule = {
                     }
                 });
                 
-                console.log(`Adicionadas ${disciplinasAdicionadas.size} disciplinas únicas ao select`);
+                console.log(`Adicionadas ${disciplinasAdicionadas.size} disciplinas únicas ao select do formulário`);
             } else {
                 console.log("Nenhuma disciplina disponível para esta turma ou elemento select não encontrado");
             }
@@ -844,7 +918,7 @@ const NotasModule = {
                     }
                 });
                 
-                console.log(`Adicionados ${alunosAdicionados.size} alunos únicos ao select`);
+                console.log(`Adicionados ${alunosAdicionados.size} alunos únicos ao select do formulário`);
             } else {
                 console.log("Nenhum aluno disponível para esta turma ou elemento select não encontrado");
             }
@@ -880,9 +954,10 @@ const NotasModule = {
         }
         
         try {
-            console.log(`Iniciando carregamento de disciplinas e alunos para turma ${turmaId}`);
+            console.log(`Iniciando carregamento de disciplinas e alunos para turma ${turmaId} nos filtros`);
             
             // Carregar disciplinas e alunos em paralelo
+            // Usamos nossa função atualizada para carregar disciplinas com o novo relacionamento
             const [disciplinas, alunos] = await Promise.all([
                 this.carregarDisciplinasDaTurma(turmaId),
                 this.carregarAlunosDaTurma(turmaId)
@@ -893,16 +968,29 @@ const NotasModule = {
             
             // Popular select de disciplinas se houver dados e elemento
             if (disciplinas.length > 0 && this.elements.filtroDisciplina) {
-                console.log(`Populando select de disciplinas com ${disciplinas.length} itens`);
+                console.log(`Populando select de disciplinas no filtro com ${disciplinas.length} itens`);
+                
+                // Usar Set para evitar duplicatas
+                const disciplinasAdicionadas = new Set();
                 
                 disciplinas.forEach(disciplina => {
-                    const option = document.createElement('option');
-                    option.value = disciplina.id_disciplina || disciplina.id;
-                    option.textContent = disciplina.nome_disciplina || disciplina.nome || 'N/A';
-                    this.elements.filtroDisciplina.appendChild(option);
+                    const id = disciplina.id_disciplina || disciplina.id;
+                    const nome = disciplina.nome_disciplina || disciplina.nome || 'N/A';
+                    
+                    // Verificar se a disciplina já foi adicionada
+                    if (!disciplinasAdicionadas.has(id)) {
+                        disciplinasAdicionadas.add(id);
+                        
+                        const option = document.createElement('option');
+                        option.value = id;
+                        option.textContent = nome;
+                        this.elements.filtroDisciplina.appendChild(option);
+                    }
                 });
+                
+                console.log(`Adicionadas ${disciplinasAdicionadas.size} disciplinas únicas ao filtro`);
             } else if (this.elements.filtroDisciplina) {
-                console.log("Nenhuma disciplina disponível para esta turma");
+                console.log("Nenhuma disciplina disponível para esta turma no filtro");
                 const option = document.createElement('option');
                 option.disabled = true;
                 option.textContent = 'Nenhuma disciplina disponível';
@@ -920,24 +1008,41 @@ const NotasModule = {
                     return nomeA.localeCompare(nomeB);
                 });
                 
+                // Usar Set para evitar duplicatas
+                const alunosAdicionados = new Set();
+                
                 alunos.forEach(aluno => {
-                    const option = document.createElement('option');
-                    option.value = aluno.id_aluno || aluno.id;
-                    option.textContent = aluno.nome_aluno || aluno.nome || 'N/A';
-                    this.elements.filtroAluno.appendChild(option);
+                    const id = aluno.id_aluno || aluno.id;
+                    const nome = aluno.nome_aluno || aluno.nome || 'N/A';
+                    
+                    // Verificar se o aluno já foi adicionado
+                    if (!alunosAdicionados.has(id)) {
+                        alunosAdicionados.add(id);
+                        
+                        const option = document.createElement('option');
+                        option.value = id;
+                        option.textContent = nome;
+                        this.elements.filtroAluno.appendChild(option);
+                    }
                 });
+                
+                console.log(`Adicionados ${alunosAdicionados.size} alunos únicos ao filtro`);
             } else if (this.elements.filtroAluno) {
-                console.log("Nenhum aluno disponível para esta turma");
+                console.log("Nenhum aluno disponível para esta turma no filtro");
                 const option = document.createElement('option');
                 option.disabled = true;
                 option.textContent = 'Nenhum aluno disponível';
                 this.elements.filtroAluno.appendChild(option);
             }
             
-            console.log("Dependências do filtro carregadas com sucesso");
         } catch (error) {
-            console.error("Erro ao carregar dependências do filtro:", error);
-            this.mostrarErro("Não foi possível carregar os dados de disciplinas e alunos para esta turma.");
+            console.error("Erro ao carregar dependências dos filtros:", error);
+            if (this.elements.filtroDisciplina) {
+                this.elements.filtroDisciplina.innerHTML = '<option value="">Erro ao carregar disciplinas</option>';
+            }
+            if (this.elements.filtroAluno) {
+                this.elements.filtroAluno.innerHTML = '<option value="">Erro ao carregar alunos</option>';
+            }
         }
     },
     
@@ -1810,9 +1915,81 @@ const NotasModule = {
             this.elements.massaDisciplina.innerHTML = '<option value="">Carregando...</option>';
             this.elements.massaDisciplina.disabled = true;
 
-            // Buscar disciplinas vinculadas à turma
-            const disciplinas = await ConfigModule.fetchApi(`/turmas/${turmaId}/disciplinas`);
-            console.log("Disciplinas carregadas:", disciplinas);
+            // Buscar disciplinas vinculadas à turma usando o novo relacionamento
+            let disciplinas = [];
+            let usouRelacionamentoNovo = false;
+            
+            // Tentar primeiro buscar disciplinas através do novo relacionamento na tabela professor_disciplina_turma
+            try {
+                // Buscar vínculos professor-disciplina-turma para esta turma
+                const vinculos = await ConfigModule.fetchApi(`/professor_disciplina_turma?id_turma=${turmaId}`);
+                
+                if (Array.isArray(vinculos) && vinculos.length > 0) {
+                    console.log(`Encontrados ${vinculos.length} vínculos para a turma ${turmaId} no lançamento em massa`);
+                    
+                    // Extrair IDs de disciplinas únicos dos vínculos
+                    const disciplinasIds = [...new Set(vinculos.map(v => v.id_disciplina || v.disciplina))];
+                    
+                    // Para cada ID de disciplina, buscar os detalhes completos
+                    const disciplinasPromises = disciplinasIds.map(id => 
+                        ConfigModule.fetchApi(`/disciplinas/${id}`)
+                            .catch(err => {
+                                console.warn(`Erro ao buscar detalhes da disciplina ${id}:`, err);
+                                // Retornar objeto mínimo com ID em caso de erro
+                                return { id_disciplina: id, nome_disciplina: `Disciplina ${id}` };
+                            })
+                    );
+                    
+                    disciplinas = await Promise.all(disciplinasPromises);
+                    usouRelacionamentoNovo = true;
+                    console.log(`Disciplinas completas carregadas via vínculos para grade: ${disciplinas.length}`);
+                } else {
+                    console.log(`Nenhum vínculo encontrado para a turma ${turmaId}, tentando método alternativo na grade`);
+                }
+            } catch (vincError) {
+                console.warn(`Erro ao buscar vínculos para turma ${turmaId} na grade:`, vincError);
+                // Continuar para tentar método alternativo
+            }
+            
+            // Se não encontrou pelos vínculos, tentar pelo endpoint alternativo
+            if (!usouRelacionamentoNovo) {
+                try {
+                    const vinculosAlt = await ConfigModule.fetchApi(`/vinculos?id_turma=${turmaId}`);
+                    
+                    if (Array.isArray(vinculosAlt) && vinculosAlt.length > 0) {
+                        console.log(`Encontrados ${vinculosAlt.length} vínculos alternativos para a turma ${turmaId} na grade`);
+                        
+                        // Extrair IDs de disciplinas únicos dos vínculos
+                        const disciplinasIds = [...new Set(vinculosAlt.map(v => v.id_disciplina || v.disciplina))];
+                        
+                        // Para cada ID de disciplina, buscar os detalhes completos
+                        const disciplinasPromises = disciplinasIds.map(id => 
+                            ConfigModule.fetchApi(`/disciplinas/${id}`)
+                                .catch(err => {
+                                    console.warn(`Erro ao buscar detalhes da disciplina ${id}:`, err);
+                                    // Retornar objeto mínimo com ID em caso de erro
+                                    return { id_disciplina: id, nome_disciplina: `Disciplina ${id}` };
+                                })
+                        );
+                        
+                        disciplinas = await Promise.all(disciplinasPromises);
+                        usouRelacionamentoNovo = true;
+                        console.log(`Disciplinas completas carregadas via vínculos alternativos para grade: ${disciplinas.length}`);
+                    } else {
+                        console.log(`Nenhum vínculo alternativo encontrado para a turma ${turmaId} na grade, tentando método legado`);
+                    }
+                } catch (altError) {
+                    console.warn(`Erro ao buscar vínculos alternativos para turma ${turmaId} na grade:`, altError);
+                    // Continuar para tentar método legado
+                }
+            }
+            
+            // Se ainda não encontrou, tentar método legado
+            if (!usouRelacionamentoNovo) {
+                console.log(`Tentando método legado para obter disciplinas da turma ${turmaId} na grade`);
+                disciplinas = await ConfigModule.fetchApi(`/turmas/${turmaId}/disciplinas`);
+                console.log(`Disciplinas da turma ${turmaId} carregadas via método legado para grade:`, disciplinas);
+            }
 
             // Preencher select de disciplinas
             this.elements.massaDisciplina.innerHTML = '<option value="">Selecione uma disciplina</option>';
@@ -1827,11 +2004,11 @@ const NotasModule = {
                     const id = disciplina.id_disciplina || disciplina.id;
                     const nome = disciplina.nome_disciplina || disciplina.nome || 'N/A';
                     
-                    console.log(`Processando disciplina: ID=${id}, Nome=${nome}`);
+                    console.log(`Processando disciplina para grade: ID=${id}, Nome=${nome}`);
                     
                     // Verificar se a disciplina já foi adicionada
                     if (disciplinasIds.has(id)) {
-                        console.log(`Disciplina ${id} já adicionada, ignorando duplicata`);
+                        console.log(`Disciplina ${id} já adicionada à grade, ignorando duplicata`);
                         return;
                     }
                     
@@ -1843,7 +2020,7 @@ const NotasModule = {
                     this.elements.massaDisciplina.appendChild(option);
                 });
                 
-                console.log(`Total de ${disciplinasIds.size} disciplinas únicas adicionadas ao select`);
+                console.log(`Total de ${disciplinasIds.size} disciplinas únicas adicionadas ao select da grade`);
             } else {
                 console.log("Nenhuma disciplina encontrada para esta turma ou resposta em formato inesperado");
                 this.elements.massaDisciplina.innerHTML += '<option disabled>Nenhuma disciplina encontrada</option>';
