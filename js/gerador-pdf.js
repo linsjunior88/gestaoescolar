@@ -383,7 +383,7 @@ async function gerarPDFNotas() {
             if (typeof window.jspdf !== 'undefined' && typeof window.jspdf.jsPDF === 'function') {
                 const { jsPDF } = window.jspdf;
                 doc = new jsPDF({
-                    orientation: 'landscape',
+                    orientation: 'landscape',  // IMPORTANTE: Usar orientação paisagem para mais espaço
                     unit: 'mm',
                     format: 'a4'
                 });
@@ -392,7 +392,7 @@ async function gerarPDFNotas() {
             // Segundo método: usar window.jsPDF (forma global)
             else if (typeof window.jsPDF === 'function') {
                 doc = new window.jsPDF({
-                    orientation: 'landscape',
+                    orientation: 'landscape',  // IMPORTANTE: Usar orientação paisagem para mais espaço
                     unit: 'mm',
                     format: 'a4'
                 });
@@ -467,15 +467,15 @@ async function gerarPDFNotas() {
             doc.text(filtroInfo, doc.internal.pageSize.getWidth() / 2, 23, { align: 'center' });
         }
         
-        // Definir colunas para o PDF - Alterado "Idaluno" para "Matric."
+        // Definir colunas para o PDF - Cuidado especial com os nomes das colunas
         const colunas = [
             { header: 'Matric.', dataKey: 'idaluno' },
             { header: 'Aluno', dataKey: 'aluno' },
             { header: 'Disciplina', dataKey: 'disciplina' },
             { header: 'Turma', dataKey: 'turma' },
             { header: 'Bimestre', dataKey: 'bimestre' },
-            { header: 'N. Mensal', dataKey: 'mensal' },
-            { header: 'N.Bimestral', dataKey: 'bimestral' },
+            { header: 'N. Mensal', dataKey: 'mensal' },       // Espaço adicionado após o "N."
+            { header: 'N. Bimestral', dataKey: 'bimestral' }, // Espaço adicionado após o "N."
             { header: 'Recup.', dataKey: 'recuperacao' },
             { header: 'Média', dataKey: 'media' },
             { header: 'Status', dataKey: 'status' }
@@ -490,45 +490,271 @@ async function gerarPDFNotas() {
             // Pular linhas de mensagem (como "Nenhum resultado encontrado")
             if (linha.cells.length <= 1) return;
             
-            // Obter o ID do aluno usando a função específica
-            const alunoId = obterIdAluno(linha);
-            
             try {
-                // Obter índices corretos da tabela
-                // Assumindo uma tabela no formato: ID, Aluno, Disciplina, Turma, Bimestre, Mensal, Bimestral, Recuperação, Média, Status
-                // Precisamos adaptar isso para a estrutura específica da tabela deles
-                let idIndex = 0, alunoIndex = 1, disciplinaIndex = 2, turmaIndex = 3, 
-                    bimestreIndex = 4, mensalIndex = 5, bimestralIndex = 6, 
-                    recuperacaoIndex = 7, mediaIndex = 8, statusIndex = 9;
+                // Obter o ID do aluno - Este é o ID DO ALUNO, não o ID da nota
+                // Obtém da célula hidden ou do data-attribute, se disponível
+                let alunoId = '';
                 
-                // Ajustar os índices se a estrutura da tabela for diferente
-                if (linha.cells.length < 10) {
-                    console.warn(`Linha ${index} tem menos de 10 células. Adaptando índices.`);
-                    // Usar um mapeamento mais flexível se necessário
+                // Adicionar um log específico para depuração do ID do aluno
+                console.log(`DEBUG - Buscando ID do aluno para linha ${index}:`, linha.outerHTML);
+                
+                // Se a tabela de notas tiver um attributo específico com o ID real do aluno, obtê-lo
+                const dataAlunoId = linha.getAttribute('data-aluno-id') || 
+                                   linha.getAttribute('data-id-aluno') || 
+                                   linha.getAttribute('data-aluno');
+                
+                if (dataAlunoId && dataAlunoId !== 'undefined') {
+                    console.log(`DEBUG - Encontrado data-aluno-id na linha: ${dataAlunoId}`);
+                    alunoId = dataAlunoId;
                 }
                 
-                // Obter os dados das células - verificando se os índices são válidos
-                const aluno = linha.cells[alunoIndex]?.textContent.trim() || '';
-                const disciplina = linha.cells[disciplinaIndex]?.textContent.trim() || '';
-                const turma = linha.cells[turmaIndex]?.textContent.trim() || '';
-                const bimestre = linha.cells[bimestreIndex]?.textContent.trim() || '';
-                const mensal = linha.cells[mensalIndex]?.textContent.trim() || '';
-                const bimestral = linha.cells[bimestralIndex]?.textContent.trim() || '';
-                const recuperacao = linha.cells[recuperacaoIndex]?.textContent.trim() || '';
-                const media = linha.cells[mediaIndex]?.textContent.trim() || '';
+                // Método específico para obter ID_ALUNO de botões/links
+                if (!alunoId || alunoId === 'undefined') {
+                    const botoesELinks = linha.querySelectorAll('button, a');
+                    for (const el of botoesELinks) {
+                        // Verificar onclick para extrair ID
+                        const onclick = el.getAttribute('onclick') || '';
+                        if (onclick.includes('aluno') || onclick.includes('Aluno')) {
+                            const matches = onclick.match(/\b\d+\b/g); // Buscar números no onclick
+                            if (matches && matches.length > 0) {
+                                alunoId = matches[0];
+                                console.log(`DEBUG - Extraído ID do aluno do onclick: ${alunoId}`);
+                                break;
+                            }
+                        }
+                        
+                        // Verificar atributos de dados
+                        const elAlunoId = el.getAttribute('data-aluno-id') || 
+                                          el.getAttribute('data-id-aluno') || 
+                                          el.getAttribute('data-aluno');
+                        if (elAlunoId && elAlunoId !== 'undefined') {
+                            alunoId = elAlunoId;
+                            console.log(`DEBUG - Encontrado ID do aluno em botão/link: ${alunoId}`);
+                            break;
+                        }
+                    }
+                }
+                
+                // Verificar campos ocultos que podem conter o ID
+                if (!alunoId || alunoId === 'undefined') {
+                    const camposOcultos = linha.querySelectorAll('input[type="hidden"]');
+                    for (const campo of camposOcultos) {
+                        if (campo.name && (campo.name.includes('aluno') || campo.name.includes('id'))) {
+                            alunoId = campo.value;
+                            console.log(`DEBUG - Encontrado ID do aluno em campo oculto: ${alunoId}`);
+                            break;
+                        }
+                    }
+                }
+                
+                // Tentar extrair de atributos de dados em qualquer elemento da linha
+                if (!alunoId || alunoId === 'undefined') {
+                    const elementos = linha.querySelectorAll('*[data-aluno-id], *[data-id-aluno], *[data-aluno]');
+                    for (const el of elementos) {
+                        const elAlunoId = el.getAttribute('data-aluno-id') || 
+                                          el.getAttribute('data-id-aluno') || 
+                                          el.getAttribute('data-aluno');
+                        if (elAlunoId && elAlunoId !== 'undefined') {
+                            alunoId = elAlunoId;
+                            console.log(`DEBUG - Encontrado ID do aluno em elemento com data-attribute: ${alunoId}`);
+                            break;
+                        }
+                    }
+                }
+                
+                // Se ainda não encontrou, verificar se o ID está em alguma célula específica
+                // Esta parte é crucial para encontrar o ID do aluno
+                if (!alunoId || alunoId === 'undefined') {
+                    // Com base no console, o ID do aluno parece estar nos botões de onclick
+                    // Analisando a saída: { idaluno: "35", aluno: "MAT", ... } e { idaluno: "43", aluno: "MAT" }
+                    
+                    // Usar as próprias células como uma última alternativa
+                    const colunasTabela = Array.from(linha.cells);
+                    
+                    // Verificar todas as células procurando um ID
+                    for (let i = 0; i < colunasTabela.length; i++) {
+                        const celulaTexto = colunasTabela[i]?.textContent.trim();
+                        
+                        // Se for um texto que parece ser apenas um número, pode ser o ID
+                        if (/^\d+$/.test(celulaTexto)) {
+                            alunoId = celulaTexto;
+                            console.log(`DEBUG - Encontrado possível ID do aluno na célula ${i}: ${alunoId}`);
+                            break;
+                        }
+                        
+                        // Verificar se a célula contém elementos que possam ter o ID
+                        const btnNaCelula = colunasTabela[i]?.querySelector('button, a');
+                        if (btnNaCelula) {
+                            const onclick = btnNaCelula.getAttribute('onclick') || '';
+                            const matches = onclick.match(/\b\d+\b/g);
+                            if (matches && matches.length > 0) {
+                                alunoId = matches[0];
+                                console.log(`DEBUG - Extraído ID do aluno de botão na célula ${i}: ${alunoId}`);
+                                break;
+                            }
+                        }
+                    }
+                }
+                
+                // Último recurso: usar o método padrão
+                if (!alunoId || alunoId === 'undefined') {
+                    alunoId = obterIdAluno(linha);
+                    console.log(`DEBUG - Usando função obterIdAluno como último recurso: ${alunoId}`);
+                }
+                
+                // Mapear corretamente os índices da tabela - CORRIGIDOS com base no console
+                // IMPORTANTE: o console mostrou que os índices estavam incorretos
+                
+                // Com base no console, os dados estão vindo em uma ordem diferente do esperado:
+                // O console mostrou: { idaluno: "43", aluno: "MAT", disciplina: "13CM", turma: "1º", bimestre: "10.0", ... }
+                // Isso sugere que "MAT" está na posição do aluno, mas parece ser a disciplina
+                // E "13CM" está na posição da disciplina, mas parece ser a turma
+                
+                // Vamos mapear os índices para corresponder à estrutura real da tabela
+                const colunasTabela = Array.from(linha.cells);
+                
+                console.log(`DEBUG - Estrutura da linha ${index}:`, {
+                    totalCelulas: colunasTabela.length,
+                    conteudoCelulas: colunasTabela.map(c => c.textContent.trim())
+                });
+                
+                // CORREÇÃO ESPECÍFICA: Com base na saída do console fornecida pelo usuário
+                // Exemplo: { idaluno: "43", aluno: "MAT", disciplina: "13CM", turma: "1º", bimestre: "10.0", ... }
+                // Os campos estão chegando em ordem incorreta, vamos detectar e corrigir
+                
+                // Verificar se os valores seguem o padrão identificado no console
+                const valores = colunasTabela.map(c => c.textContent.trim());
+                
+                // Criar um mapeamento dinâmico baseado nos valores
+                let alunoIndex, disciplinaIndex, turmaIndex, bimestreIndex, 
+                    mensalIndex, bimestralIndex, recuperacaoIndex, mediaIndex, statusIndex;
+                
+                // Método específico para este caso, baseado no log do console
+                // Se vermos um padrão onde:
+                // - Um dos primeiros valores é "MAT" (possível disciplina)
+                // - Outro dos primeiros valores parece uma turma (como "13CM")
+                // - Outro valor parece um bimestre (como "1º")
+                // - Valores numéricos para notas (como "4.0", "10.0")
+                let disciplinaEncontrada = false;
+                let turmaEncontrada = false;
+                
+                // Buscar padrões específicos:
+                for (let i = 0; i < valores.length; i++) {
+                    const valor = valores[i];
+                    
+                    // Verificar se parece uma disciplina (ex: "MAT", "PORT", etc)
+                    if (!disciplinaEncontrada && /^[A-Z]{3,4}$/.test(valor)) {
+                        disciplinaIndex = i;
+                        disciplinaEncontrada = true;
+                        console.log(`DEBUG - Detectado possível disciplina "${valor}" no índice ${i}`);
+                    }
+                    
+                    // Verificar se parece uma turma (ex: "13CM", "10AM", etc)
+                    else if (!turmaEncontrada && /^\d{1,2}[A-Z]{1,2}$/.test(valor)) {
+                        turmaIndex = i;
+                        turmaEncontrada = true;
+                        console.log(`DEBUG - Detectada possível turma "${valor}" no índice ${i}`);
+                    }
+                    
+                    // Verificar se parece um bimestre (ex: "1º", "2º", etc)
+                    else if (typeof bimestreIndex === 'undefined' && /^\d{1,2}º$/.test(valor)) {
+                        bimestreIndex = i;
+                        console.log(`DEBUG - Detectado possível bimestre "${valor}" no índice ${i}`);
+                    }
+                    
+                    // Verificar se é um valor numérico (possível nota)
+                    else if ((typeof mensalIndex === 'undefined' || typeof bimestralIndex === 'undefined') 
+                             && (/^\d+(\.\d+)?$/.test(valor) || valor === '-')) {
+                        if (typeof mensalIndex === 'undefined') {
+                            mensalIndex = i;
+                            console.log(`DEBUG - Detectada possível nota mensal "${valor}" no índice ${i}`);
+                        } else if (typeof bimestralIndex === 'undefined') {
+                            bimestralIndex = i;
+                            console.log(`DEBUG - Detectada possível nota bimestral "${valor}" no índice ${i}`);
+                        }
+                    }
+                    
+                    // Verificar se parece recuperação
+                    else if (typeof recuperacaoIndex === 'undefined' 
+                            && (/^\d+(\.\d+)?$/.test(valor) || valor === '-')) {
+                        recuperacaoIndex = i;
+                        console.log(`DEBUG - Detectada possível recuperação "${valor}" no índice ${i}`);
+                    }
+                    
+                    // Verificar se parece média
+                    else if (typeof mediaIndex === 'undefined' && /^(Aprovado|Reprovado)$/.test(valor)) {
+                        mediaIndex = i;
+                        console.log(`DEBUG - Detectada possível média/status "${valor}" no índice ${i}`);
+                    }
+                }
+                
+                // Se não encontramos alguns índices cruciais, usar método padrão
+                if (typeof disciplinaIndex === 'undefined' || typeof turmaIndex === 'undefined') {
+                    console.log("DEBUG - Não foi possível detectar todos os campos necessários. Usando método padrão.");
+                    
+                    // Este é um exemplo de mapeamento que pode precisar ser ajustado
+                    // Se a tabela tiver pelo menos 5 colunas
+                    if (colunasTabela.length >= 5) {
+                        alunoIndex = 0;          // Nome do aluno (pode estar incorreto)
+                        disciplinaIndex = 1;     // Nome da disciplina (pode estar incorreto)
+                        turmaIndex = 2;          // Turma (pode estar incorreto)
+                        bimestreIndex = 3;       // Bimestre
+                        mensalIndex = 4;         // Nota Mensal
+                        
+                        // Para células extras se existirem
+                        if (colunasTabela.length > 5) bimestralIndex = 5;
+                        if (colunasTabela.length > 6) recuperacaoIndex = 6;
+                        if (colunasTabela.length > 7) mediaIndex = 7;
+                        if (colunasTabela.length > 8) statusIndex = 8;
+                    }
+                }
+                
+                // CORREÇÃO ESPECÍFICA: Com base no console, o aluno deve ser o primeiro campo
+                // que NÃO é disciplina, turma, bimestre ou notas
+                if (typeof alunoIndex === 'undefined') {
+                    // Encontrar primeiro índice que não é nenhum dos outros
+                    for (let i = 0; i < valores.length; i++) {
+                        if (i !== disciplinaIndex && i !== turmaIndex && i !== bimestreIndex &&
+                            i !== mensalIndex && i !== bimestralIndex && i !== recuperacaoIndex &&
+                            i !== mediaIndex && i !== statusIndex) {
+                            alunoIndex = i;
+                            console.log(`DEBUG - Definindo índice do aluno como ${i} (${valores[i]})`);
+                            break;
+                        }
+                    }
+                    
+                    // Se ainda não encontramos, usar o primeiro índice como fallback
+                    if (typeof alunoIndex === 'undefined' && valores.length > 0) {
+                        alunoIndex = 0;
+                        console.log(`DEBUG - Usando primeiro índice como aluno por fallback (${valores[0]})`);
+                    }
+                }
+                
+                // Obter os dados das células com segurança (com tratamento para evitar undefined)
+                // Usar conditional chaining para evitar erros
+                const aluno = colunasTabela[alunoIndex]?.textContent.trim() || '';
+                const disciplina = colunasTabela[disciplinaIndex]?.textContent.trim() || '';
+                const turma = colunasTabela[turmaIndex]?.textContent.trim() || '';
+                const bimestre = colunasTabela[bimestreIndex]?.textContent.trim() || '';
+                const mensal = colunasTabela[mensalIndex]?.textContent.trim() || '';
+                const bimestral = typeof bimestralIndex !== 'undefined' && colunasTabela[bimestralIndex] 
+                    ? colunasTabela[bimestralIndex].textContent.trim() : '';
+                const recuperacao = typeof recuperacaoIndex !== 'undefined' && colunasTabela[recuperacaoIndex] 
+                    ? colunasTabela[recuperacaoIndex].textContent.trim() : '';
+                const media = typeof mediaIndex !== 'undefined' && colunasTabela[mediaIndex] 
+                    ? colunasTabela[mediaIndex].textContent.trim() : '';
                 
                 // Verificação para evitar status duplicado
                 let status = '';
-                if (linha.cells[statusIndex]) {
-                    status = linha.cells[statusIndex].textContent.trim();
-                    // Corrigir texto duplicado "AprovadoAprovado" ou "ReprovadoReprovado"
-                    status = status.replace(/Aprovado{2,}/g, 'Aprovado')
-                              .replace(/Reprovado{2,}/g, 'Reprovado');
+                if (typeof statusIndex !== 'undefined' && colunasTabela[statusIndex]) {
+                    status = colunasTabela[statusIndex].textContent.trim();
+                    // Remover duplicações
                     if (status.includes('Aprovado')) status = 'Aprovado';
                     if (status.includes('Reprovado')) status = 'Reprovado';
                 }
                 
-                console.log(`Processando linha ${index}:`, {
+                // Log para debug
+                console.log(`Processando linha ${index} após correção:`, {
                     idaluno: alunoId,
                     aluno,
                     disciplina, 
@@ -543,7 +769,7 @@ async function gerarPDFNotas() {
                 
                 // Adicionar linha ao array de dados
                 dados.push({
-                    idaluno: alunoId, // Usar o ID correto do aluno para a coluna Matric.
+                    idaluno: alunoId, // ID do aluno para a coluna Matrícula
                     aluno,
                     disciplina,
                     turma,
@@ -564,48 +790,49 @@ async function gerarPDFNotas() {
             throw new Error('Nenhum dado válido encontrado na tabela.');
         }
         
-        // Configurações da tabela - Ajustado larguras das colunas para não truncar
+        // Configurações da tabela - Ajustadas para garantir que a tabela caiba na página paisagem
         const options = {
             startY: 30, // Posição inicial da tabela
-            // Ajuste para usar toda a largura disponível da página (margem de 5mm em cada lado para se estender até a data)
-            margin: { left: 5, right: 5 },
-            tableWidth: 'auto', // Isso fará com que a tabela ocupe toda a largura disponível
+            margin: { left: 10, right: 10 }, // Margens ajustadas para mais espaço
+            tableWidth: 'auto', // Usar largura automática para aproveitar o espaço
             headStyles: {
-                fillColor: [41, 98, 255], // Cor azul para o cabeçalho
+                fillColor: [41, 98, 255],
                 textColor: 255,
                 fontStyle: 'bold',
-                halign: 'center', // Centralizar cabeçalhos
-                valign: 'middle',  // Alinhar verticalmente ao meio
-                fontSize: 9,       // Reduzir tamanho da fonte para evitar quebras
-                cellPadding: {top: 3, right: 2, bottom: 3, left: 2} // Padding mais preciso
+                halign: 'center', 
+                valign: 'middle',
+                fontSize: 9,
+                cellPadding: {top: 3, right: 2, bottom: 3, left: 2}
             },
             bodyStyles: {
-                fontSize: 8       // Tamanho de fonte para o corpo da tabela
+                fontSize: 8,
+                cellPadding: {top: 2, right: 2, bottom: 2, left: 2} // Reduzir padding para economizar espaço
             },
             alternateRowStyles: {
-                fillColor: [240, 240, 240] // Cor cinza claro para linhas alternadas
+                fillColor: [240, 240, 240]
             },
-            // Definir larguras das colunas para melhor visualização - ajustadas para aproveitar melhor o espaço
+            // Larguras das colunas otimizadas para caber na página
             columnStyles: {
-                idaluno: { cellWidth: 15, halign: 'center' },
-                aluno: { cellWidth: 70, halign: 'left' },
-                disciplina: { cellWidth: 25, halign: 'left' },
-                turma: { cellWidth: 15, halign: 'center' },
-                bimestre: { cellWidth: 18, halign: 'center' },
-                mensal: { cellWidth: 18, halign: 'center' },
-                bimestral: { cellWidth: 20, halign: 'center' },
-                recuperacao: { cellWidth: 15, halign: 'center' },
-                media: { cellWidth: 15, halign: 'center' },
-                status: { cellWidth: 20, halign: 'center' }
+                idaluno: { cellWidth: 15, halign: 'center' },        // ID do aluno (matrícula)
+                aluno: { cellWidth: 70, halign: 'left' },           // Nome do aluno - ALARGADO
+                disciplina: { cellWidth: 28, halign: 'left' },       // Disciplina
+                turma: { cellWidth: 15, halign: 'center' },          // Turma
+                bimestre: { cellWidth: 16, halign: 'center' },       // Bimestre
+                mensal: { cellWidth: 18, halign: 'center' },         // N. Mensal
+                bimestral: { cellWidth: 22, halign: 'center' },      // N. Bimestral
+                recuperacao: { cellWidth: 16, halign: 'center' },    // Recuperação
+                media: { cellWidth: 15, halign: 'center' },          // Média
+                status: { cellWidth: 20, halign: 'center' }          // Status
             },
-            // Impedir quebra de linha nos textos e lidar com células muito estreitas
+            // Não truncar textos importantes
             styles: {
-                overflow: 'ellipsize',  // Truncar com ... se não couber
-                cellWidth: 'auto',      // Usar a largura disponível sem quebrar palavras
+                overflow: 'ellipsize',
+                cellWidth: 'auto',
                 fontSize: 8,
-                minCellHeight: 8
+                minCellHeight: 8,
+                font: 'helvetica' // Fonte mais compacta
             },
-            // Garantir que todos os textos caibam dentro das células
+            // Ajustar o tamanho da fonte para textos longos
             willDrawCell: function(data) {
                 // Reduzir o tamanho da fonte se o texto for muito longo para a célula
                 if (data.cell.text && typeof data.cell.text === 'string') {
@@ -616,10 +843,31 @@ async function gerarPDFNotas() {
                     const textWidth = text.length * data.cell.styles.fontSize * 0.5;
                     
                     if (textWidth > maxWidth) {
-                        // Reduzir a fonte para caber
-                        data.cell.styles.fontSize = Math.floor(maxWidth / (text.length * 0.5));
+                        // Reduzir a fonte para caber - mas não menor que 6
+                        const newSize = Math.max(6, Math.floor(maxWidth / (text.length * 0.5)));
+                        data.cell.styles.fontSize = newSize;
                     }
                 }
+            },
+            // Calcular o espaço disponível e distribuir entre as colunas
+            didDrawPage: function(data) {
+                // Adicionar informação sobre a geração do relatório no rodapé
+                const pageWidth = doc.internal.pageSize.getWidth();
+                const pageHeight = doc.internal.pageSize.getHeight();
+                
+                // Adicionar timestamp de geração
+                doc.setFontSize(8);
+                doc.setTextColor(100);
+                doc.text(
+                    `Gerado em: ${new Date().toLocaleString('pt-BR')}`,
+                    pageWidth - 15,
+                    pageHeight - 5,
+                    { align: 'right' }
+                );
+                
+                // Adicionar informação sobre o tamanho da tabela
+                console.log(`Largura da página: ${pageWidth}mm, Altura: ${pageHeight}mm`);
+                console.log(`Espaço disponível para tabela: ${pageWidth - 20}mm`);
             }
         };
         
