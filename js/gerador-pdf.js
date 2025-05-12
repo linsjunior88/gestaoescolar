@@ -131,91 +131,78 @@ function obterIdAluno(linha) {
         }
     }
     
-    // 5. ESTRATÉGIA: Tentar extrair de classe que possa conter o ID
-    const classesLine = linha.className.split(' ');
-    for (const cls of classesLine) {
-        if (/aluno-(\w+)/i.test(cls)) {
-            const match = cls.match(/aluno-(\w+)/i);
+    // 5. ESTRATÉGIA: Buscar dentro de todos os botões ou links que possuam data-id
+    const botoes = linha.querySelectorAll('button, a');
+    for (const btn of botoes) {
+        const btnId = btn.getAttribute('data-id') || btn.getAttribute('data-aluno-id');
+        if (btnId && btnId !== 'undefined') {
+            console.log('Encontrado ID em botão/link:', btnId);
+            return btnId;
+        }
+        
+        // Verificar onclick que possa conter ID
+        const onclick = btn.getAttribute('onclick');
+        if (onclick) {
+            const match = onclick.match(/(\b\d+\b)/); // Buscar números no onclick
             if (match && match[1]) {
-                console.log('Encontrado ID na classe:', match[1]);
+                console.log('Encontrado ID em onclick de botão:', match[1]);
                 return match[1];
             }
         }
     }
     
-    // 6. ESTRATÉGIA: Verificar se há um input escondido com o ID
-    const hiddenInput = linha.querySelector('input[type="hidden"][name*="aluno"], input[type="hidden"][name*="id"]');
-    if (hiddenInput) {
-        const hiddenId = hiddenInput.value;
-        if (hiddenId && hiddenId !== 'undefined') {
-            console.log('Encontrado ID em input escondido:', hiddenId);
-            return hiddenId;
-        }
-    }
-    
-    // 7. ESTRATÉGIA: Consultar API ou dicionário global se disponível
-    if (typeof window.alunosCache === 'object') {
-        // Se há um cache global de alunos, tenta encontrar pelo nome
-        const nomeAluno = linha.cells[0].textContent.trim();
-        for (const id in window.alunosCache) {
-            if (window.alunosCache[id].nome === nomeAluno) {
-                console.log('Encontrado ID no cache global de alunos:', id);
-                return id;
-            }
-        }
-    }
-    
-    // 8. ESTRATÉGIA: Verificar data attributes específicos em qualquer elemento da linha
-    const elements = linha.querySelectorAll('*');
-    for (const elem of elements) {
-        for (const attr of elem.attributes) {
-            if (attr.name.startsWith('data-') && 
-                (attr.name.includes('aluno') || attr.name.includes('id')) && 
-                attr.value && attr.value !== 'undefined') {
-                console.log('Encontrado ID em atributo', attr.name, ':', attr.value);
-                return attr.value;
-            }
-        }
-    }
-    
-    // 9. ESTRATÉGIA: Tentar extrair direto do ID do elemento TR (comum em listagens)
-    if (linha.id && (linha.id.includes('aluno') || /row-\d+/.test(linha.id))) {
-        const rowId = linha.id.replace(/^.*?(\d+).*$/, '$1');
-        if (rowId) {
-            console.log('Extraído ID do próprio ID da linha:', rowId);
-            return rowId;
-        }
-    }
-    
-    // 10. ESTRATÉGIA: Tentar obter o valor da primeira célula se for numérico ou seguir padrão de ID
+    // 6. ESTRATÉGIA: Verificar se a primeira célula é numérica e pode ser um ID
     try {
-        const firstCellText = linha.cells[0].textContent.trim();
-        if (/^[A-Z]{0,3}\d+$/.test(firstCellText)) { // Padrão como A123, ALU123 ou apenas 123
-            console.log('Usando texto da primeira célula como ID:', firstCellText);
-            return firstCellText;
+        if (linha.cells && linha.cells.length > 0) {
+            const firstCellText = linha.cells[0].textContent.trim();
+            if (/^\d+$/.test(firstCellText)) {
+                console.log('Primeira célula contém um ID numérico:', firstCellText);
+                return firstCellText;
+            }
         }
     } catch (e) {
         console.error('Erro ao verificar primeira célula:', e);
     }
     
-    // 11. ESTRATÉGIA: Verificar botões ou links com onclick que possam ter o ID
-    const actionElements = linha.querySelectorAll('button, a');
-    for (const elem of actionElements) {
-        const onclick = elem.getAttribute('onclick');
-        if (onclick) {
-            // Procurar padrões como editarAluno('ALU001') ou similar
-            const match = onclick.match(/[\'\"]([A-Z0-9]+)[\'\"]/i);
-            if (match && match[1]) {
-                console.log('Extraído ID do evento onclick:', match[1]);
-                return match[1];
-            }
+    // 7. ESTRATÉGIA: Verificar se alguma célula contém um ID formatado (ex: ID: 123)
+    for (let i = 0; i < linha.cells.length; i++) {
+        const cellText = linha.cells[i].textContent.trim();
+        const idMatch = cellText.match(/(ID|Id|id)[\s:]?(\d+)/);
+        if (idMatch && idMatch[2]) {
+            console.log('Encontrado padrão de ID na célula', i, ':', idMatch[2]);
+            return idMatch[2];
         }
     }
     
-    // ÚLTIMA ESTRATÉGIA: Gerar um ID baseado no índice da linha
-    // Isso deve ser usado apenas como último recurso
-    console.warn('Não foi possível encontrar um ID. Usando índice da linha + tempo como fallback');
-    return `TMP${Array.from(linha.parentNode.children).indexOf(linha)}_${Date.now().toString().slice(-4)}`;
+    // 8. ESTRATÉGIA: Verificar inputs escondidos que possam ter o ID
+    const hiddenInputs = linha.querySelectorAll('input[type="hidden"]');
+    for (const input of hiddenInputs) {
+        if (input.name && (input.name.includes('id') || input.name.includes('aluno'))) {
+            console.log('Encontrado ID em input escondido:', input.value);
+            return input.value;
+        }
+    }
+    
+    // 9. ESTRATÉGIA: Tentar extrair do ID do elemento TR
+    if (linha.id && /\d+/.test(linha.id)) {
+        const idFromLineId = linha.id.match(/\d+/)[0];
+        console.log('Extraído ID do próprio ID da linha:', idFromLineId);
+        return idFromLineId;
+    }
+    
+    // 10. ESTRATÉGIA (ESPECÍFICA PARA O RELATÓRIO): A primeira célula geralmente mostra ID ou matrícula
+    if (linha.cells && linha.cells.length > 0) {
+        // Se estamos no corpo da tabela e a primeira célula parece ser um ID
+        const matriculaCell = linha.cells[0].textContent.trim();
+        if (matriculaCell && /\d+/.test(matriculaCell)) {
+            console.log('Usando conteúdo da primeira célula como ID:', matriculaCell);
+            return matriculaCell.match(/\d+/)[0]; // Extrai apenas os números
+        }
+    }
+    
+    // ÚLTIMA ESTRATÉGIA: Gerar um ID temporário
+    console.warn('Não foi possível encontrar um ID real. Usando ID temporário baseado na posição da linha.');
+    return `TMP${Date.now().toString().slice(-4)}`;
 }
 
 // Função para buscar ID do aluno via API
@@ -499,44 +486,77 @@ async function gerarPDFNotas() {
         const linhas = tbody.querySelectorAll('tr');
         
         // Excluir qualquer linha que não tenha conteúdo ou seja apenas de mensagem
-        linhas.forEach(linha => {
+        linhas.forEach((linha, index) => {
             // Pular linhas de mensagem (como "Nenhum resultado encontrado")
             if (linha.cells.length <= 1) return;
             
             // Obter o ID do aluno usando a função específica
             const alunoId = obterIdAluno(linha);
             
-            // Obter os dados das células
-            const aluno = linha.cells[0].textContent.trim();
-            const disciplina = linha.cells[1].textContent.trim();
-            const turma = linha.cells[2].textContent.trim();
-            const bimestre = linha.cells[3].textContent.trim();
-            const mensal = linha.cells[4].textContent.trim();
-            const bimestral = linha.cells[5].textContent.trim();
-            const recuperacao = linha.cells[6].textContent.trim();
-            const media = linha.cells[7].textContent.trim();
-            
-            // Verificação para evitar status duplicado
-            let status = linha.cells[8].textContent.trim();
-            // Corrigir texto duplicado "AprovadoAprovado" ou "ReprovadoReprovado"
-            status = status.replace(/Aprovado{2,}/g, 'Aprovado')
-                          .replace(/Reprovado{2,}/g, 'Reprovado');
-            if (status.includes('Aprovado')) status = 'Aprovado';
-            if (status.includes('Reprovado')) status = 'Reprovado';
-            
-            // Adicionar linha ao array de dados
-            dados.push({
-                idaluno: alunoId,
-                aluno,
-                disciplina,
-                turma,
-                bimestre,
-                mensal,
-                bimestral,
-                recuperacao,
-                media,
-                status
-            });
+            try {
+                // Obter índices corretos da tabela
+                // Assumindo uma tabela no formato: ID, Aluno, Disciplina, Turma, Bimestre, Mensal, Bimestral, Recuperação, Média, Status
+                // Precisamos adaptar isso para a estrutura específica da tabela deles
+                let idIndex = 0, alunoIndex = 1, disciplinaIndex = 2, turmaIndex = 3, 
+                    bimestreIndex = 4, mensalIndex = 5, bimestralIndex = 6, 
+                    recuperacaoIndex = 7, mediaIndex = 8, statusIndex = 9;
+                
+                // Ajustar os índices se a estrutura da tabela for diferente
+                if (linha.cells.length < 10) {
+                    console.warn(`Linha ${index} tem menos de 10 células. Adaptando índices.`);
+                    // Usar um mapeamento mais flexível se necessário
+                }
+                
+                // Obter os dados das células - verificando se os índices são válidos
+                const aluno = linha.cells[alunoIndex]?.textContent.trim() || '';
+                const disciplina = linha.cells[disciplinaIndex]?.textContent.trim() || '';
+                const turma = linha.cells[turmaIndex]?.textContent.trim() || '';
+                const bimestre = linha.cells[bimestreIndex]?.textContent.trim() || '';
+                const mensal = linha.cells[mensalIndex]?.textContent.trim() || '';
+                const bimestral = linha.cells[bimestralIndex]?.textContent.trim() || '';
+                const recuperacao = linha.cells[recuperacaoIndex]?.textContent.trim() || '';
+                const media = linha.cells[mediaIndex]?.textContent.trim() || '';
+                
+                // Verificação para evitar status duplicado
+                let status = '';
+                if (linha.cells[statusIndex]) {
+                    status = linha.cells[statusIndex].textContent.trim();
+                    // Corrigir texto duplicado "AprovadoAprovado" ou "ReprovadoReprovado"
+                    status = status.replace(/Aprovado{2,}/g, 'Aprovado')
+                              .replace(/Reprovado{2,}/g, 'Reprovado');
+                    if (status.includes('Aprovado')) status = 'Aprovado';
+                    if (status.includes('Reprovado')) status = 'Reprovado';
+                }
+                
+                console.log(`Processando linha ${index}:`, {
+                    idaluno: alunoId,
+                    aluno,
+                    disciplina, 
+                    turma,
+                    bimestre,
+                    mensal,
+                    bimestral,
+                    recuperacao,
+                    media,
+                    status
+                });
+                
+                // Adicionar linha ao array de dados
+                dados.push({
+                    idaluno: alunoId, // Usar o ID correto do aluno para a coluna Matric.
+                    aluno,
+                    disciplina,
+                    turma,
+                    bimestre,
+                    mensal,
+                    bimestral,
+                    recuperacao,
+                    media,
+                    status
+                });
+            } catch (err) {
+                console.error(`Erro ao processar linha ${index}:`, err);
+            }
         });
         
         // Verificar se há dados para adicionar
@@ -567,16 +587,16 @@ async function gerarPDFNotas() {
             },
             // Definir larguras das colunas para melhor visualização - ajustadas para aproveitar melhor o espaço
             columnStyles: {
-                idaluno: { cellWidth: 18, halign: 'center' },
-                aluno: { cellWidth: 38, halign: 'left' },
-                disciplina: { cellWidth: 35, halign: 'left' },
-                turma: { cellWidth: 18, halign: 'center' },
-                bimestre: { cellWidth: 20, halign: 'center' },
-                mensal: { cellWidth: 20, halign: 'center' },
-                bimestral: { cellWidth: 25, halign: 'center' },
-                recuperacao: { cellWidth: 16, halign: 'center' },
-                media: { cellWidth: 16, halign: 'center' },
-                status: { cellWidth: 22, halign: 'center' }
+                idaluno: { cellWidth: 15, halign: 'center' },
+                aluno: { cellWidth: 70, halign: 'left' },
+                disciplina: { cellWidth: 25, halign: 'left' },
+                turma: { cellWidth: 15, halign: 'center' },
+                bimestre: { cellWidth: 18, halign: 'center' },
+                mensal: { cellWidth: 18, halign: 'center' },
+                bimestral: { cellWidth: 20, halign: 'center' },
+                recuperacao: { cellWidth: 15, halign: 'center' },
+                media: { cellWidth: 15, halign: 'center' },
+                status: { cellWidth: 20, halign: 'center' }
             },
             // Impedir quebra de linha nos textos e lidar com células muito estreitas
             styles: {
