@@ -336,13 +336,38 @@ function obterIdAlunoPorNota(idNota) {
         xhr.send();
         if (xhr.status === 200) {
             const resposta = JSON.parse(xhr.responseText);
+            console.log("Resposta completa da API para ID da nota", idNota, ":", resposta);
+            
+            // CORREÇÃO: Verificar detalhadamente todos os possíveis campos que podem conter o ID do aluno
             if (resposta && resposta.id_aluno) {
                 console.log(`API retornou ID do aluno: ${resposta.id_aluno}`);
                 return resposta.id_aluno.toString();
-            } else {
-                console.warn("API retornou resposta sem ID do aluno:", resposta);
-                return null;
+            } 
+            // Verificar propriedade alternativa 'aluno_id'
+            else if (resposta && resposta.aluno_id) {
+                console.log(`API retornou aluno_id: ${resposta.aluno_id}`);
+                return resposta.aluno_id.toString();
             }
+            // Verificar se há uma propriedade 'aluno' com 'id' ou 'id_aluno'
+            else if (resposta && resposta.aluno) {
+                if (typeof resposta.aluno === 'object') {
+                    if (resposta.aluno.id_aluno) {
+                        console.log(`API retornou aluno.id_aluno: ${resposta.aluno.id_aluno}`);
+                        return resposta.aluno.id_aluno.toString();
+                    } else if (resposta.aluno.id) {
+                        console.log(`API retornou aluno.id: ${resposta.aluno.id}`);
+                        return resposta.aluno.id.toString();
+                    }
+                } else if (typeof resposta.aluno === 'string' || typeof resposta.aluno === 'number') {
+                    // Se o campo aluno for apenas o ID
+                    console.log(`API retornou aluno (valor direto): ${resposta.aluno}`);
+                    return resposta.aluno.toString();
+                }
+            }
+            
+            // Não encontrou ID do aluno nas propriedades esperadas
+            console.warn("API retornou resposta sem ID do aluno identificável:", resposta);
+            return null;
         } else {
             console.warn(`Erro na chamada API: ${xhr.status} - ${xhr.statusText}`);
             return null;
@@ -854,28 +879,40 @@ async function gerarPDFNotas() {
                 // Se encontramos o ID da nota, vamos usá-lo para consultar a API
                 if (!alunoId || alunoId.startsWith('NOTA-') || alunoId.startsWith('AL-')) {
                     try {
+                        // Verificar se a linha tem um atributo data-id-aluno 
+                        if (linha.hasAttribute('data-id-aluno')) {
+                            alunoId = linha.getAttribute('data-id-aluno');
+                            console.log(`DEBUG - Encontrado ID do aluno diretamente na linha: ${alunoId}`);
+                        }
+                        // Verificar se a linha tem um atributo data-aluno-id
+                        else if (linha.hasAttribute('data-aluno-id')) {
+                            alunoId = linha.getAttribute('data-aluno-id');
+                            console.log(`DEBUG - Encontrado ID do aluno no atributo data-aluno-id: ${alunoId}`);
+                        }
                         // A última coluna geralmente contém botões de ação com o ID da nota
-                        const ultimaColuna = colunasTabela[colunasTabela.length - 1];
-                        if (ultimaColuna) {
-                            const botaoEditar = ultimaColuna.querySelector('button[onclick*="editarNota"]');
-                            if (botaoEditar) {
-                                const onclick = botaoEditar.getAttribute('onclick') || '';
-                                const idNotaMatch = onclick.match(/editarNota\(['"](\d+)['"]\)/);
-                                
-                                if (idNotaMatch && idNotaMatch[1]) {
-                                    const idNota = idNotaMatch[1];
-                                    console.log(`DEBUG - Encontrado ID da nota: ${idNota}`);
+                        else {
+                            const ultimaColuna = colunasTabela[colunasTabela.length - 1];
+                            if (ultimaColuna) {
+                                const botaoEditar = ultimaColuna.querySelector('button[onclick*="editarNota"]');
+                                if (botaoEditar) {
+                                    const onclick = botaoEditar.getAttribute('onclick') || '';
+                                    const idNotaMatch = onclick.match(/editarNota\(['"](\d+)['"]\)/);
                                     
-                                    // AQUI ESTÁ A MUDANÇA: Consultar API para obter ID do aluno
-                                    const idAlunoViaAPI = obterIdAlunoPorNota(idNota);
-                                    if (idAlunoViaAPI) {
-                                        alunoId = idAlunoViaAPI;
-                                        console.log(`DEBUG - ID do aluno obtido via API através da nota ${idNota}: ${alunoId}`);
-                                    } else {
-                                        // Se não conseguimos via API, usar ID da nota como fallback
-                                        console.log(`AVISO: API não retornou ID do aluno para nota ${idNota}. Usando ID temporário.`);
-                                        if (!alunoId) {
-                                            alunoId = `NOTA-${idNota}`;
+                                    if (idNotaMatch && idNotaMatch[1]) {
+                                        const idNota = idNotaMatch[1];
+                                        console.log(`DEBUG - Encontrado ID da nota: ${idNota}`);
+                                        
+                                        // Consultar API para obter ID do aluno usando a função melhorada
+                                        const idAlunoViaAPI = obterIdAlunoPorNota(idNota);
+                                        if (idAlunoViaAPI) {
+                                            alunoId = idAlunoViaAPI;
+                                            console.log(`DEBUG - ID do aluno obtido via API através da nota ${idNota}: ${alunoId}`);
+                                        } else {
+                                            // Se não conseguimos via API, usar ID da nota como fallback
+                                            console.log(`AVISO: API não retornou ID do aluno para nota ${idNota}. Usando ID temporário.`);
+                                            if (!alunoId) {
+                                                alunoId = `NOTA-${idNota}`;
+                                            }
                                         }
                                     }
                                 }

@@ -2789,7 +2789,7 @@ function carregarNotas() {
                             
                             // Criar a linha da tabela
                 html += `
-                    <tr>
+                    <tr data-id-aluno="${idAluno || ''}" data-aluno-id="${idAluno || ''}" data-nota-id="${nota.id || nota.id_nota || ''}">
                                     <td>${nomeAluno}</td>
                                     <td>${nota.nome_disciplina || nota.id_disciplina || 'N/A'}</td>
                                     <td>${nota.nome_turma || nota.id_turma || 'N/A'}</td>
@@ -2798,7 +2798,7 @@ function carregarNotas() {
                         <td>${formatarNota(notaBimestral)}</td>
                         <td>${formatarNota(recuperacao)}</td>
                                     <td><strong>${formatarNota(media)}</strong></td>
-                                    <td><span class="badge ${statusClass}">${status || 'N/A'}</span></td>
+                                    <td><span class="badge ${statusClass}" data-aluno-id="${idAluno || ''}">${status || 'N/A'}</span></td>
                         <td>
                                         <div class="btn-group" role="group">
                                             <button type="button" class="btn btn-sm btn-outline-primary" 
