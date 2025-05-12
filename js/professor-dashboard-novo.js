@@ -2643,32 +2643,30 @@ function carregarNotas() {
                 return;
             }
             
-                // Ordenar notas por aluno, disciplina, turma e bimestre
+            // Ordenar notas por ID do aluno (que já temos)
             notas.sort((a, b) => {
-                const alunoA = alunos.find(al => al.id_aluno === a.id_aluno);
-                const alunoB = alunos.find(al => al.id_aluno === b.id_aluno);
-                const nomeA = alunoA ? alunoA.nome_aluno : '';
-                const nomeB = alunoB ? alunoB.nome_aluno : '';
-                return nomeA.localeCompare(nomeB);
+                const idA = a.id_aluno || '';
+                const idB = b.id_aluno || '';
+                return idA.localeCompare(idB);
             });
-            
+
             // Gerar HTML para a tabela
             let html = '';
-                
-                // Coletar IDs dos alunos, turmas e disciplinas que precisamos buscar
-                const alunosIDs = new Set();
-                const turmasIDs = new Set();
-                const disciplinasIDs = new Set();
             
+            // Coletar IDs dos alunos, turmas e disciplinas que precisamos buscar
+            const alunosIDs = new Set();
+            const turmasIDs = new Set();
+            const disciplinasIDs = new Set();
+
             notas.forEach(nota => {
-                    const alunoId = nota.id_aluno || nota.aluno_id;
-                    const turmaId = nota.id_turma || nota.turma_id;
-                    const disciplinaId = nota.id_disciplina || nota.disciplina_id;
-                    
-                    if (alunoId && !dadosAlunos[alunoId]) alunosIDs.add(alunoId);
-                    if (turmaId && !dadosTurmas[turmaId]) turmasIDs.add(turmaId);
-                    if (disciplinaId && !dadosDisciplinas[disciplinaId]) disciplinasIDs.add(disciplinaId);
-                });
+                const alunoId = nota.id_aluno || nota.aluno_id;
+                const turmaId = nota.id_turma || nota.turma_id;
+                const disciplinaId = nota.id_disciplina || nota.disciplina_id;
+                
+                if (alunoId && !dadosAlunos[alunoId]) alunosIDs.add(alunoId);
+                if (turmaId && !dadosTurmas[turmaId]) turmasIDs.add(turmaId);
+                if (disciplinaId && !dadosDisciplinas[disciplinaId]) disciplinasIDs.add(disciplinaId);
+            });
                 
                 console.log("Dados complementares a buscar:", { 
                     alunos: Array.from(alunosIDs), 
