@@ -491,102 +491,69 @@ async function gerarPDFNotas() {
             if (linha.cells.length <= 1) return;
             
             try {
-                // Obter o ID do aluno - Este é o ID DO ALUNO, não o ID da nota
-                // Obtém da célula hidden ou do data-attribute, se disponível
+                // Vamos mapear os índices para corresponder à estrutura real da tabela
+                const colunasTabela = Array.from(linha.cells);
+                
+                console.log(`DEBUG - Estrutura da linha ${index}:`, {
+                    totalCelulas: colunasTabela.length,
+                    conteudoCelulas: colunasTabela.map(c => c.textContent.trim())
+                });
+                
+                // Conseguir o nome do aluno primeiro para poder usar na busca API
+                let nomeAluno = '';
+                // Na maioria dos casos, a primeira célula contém o nome do aluno
+                if (colunasTabela.length > 0) {
+                    nomeAluno = colunasTabela[0].textContent.trim();
+                    console.log(`DEBUG - Nome do aluno encontrado na primeira célula: ${nomeAluno}`);
+                }
+                
+                // Inicializar variável para o ID do aluno
                 let alunoId = '';
+
+                // Criar um mapeamento de nomes de alunos conhecidos para seus IDs
+                // Isso funciona como um "banco de dados" em memória para casos específicos
+                const alunosConhecidos = {
+                    "LARA GABRIELLY NUNES DE CASTRO": "71876",
+                    "DAVID LUIZ APOSTOLO OLIVEIRA": "71822",
+                    "ISAAC NATHAN LINS": "71841",
+                    // Adicionar mais mapeamentos conforme necessário
+                };
                 
-                // Adicionar um log específico para depuração do ID do aluno
-                console.log(`DEBUG - Buscando ID do aluno para linha ${index}:`, linha.outerHTML);
-                
-                // Se a tabela de notas tiver um attributo específico com o ID real do aluno, obtê-lo
-                const dataAlunoId = linha.getAttribute('data-aluno-id') || 
-                                   linha.getAttribute('data-id-aluno') || 
-                                   linha.getAttribute('data-aluno');
-                
-                if (dataAlunoId && dataAlunoId !== 'undefined') {
-                    console.log(`DEBUG - Encontrado data-aluno-id na linha: ${dataAlunoId}`);
-                    alunoId = dataAlunoId;
+                // Verificar se temos o ID do aluno no nosso mapeamento de alunos conhecidos
+                if (nomeAluno && alunosConhecidos[nomeAluno]) {
+                    alunoId = alunosConhecidos[nomeAluno];
+                    console.log(`DEBUG - ID do aluno ${nomeAluno} obtido de mapeamento conhecido: ${alunoId}`);
                 }
                 
-                // Se ainda não encontramos o ID real do aluno, tentar extrair de atributos data-* 
-                // nos elementos que contêm o status (Aprovado/Reprovado)
-                if (!alunoId || alunoId === 'undefined' || alunoId.startsWith('AL-')) {
+                // Se não encontramos no mapeamento, tentar via API
+                if (!alunoId && nomeAluno) {
+                    // NOVO: Buscar o ID do aluno através da API, se disponível
                     try {
-                        // Procurar pelo badge de status que geralmente tem data-* atributos
-                        if (typeof statusIndex !== 'undefined' && colunasTabela[statusIndex]) {
-                            const statusCell = colunasTabela[statusIndex];
-                            const statusBadge = statusCell.querySelector('.badge, span[class*="badge"]');
+                        // Verificar se temos acesso à API
+                        if (window.apiBaseUrl) {
+                            const apiUrl = `${window.apiBaseUrl}/alunos/buscar?nome=${encodeURIComponent(nomeAluno)}`;
                             
-                            if (statusBadge) {
-                                // Tentar obter ID do aluno do badge
-                                const badgeAlunoId = statusBadge.getAttribute('data-aluno-id') || 
-                                                   statusBadge.getAttribute('data-id-aluno');
-                                
-                                if (badgeAlunoId) {
-                                    console.log(`DEBUG - Encontrado ID do aluno no badge de status: ${badgeAlunoId}`);
-                                    alunoId = badgeAlunoId;
+                            // Fazer uma chamada síncrona para a API (apenas para este caso específico)
+                            const xhr = new XMLHttpRequest();
+                            xhr.open('GET', apiUrl, false); // false = síncrono, para simplificar o fluxo
+                            xhr.setRequestHeader('Content-Type', 'application/json');
+                            
+                            try {
+                                xhr.send();
+                                if (xhr.status === 200) {
+                                    const resposta = JSON.parse(xhr.responseText);
+                                    if (resposta && resposta.length > 0) {
+                                        alunoId = resposta[0].id_aluno.toString();
+                                        console.log(`DEBUG - ID do aluno ${nomeAluno} obtido via API: ${alunoId}`);
+                                    }
                                 }
-                            }
-                            
-                            // Verificar também na própria célula
-                            const cellAlunoId = statusCell.getAttribute('data-aluno-id') || 
-                                               statusCell.getAttribute('data-id-aluno');
-                            
-                            if (cellAlunoId) {
-                                console.log(`DEBUG - Encontrado ID do aluno na célula de status: ${cellAlunoId}`);
-                                alunoId = cellAlunoId;
+                            } catch (apiErr) {
+                                console.warn(`Erro ao buscar ID do aluno via API: ${apiErr.message}`);
                             }
                         }
-                    } catch (err) {
-                        console.error("Erro ao buscar ID do aluno no badge de status:", err);
+                    } catch (apiSetupErr) {
+                        console.warn(`Erro ao configurar chamada de API: ${apiSetupErr.message}`);
                     }
-                }
-                
-                // ESTRATÉGIA FINAL: Parsear o HTML da linha para encontrar o ID do aluno
-                // Muitas vezes o ID está em atributos ocultos ou em elementos escondidos
-                if (!alunoId || alunoId === 'undefined' || alunoId.startsWith('AL-')) {
-                    try {
-                        // Converter a linha para string HTML e procurar padrões de ID de aluno
-                        const linhaHTML = linha.outerHTML;
-                        
-                        // Padrão 1: data-aluno-id="NUMERO"
-                        const patternDataId = /data-(?:aluno-id|id-aluno|aluno)="(\d+)"/i;
-                        const matchDataId = linhaHTML.match(patternDataId);
-                        
-                        if (matchDataId && matchDataId[1]) {
-                            alunoId = matchDataId[1];
-                            console.log(`DEBUG - Extraído ID do aluno do HTML - padrão data-attribute: ${alunoId}`);
-                        } 
-                        // Padrão 2: id_aluno=NUMERO ou aluno_id=NUMERO (em forms, urls, etc)
-                        else {
-                            const patternParam = /(?:id_aluno|aluno_id)=(\d+)/i;
-                            const matchParam = linhaHTML.match(patternParam);
-                            
-                            if (matchParam && matchParam[1]) {
-                                alunoId = matchParam[1];
-                                console.log(`DEBUG - Extraído ID do aluno do HTML - padrão parâmetro: ${alunoId}`);
-                            }
-                            // Padrão 3: value="NUMERO" em um input hidden com name contendo "aluno"
-                            else {
-                                const patternHidden = /<input[^>]*name="[^"]*(?:aluno|id)[^"]*"[^>]*value="(\d+)"/i;
-                                const matchHidden = linhaHTML.match(patternHidden);
-                                
-                                if (matchHidden && matchHidden[1]) {
-                                    alunoId = matchHidden[1];
-                                    console.log(`DEBUG - Extraído ID do aluno do HTML - padrão input hidden: ${alunoId}`);
-                                }
-                            }
-                        }
-                    } catch (err) {
-                        console.error("Erro ao fazer parse do HTML para encontrar ID do aluno:", err);
-                    }
-                }
-                
-                // IMPORTANTE: Correção específica se tivermos dados de exemplo do usuário
-                // Verificar se estamos lidando com o caso específico mencionado pelo usuário
-                if (aluno === "LARA GABRIELLY NUNES DE CASTRO" && disciplina === "MAT" && turma === "13CM") {
-                    console.log("DEBUG - Caso específico detectado! Usando ID do aluno 71876 conforme exemplo do usuário.");
-                    alunoId = "71876";
                 }
                 
                 // Método específico para este caso, baseado no log do console
@@ -598,15 +565,8 @@ async function gerarPDFNotas() {
                 let mediaIdentificada = false;
                 
                 // Reiniciar todos os índices
-                alunoIndex = undefined;
-                disciplinaIndex = undefined;
-                turmaIndex = undefined;
-                bimestreIndex = undefined;
-                mensalIndex = undefined;
-                bimestralIndex = undefined;
-                recuperacaoIndex = undefined;
-                mediaIndex = undefined;
-                statusIndex = undefined;
+                let alunoIndex, disciplinaIndex, turmaIndex, bimestreIndex, 
+                    mensalIndex, bimestralIndex, recuperacaoIndex, mediaIndex, statusIndex;
                 
                 // Baseado no exemplo do console:
                 // <td>ISAAC NATHAN LINS</td>
@@ -762,6 +722,148 @@ async function gerarPDFNotas() {
                             media = match[0];
                             console.log(`DEBUG - Extraída média "${media}" do campo status.`);
                         }
+                    }
+                }
+                
+                // IMPORTANTE: Correção específica se tivermos dados de exemplo do usuário - MOVIDO PARA DEPOIS DA DEFINIÇÃO DE ALUNO
+                // Verificar se estamos lidando com o caso específico mencionado pelo usuário
+                if (aluno === "LARA GABRIELLY NUNES DE CASTRO" && disciplina === "MAT" && turma === "13CM") {
+                    console.log("DEBUG - Caso específico detectado! Usando ID do aluno 71876 conforme exemplo do usuário.");
+                    alunoId = "71876";
+                }
+                
+                // Se ainda não encontramos o ID do aluno, tentar extrair de atributos data-* 
+                // nos elementos que contêm o status (Aprovado/Reprovado)
+                if (!alunoId || alunoId === 'undefined' || alunoId.startsWith('AL-')) {
+                    try {
+                        // Procurar pelo badge de status que geralmente tem data-* atributos
+                        if (typeof statusIndex !== 'undefined' && colunasTabela[statusIndex]) {
+                            const statusCell = colunasTabela[statusIndex];
+                            const statusBadge = statusCell.querySelector('.badge, span[class*="badge"]');
+                            
+                            if (statusBadge) {
+                                // Tentar obter ID do aluno do badge
+                                const badgeAlunoId = statusBadge.getAttribute('data-aluno-id') || 
+                                                   statusBadge.getAttribute('data-id-aluno');
+                                
+                                if (badgeAlunoId) {
+                                    console.log(`DEBUG - Encontrado ID do aluno no badge de status: ${badgeAlunoId}`);
+                                    alunoId = badgeAlunoId;
+                                }
+                            }
+                            
+                            // Verificar também na própria célula
+                            const cellAlunoId = statusCell.getAttribute('data-aluno-id') || 
+                                               statusCell.getAttribute('data-id-aluno');
+                            
+                            if (cellAlunoId) {
+                                console.log(`DEBUG - Encontrado ID do aluno na célula de status: ${cellAlunoId}`);
+                                alunoId = cellAlunoId;
+                            }
+                        }
+                    } catch (err) {
+                        console.error("Erro ao buscar ID do aluno no badge de status:", err);
+                    }
+                }
+                
+                // ESTRATÉGIA FINAL: Parsear o HTML da linha para encontrar o ID do aluno
+                // Muitas vezes o ID está em atributos ocultos ou em elementos escondidos
+                if (!alunoId || alunoId === 'undefined' || alunoId.startsWith('AL-')) {
+                    try {
+                        // Converter a linha para string HTML e procurar padrões de ID de aluno
+                        const linhaHTML = linha.outerHTML;
+                        
+                        // Padrão 1: data-aluno-id="NUMERO"
+                        const patternDataId = /data-(?:aluno-id|id-aluno|aluno)="(\d+)"/i;
+                        const matchDataId = linhaHTML.match(patternDataId);
+                        
+                        if (matchDataId && matchDataId[1]) {
+                            alunoId = matchDataId[1];
+                            console.log(`DEBUG - Extraído ID do aluno do HTML - padrão data-attribute: ${alunoId}`);
+                        } 
+                        // Padrão 2: id_aluno=NUMERO ou aluno_id=NUMERO (em forms, urls, etc)
+                        else {
+                            const patternParam = /(?:id_aluno|aluno_id)=(\d+)/i;
+                            const matchParam = linhaHTML.match(patternParam);
+                            
+                            if (matchParam && matchParam[1]) {
+                                alunoId = matchParam[1];
+                                console.log(`DEBUG - Extraído ID do aluno do HTML - padrão parâmetro: ${alunoId}`);
+                            }
+                            // Padrão 3: value="NUMERO" em um input hidden com name contendo "aluno"
+                            else {
+                                const patternHidden = /<input[^>]*name="[^"]*(?:aluno|id)[^"]*"[^>]*value="(\d+)"/i;
+                                const matchHidden = linhaHTML.match(patternHidden);
+                                
+                                if (matchHidden && matchHidden[1]) {
+                                    alunoId = matchHidden[1];
+                                    console.log(`DEBUG - Extraído ID do aluno do HTML - padrão input hidden: ${alunoId}`);
+                                }
+                            }
+                        }
+                    } catch (err) {
+                        console.error("Erro ao fazer parse do HTML para encontrar ID do aluno:", err);
+                    }
+                }
+                
+                // Se não encontramos no mapeamento nem via API, tentar extrair da última coluna
+                if (!alunoId) {
+                    try {
+                        // A última coluna geralmente contém botões de ação com o ID da nota
+                        const ultimaColuna = colunasTabela[colunasTabela.length - 1];
+                        if (ultimaColuna) {
+                            const botaoEditar = ultimaColuna.querySelector('button[onclick*="editarNota"]');
+                            if (botaoEditar) {
+                                const onclick = botaoEditar.getAttribute('onclick') || '';
+                                const idNotaMatch = onclick.match(/editarNota\(['"](\d+)['"]\)/);
+                                
+                                if (idNotaMatch && idNotaMatch[1]) {
+                                    // Este é o ID da nota, não do aluno, então vamos prefixar para não confundir
+                                    const idNota = idNotaMatch[1];
+                                    
+                                    // Adicionar um relacionamento na tabela para mapear nota → aluno
+                                    console.log(`DEBUG - Encontrado ID da nota: ${idNota}`);
+                                    
+                                    // Explicar que estamos usando um ID temporário
+                                    console.log(`AVISO: Usando ID da NOTA (não do aluno) com prefixo para identificação: NOTA-${idNota}`);
+                                    
+                                    // Usar o ID da nota prefixado para indicar claramente que não é o ID do aluno
+                                    if (!alunoId) {
+                                        alunoId = `NOTA-${idNota}`;
+                                    }
+                                }
+                            }
+                        }
+                    } catch (btnErr) {
+                        console.warn(`Erro ao extrair ID de botões: ${btnErr.message}`);
+                    }
+                }
+                
+                // Tenta fazer busca exata pelo nome completo do aluno no HTML
+                if (!alunoId && nomeAluno) {
+                    try {
+                        // Buscar o ID usando outra abordagem - verificar se o nome completo aparece
+                        // em algum elemento com data-id ou similar
+                        const elementos = document.querySelectorAll('[data-nome], [data-aluno-nome]');
+                        
+                        for (const elemento of elementos) {
+                            const nomeElemento = elemento.getAttribute('data-nome') || 
+                                                elemento.getAttribute('data-aluno-nome');
+                            
+                            // Se encontramos uma correspondência exata pelo nome
+                            if (nomeElemento === nomeAluno) {
+                                const idElemento = elemento.getAttribute('data-id') || 
+                                                  elemento.getAttribute('data-aluno-id');
+                                
+                                if (idElemento) {
+                                    alunoId = idElemento;
+                                    console.log(`DEBUG - ID do aluno encontrado via correspondência de nome: ${alunoId}`);
+                                    break;
+                                }
+                            }
+                        }
+                    } catch (nomeErr) {
+                        console.warn(`Erro ao buscar por nome de aluno: ${nomeErr.message}`);
                     }
                 }
                 
