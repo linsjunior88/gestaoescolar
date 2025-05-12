@@ -131,7 +131,7 @@ const ProfessoresModule = {
             await this.carregarProfessores();
             
             // Carregar vínculos entre disciplinas e turmas
-            await this.carregarDisciplinasTurmas();
+        await this.carregarDisciplinasTurmas();
             
             // Configurar eventos
             this.configurarEventos();
@@ -523,16 +523,16 @@ const ProfessoresModule = {
                         <span class="badge bg-info">${disciplinasIds.length} disciplina(s)</span>
                         <button type="button" class="btn btn-sm btn-outline-info ms-2 btn-ver-vinculos" data-id="${professor.id_professor || professor.id}">
                             <i class="fas fa-eye"></i> Ver
-                        </button>
-                    </td>
-                    <td>
+                    </button>
+                </td>
+                <td>
                         <button type="button" class="btn btn-sm btn-primary btn-editar" data-id="${professor.id_professor || professor.id}">
-                            <i class="fas fa-edit"></i>
-                        </button>
+                        <i class="fas fa-edit"></i>
+                    </button>
                         <button type="button" class="btn btn-sm btn-danger btn-excluir" data-id="${professor.id_professor || professor.id}">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </td>
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
                 </tr>
             `;
         });
@@ -639,7 +639,7 @@ const ProfessoresModule = {
                 <div class="alert alert-info">
                     <i class="fas fa-info-circle me-2"></i>
                     Este professor não possui vínculos com disciplinas e turmas.
-                </div>
+                            </div>
                 <p>Dicas para vincular:</p>
                 <ul>
                     <li>Edite o professor clicando no botão <button class="btn btn-sm btn-primary"><i class="fas fa-edit"></i></button></li>
@@ -649,13 +649,13 @@ const ProfessoresModule = {
                 </ul>`;
             } else {
                 modalBody = `<div class="table-responsive">
-                    <table class="table table-striped">
-                        <thead>
-                            <tr>
-                                <th>Disciplina</th>
+                                    <table class="table table-striped">
+                                        <thead>
+                                            <tr>
+                                                <th>Disciplina</th>
                                 <th>Turmas</th>
-                            </tr>
-                        </thead>
+                                            </tr>
+                                        </thead>
                         <tbody>`;
             
                 for (const disciplinaId in vinculosPorDisciplina) {
@@ -760,8 +760,8 @@ const ProfessoresModule = {
         
         // CORREÇÃO: Limpar explicitamente o array de vínculos para evitar dados residuais
         this.state.vinculos = [];
-        
-        if (this.elements.formProfessor) {
+            
+            if (this.elements.formProfessor) {
             this.elements.formProfessor.classList.add('d-none');
             this.elements.formProfessor.reset();
         }
@@ -837,13 +837,13 @@ const ProfessoresModule = {
                 idProfessor = this.state.professorSelecionado.id_professor || this.state.professorSelecionado.id;
                 
                 try {
-                    // Atualizar professor existente
+                // Atualizar professor existente
                     response = await ConfigModule.fetchApi(`/professores/${idProfessor}`, {
-                        method: 'PUT',
-                        body: JSON.stringify(professorDados)
-                    });
-                    
-                    this.mostrarSucesso("Professor atualizado com sucesso!");
+                    method: 'PUT',
+                    body: JSON.stringify(professorDados)
+                });
+                
+                this.mostrarSucesso("Professor atualizado com sucesso!");
                     
                     console.log("Resposta da API (professor atualizado):", response);
                 } catch (error) {
@@ -853,16 +853,16 @@ const ProfessoresModule = {
                 }
             } else {
                 try {
-                    // Criar novo professor
-                    response = await ConfigModule.fetchApi('/professores', {
-                        method: 'POST',
-                        body: JSON.stringify(professorDados)
-                    });
+                // Criar novo professor
+                response = await ConfigModule.fetchApi('/professores', {
+                    method: 'POST',
+                    body: JSON.stringify(professorDados)
+                });
                     
                     // Obter ID do professor recém-criado
                     idProfessor = response.id_professor || response.id;
-                    
-                    this.mostrarSucesso("Professor criado com sucesso!");
+                
+                this.mostrarSucesso("Professor criado com sucesso!");
                     
                     console.log("Resposta da API (professor criado):", response);
                 } catch (error) {
