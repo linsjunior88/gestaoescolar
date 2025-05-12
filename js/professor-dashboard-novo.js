@@ -2645,26 +2645,11 @@ function carregarNotas() {
             
                 // Ordenar notas por aluno, disciplina, turma e bimestre
             notas.sort((a, b) => {
-                // Primeiro por nome do aluno
-                const nomeA = a.nome_aluno || '';
-                const nomeB = b.nome_aluno || '';
-                const compareNome = nomeA.localeCompare(nomeB);
-                    if (compareNome !== 0) return compareNome;
-                    
-                    // Se nomes iguais, ordenar por disciplina
-                    const discA = a.nome_disciplina || a.id_disciplina || '';
-                    const discB = b.nome_disciplina || b.id_disciplina || '';
-                    const compareDisc = discA.localeCompare(discB);
-                    if (compareDisc !== 0) return compareDisc;
-                    
-                    // Se disciplinas iguais, ordenar por turma
-                    const turmaA = a.id_turma || '';
-                    const turmaB = b.id_turma || '';
-                    const compareTurma = turmaA.localeCompare(turmaB);
-                    if (compareTurma !== 0) return compareTurma;
-                    
-                    // Por fim, ordenar por bimestre
-                    return (a.bimestre || 0) - (b.bimestre || 0);
+                const alunoA = alunos.find(al => al.id_aluno === a.id_aluno);
+                const alunoB = alunos.find(al => al.id_aluno === b.id_aluno);
+                const nomeA = alunoA ? alunoA.nome_aluno : '';
+                const nomeB = alunoB ? alunoB.nome_aluno : '';
+                return nomeA.localeCompare(nomeB);
             });
             
             // Gerar HTML para a tabela
@@ -2790,22 +2775,23 @@ function carregarNotas() {
                             // Criar a linha da tabela
                 html += `
                     <tr>
-                                    <td>${nomeAluno}</td>
-                                    <td>${nota.nome_disciplina || nota.id_disciplina || 'N/A'}</td>
-                                    <td>${nota.nome_turma || nota.id_turma || 'N/A'}</td>
-                                    <td>${nota.bimestre ? nota.bimestre + 'º' : 'N/A'}</td>
+                        <td>${nota.id_aluno || 'N/A'}</td>
+                        <td>${nomeAluno}</td>
+                        <td>${nota.nome_disciplina || nota.id_disciplina || 'N/A'}</td>
+                        <td>${nota.nome_turma || nota.id_turma || 'N/A'}</td>
+                        <td>${nota.bimestre ? nota.bimestre + 'º' : 'N/A'}</td>
                         <td>${formatarNota(notaMensal)}</td>
                         <td>${formatarNota(notaBimestral)}</td>
                         <td>${formatarNota(recuperacao)}</td>
-                                    <td><strong>${formatarNota(media)}</strong></td>
-                                    <td><span class="badge ${statusClass}">${status || 'N/A'}</span></td>
+                        <td><strong>${formatarNota(media)}</strong></td>
+                        <td><span class="badge ${statusClass}">${status || 'N/A'}</span></td>
                         <td>
-                                        <div class="btn-group" role="group">
-                                            <button type="button" class="btn btn-sm btn-outline-primary" 
-                                                    onclick="editarNota('${nota.id || nota.id_nota}')">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                                        </div>
+                            <div class="btn-group" role="group">
+                                <button type="button" class="btn btn-sm btn-outline-primary" 
+                                        onclick="editarNota('${nota.id || nota.id_nota}')">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                            </div>
                         </td>
                     </tr>
                 `;
