@@ -3829,31 +3829,10 @@ function carregarNotasAluno(idAluno) {
             modal.setAttribute('tabindex', '-1');
         }
         
-        // Adicionar um botão de fechar de emergência caso o ESC falhe
-        const headerDiv = modal.querySelector('.modal-header');
-        if (headerDiv && !document.getElementById('emergency-close-btn')) {
-            const emergencyBtn = document.createElement('button');
-            emergencyBtn.id = 'emergency-close-btn';
-            emergencyBtn.className = 'btn btn-danger ms-2 position-fixed';
-            emergencyBtn.style.top = '10px';
-            emergencyBtn.style.right = '10px';
-            emergencyBtn.style.zIndex = '9999'; // Garantir que fique acima de tudo
-            emergencyBtn.innerHTML = '<i class="fas fa-times"></i> Forçar Fechamento';
-            emergencyBtn.onclick = function(e) {
-                e.stopPropagation(); // Impedir propagação
-                console.log('Botão de emergência clicado - forçando fechamento');
-                
-                // Forçar fechamento e limpeza completa
-                limparTodosModaisEBackdrops();
-                
-                // Feedback para o usuário
-                mostrarMensagemFlutuante('Modal fechado com sucesso', 'success');
-                
-                return false; // Prevenir comportamento padrão
-            };
-            
-            // Adicionar ao body em vez do header para garantir visibilidade
-            document.body.appendChild(emergencyBtn);
+        // Remover qualquer botão de emergência existente para garantir uma interface limpa
+        const existingButton = document.getElementById('emergency-close-btn');
+        if (existingButton) {
+            existingButton.remove();
         }
     }
     
