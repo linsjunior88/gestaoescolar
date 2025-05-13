@@ -2478,8 +2478,14 @@ function carregarNotas() {
     try {
         console.log('Iniciando carregamento de notas');
         
-        // Verificar se professor está logado
-        const professorId = getProfessorId();
+        // Verificar se professor está logado - usar a variável global ou sessionStorage
+        // Não usar getProfessorId() pois ela não existe
+        if (!professorId) {
+            // Tentar obter do sessionStorage como fallback
+            professorId = sessionStorage.getItem('professorId');
+            console.log('Tentando obter professorId do sessionStorage:', professorId);
+        }
+        
         if (!professorId) {
             console.error('Erro: ID do professor não encontrado!');
             alert('Você precisa estar logado para ver as notas.');
@@ -2487,11 +2493,11 @@ function carregarNotas() {
         }
         
         // Obter valores dos filtros
-        const filtroTurma = document.getElementById('filtraTurmaNota');
-        const filtroDisciplina = document.getElementById('filtraDisciplinaNota');
-        const filtroAluno = document.getElementById('filtraAlunoNota');
-        const filtroAno = document.getElementById('filtroAnoNota');
-        const filtroBimestre = document.getElementById('filtroBimestreNota');
+        const filtroTurma = document.getElementById('filtro-turma-notas');
+        const filtroDisciplina = document.getElementById('filtro-disciplina-notas');
+        const filtroAluno = document.getElementById('filtro-aluno-notas');
+        const filtroAno = document.getElementById('filtro-ano-notas');
+        const filtroBimestre = document.getElementById('filtro-bimestre-notas');
         
         // Validar que os elementos existem
         if (!filtroTurma || !filtroDisciplina || !filtroAluno || !filtroAno || !filtroBimestre) {
