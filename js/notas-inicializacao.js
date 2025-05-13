@@ -20,6 +20,14 @@ function inicializarTabelaNotas() {
         const tabelaExistente = notasContainer.querySelector('#tabela-notas');
         if (tabelaExistente) {
             console.log('Tabela de notas já existe, não é necessário criar novamente');
+            
+            // Verificar se o thead tem o ID necessário
+            const thead = tabelaExistente.querySelector('thead');
+            if (thead && !thead.id) {
+                thead.id = 'tabela-notas-cabecalho';
+                console.log('ID adicionado ao cabeçalho da tabela existente');
+            }
+            
             return;
         }
         
@@ -33,7 +41,7 @@ function inicializarTabelaNotas() {
             <div class="card-body">
                 <div class="table-responsive">
                     <table class="table table-striped table-hover" id="tabela-notas">
-                        <thead class="table-secondary">
+                        <thead class="table-secondary" id="tabela-notas-cabecalho">
                             <tr>
                                 <th>Aluno</th>
                                 <th>Disciplina</th>

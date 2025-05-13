@@ -2475,42 +2475,56 @@ function carregarAlunosParaFiltro(idTurma = null, idDisciplina = null) {
 
 // Função para carregar notas com base nos filtros selecionados
 function carregarNotas() {
-    console.log("=== INICIANDO CARREGAMENTO DE NOTAS ===");
-    
     try {
-        // Garantir que temos acesso às variáveis de filtro - buscar novamente se necessário
-        if (!filtroTurma) filtroTurma = document.getElementById('filtro-turma-notas');
-        if (!filtroDisciplina) filtroDisciplina = document.getElementById('filtro-disciplina-notas');
-        if (!filtroAluno) filtroAluno = document.getElementById('filtro-aluno-notas');
-        if (!filtroAno) filtroAno = document.getElementById('filtro-ano-notas');
-        if (!filtroBimestre) filtroBimestre = document.getElementById('filtro-bimestre-notas');
+        console.log('Iniciando carregamento de notas');
+        
+        // Verificar se professor está logado
+        const professorId = getProfessorId();
+        if (!professorId) {
+            console.error('Erro: ID do professor não encontrado!');
+            alert('Você precisa estar logado para ver as notas.');
+            return;
+        }
         
         // Obter valores dos filtros
-        const idTurma = filtroTurma && filtroTurma.value ? filtroTurma.value : '';
-        const idDisciplina = filtroDisciplina && filtroDisciplina.value ? filtroDisciplina.value : '';
-        const idAluno = filtroAluno && filtroAluno.value ? filtroAluno.value : '';
-        const ano = filtroAno && filtroAno.value ? filtroAno.value : '';
-        const bimestre = filtroBimestre && filtroBimestre.value ? filtroBimestre.value : '';
+        const filtroTurma = document.getElementById('filtraTurmaNota');
+        const filtroDisciplina = document.getElementById('filtraDisciplinaNota');
+        const filtroAluno = document.getElementById('filtraAlunoNota');
+        const filtroAno = document.getElementById('filtroAnoNota');
+        const filtroBimestre = document.getElementById('filtroBimestreNota');
         
-        // Verificar se temos o ID do professor
+        // Validar que os elementos existem
+        if (!filtroTurma || !filtroDisciplina || !filtroAluno || !filtroAno || !filtroBimestre) {
+            console.error('Erro: Filtros não encontrados!');
+            alert('Erro ao carregar filtros. Recarregue a página.');
+            return;
+        }
+        
+        // Obter valores dos filtros
+        const idTurma = filtroTurma.value;
+        const idDisciplina = filtroDisciplina.value;
+        const idAluno = filtroAluno.value;
+        const ano = filtroAno.value;
+        const bimestre = filtroBimestre.value;
+        
+        // Validar se temos os filtros mínimos necessários (professor é obrigatório)
         if (!professorId) {
-            console.error('ID do professor não definido!');
-            alert('Erro: Não foi possível identificar o professor. Recarregue a página.');
+            alert('Erro: ID do professor não disponível. Faça login novamente.');
             return;
         }
     
-    console.log('Valores dos filtros:', {
-        idTurma,
-        idDisciplina,
-        idAluno,
-        ano,
-        bimestre,
-        professorId
-    });
-    
-    // Verificar se o elemento da tabela existe
-    const notasTabela = document.getElementById('notas-lista');
-    if (!notasTabela) {
+        console.log('Valores dos filtros:', {
+            idTurma,
+            idDisciplina,
+            idAluno,
+            ano,
+            bimestre,
+            professorId
+        });
+        
+        // Verificar se o elemento da tabela existe
+        const notasTabela = document.getElementById('notas-lista');
+        if (!notasTabela) {
             console.error('Elemento da tabela de notas (#notas-lista) não encontrado!');
             
             // Tentar inicializar a tabela novamente
@@ -2520,69 +2534,321 @@ function carregarNotas() {
             const notasTabela = document.getElementById('notas-lista');
             if (!notasTabela) {
                 alert('Erro: Tabela de notas não encontrada. Recarregue a página.');
-        return;
+                return;
             }
-    }
-    
-    // Mostrar indicador de carregamento
-    notasTabela.innerHTML = `
-        <tr class="text-center">
-            <td colspan="10">
-                <div class="d-flex justify-content-center align-items-center" style="height: 100px;">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Carregando notas...</span>
+        }
+        
+        // Mostrar indicador de carregamento
+        notasTabela.innerHTML = `
+            <tr class="text-center">
+                <td colspan="10">
+                    <div class="d-flex justify-content-center align-items-center" style="height: 100px;">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Carregando notas...</span>
+                        </div>
+                        <span class="ms-2">Carregando notas...</span>
                     </div>
-                    <span class="ms-2">Carregando notas...</span>
-                </div>
-            </td>
-        </tr>
-    `;
+                </td>
+            </tr>
+        `;
         
         // Armazenar informações de alunos, turmas e disciplinas
         const dadosAlunos = {};
         const dadosTurmas = {};
         const dadosDisciplinas = {};
+        
+        // Variável para armazenar as notas
+        let notasOriginais = [];
+        
+        // Variável para controlar ordenação
+        const estadoOrdenacao = {
+            coluna: 'aluno',  // Definir 'aluno' como coluna padrão de ordenação
+            direcao: 'asc'    // Ordem alfabética ascendente
+        };
+        
+        // Criar o cabeçalho com botões de ordenação
+        function gerarCabecalhoComOrdenacao() {
+            const thCabecalho = document.getElementById('tabela-notas-cabecalho');
+            if (!thCabecalho) return;
+            
+            thCabecalho.innerHTML = `
+                <tr>
+                    <th class="sortable" data-sort="aluno">
+                        Aluno <i class="fas fa-sort${estadoOrdenacao.coluna === 'aluno' ? (estadoOrdenacao.direcao === 'asc' ? '-up' : '-down') : ''}"></i>
+                    </th>
+                    <th class="sortable" data-sort="disciplina">
+                        Disciplina <i class="fas fa-sort${estadoOrdenacao.coluna === 'disciplina' ? (estadoOrdenacao.direcao === 'asc' ? '-up' : '-down') : ''}"></i>
+                    </th>
+                    <th class="sortable" data-sort="turma">
+                        Turma <i class="fas fa-sort${estadoOrdenacao.coluna === 'turma' ? (estadoOrdenacao.direcao === 'asc' ? '-up' : '-down') : ''}"></i>
+                    </th>
+                    <th class="sortable" data-sort="bimestre">
+                        Bimestre <i class="fas fa-sort${estadoOrdenacao.coluna === 'bimestre' ? (estadoOrdenacao.direcao === 'asc' ? '-up' : '-down') : ''}"></i>
+                    </th>
+                    <th class="sortable" data-sort="mensal">
+                        N. Mensal <i class="fas fa-sort${estadoOrdenacao.coluna === 'mensal' ? (estadoOrdenacao.direcao === 'asc' ? '-up' : '-down') : ''}"></i>
+                    </th>
+                    <th class="sortable" data-sort="bimestral">
+                        N. Bimestral <i class="fas fa-sort${estadoOrdenacao.coluna === 'bimestral' ? (estadoOrdenacao.direcao === 'asc' ? '-up' : '-down') : ''}"></i>
+                    </th>
+                    <th class="sortable" data-sort="recuperacao">
+                        Recup. <i class="fas fa-sort${estadoOrdenacao.coluna === 'recuperacao' ? (estadoOrdenacao.direcao === 'asc' ? '-up' : '-down') : ''}"></i>
+                    </th>
+                    <th class="sortable" data-sort="media">
+                        Média <i class="fas fa-sort${estadoOrdenacao.coluna === 'media' ? (estadoOrdenacao.direcao === 'asc' ? '-up' : '-down') : ''}"></i>
+                    </th>
+                    <th class="sortable" data-sort="status">
+                        Status <i class="fas fa-sort${estadoOrdenacao.coluna === 'status' ? (estadoOrdenacao.direcao === 'asc' ? '-up' : '-down') : ''}"></i>
+                    </th>
+                    <th>Ações</th>
+                </tr>
+            `;
+            
+            // Adicionar listeners aos botões de ordenação
+            const thSortable = thCabecalho.querySelectorAll('.sortable');
+            thSortable.forEach(th => {
+                th.addEventListener('click', function() {
+                    const coluna = this.getAttribute('data-sort');
+                    
+                    // Se clicar na mesma coluna, inverter direção
+                    if (estadoOrdenacao.coluna === coluna) {
+                        estadoOrdenacao.direcao = estadoOrdenacao.direcao === 'asc' ? 'desc' : 'asc';
+                    } else {
+                        // Se clicar em coluna diferente, ordenar ascendente
+                        estadoOrdenacao.coluna = coluna;
+                        estadoOrdenacao.direcao = 'asc';
+                    }
+                    
+                    // Reordenar tabela
+                    ordenarEAtualizarTabela(notasOriginais);
+                });
+            });
+        }
+        
+        // Função para ordenar notas
+        function ordenarNotas(notas, coluna, direcao) {
+            return [...notas].sort((a, b) => {
+                let valorA, valorB;
+                
+                // Determinar os valores a comparar com base na coluna
+                switch (coluna) {
+                    case 'aluno':
+                        const alunoA = dadosAlunos[a.id_aluno || a.aluno_id] || {};
+                        const alunoB = dadosAlunos[b.id_aluno || b.aluno_id] || {};
+                        valorA = (alunoA.nome_aluno || alunoA.nome || a.nome_aluno || '').toUpperCase();
+                        valorB = (alunoB.nome_aluno || alunoB.nome || b.nome_aluno || '').toUpperCase();
+                        break;
+                    case 'disciplina':
+                        valorA = (a.nome_disciplina || a.id_disciplina || '').toUpperCase();
+                        valorB = (b.nome_disciplina || b.id_disciplina || '').toUpperCase();
+                        break;
+                    case 'turma':
+                        valorA = (a.nome_turma || a.id_turma || '').toUpperCase();
+                        valorB = (b.nome_turma || b.id_turma || '').toUpperCase();
+                        break;
+                    case 'bimestre':
+                        valorA = parseInt(a.bimestre || 0);
+                        valorB = parseInt(b.bimestre || 0);
+                        break;
+                    case 'mensal':
+                        valorA = parseFloat(a.nota_mensal || 0);
+                        valorB = parseFloat(b.nota_mensal || 0);
+                        break;
+                    case 'bimestral':
+                        valorA = parseFloat(a.nota_bimestral || 0);
+                        valorB = parseFloat(b.nota_bimestral || 0);
+                        break;
+                    case 'recuperacao':
+                        valorA = parseFloat(a.recuperacao || 0);
+                        valorB = parseFloat(b.recuperacao || 0);
+                        break;
+                    case 'media':
+                        valorA = parseFloat(a.media || 0);
+                        valorB = parseFloat(b.media || 0);
+                        break;
+                    case 'status':
+                        // Obter status baseado na média
+                        const statusA = obterStatus(parseFloat(a.media || 0), a.recuperacao !== undefined);
+                        const statusB = obterStatus(parseFloat(b.media || 0), b.recuperacao !== undefined);
+                        valorA = statusA.toUpperCase();
+                        valorB = statusB.toUpperCase();
+                        break;
+                    default:
+                        valorA = (a[coluna] || '').toString().toUpperCase();
+                        valorB = (b[coluna] || '').toString().toUpperCase();
+                }
+                
+                // Comparar os valores com base na direção
+                if (typeof valorA === 'string' && typeof valorB === 'string') {
+                    return direcao === 'asc' ? valorA.localeCompare(valorB) : valorB.localeCompare(valorA);
+                } else {
+                    return direcao === 'asc' ? valorA - valorB : valorB - valorA;
+                }
+            });
+        }
+        
+        // Função para obter o status com base na média
+        function obterStatus(media, temRecuperacao) {
+            if (isNaN(media)) return 'N/A';
+            if (media >= 6) return 'Aprovado';
+            if (temRecuperacao) return 'Recuperação';
+            return 'Reprovado';
+        }
+        
+        // Função para atualizar a tabela com as notas ordenadas
+        function ordenarEAtualizarTabela(notas) {
+            // Atualizar cabeçalho com ícones de ordenação
+            gerarCabecalhoComOrdenacao();
+            
+            // Ordenar as notas conforme configuração
+            const notasOrdenadas = ordenarNotas(notas, estadoOrdenacao.coluna, estadoOrdenacao.direcao);
+            
+            // Gerar HTML para a tabela
+            let html = '';
+            
+            notasOrdenadas.forEach(nota => {
+                // Obter ID do aluno (que pode estar em campos diferentes)
+                const alunoId = nota.id_aluno || nota.aluno_id;
+                // Obter dados completos do aluno
+                const aluno = dadosAlunos[alunoId] || {};
+                
+                // Garantir que todos os campos necessários existam
+                const notaMensal = nota.nota_mensal !== undefined ? nota.nota_mensal : null;
+                const notaBimestral = nota.nota_bimestral !== undefined ? nota.nota_bimestral : null;
+                const recuperacao = nota.recuperacao !== undefined ? nota.recuperacao : null;
+                
+                // Calcular média corretamente ou usar a que veio da API
+                let media = nota.media !== undefined ? nota.media : null;
+                
+                if (media === null) {
+                    if (notaMensal !== null && notaBimestral !== null) {
+                        // Calcular média inicial: (mensal + bimestral) / 2
+                        const notaMensalNum = parseFloat(notaMensal);
+                        const notaBimestralNum = parseFloat(notaBimestral);
+                        
+                        if (!isNaN(notaMensalNum) && !isNaN(notaBimestralNum)) {
+                            // Média inicial
+                            const mediaInicial = (notaMensalNum + notaBimestralNum) / 2;
+                            
+                            // Inicialmente, usar a média inicial
+                            media = mediaInicial;
+                            
+                            // Se há recuperação, calcular (média inicial + recuperação) / 2
+                            if (recuperacao !== null) {
+                                const recNum = parseFloat(recuperacao);
+                                if (!isNaN(recNum)) {
+                                    media = (mediaInicial + recNum) / 2;
+                                }
+                            }
+                        }
+                    } else if (notaMensal !== null) {
+                        media = parseFloat(notaMensal);
+                    } else if (notaBimestral !== null) {
+                        media = parseFloat(notaBimestral);
+                    }
+                }
+                
+                // Determinar status com base na média
+                let status = '';
+                let statusClass = '';
+                
+                if (media !== null) {
+                    const mediaNum = parseFloat(media);
+                    if (!isNaN(mediaNum)) {
+                        if (mediaNum >= 6) {
+                            // Se a média é 6 ou maior, o aluno está aprovado, independentemente de ter recuperação
+                            status = 'Aprovado';
+                            statusClass = 'bg-success text-white';
+                        } else if (recuperacao !== null) {
+                            // Se tem recuperação mas média < 6, está em recuperação
+                            status = 'Recuperação';
+                            statusClass = 'bg-warning';
+                        } else {
+                            // Se não tem recuperação e média < 6, está reprovado
+                            status = 'Reprovado';
+                            statusClass = 'bg-danger text-white';
+                        }
+                    }
+                }
+                
+                // Formatação para exibição
+                const formatarNota = (valor) => {
+                    if (valor === null || valor === undefined) return '-';
+                    const num = parseFloat(valor);
+                    return isNaN(num) ? '-' : num.toFixed(1);
+                };
+                
+                // Obter o nome do aluno de onde estiver disponível
+                const nomeAluno = aluno.nome_aluno || aluno.nome || nota.nome_aluno || 'N/A';
+                
+                // Criar a linha da tabela
+                html += `
+                    <tr>
+                        <td>${nomeAluno}</td>
+                        <td>${nota.nome_disciplina || nota.id_disciplina || 'N/A'}</td>
+                        <td>${nota.nome_turma || nota.id_turma || 'N/A'}</td>
+                        <td>${nota.bimestre ? nota.bimestre + 'º' : 'N/A'}</td>
+                        <td>${formatarNota(notaMensal)}</td>
+                        <td>${formatarNota(notaBimestral)}</td>
+                        <td>${formatarNota(recuperacao)}</td>
+                        <td><strong>${formatarNota(media)}</strong></td>
+                        <td><span class="badge ${statusClass}">${status || 'N/A'}</span></td>
+                        <td>
+                            <div class="btn-group" role="group">
+                                <button type="button" class="btn btn-sm btn-outline-primary" 
+                                        onclick="editarNota('${nota.id || nota.id_nota}')">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            // Atualizar a tabela
+            notasTabela.innerHTML = html;
+        }
     
-    // Construir URL com parâmetros de consulta
-    const params = new URLSearchParams();
-    if (idTurma) params.append('turma_id', idTurma);
-    if (idDisciplina) params.append('disciplina_id', idDisciplina);
-    if (idAluno) params.append('aluno_id', idAluno);
-    if (ano) params.append('ano', ano);
-    if (bimestre) params.append('bimestre', bimestre);
-    
-    // Adicionar parâmetro do professor - fundamental para filtrar as notas
-    params.append('professor_id', professorId);
-    
-    // Construir a URL base para notas
-    let baseUrl = CONFIG.getApiUrl('/notas');
-    let url = `${baseUrl}?${params.toString()}`;
-    console.log('URL de consulta para notas:', url);
-    
+        // Construir URL com parâmetros de consulta
+        const params = new URLSearchParams();
+        if (idTurma) params.append('turma_id', idTurma);
+        if (idDisciplina) params.append('disciplina_id', idDisciplina);
+        if (idAluno) params.append('aluno_id', idAluno);
+        if (ano) params.append('ano', ano);
+        if (bimestre) params.append('bimestre', bimestre);
+        
+        // Adicionar parâmetro do professor - fundamental para filtrar as notas
+        params.append('professor_id', professorId);
+        
+        // Construir a URL base para notas
+        let baseUrl = CONFIG.getApiUrl('/notas');
+        let url = `${baseUrl}?${params.toString()}`;
+        console.log('URL de consulta para notas:', url);
+        
         // Configurar timeout para evitar espera infinita
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 segundos
         
         // Buscar notas com tratamento de erros aprimorado
         fetch(url, { signal: controller.signal })
-        .then(response => {
-            console.log("Resposta da API:", response.status, response.statusText);
+            .then(response => {
+                console.log("Resposta da API:", response.status, response.statusText);
                 clearTimeout(timeoutId);
-            
-            if (!response.ok) {
-                throw new Error(`Erro na requisição: ${response.status} - ${response.statusText}`);
-            }
-            return response.json();
-        })
-        .then(data => {
-            console.log('Dados recebidos:', data);
-            
-            // Garantir que temos um array para trabalhar
-            let notas = Array.isArray(data) ? data : (data.notas || []);
-            
-            console.log('Array de notas processado:', notas);
-            
-            // Filtrar as notas para garantir que são apenas do professor atual
+                
+                if (!response.ok) {
+                    throw new Error(`Erro na requisição: ${response.status} - ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Dados recebidos:', data);
+                
+                // Garantir que temos um array para trabalhar
+                let notas = Array.isArray(data) ? data : (data.notas || []);
+                
+                console.log('Array de notas processado:', notas);
+                
+                // Filtrar as notas para garantir que são apenas do professor atual
                 // E aplicar os filtros selecionados
                 notas = notas.filter(nota => {
                     // Primeiro filtrar por professor
@@ -2630,55 +2896,31 @@ function carregarNotas() {
                 }
                 
                 // Se não temos notas, exibir mensagem
-            if (!notas || notas.length === 0) {
-                notasTabela.innerHTML = `
-                    <tr class="text-center">
-                        <td colspan="10">
-                            <div class="alert alert-warning" role="alert">
-                                <h4 class="alert-heading">Nenhuma nota encontrada</h4>
-                                <p>Não foram encontradas notas com os filtros selecionados.</p>
-                                <hr>
-                                <p class="mb-0">Verifique se os filtros estão corretos e tente novamente.</p>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-                return;
-            }
-            
-                // Ordenar notas por aluno, disciplina, turma e bimestre
-            notas.sort((a, b) => {
-                // Primeiro por nome do aluno
-                const nomeA = a.nome_aluno || '';
-                const nomeB = b.nome_aluno || '';
-                const compareNome = nomeA.localeCompare(nomeB);
-                    if (compareNome !== 0) return compareNome;
-                    
-                    // Se nomes iguais, ordenar por disciplina
-                    const discA = a.nome_disciplina || a.id_disciplina || '';
-                    const discB = b.nome_disciplina || b.id_disciplina || '';
-                    const compareDisc = discA.localeCompare(discB);
-                    if (compareDisc !== 0) return compareDisc;
-                    
-                    // Se disciplinas iguais, ordenar por turma
-                    const turmaA = a.id_turma || '';
-                    const turmaB = b.id_turma || '';
-                    const compareTurma = turmaA.localeCompare(turmaB);
-                    if (compareTurma !== 0) return compareTurma;
-                    
-                    // Por fim, ordenar por bimestre
-                    return (a.bimestre || 0) - (b.bimestre || 0);
-            });
-            
-            // Gerar HTML para a tabela
-            let html = '';
+                if (!notas || notas.length === 0) {
+                    notasTabela.innerHTML = `
+                        <tr class="text-center">
+                            <td colspan="10">
+                                <div class="alert alert-warning" role="alert">
+                                    <h4 class="alert-heading">Nenhuma nota encontrada</h4>
+                                    <p>Não foram encontradas notas com os filtros selecionados.</p>
+                                    <hr>
+                                    <p class="mb-0">Verifique se os filtros estão corretos e tente novamente.</p>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+                
+                // Salvar notas originais para uso na ordenação
+                notasOriginais = notas;
                 
                 // Coletar IDs dos alunos, turmas e disciplinas que precisamos buscar
                 const alunosIDs = new Set();
                 const turmasIDs = new Set();
                 const disciplinasIDs = new Set();
-            
-            notas.forEach(nota => {
+                
+                notas.forEach(nota => {
                     const alunoId = nota.id_aluno || nota.aluno_id;
                     const turmaId = nota.id_turma || nota.turma_id;
                     const disciplinaId = nota.id_disciplina || nota.disciplina_id;
@@ -2712,110 +2954,8 @@ function carregarNotas() {
                 // Aguardar carregamento de dados complementares
                 Promise.all(promessasAlunos)
                     .then(() => {
-                        // Iterar sobre as notas com os dados complementares
-                        notas.forEach(nota => {
-                            // Obter ID do aluno (que pode estar em campos diferentes)
-                            const alunoId = nota.id_aluno || nota.aluno_id;
-                            // Obter dados completos do aluno
-                            const aluno = dadosAlunos[alunoId] || {};
-                            
-                // Garantir que todos os campos necessários existam
-                const notaMensal = nota.nota_mensal !== undefined ? nota.nota_mensal : null;
-                const notaBimestral = nota.nota_bimestral !== undefined ? nota.nota_bimestral : null;
-                const recuperacao = nota.recuperacao !== undefined ? nota.recuperacao : null;
-                
-                            // Calcular média corretamente ou usar a que veio da API
-                let media = nota.media !== undefined ? nota.media : null;
-                
-                if (media === null) {
-                    if (notaMensal !== null && notaBimestral !== null) {
-                        // Calcular média inicial: (mensal + bimestral) / 2
-                        const notaMensalNum = parseFloat(notaMensal);
-                        const notaBimestralNum = parseFloat(notaBimestral);
-                        
-                        if (!isNaN(notaMensalNum) && !isNaN(notaBimestralNum)) {
-                            // Média inicial
-                            const mediaInicial = (notaMensalNum + notaBimestralNum) / 2;
-                            console.log(`Nota ${nota.id}: Média inicial (${notaMensalNum} + ${notaBimestralNum})/2 = ${mediaInicial.toFixed(1)}`);
-                            
-                            // Inicialmente, usar a média inicial
-                            media = mediaInicial;
-                            
-                            // Se há recuperação, calcular (média inicial + recuperação) / 2
-                            if (recuperacao !== null) {
-                                const recNum = parseFloat(recuperacao);
-                                if (!isNaN(recNum)) {
-                                    media = (mediaInicial + recNum) / 2;
-                                    console.log(`Nota ${nota.id}: Média com recuperação (${mediaInicial.toFixed(1)} + ${recNum}) / 2 = ${media.toFixed(1)}`);
-                                }
-                            }
-                        }
-                    } else if (notaMensal !== null) {
-                        media = parseFloat(notaMensal);
-                    } else if (notaBimestral !== null) {
-                        media = parseFloat(notaBimestral);
-                    }
-                }
-                
-                // Determinar status com base na média
-                            let status = '';
-                let statusClass = '';
-                
-                if (media !== null) {
-                    const mediaNum = parseFloat(media);
-                    if (!isNaN(mediaNum)) {
-                        if (mediaNum >= 6) {
-                            // Se a média é 6 ou maior, o aluno está aprovado, independentemente de ter recuperação
-                            status = 'Aprovado';
-                            statusClass = 'bg-success text-white';
-                        } else if (recuperacao !== null) {
-                            // Se tem recuperação mas média < 6, está em recuperação
-                            status = 'Recuperação';
-                            statusClass = 'bg-warning';
-                    } else {
-                            // Se não tem recuperação e média < 6, está reprovado
-                            status = 'Reprovado';
-                            statusClass = 'bg-danger text-white';
-                    }
-                    }
-                }
-                
-                            // Formatação para exibição
-                const formatarNota = (valor) => {
-                                if (valor === null || valor === undefined) return '-';
-                                const num = parseFloat(valor);
-                                return isNaN(num) ? '-' : num.toFixed(1);
-                };
-                
-                            // Obter o nome do aluno de onde estiver disponível
-                            const nomeAluno = aluno.nome_aluno || aluno.nome || nota.nome_aluno || 'N/A';
-                            
-                            // Criar a linha da tabela
-                html += `
-                    <tr>
-                                    <td>${nomeAluno}</td>
-                                    <td>${nota.nome_disciplina || nota.id_disciplina || 'N/A'}</td>
-                                    <td>${nota.nome_turma || nota.id_turma || 'N/A'}</td>
-                                    <td>${nota.bimestre ? nota.bimestre + 'º' : 'N/A'}</td>
-                        <td>${formatarNota(notaMensal)}</td>
-                        <td>${formatarNota(notaBimestral)}</td>
-                        <td>${formatarNota(recuperacao)}</td>
-                                    <td><strong>${formatarNota(media)}</strong></td>
-                                    <td><span class="badge ${statusClass}">${status || 'N/A'}</span></td>
-                        <td>
-                                        <div class="btn-group" role="group">
-                                            <button type="button" class="btn btn-sm btn-outline-primary" 
-                                                    onclick="editarNota('${nota.id || nota.id_nota}')">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                                        </div>
-                        </td>
-                    </tr>
-                `;
-            });
-            
-                        // Atualizar a tabela
-            notasTabela.innerHTML = html;
+                        // Ordenar e atualizar a tabela
+                        ordenarEAtualizarTabela(notasOriginais);
                         
                         // Registrar atividade
                         const turmaTexto = idTurma ? (filtroTurma.options[filtroTurma.selectedIndex]?.text || idTurma) : 'Todas';
@@ -2825,12 +2965,12 @@ function carregarNotas() {
                             `Consulta de notas com filtros - Turma: ${turmaTexto}, Disciplina: ${disciplinaTexto}`);
                         
                         console.log('Notas carregadas com sucesso:', notas.length);
-        })
-        .catch(error => {
+                    })
+                    .catch(error => {
                         console.error("Erro ao carregar dados complementares:", error);
                         
                         // Mesmo com erro, exibir os dados que temos
-                        notasTabela.innerHTML = html;
+                        ordenarEAtualizarTabela(notasOriginais);
                     });
             })
             .catch(error => {
@@ -2840,18 +2980,18 @@ function carregarNotas() {
                 // Exibir mensagem de erro na tabela
                 const notasTabela = document.getElementById('notas-lista');
                 if (notasTabela) {
-            notasTabela.innerHTML = `
-                <tr class="text-center">
-                    <td colspan="10">
-                        <div class="alert alert-danger" role="alert">
-                            <h4 class="alert-heading">Erro ao carregar notas</h4>
+                    notasTabela.innerHTML = `
+                        <tr class="text-center">
+                            <td colspan="10">
+                                <div class="alert alert-danger" role="alert">
+                                    <h4 class="alert-heading">Erro ao carregar notas</h4>
                                     <p>${error.message || 'Ocorreu um erro ao tentar carregar as notas.'}</p>
                                     <hr>
                                     <p class="mb-0">Verifique sua conexão e tente novamente mais tarde.</p>
-                        </div>
-                    </td>
-                </tr>
-            `;
+                                </div>
+                            </td>
+                        </tr>
+                    `;
                 }
                 
                 // Se foi erro de timeout, alertar o usuário
