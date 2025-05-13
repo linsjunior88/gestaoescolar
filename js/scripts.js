@@ -111,14 +111,24 @@ document.addEventListener('DOMContentLoaded', function() {
             submitButton.disabled = true;
 
             if (selectedProfile === 'escola') {
-                // Para o perfil escola, aceita qualquer credencial (comportamento anterior)
-                setTimeout(() => {
-                    // Armazena nas credenciais locais que é um administrador
-                    sessionStorage.setItem('userProfile', 'admin');
-                    
-                    // Redireciona para o dashboard administrativo
-                    window.location.href = profileData[selectedProfile].redirectURL;
-                }, 1000);
+                // Para o perfil escola, verificar credenciais específicas
+                if (username === 'administrador' && password === '2025@nazare') {
+                    // Credenciais corretas, seguir com o login
+                    setTimeout(() => {
+                        // Armazena nas credenciais locais que é um administrador
+                        sessionStorage.setItem('userProfile', 'admin');
+                        
+                        // Redireciona para o dashboard administrativo
+                        window.location.href = profileData[selectedProfile].redirectURL;
+                    }, 1000);
+                } else {
+                    // Credenciais incorretas, mostrar mensagem de erro
+                    setTimeout(() => {
+                        alert('Usuário ou senha incorretos para acesso administrativo.');
+                        submitButton.innerHTML = originalText;
+                        submitButton.disabled = false;
+                    }, 1000);
+                }
             } else if (selectedProfile === 'professor') {
                 // Para o perfil professor, chamar a API para verificar credenciais
                 const loginData = {
