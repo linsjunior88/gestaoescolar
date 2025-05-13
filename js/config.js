@@ -6,7 +6,7 @@
 const ConfigModule = {
     // Estado do módulo
     state: {
-        apiUrl: 'https://gestao-escolar-api.onrender.com/api', // URL da API COM o /api no final
+        apiUrl: 'https://apinazarerodrigues.86dynamics.com.br/api', // URL da API COM o /api no final
         proxyServices: [
             'https://cors-anywhere.herokuapp.com/',
             'https://corsproxy.io/?',
@@ -29,7 +29,7 @@ const ConfigModule = {
         this.state.isLoading = true;
         
         // Aqui usamos a URL base sem o /api porque o endpoint /health está na raiz
-        fetch('https://gestao-escolar-api.onrender.com/health') 
+        fetch('https://apinazarerodrigues.86dynamics.com.br/health') 
             .then(response => response.json())
             .then(data => {
                 console.log("Status da API:", data);

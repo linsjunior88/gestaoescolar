@@ -9,7 +9,7 @@ import CORSBypassModule from './cors-bypass.js';
 const ConfigModule = {
     // Estado
     state: {
-        apiUrl: 'https://gestao-escolar-api.onrender.com/api', // URL da API principal
+        apiUrl: 'https://apinazarerodrigues.86dynamics.com.br/api', // URL da API principal
         proxyUrl: 'https://cors-anywhere.herokuapp.com/', // Proxy CORS para desenvolvimento
         ambiente: 'producao', // 'desenvolvimento' ou 'producao'
         debug: true, // Ativar logs de depuração

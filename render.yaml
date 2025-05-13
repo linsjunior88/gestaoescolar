@@ -21,13 +21,17 @@ services:
   - type: web
     name: gestao-escolar-frontend
     env: static
-    buildCommand: echo "No build required for static files"
-    staticPublishPath: ./
-    routes:
-      - type: rewrite
-        source: /api/*
-        destination: https://gestao-escolar-api.onrender.com/api/:splat
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./build
+    pullRequestPreviewsEnabled: true
+    envVars:
+      - key: REACT_APP_API_URL
+        value: https://apinazarerodrigues.86dynamics.com.br/api
     headers:
       - path: /*
         name: Cache-Control
-        value: no-store
+        value: no-cache
+    routes:
+      - type: rewrite
+        source: /api/*
+        destination: https://apinazarerodrigues.86dynamics.com.br/api/:splat

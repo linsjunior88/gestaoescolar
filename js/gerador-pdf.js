@@ -221,13 +221,13 @@ async function buscarIdAlunoViaAPI(nomeAluno) {
             }
         }
         
-        // Verificar se temos acesso ao CONFIG para obter URL da API
+        // Verificar se temos acesso à URL da API através do CONFIG
         let url;
         if (typeof window.CONFIG !== 'undefined' && typeof window.CONFIG.getApiUrl === 'function') {
             url = window.CONFIG.getApiUrl(`/alunos/buscar?nome=${encodeURIComponent(nomeAluno)}`);
         } else {
-            // Fallback para URL padrão caso CONFIG não esteja disponível
-            const apiUrl = window.API_URL || '/api';
+            // Fallback para URL padrão
+            const apiUrl = window.API_URL || 'https://apinazarerodrigues.86dynamics.com.br/api';
             url = `${apiUrl}/alunos/buscar?nome=${encodeURIComponent(nomeAluno)}`;
         }
         
@@ -374,13 +374,11 @@ async function gerarPDFNotas() {
     console.log('Iniciando geração de PDF das notas');
     
     try {
-        // Garantir que temos acesso à URL da API para funções que ainda usam window.apiBaseUrl
+        // Inicializar a URL base da API se ainda não estiver definida
         if (typeof window.CONFIG !== 'undefined' && typeof window.CONFIG.getApiUrl === 'function') {
             window.apiBaseUrl = window.CONFIG.getApiUrl('');
-            console.log(`URL base da API configurada: ${window.apiBaseUrl}`);
-        } else if (typeof window.API_URL !== 'undefined') {
-            window.apiBaseUrl = window.API_URL;
-            console.log(`URL base da API fallback configurada: ${window.apiBaseUrl}`);
+        } else {
+            window.apiBaseUrl = 'https://apinazarerodrigues.86dynamics.com.br/api';
         }
         
         // Capturar os alunos que foram carregados no frontend para termos os IDs (id_aluno)

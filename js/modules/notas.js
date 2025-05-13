@@ -2482,7 +2482,7 @@ const NotasModule = {
                     <p><strong>O que você pode tentar:</strong></p>
                     <ol class="mb-0">
                         <li>Clique em "Tentar Novamente" para usar um método alternativo de comunicação.</li>
-                        <li>Verifique se o servidor está online em <a href="https://gestao-escolar-api.onrender.com/api" target="_blank">https://gestao-escolar-api.onrender.com/api</a></li>
+                        <li>Verifique se o servidor está online em <a href="https://apinazarerodrigues.86dynamics.com.br/api" target="_blank">https://apinazarerodrigues.86dynamics.com.br/api</a></li>
                         <li>Se você está usando Firefox ou Chrome, considere instalar uma extensão como "CORS Unblock" ou "Allow CORS".</li>
                         <li>Recarregue a página e tente novamente.</li>
                     </ol>
