@@ -3567,29 +3567,17 @@ function exibirFichaAluno(idAluno) {
     }
     
     // Remover quaisquer modais e backdrops antigos para evitar sobreposições
-    document.querySelectorAll('.modal-backdrop').forEach(backdrop => backdrop.remove());
-    
-    // Remover modal anterior se existir
-    const existingModal = document.getElementById('alunoModal');
-    if (existingModal) {
-        try {
-            const oldModal = bootstrap.Modal.getInstance(existingModal);
-            if (oldModal) oldModal.dispose();
-        } catch (e) {
-            console.warn('Erro ao remover modal antigo:', e);
-        }
-        existingModal.remove();
-    }
+    limparTodosModaisEBackdrops();
     
     // Exibir um indicador de carregamento enquanto buscamos os dados
     const loadingModal = `
-        <div class="modal fade" id="loadingModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+        <div class="modal fade" id="loadingModal" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content">
                     <div class="modal-body text-center p-5">
-            <div class="spinner-border text-primary" role="status">
+                        <div class="spinner-border text-primary" role="status">
                             <span class="visually-hidden">Carregando...</span>
-            </div>
+                        </div>
                         <p class="mt-3 mb-0">Carregando informações do aluno...</p>
                     </div>
                 </div>
@@ -3599,17 +3587,19 @@ function exibirFichaAluno(idAluno) {
     
     // Adicionar o modal de carregamento
     document.body.insertAdjacentHTML('beforeend', loadingModal);
-    const loading = new bootstrap.Modal(document.getElementById('loadingModal'));
+    const loadingElement = document.getElementById('loadingModal');
+    const loading = new bootstrap.Modal(loadingElement, {
+        backdrop: true,
+        keyboard: true,
+        focus: true
+    });
     loading.show();
     
     // Definir um timeout para garantir que o modal não fique travado indefinidamente
     const timeoutId = setTimeout(() => {
-        try {
-            loading.hide();
-            alert('O carregamento dos dados está demorando mais que o esperado. Tente novamente.');
-        } catch (e) {
-            console.warn('Erro ao remover modal de loading após timeout:', e);
-        }
+        loading.hide();
+        limparTodosModaisEBackdrops();
+        alert('O carregamento dos dados está demorando mais que o esperado. Tente novamente.');
     }, 15000); // 15 segundos de timeout
     
     // Buscar dados do aluno
@@ -3627,13 +3617,13 @@ function exibirFichaAluno(idAluno) {
             clearTimeout(timeoutId);
             
             // Fechar o modal de carregamento
-            try {
             loading.hide();
-            } catch (e) {
-                console.warn('Erro ao fechar modal de loading:', e);
-                document.getElementById('loadingModal')?.remove();
+            
+            // Garantir que o backdrop do modal de loading seja removido
+            setTimeout(() => {
+                loadingElement.remove();
                 document.querySelectorAll('.modal-backdrop').forEach(backdrop => backdrop.remove());
-            }
+            }, 300);
             
             // Formatação de campos específicos
             const dataNascimento = aluno.data_nascimento || aluno.data_nasc;
@@ -3744,131 +3734,79 @@ function exibirFichaAluno(idAluno) {
             // Adicionar o modal ao DOM
             document.body.insertAdjacentHTML('beforeend', modalContent);
             
-            // Obter o modal e configurar evento de fechamento
-            const alunoModal = document.getElementById('alunoModal');
+            // Obter o elemento do modal
+            const alunoModalElement = document.getElementById('alunoModal');
             
-            // Garantir que o modal tenha foco imediato
-            setTimeout(() => {
-                alunoModal.focus();
-                // Adicionar tabindex se não estiver presente
-                if (!alunoModal.hasAttribute('tabindex')) {
-                    alunoModal.setAttribute('tabindex', '-1');
-                }
-            }, 10);
-            
-            alunoModal.addEventListener('hidden.bs.modal', function() {
-                console.log('Modal fechado - removendo do DOM');
-                
-                // Utilizar nossa função de limpeza completa
-                limparTodosModaisEBackdrops();
-                
-                // Remover o modal do DOM (este já está sendo removido na função limparTodosModaisEBackdrops,
-                // mas mantemos aqui por garantia para este modal específico)
-                this.remove();
-                
-                // Remover também qualquer botão de emergência específico deste modal
-                const emergencyBtn = document.getElementById('emergency-close-btn');
-                if (emergencyBtn) emergencyBtn.remove();
+            // Inicializar o modal corretamente com todas as opções explícitas
+            const alunoModal = new bootstrap.Modal(alunoModalElement, {
+                backdrop: true,  // Permitir clique fora para fechar
+                keyboard: true,  // Permitir a tecla ESC para fechar
+                focus: true      // Focar no modal quando aberto
             });
             
-            // Configurar listener global de ESC para garantir que funcione
-            const escHandler = function(e) {
-                if (e.key === 'Escape') {
-                    console.log('Tecla ESC pressionada - tentando fechar modal');
-                    
-                    // Limpar TUDO primeiro
+            // Configurar evento de fechamento do modal - usando delegação de eventos para capturar mais facilmente
+            alunoModalElement.addEventListener('hidden.bs.modal', function(event) {
+                console.log('Modal fechado - removendo do DOM');
+                
+                // Remover o modal do DOM
+                setTimeout(() => {
+                    // Remover todos os backdrops e o modal para garantir limpeza
                     limparTodosModaisEBackdrops();
                     
-                    // Verificar se o modal ainda existe
-                    const modalElement = document.getElementById('alunoModal');
-                    if (modalElement) {
-                        // Limpar qualquer indicador de carregamento primeiro
-                        const loadingIndicators = document.querySelectorAll('.spinner-border, .loading-indicator');
-                        loadingIndicators.forEach(indicator => {
-                            const row = indicator.closest('tr');
-                            if (row) row.remove();
-                        });
-                        
-                        // Forçar fechamento do modal
-                        try {
-                            const modal = bootstrap.Modal.getInstance(modalElement);
-                            if (modal) modal.hide();
-                        } catch (error) {
-                            console.error('Erro ao fechar modal:', error);
-                            // Forçar limpeza mesmo com erro
-                            modalElement.remove();
-                        }
-                    }
-                    
-                    // Remover este handler após uso
+                    // Carregar notas do aluno que acabou de ser fechado
+                    carregarNotasAluno(idAluno);
+                }, 300);
+            });
+            
+            // Adicionar eventos aos botões de fechamento
+            const btnCloseModal = document.getElementById('btnCloseModal');
+            const btnFecharAluno = document.getElementById('btnFecharAluno');
+            
+            if (btnCloseModal) {
+                btnCloseModal.addEventListener('click', function() {
+                    alunoModal.hide();
+                });
+            }
+            
+            if (btnFecharAluno) {
+                btnFecharAluno.addEventListener('click', function() {
+                    alunoModal.hide();
+                });
+            }
+            
+            // Adicionar handler para tecla ESC diretamente no documento
+            const escHandler = function(e) {
+                if (e.key === 'Escape') {
+                    console.log('Tecla ESC pressionada - fechando modal');
+                    alunoModal.hide();
+                    // Remover este handler após uso bem-sucedido
                     document.removeEventListener('keydown', escHandler);
-                    
-                    // DUPLA verificação: Garantir que nada ficou preso
-                    setTimeout(() => limparTodosModaisEBackdrops(), 100);
                 }
             };
             
-            // Adicionar o handler de ESC globalmente
+            // Adicionar o handler de ESC
             document.addEventListener('keydown', escHandler);
             
-            // Exibir o modal
-            const modal = new bootstrap.Modal(alunoModal);
-            modal.show();
-            
-            // Garantir que o modal receba foco imediato
-            setTimeout(() => {
-                if (alunoModal) alunoModal.focus();
-            }, 200);
+            // Mostrar o modal
+            alunoModal.show();
             
             // Carregar as notas do aluno
-            setTimeout(() => carregarNotasAluno(idAluno), 500);
-            
-            // Registrar atividade
-            registrarAtividade('visualização', 'aluno', idAluno, `Aluno: ${aluno.nome_aluno || idAluno}`, 'concluído');
+            carregarNotasAluno(idAluno);
         })
         .catch(error => {
-            console.error("Erro ao carregar dados do aluno:", error);
+            console.error("Erro ao buscar dados do aluno:", error);
             
             // Limpar o timeout
             clearTimeout(timeoutId);
             
             // Fechar o modal de carregamento
-            try {
             loading.hide();
-            } catch (e) {
-                console.warn('Erro ao fechar modal de loading após erro:', e);
-                document.getElementById('loadingModal')?.remove();
-                document.querySelectorAll('.modal-backdrop').forEach(backdrop => backdrop.remove());
-            }
             
-            // Exibir erro como um modal simples
-            const modalErro = `
-                <div class="modal fade" id="erroAlunoModal" tabindex="-1" aria-labelledby="erroAlunoModalLabel" aria-hidden="true">
-                    <div class="modal-dialog">
-                        <div class="modal-content">
-                            <div class="modal-header bg-warning">
-                                <h5 class="modal-title" id="erroAlunoModalLabel">
-                                    <i class="fas fa-exclamation-triangle me-2"></i>Erro ao carregar dados
-                                </h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-                            </div>
-                            <div class="modal-body">
-                                <p>Não foi possível carregar os dados do aluno no momento.</p>
-                                <p>Por favor, verifique sua conexão e tente novamente.</p>
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                                    <i class="fas fa-times me-1"></i>Fechar
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
+            // Limpar qualquer backdrop
+            limparTodosModaisEBackdrops();
             
-            document.body.insertAdjacentHTML('beforeend', modalErro);
-            const erroModal = new bootstrap.Modal(document.getElementById('erroAlunoModal'));
-            erroModal.show();
+            // Exibir mensagem de erro
+            alert('Erro ao carregar dados do aluno: ' + error.message);
         });
 }
 
@@ -5408,7 +5346,7 @@ window.novaNota = novaNota;
 
 // Função para limpar todos os modais, backdrops e restaurar o estado da página
 function limparTodosModaisEBackdrops() {
-    console.log("Executando limpeza completa de modais e backdrops");
+    console.log("Executando limpeza de modais e backdrops");
     
     // 1. Fechar todos os modais via Bootstrap primeiro (abordagem suave)
     document.querySelectorAll('.modal.show').forEach(modal => {
@@ -5420,34 +5358,37 @@ function limparTodosModaisEBackdrops() {
         }
     });
     
-    // 2. Remover forcadamente todos os backdrops
-    document.querySelectorAll('.modal-backdrop').forEach(backdrop => backdrop.remove());
-    
-    // 3. Se ainda houver modais, removê-los diretamente
-    document.querySelectorAll('.modal').forEach(modal => modal.remove());
-    
-    // 4. Remover estilos e classes que podem bloquear scrolling
-    document.body.classList.remove('modal-open');
-    document.body.style.overflow = '';
-    document.body.style.paddingRight = '';
-    
-    // 5. Limpar qualquer indicador de carregamento
-    document.querySelectorAll('.spinner-border, .loading-indicator').forEach(loader => {
-        // Se não estiver dentro de uma tabela ou container específico, remover
-        if (!loader.closest('table') && !loader.closest('.preserve-loader')) {
-            loader.remove();
-        }
+    // 2. Remover backdrops de forma limpa
+    document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
+        // Adicionar efeito de fade out antes de remover
+        backdrop.style.opacity = '0';
+        setTimeout(() => backdrop.remove(), 150);
     });
     
-    // 6. Remover qualquer overlay restante
-    document.querySelectorAll('.modal-open-overlay, .loading-overlay').forEach(overlay => overlay.remove());
+    // 3. Se ainda houver modais, removê-los com cuidado
+    setTimeout(() => {
+        document.querySelectorAll('.modal').forEach(modal => {
+            if (!modal.classList.contains('show')) {
+                modal.remove();
+            }
+        });
+        
+        // 4. Remover classes e estilos que bloqueiam a interação
+        document.body.classList.remove('modal-open');
+        document.body.style.overflow = '';
+        document.body.style.paddingRight = '';
+    }, 200);
+    
+    // 5. Remover botões de emergência que possam ter sido adicionados anteriormente
+    const emergencyBtns = document.querySelectorAll('#global-emergency-btn, #emergency-close-btn');
+    emergencyBtns.forEach(btn => btn.remove());
 }
 
 // Função para configurar sistema de emergência para fechar modais travados
 function configurarFechamentoEmergenciaModal() {
-    console.log("Configurando sistema de emergência para fechar modais travados");
+    console.log("Configurando sistema básico para gerenciamento de modais");
     
-    // Sistema 1: ESC duplo para forçar fechamento
+    // Sistema 1: ESC duplo para forçar fechamento (manter só por segurança)
     let lastEscapeTime = 0;
     const escapeInterval = 500; // ms - intervalo máximo entre dois pressionamentos de ESC
     
@@ -5461,9 +5402,6 @@ function configurarFechamentoEmergenciaModal() {
                 
                 // Usar nossa função de limpeza completa
                 limparTodosModaisEBackdrops();
-                
-                // Exibir mensagem de feedback para o usuário
-                mostrarMensagemFlutuante('Modais fechados com sucesso via ESC duplo', 'info');
             }
             
             lastEscapeTime = now;
@@ -5486,55 +5424,22 @@ function configurarFechamentoEmergenciaModal() {
                 
                 // Usar nossa função de limpeza completa
                 limparTodosModaisEBackdrops();
-                
-                // Exibir mensagem de feedback
-                mostrarMensagemFlutuante('Modal fechado com sucesso via clique duplo', 'info');
             }
             
             lastClickTime = now;
         }
     });
     
-    // Sistema 3: Botão flutuante de emergência
-    const addEmergencyButton = function() {
-        // Remover qualquer botão existente para evitar duplicação
-        const existingBtn = document.getElementById('global-emergency-btn');
-        if (existingBtn) existingBtn.remove();
-        
-        // Criar botão global de emergência que sempre estará visível no canto da tela
-        const emergencyBtn = document.createElement('button');
-        emergencyBtn.id = 'global-emergency-btn';
-        emergencyBtn.className = 'btn btn-sm btn-danger position-fixed';
-        emergencyBtn.style.bottom = '10px';
-        emergencyBtn.style.right = '10px';
-        emergencyBtn.style.zIndex = '99999'; // Valor extremamente alto
-        emergencyBtn.style.opacity = '0.8';
-        emergencyBtn.innerHTML = '<i class="fas fa-medkit"></i> SOS';
-        emergencyBtn.title = 'Clique aqui para forçar o fechamento de modais travados';
-        
-        // Adicionar evento de clique
-        emergencyBtn.addEventListener('click', function() {
-            limparTodosModaisEBackdrops();
-            mostrarMensagemFlutuante('Tela liberada com sucesso', 'success');
-        });
-        
-        // Adicionar ao body
-        document.body.appendChild(emergencyBtn);
-    };
-    
-    // Adicionar o botão SOS após um curto delay
-    setTimeout(addEmergencyButton, 1000);
-    
-    // Sistema 4: Detector de backdrops órfãos
+    // Sistema 3: Detector de backdrops órfãos (automático e transparente para o usuário)
     setInterval(function() {
         // Verificar se há backdrops sem modal associado
         const backdrops = document.querySelectorAll('.modal-backdrop');
         const modals = document.querySelectorAll('.modal.show');
         
+        // Detectar e corrigir situações anômalas
         if (backdrops.length > 0 && modals.length === 0) {
             console.log('Detectado backdrop órfão - removendo automaticamente');
             limparTodosModaisEBackdrops();
-            mostrarMensagemFlutuante('Tela desbloqueada automaticamente', 'info');
         }
         
         // Verificar se o backdrop está presente por muito tempo (mais de 30 segundos)
@@ -5548,11 +5453,18 @@ function configurarFechamentoEmergenciaModal() {
                 const timestamp = parseInt(timestampStr);
                 const now = Date.now();
                 
-                // Se o backdrop estiver presente por mais de 30 segundos, removê-lo
+                // Se o backdrop estiver presente por mais de 30 segundos, verificar se o modal ainda está aberto
                 if (now - timestamp > 30000) { // 30 segundos
-                    console.log('Backdrop presente por muito tempo - removendo automaticamente');
-                    limparTodosModaisEBackdrops();
-                    mostrarMensagemFlutuante('Tela desbloqueada por segurança', 'info');
+                    const modalElemAtivo = document.querySelector('.modal.show');
+                    
+                    // Se não houver modal ativo, remover backdrop
+                    if (!modalElemAtivo) {
+                        console.log('Backdrop presente sem modal ativo - removendo automaticamente');
+                        limparTodosModaisEBackdrops();
+                    } else {
+                        // Reiniciar o cronômetro para este backdrop
+                        backdrop.setAttribute('data-time-check', Date.now().toString());
+                    }
                 }
             }
         }
