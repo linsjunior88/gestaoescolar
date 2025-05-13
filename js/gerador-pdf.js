@@ -997,6 +997,12 @@ async function gerarPDFNotas() {
             throw new Error('Nenhum dado válido encontrado na tabela.');
         }
         
+        // Ordenar os dados alfabeticamente pelo nome do aluno
+        dados.sort((a, b) => {
+            return a.aluno.localeCompare(b.aluno);
+        });
+        console.log('Dados ordenados por nome para o PDF:', dados.map(d => d.aluno));
+        
         // Calcular a largura total necessária para a tabela
         const pageWidth = doc.internal.pageSize.getWidth();
         const pageHeight = doc.internal.pageSize.getHeight();
