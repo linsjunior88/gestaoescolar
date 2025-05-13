@@ -243,7 +243,7 @@ async function buscarIdAlunoViaAPI(nomeAluno) {
     }
 }
 
- /*Versão corrigida e simplificada da função no gerador-pdf.js
+/*Versão corrigida e simplificada da função no gerador-pdf.js
  * Substitua o trecho correspondente no arquivo original
  */
 
@@ -970,3 +970,31 @@ window.gerarPDFNotas = gerarPDFNotas;
 
 // Log para indicar que o script foi carregado
 console.log('Módulo gerador-pdf.js carregado com sucesso');
+
+// Função para corrigir o header da card de notas
+function corrigirHeaderNotas() {
+    // Buscar o primeiro card no conteúdo de notas
+    const cardNotas = document.querySelector('#conteudo-notas .card');
+    if (cardNotas) {
+        // Verificar se o header existe e tem o conteúdo correto
+        const cardHeader = cardNotas.querySelector('.card-header');
+        if (cardHeader) {
+            const headerTitle = cardHeader.querySelector('.m-0');
+            if (!headerTitle || !headerTitle.textContent.includes('Notas')) {
+                // Atualizar o título para garantir que esteja correto
+                cardHeader.innerHTML = `
+                    <h6 class="m-0 font-weight-bold text-primary">Gestão de Notas</h6>
+                `;
+            }
+        } else {
+            // Se não tiver header, criar um
+            const newHeader = document.createElement('div');
+            newHeader.className = 'card-header py-3';
+            newHeader.innerHTML = `
+                <h6 class="m-0 font-weight-bold text-primary">Gestão de Notas</h6>
+            `;
+            // Adicionar como primeiro filho do card
+            cardNotas.insertBefore(newHeader, cardNotas.firstChild);
+        }
+    }
+}
