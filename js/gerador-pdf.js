@@ -221,10 +221,17 @@ async function buscarIdAlunoViaAPI(nomeAluno) {
             }
         }
         
-        // Verificar se temos uma URL padrão para a API
-        const apiUrl = window.apiBaseUrl || '/api';
-        const url = `${apiUrl}/alunos/buscar?nome=${encodeURIComponent(nomeAluno)}`;
+        // Verificar se temos acesso ao CONFIG para obter URL da API
+        let url;
+        if (typeof window.CONFIG !== 'undefined' && typeof window.CONFIG.getApiUrl === 'function') {
+            url = window.CONFIG.getApiUrl(`/alunos/buscar?nome=${encodeURIComponent(nomeAluno)}`);
+        } else {
+            // Fallback para URL padrão caso CONFIG não esteja disponível
+            const apiUrl = window.API_URL || '/api';
+            url = `${apiUrl}/alunos/buscar?nome=${encodeURIComponent(nomeAluno)}`;
+        }
         
+        console.log(`Buscando aluno via API: ${url}`);
         const response = await fetch(url);
         if (!response.ok) {
             throw new Error(`Erro ao buscar aluno: ${response.status}`);
@@ -318,14 +325,14 @@ function obterIdAlunoPorNota(idNota) {
     }
     
     try {
-        // Verificar se temos acesso à API
-        if (!window.apiBaseUrl) {
-            console.warn("Base URL da API não disponível");
+        // Verificar se temos acesso à API através do objeto CONFIG
+        if (typeof window.CONFIG === 'undefined' || typeof window.CONFIG.getApiUrl !== 'function') {
+            console.warn("Objeto CONFIG não disponível ou mal configurado");
             return null;
         }
         
-        // Construir URL da API para buscar nota
-        const apiUrl = `${window.apiBaseUrl}/notas/${idNota}`;
+        // Construir URL da API para buscar nota usando CONFIG
+        const apiUrl = window.CONFIG.getApiUrl(`/notas/${idNota}`);
         console.log(`Consultando API: ${apiUrl}`);
         
         // Fazer chamada síncrona para API
@@ -367,6 +374,48 @@ async function gerarPDFNotas() {
     console.log('Iniciando geração de PDF das notas');
     
     try {
+        // Garantir que temos acesso à URL da API para funções que ainda usam window.apiBaseUrl
+        if (typeof window.CONFIG !== 'undefined' && typeof window.CONFIG.getApiUrl === 'function') {
+            window.apiBaseUrl = window.CONFIG.getApiUrl('');
+            console.log(`URL base da API configurada: ${window.apiBaseUrl}`);
+        } else if (typeof window.API_URL !== 'undefined') {
+            window.apiBaseUrl = window.API_URL;
+            console.log(`URL base da API fallback configurada: ${window.apiBaseUrl}`);
+        }
+        
+        // Capturar os alunos que foram carregados no frontend para termos os IDs (id_aluno)
+        // Esses alunos são exibidos no console pelo professor-dashboard-novo.js
+        let alunosCarregados = [];
+        if (typeof window.alunosCarregados !== 'undefined' && Array.isArray(window.alunosCarregados)) {
+            alunosCarregados = window.alunosCarregados;
+            console.log('Usando alunos carregados previamente:', alunosCarregados.length);
+        } else {
+            // Tentar recuperar de outras fontes possíveis
+            const alunosLista = document.querySelectorAll('#filtro-aluno-notas option');
+            if (alunosLista.length > 1) { // > 1 porque a primeira opção é geralmente "Selecione um aluno"
+                console.log('Recuperando alunos do select de filtro');
+                alunosCarregados = Array.from(alunosLista)
+                    .filter(opt => opt.value && opt.value !== '')
+                    .map(opt => ({
+                        id_aluno: opt.value,
+                        nome_aluno: opt.textContent.trim()
+                    }));
+            }
+        }
+        
+        console.log('Mapeamento de alunos para uso no PDF:', alunosCarregados);
+        
+        // Criar um mapa de nomes para IDs para facilitar a busca
+        const mapaNomesParaIds = {};
+        if (alunosCarregados.length > 0) {
+            alunosCarregados.forEach(aluno => {
+                if (aluno.nome_aluno && aluno.id_aluno) {
+                    mapaNomesParaIds[aluno.nome_aluno.trim().toUpperCase()] = aluno.id_aluno;
+                }
+            });
+            console.log('Mapa de nomes para IDs criado:', mapaNomesParaIds);
+        }
+        
         // Verificar se a tabela de notas existe
         const tabela = document.getElementById('tabela-notas');
         if (!tabela) {
@@ -552,22 +601,12 @@ async function gerarPDFNotas() {
                     console.log(`DEBUG - Nome do aluno encontrado na primeira célula: ${nomeAluno}`);
                 }
                 
-                // Inicializar variável para o ID do aluno
+                // Parte nova - Tentar obter o ID do aluno a partir do mapa de nomes
+                // Usar o nome do aluno para buscar o ID no mapa criado anteriormente
                 let alunoId = '';
-
-                // Criar um mapeamento de nomes de alunos conhecidos para seus IDs
-                // Isso funciona como um "banco de dados" em memória para casos específicos
-                const alunosConhecidos = {
-                    "LARA GABRIELLY NUNES DE CASTRO": "71876",
-                    "DAVID LUIZ APOSTOLO OLIVEIRA": "71822",
-                    "ISAAC NATHAN LINS": "71841",
-                    // Adicionar mais mapeamentos conforme necessário
-                };
-                
-                // Verificar se temos o ID do aluno no nosso mapeamento de alunos conhecidos
-                if (nomeAluno && alunosConhecidos[nomeAluno]) {
-                    alunoId = alunosConhecidos[nomeAluno];
-                    console.log(`DEBUG - ID do aluno ${nomeAluno} obtido de mapeamento conhecido: ${alunoId}`);
+                if (nomeAluno && mapaNomesParaIds[nomeAluno.toUpperCase()]) {
+                    alunoId = mapaNomesParaIds[nomeAluno.toUpperCase()];
+                    console.log(`DEBUG - ID do aluno (${nomeAluno}) encontrado no mapeamento: ${alunoId}`);
                 }
                 
                 // Se não encontramos no mapeamento, tentar via API

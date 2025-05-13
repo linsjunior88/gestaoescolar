@@ -2365,6 +2365,9 @@ function carregarAlunosParaFiltro(idTurma = null, idDisciplina = null) {
     const processarAlunos = (alunos) => {
         console.log('Alunos carregados com sucesso:', alunos);
         
+        // Salvar os alunos em uma variável global para uso pelo gerador de PDF
+        window.alunosCarregados = alunos;
+        
         filtroAluno.innerHTML = '<option value="">Todos os alunos da turma</option>';
         
         if (alunos && alunos.length > 0) {
