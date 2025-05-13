@@ -49,7 +49,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
     "https://gestao-escolar-frontend-n9aq.onrender.com",
-    "https://emefnazarenarodrigues.86dynamics.com.br"],  # Ajuste para os domínios específicos em produção
+    "https://emefnazarenarodrigues.86dynamics.com.br"
+    ],  # Ajuste para os domínios específicos em produção
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
