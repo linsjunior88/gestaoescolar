@@ -80,65 +80,123 @@ const ConfigModule = {
      * @returns {Promise<any>} - Resposta da API
      */
     fetchApi: async function(endpoint, options = {}) {
-        try {
-            const baseUrl = this.state.apiUrl;
-            const url = `${baseUrl}${endpoint}`;
-            
-            console.log(`Fazendo requisição para: ${url}`);
-            
-            // Configurar headers
-            const headers = {
-                'Content-Type': 'application/json',
-                ...options.headers
-            };
-            
-            // Configurar opções de requisição
-            const fetchOptions = {
-                ...options,
-                headers
-            };
-            
-            // Log de informações para debug
-            console.log(`Método: ${fetchOptions.method || 'GET'}`);
-            if (fetchOptions.body) {
-                console.log(`Payload: ${fetchOptions.body}`);
-            }
-            
-            const response = await fetch(url, fetchOptions);
-            
-            if (!response.ok) {
-                // Tentar obter detalhes do erro
-                let errorDetails;
-                try {
-                    errorDetails = await response.json();
-                } catch (e) {
-                    errorDetails = await response.text();
+        // Adicionar contador de tentativas para evitar loops infinitos
+        const maxRetries = options.maxRetries || 1; // Padrão: apenas 1 tentativa (sem retry)
+        let retryCount = 0;
+        let lastError = null;
+        
+        while (retryCount <= maxRetries) {
+            try {
+                const baseUrl = this.state.apiUrl;
+                const url = `${baseUrl}${endpoint}`;
+                
+                if (retryCount > 0) {
+                    console.log(`Tentativa ${retryCount}/${maxRetries} para ${url}`);
+                } else {
+                    console.log(`Fazendo requisição para: ${url}`);
                 }
                 
-                throw new Error(`Erro ${response.status}: ${JSON.stringify(errorDetails)}`);
+                // Configurar headers
+                const headers = {
+                    'Content-Type': 'application/json',
+                    ...options.headers
+                };
+                
+                // Configurar opções de requisição
+                const fetchOptions = {
+                    ...options,
+                    headers,
+                    // Adicionar timeout para evitar requisições penduradas
+                    signal: options.signal || (options.timeout ? AbortSignal.timeout(options.timeout) : undefined)
+                };
+                
+                // Log de informações para debug
+                console.log(`Método: ${fetchOptions.method || 'GET'}`);
+                if (fetchOptions.body) {
+                    console.log(`Payload: ${fetchOptions.body}`);
+                }
+                
+                const response = await fetch(url, fetchOptions);
+                
+                if (!response.ok) {
+                    // Tentar obter detalhes do erro
+                    let errorDetails;
+                    try {
+                        errorDetails = await response.json();
+                    } catch (e) {
+                        errorDetails = await response.text();
+                    }
+                    
+                    throw new Error(`Erro ${response.status}: ${JSON.stringify(errorDetails)}`);
+                }
+                
+                // Verificar se a resposta está vazia
+                const text = await response.text();
+                
+                // Se a resposta for vazia, retornar um objeto vazio
+                if (!text) {
+                    console.log(`Resposta vazia do servidor para: ${url}`);
+                    return {};
+                }
+                
+                try {
+                    const data = JSON.parse(text);
+                    console.log(`Resposta recebida de ${url}:`, data);
+                    return data;
+                } catch (e) {
+                    console.warn(`Resposta não é um JSON válido: ${text}`);
+                    return text;
+                }
+            } catch (error) {
+                lastError = error;
+                
+                // Verificar se é um erro de rede/conexão
+                const isNetworkError = 
+                    error.name === 'TypeError' && 
+                    error.message.includes('NetworkError') ||
+                    error.message.includes('Failed to fetch') ||
+                    error.message.includes('Network request failed');
+                
+                // Verificar se é um erro de timeout
+                const isTimeoutError = 
+                    error.name === 'AbortError' || 
+                    error.name === 'TimeoutError';
+                
+                // Verificar se é um erro de CORS
+                const isCORSError = 
+                    error.message.includes('CORS') || 
+                    error.message.includes('Cross-Origin');
+                
+                // Logar o erro de forma mais detalhada
+                if (isNetworkError) {
+                    console.warn(`Erro de rede na requisição para ${endpoint} (tentativa ${retryCount+1}/${maxRetries+1}):`, error);
+                } else if (isTimeoutError) {
+                    console.warn(`Timeout na requisição para ${endpoint} (tentativa ${retryCount+1}/${maxRetries+1}):`, error);
+                } else if (isCORSError) {
+                    console.warn(`Erro de CORS na requisição para ${endpoint} (tentativa ${retryCount+1}/${maxRetries+1}):`, error);
+                } else {
+                    console.error(`Erro na requisição para ${endpoint} (tentativa ${retryCount+1}/${maxRetries+1}):`, error);
+                }
+                
+                // Incrementar contador de tentativas
+                retryCount++;
+                
+                // Se ainda não atingiu o máximo de tentativas e é um erro de rede ou timeout,
+                // esperar um pouco antes de tentar novamente
+                if (retryCount <= maxRetries && (isNetworkError || isTimeoutError)) {
+                    const delayMs = Math.min(1000 * Math.pow(2, retryCount - 1), 5000); // Backoff exponencial (max 5s)
+                    console.log(`Aguardando ${delayMs}ms antes da próxima tentativa...`);
+                    await new Promise(resolve => setTimeout(resolve, delayMs));
+                    continue;
+                }
+                
+                // Se chegou aqui, ou atingiu o máximo de tentativas ou não é um erro que justifique retry
+                throw error;
             }
-            
-            // Verificar se a resposta está vazia
-            const text = await response.text();
-            
-            // Se a resposta for vazia, retornar um objeto vazio
-            if (!text) {
-                console.log(`Resposta vazia do servidor para: ${url}`);
-                return {};
-            }
-            
-            try {
-                const data = JSON.parse(text);
-                console.log(`Resposta recebida de ${url}:`, data);
-                return data;
-            } catch (e) {
-                console.warn(`Resposta não é um JSON válido: ${text}`);
-                return text;
-            }
-        } catch (error) {
-            console.error(`Erro na requisição para ${this.state.apiUrl}${endpoint}:`, error);
-            throw error;
         }
+        
+        // Se chegou aqui, é porque todas as tentativas falharam
+        throw lastError;
     },
     
     /**

@@ -14,7 +14,8 @@ const DashboardModule = {
             totalProfessores: 0,
             totalTurmas: 0,
             totalDisciplinas: 0
-        }
+        },
+        isLoading: false
     },
     
     // Elementos DOM
@@ -51,53 +52,84 @@ const DashboardModule = {
     
     // Carregar dados estatísticos da API
     carregarDadosEstatisticos: async function() {
+        console.log("Carregando dados estatísticos do dashboard");
+        
+        // Evitar múltiplas requisições simultâneas
+        if (this.state.isLoading) {
+            console.log("Já existe uma requisição em andamento. Ignorando.");
+            return;
+        }
+        
+        this.state.isLoading = true;
+        
         try {
-            // Fazer requisições paralelas para melhorar performance
-            const [alunos, professores, turmas, disciplinas] = await Promise.all([
-                ConfigModule.fetchApi('/alunos').catch(() => []),
-                ConfigModule.fetchApi('/professores').catch(() => []),
-                ConfigModule.fetchApi('/turmas').catch(() => []),
-                ConfigModule.fetchApi('/disciplinas').catch(() => [])
-            ]);
+            // Fazer requisições individuais com tratamento de erro para cada uma
+            let alunos = [];
+            let professores = [];
+            let turmas = [];
+            let disciplinas = [];
             
-            // Verificar campo 'ativo' para depuração
-            console.log("Dashboard: Verificando campo 'ativo' dos professores:");
-            professores.forEach(prof => {
-                console.log(`Professor ${prof.id_professor || prof.id} (${prof.nome_professor || "Sem nome"}): ativo=${prof.ativo}`);
-            });
+            try {
+                alunos = await ConfigModule.fetchApi('/alunos');
+                console.log("Alunos carregados:", alunos.length);
+            } catch (error) {
+                console.warn("Erro ao carregar alunos:", error);
+            }
             
-            // Filtrar professores apenas pelo campo 'ativo'
-            const professoresAtivos = professores.filter(professor => {
-                // Verificar especificamente se o campo 'ativo' é false
-                if (professor.ativo === false) {
-                    console.log(`Professor ${professor.id_professor || professor.id} excluído por ativo=false`);
-                    return false;
-                }
-                return true;
-            });
+            try {
+                professores = await ConfigModule.fetchApi('/professores');
+                console.log("Professores carregados:", professores.length);
+            } catch (error) {
+                console.warn("Erro ao carregar professores:", error);
+            }
             
-            console.log(`Dashboard: Professores - Total: ${professores.length}, Ativos: ${professoresAtivos.length}`);
+            try {
+                turmas = await ConfigModule.fetchApi('/turmas');
+                console.log("Turmas carregadas:", turmas.length);
+            } catch (error) {
+                console.warn("Erro ao carregar turmas:", error);
+            }
             
-            // Garantir que os valores sejam números válidos
-            const totalAlunos = Array.isArray(alunos) ? alunos.length : 0;
-            const totalProfessores = Array.isArray(professoresAtivos) ? professoresAtivos.length : 0;
-            const totalTurmas = Array.isArray(turmas) ? turmas.length : 0;
-            const totalDisciplinas = Array.isArray(disciplinas) ? disciplinas.length : 0;
+            try {
+                disciplinas = await ConfigModule.fetchApi('/disciplinas');
+                console.log("Disciplinas carregadas:", disciplinas.length);
+            } catch (error) {
+                console.warn("Erro ao carregar disciplinas:", error);
+            }
             
-            // Atualizar estado
-            this.state.dadosEstatisticos = {
-                totalAlunos,
-                totalProfessores,
-                totalTurmas,
-                totalDisciplinas
-            };
-            
-            // Atualizar UI
-            this.atualizarCardsDashboard();
-            
-            console.log("Dashboard: Dados estatísticos atualizados:", this.state.dadosEstatisticos);
+            // Verificar campo 'ativo' para depuração de forma segura
+            if (Array.isArray(professores)) {
+                console.log("Dashboard: Verificando professores ativos/inativos");
+                
+                // Filtrar professores apenas pelo campo 'ativo'
+                const professoresAtivos = professores.filter(professor => professor.ativo !== false);
+                
+                console.log(`Dashboard: Professores - Total: ${professores.length}, Ativos: ${professoresAtivos.length}`);
+                
+                // Garantir que os valores sejam números válidos
+                const totalAlunos = Array.isArray(alunos) ? alunos.length : 0;
+                const totalProfessores = professoresAtivos.length;
+                const totalTurmas = Array.isArray(turmas) ? turmas.length : 0;
+                const totalDisciplinas = Array.isArray(disciplinas) ? disciplinas.length : 0;
+                
+                // Atualizar estado
+                this.state.dadosEstatisticos = {
+                    totalAlunos,
+                    totalProfessores,
+                    totalTurmas,
+                    totalDisciplinas
+                };
+                
+                // Atualizar UI
+                this.atualizarCardsDashboard();
+                
+                console.log("Dashboard: Dados estatísticos atualizados:", this.state.dadosEstatisticos);
+            }
         } catch (error) {
             console.error("Erro ao carregar dados estatísticos:", error);
+        } finally {
+            // Sempre marcar como não carregando ao final
+            this.state.isLoading = false;
         }
     },
     
@@ -125,8 +157,16 @@ const DashboardModule = {
     
     // Método para forçar a atualização dos cards
     atualizarDashboard: function() {
-        console.log("Dashboard: Forçando atualização dos dados");
-        this.carregarDadosEstatisticos();
+        // Evitar múltiplas chamadas muito próximas
+        if (this.updateTimeout) {
+            clearTimeout(this.updateTimeout);
+        }
+        
+        // Agendar atualização com pequeno delay para evitar múltiplas chamadas
+        this.updateTimeout = setTimeout(() => {
+            console.log("Dashboard: Atualizando dados");
+            this.carregarDadosEstatisticos();
+        }, 300);
     },
     
     // Inicializar gráficos

@@ -727,42 +727,13 @@ const ProfessoresModule = {
                 console.log(`Removendo vínculos do professor ${id} na tabela professor_disciplina_turma`);
                 
                 // Tentar remover vínculos com professor_disciplina_turma
-                const resultadoVinculos = await ConfigModule.fetchApi(`/professor_disciplina_turma/professor/${id}`, {
+                await ConfigModule.fetchApi(`/professor_disciplina_turma?id_professor=${id}`, {
                     method: 'DELETE'
-                }).catch(async (error) => {
-                    console.warn("Erro ao excluir vínculos com DELETE direto:", error);
-                    
-                    // Método alternativo: Buscar os vínculos e excluir um por um
-                    try {
-                        // Buscar todos os vínculos do professor
-                        const vinculos = await ConfigModule.fetchApi(`/professor_disciplina_turma?id_professor=${id}`);
-                        console.log(`Encontrados ${vinculos.length} vínculos para o professor ${id}:`, vinculos);
-                        
-                        // Excluir cada vínculo individualmente
-                        for (const vinculo of vinculos) {
-                            const vinculoId = vinculo.id || vinculo.id_vinculo;
-                            if (vinculoId) {
-                                console.log(`Excluindo vínculo ${vinculoId}`);
-                                await ConfigModule.fetchApi(`/professor_disciplina_turma/${vinculoId}`, {
-                                    method: 'DELETE'
-                                }).catch(e => console.warn(`Erro ao excluir vínculo ${vinculoId}:`, e));
-                            }
-                        }
-                        return { success: true, message: `${vinculos.length} vínculos excluídos manualmente` };
-                    } catch (e) {
-                        console.error("Erro ao remover vínculos manualmente:", e);
-                        
-                        // Último recurso: usar rota específica para limpeza de vínculos (se existir)
-                        return await ConfigModule.fetchApi(`/professores/${id}/limpar-vinculos`, {
-                            method: 'POST'
-                        }).catch(e => {
-                            console.error("Todas as tentativas de remover vínculos falharam:", e);
-                            return { success: false, message: "Não foi possível remover os vínculos" };
-                        });
-                    }
+                }).catch(error => {
+                    console.warn("Erro ao excluir vínculos:", error);
+                    // Continue mesmo com erro - os vínculos podem não existir
                 });
                 
-                console.log("Resultado da remoção de vínculos:", resultadoVinculos);
             } catch (errorVinculos) {
                 console.error("Erro ao tentar remover vínculos:", errorVinculos);
                 // Continuar mesmo com erro nos vínculos
@@ -772,32 +743,13 @@ const ProfessoresModule = {
             try {
                 console.log(`Desativando professor ${id} (campo ativo = false)`);
                 
-                // Usar método PUT diretamente com payload mínimo focado no campo 'ativo'
-                const resultadoDesativacao = await ConfigModule.fetchApi(`/professores/${id}`, {
+                // Usar método PUT com payload mínimo para campo 'ativo'
+                await ConfigModule.fetchApi(`/professores/${id}`, {
                     method: 'PUT',
                     body: JSON.stringify({
                         ativo: false
                     })
                 });
-                
-                console.log("Resultado da desativação:", resultadoDesativacao);
-                
-                // Verificar se a atualização foi bem-sucedida
-                const professorAtualizado = await ConfigModule.fetchApi(`/professores/${id}`);
-                if (professorAtualizado && professorAtualizado.ativo === false) {
-                    console.log("Confirmado: Professor foi marcado como inativo com sucesso");
-                    this.mostrarSucesso("Professor e seus vínculos foram removidos com sucesso!");
-                } else {
-                    console.warn("ALERTA: O campo 'ativo' não foi alterado corretamente:", professorAtualizado);
-                    
-                    // Tentar novamente com uma abordagem diferente
-                    console.log("Tentando método alternativo para desativar o professor");
-                    await ConfigModule.fetchApi(`/professores/${id}/desativar`, {
-                        method: 'POST'
-                    }).catch(e => console.warn("Erro no método alternativo:", e));
-                    
-                    this.mostrarSucesso("Professor removido, mas pode haver inconsistências. Verifique o banco de dados.");
-                }
                 
                 // Atualizar a UI removendo o professor da lista
                 this.state.professores = this.state.professores.filter(
@@ -805,16 +757,10 @@ const ProfessoresModule = {
                 );
                 
                 this.renderizarProfessores();
+                this.mostrarSucesso("Professor removido com sucesso!");
                 
-                // Forçar a atualização do dashboard e da lista de professores
-                await this.carregarProfessores();
+                // Atualizar dashboard apenas uma vez
                 this.atualizarDashboard();
-                
-                // Recarregar a página após um pequeno delay para garantir atualização completa
-                setTimeout(() => {
-                    console.log("Recarregando a página para garantir atualização completa");
-                    window.location.reload();
-                }, 2000);
                 
                 return;
             } catch (errorDesativacao) {
@@ -831,15 +777,7 @@ const ProfessoresModule = {
     atualizarDashboard: function() {
         console.log("Atualizando dashboard após modificação de professores");
         if (typeof DashboardModule !== 'undefined' && DashboardModule.atualizarDashboard) {
-            // Atualizar imediatamente
             DashboardModule.atualizarDashboard();
-            
-            // E garantir outra atualização após um pequeno delay
-            // para dar tempo ao backend de processar qualquer mudança pendente
-            setTimeout(() => {
-                console.log("Atualizando dashboard novamente após delay");
-                DashboardModule.atualizarDashboard();
-            }, 2000);
         } else {
             console.warn("Módulo de dashboard não encontrado para atualização");
             
@@ -847,7 +785,6 @@ const ProfessoresModule = {
             const totalProfessoresElement = document.getElementById('total-professores');
             if (totalProfessoresElement) {
                 totalProfessoresElement.textContent = this.state.professores.length;
-                console.log(`Atualizando contador de professores diretamente para: ${this.state.professores.length}`);
             }
         }
     },
