@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, ForeignKey
+from sqlalchemy import Column, String, Integer, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
 
 from app.db.session import Base
@@ -14,6 +14,9 @@ class Professor(Base):
     id_professor = Column(String(10), unique=True, index=True, nullable=False)
     nome_professor = Column(String(100), nullable=False)
     email_professor = Column(String(100), nullable=True)
+    senha_professor = Column(String(255), nullable=True)
+    especialidade = Column(String(100), nullable=True)
+    ativo = Column(Boolean, default=True, nullable=False)
     
     # Relacionamentos
     disciplinas_turmas = relationship("ProfessorDisciplinaTurma", back_populates="professor")

@@ -739,7 +739,7 @@ const ProfessoresModule = {
     // Excluir professor
     excluirProfessor: async function(id) {
         try {
-            if (!confirm('Tem certeza que deseja excluir este professor? Esta ação não pode ser desfeita.')) {
+            if (!confirm('Tem certeza que deseja excluir este professor? Esta ação irá desativá-lo no sistema.')) {
                 return;
             }
             
@@ -767,47 +767,21 @@ const ProfessoresModule = {
                 
                 console.log("Vínculos excluídos com sucesso");
             } catch (error) {
-                console.warn("Erro ao excluir vínculos, continuando com a exclusão do professor:", error);
+                console.warn("Erro ao excluir vínculos, continuando com a desativação do professor:", error);
             }
             
-            // Agora marcar o professor como inativo usando PUT
+            // Agora desativar o professor usando o endpoint específico
             try {
-                // 1. Obter dados atuais do professor
-                const professor = await ConfigModule.fetchApi(`/professores/${id}`);
-                console.log("Dados do professor para atualização:", professor);
+                console.log(`Desativando professor ${id}...`);
                 
-                if (!professor || (!professor.id_professor && !professor.id)) {
-                    throw new Error("Professor não encontrado ou resposta inválida da API");
-                }
-                
-                // 2. Modificar apenas o campo 'ativo' e deixar o resto intacto
-                const dadosAtualizacao = {
-                    ...professor,  // manter todos os dados existentes
-                    ativo: false   // forçar o campo ativo para false
-                };
-                
-                console.log("Dados completos para atualização:", dadosAtualizacao);
-                
-                // 3. Enviar PUT para atualizar o professor
-                const resultadoAtualizacao = await ConfigModule.fetchApi(`/professores/${id}`, {
-                    method: 'PUT',
-                    body: JSON.stringify(dadosAtualizacao)
+                const resultado = await ConfigModule.fetchApi(`/professores/${id}/desativar`, {
+                    method: 'DELETE'
                 });
                 
-                console.log("Resultado da atualização:", resultadoAtualizacao);
+                console.log("Professor desativado com sucesso:", resultado);
+                this.mostrarSucesso("Professor removido com sucesso!");
                 
-                // 4. Verificar se o campo ativo foi alterado
-                const professorAposAtualizacao = await ConfigModule.fetchApi(`/professores/${id}`);
-                
-                if (professorAposAtualizacao.ativo === false) {
-                    console.log("SUCESSO: Professor marcado como inativo!");
-                    this.mostrarSucesso("Professor removido com sucesso!");
-                } else {
-                    console.warn("ALERTA: O campo ativo não foi alterado para false:", professorAposAtualizacao);
-                    this.mostrarSucesso("Professor removido com sucesso!");
-                }
-                
-                // 5. Remover da interface e recarregar dados
+                // Remover da interface e recarregar dados
                 this.state.professores = this.state.professores.filter(
                     p => (p.id_professor || p.id) !== id
                 );
@@ -818,7 +792,31 @@ const ProfessoresModule = {
                 return;
             } catch (error) {
                 console.error("Erro ao desativar professor:", error);
-                this.mostrarErro(`Erro ao desativar professor: ${error.message}`);
+                
+                // Se o endpoint específico falhar, tentar com o endpoint de ativo
+                try {
+                    console.log("Tentando desativar com endpoint alternativo...");
+                    
+                    const resultado = await ConfigModule.fetchApi(`/professores/${id}/ativo?ativo=false`, {
+                        method: 'PUT'
+                    });
+                    
+                    console.log("Professor desativado com endpoint alternativo:", resultado);
+                    this.mostrarSucesso("Professor removido com sucesso!");
+                    
+                    // Remover da interface e recarregar dados
+                    this.state.professores = this.state.professores.filter(
+                        p => (p.id_professor || p.id) !== id
+                    );
+                    
+                    this.renderizarProfessores();
+                    this.atualizarDashboard();
+                    
+                    return;
+                } catch (errorAlt) {
+                    console.error("Erro também no endpoint alternativo:", errorAlt);
+                    this.mostrarErro(`Erro ao desativar professor: ${errorAlt.message || 'Erro desconhecido'}`);
+                }
             }
         } catch (error) {
             console.error("Erro geral ao excluir professor:", error);

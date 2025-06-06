@@ -259,4 +259,100 @@ def read_professor_by_id_professor(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Erro ao consultar professor: {str(e)}"
+        )
+
+
+@router.put("/{professor_id}/ativo", response_model=ProfessorResponse)
+def toggle_professor_ativo(
+    *,
+    professor_id: str = Path(..., description="ID interno do professor (numérico ou alfanumérico)"),
+    ativo: bool = True,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_admin)
+) -> Any:
+    """
+    Ativa ou desativa um professor.
+    """
+    try:
+        professor = None
+        # Verifica se o ID é numérico para buscar pelo id do banco
+        if professor_id.isdigit():
+            professor = db.query(Professor).filter(Professor.id == int(professor_id)).first()
+        
+        # Se não encontrou por id ou se não é numérico, tenta buscar por id_professor
+        if not professor:
+            professor = db.query(Professor).filter(Professor.id_professor == professor_id).first()
+            
+        if not professor:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Professor não encontrado"
+            )
+        
+        # Atualizar apenas o campo ativo
+        professor.ativo = ativo
+        
+        db.add(professor)
+        db.commit()
+        db.refresh(professor)
+        
+        status_text = "ativado" if ativo else "desativado"
+        print(f"Professor {professor.id_professor} {status_text} com sucesso")
+        
+        return professor
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        print(f"Erro ao alterar status do professor: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao alterar status do professor: {str(e)}"
+        )
+
+
+@router.delete("/{professor_id}/desativar", response_model=ProfessorResponse)
+def desativar_professor(
+    *,
+    professor_id: str = Path(..., description="ID interno do professor (numérico ou alfanumérico)"),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_admin)
+) -> Any:
+    """
+    Desativa um professor (exclusão lógica).
+    """
+    try:
+        professor = None
+        # Verifica se o ID é numérico para buscar pelo id do banco
+        if professor_id.isdigit():
+            professor = db.query(Professor).filter(Professor.id == int(professor_id)).first()
+        
+        # Se não encontrou por id ou se não é numérico, tenta buscar por id_professor
+        if not professor:
+            professor = db.query(Professor).filter(Professor.id_professor == professor_id).first()
+            
+        if not professor:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Professor não encontrado"
+            )
+        
+        # Desativar o professor (exclusão lógica)
+        professor.ativo = False
+        
+        db.add(professor)
+        db.commit()
+        db.refresh(professor)
+        
+        print(f"Professor {professor.id_professor} desativado com sucesso")
+        
+        return professor
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        print(f"Erro ao desativar professor: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao desativar professor: {str(e)}"
         ) 

@@ -110,6 +110,7 @@ const DashboardModule = {
                 // Filtrar professores usando múltiplos critérios
                 const professoresAtivos = professores.filter(professor => {
                     // Verificação explícita para o campo 'ativo'
+                    // Se o campo ativo for explicitamente false, excluir
                     if (professor.ativo === false) {
                         console.log(`Professor ${professor.id_professor || professor.id} excluído por ativo=false`);
                         return false;
@@ -122,7 +123,7 @@ const DashboardModule = {
                         return false;
                     }
                     
-                    // Professor está ativo
+                    // Professor está ativo (ativo=true, ativo=undefined, ou ativo=null são considerados ativos)
                     return true;
                 });
                 

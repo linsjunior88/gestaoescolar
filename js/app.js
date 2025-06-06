@@ -108,17 +108,39 @@ const App = {
     configurarAtualizacoesDashboard: function() {
         console.log("Configurando atualizações automáticas do dashboard");
         
-        // Forçar atualização do dashboard a cada minuto
-        setInterval(() => {
-            console.log("Atualizando dashboard automaticamente");
-            if (DashboardModule.atualizarDashboard) {
-                DashboardModule.atualizarDashboard();
-            }
-        }, 60000); // 1 minuto
+        // Rastrear última atividade do usuário
+        let ultimaAtividade = Date.now();
         
-        // Forçar atualização ao mudar de aba no navegador
+        // Atualizar timestamp de atividade em eventos do usuário
+        const atualizarAtividade = () => {
+            ultimaAtividade = Date.now();
+        };
+        
+        // Adicionar listeners para detectar atividade do usuário
+        document.addEventListener('click', atualizarAtividade);
+        document.addEventListener('keydown', atualizarAtividade);
+        document.addEventListener('scroll', atualizarAtividade);
+        
+        // Atualização automática mais inteligente - apenas se o usuário estiver inativo
+        setInterval(() => {
+            const tempoInativo = Date.now() - ultimaAtividade;
+            const inativoPorMais5Min = tempoInativo > 5 * 60 * 1000; // 5 minutos
+            const estaNoDashboard = this.state.currentSection === 'dashboard';
+            
+            // Só atualizar automaticamente se:
+            // 1. Usuário está inativo há mais de 5 minutos OU
+            // 2. Está no dashboard e inativo há mais de 1 minuto
+            if (inativoPorMais5Min || (estaNoDashboard && tempoInativo > 60 * 1000)) {
+                console.log("Atualizando dashboard automaticamente (usuário inativo)");
+                if (DashboardModule.atualizarDashboard) {
+                    DashboardModule.atualizarDashboard();
+                }
+            }
+        }, 2 * 60 * 1000); // Verificar a cada 2 minutos (menos frequente)
+        
+        // Forçar atualização ao mudar de aba no navegador (apenas se estiver no dashboard)
         document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible' && DashboardModule.atualizarDashboard) {
+            if (document.visibilityState === 'visible' && this.state.currentSection === 'dashboard' && DashboardModule.atualizarDashboard) {
                 console.log("Página visível novamente, atualizando dashboard");
                 DashboardModule.atualizarDashboard();
             }
@@ -168,6 +190,17 @@ const App = {
     // Ativar seção selecionada
     ativarSecao: function(linkId) {
         console.log("Ativando seção para o link:", linkId);
+        
+        // Atualizar seção atual
+        const moduleMap = {
+            'dashboard-link': 'dashboard',
+            'turmas-link': 'turmas',
+            'disciplinas-link': 'disciplinas',
+            'professores-link': 'professores',
+            'alunos-link': 'alunos',
+            'notas-link': 'notas'
+        };
+        this.state.currentSection = moduleMap[linkId] || 'dashboard';
         
         // Desativar todos os links e conteúdos
         for (const key in this.links) {
