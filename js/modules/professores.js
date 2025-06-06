@@ -409,23 +409,37 @@ const ProfessoresModule = {
             // Debug: Verificar todos os professores e seus status
             console.log("Todos os professores recebidos da API:", professores);
             
+            // Verificar especificamente o campo 'ativo' em cada professor
+            professores.forEach(professor => {
+                console.log(`Professor ${professor.id_professor || professor.id} (${professor.nome_professor || professor.nome}) - Campo ativo:`, 
+                           professor.ativo === false ? 'INATIVO (false)' : (professor.ativo === true ? 'ATIVO (true)' : 'Indefinido'));
+            });
+            
             // Filtrar professores marcados como inativos/excluídos com verificação mais rigorosa
+            // IMPORTANTE: Dar prioridade ao campo 'ativo' na filtragem
             const professoresAtivos = professores.filter(professor => {
-                // Verificar se o professor não está marcado como inativo ou excluído
-                const isInativo = 
-                    professor.ativo === false || 
-                    professor.status === 'inativo' || 
-                    professor._deleted === true;
-                
-                if (isInativo) {
-                    console.log(`Professor ${professor.id_professor || professor.id} está inativo/excluído:`, professor);
+                // VERIFICAÇÃO PRINCIPAL: Verificar se o campo ativo é explicitamente false
+                if (professor.ativo === false) {
+                    console.log(`Professor ${professor.nome_professor || professor.id_professor || professor.id} EXCLUÍDO por ter campo ativo=false`);
+                    return false;
                 }
                 
-                return !isInativo;
+                // Verificações secundárias
+                const isInativo = 
+                    professor.status === 'inativo' || 
+                    professor._deleted === true ||
+                    (professor.nome_professor && professor.nome_professor.includes('[INATIVO]'));
+                
+                if (isInativo) {
+                    console.log(`Professor ${professor.nome_professor || professor.id_professor || professor.id} EXCLUÍDO por outras flags de inatividade`);
+                    return false;
+                }
+                
+                return true;
             });
             
             // Mostrar a diferença
-            console.log(`Total: ${professores.length}, Ativos: ${professoresAtivos.length}, Filtrados: ${professores.length - professoresAtivos.length}`);
+            console.log(`Total: ${professores.length}, Ativos: ${professoresAtivos.length}, Inativos: ${professores.length - professoresAtivos.length}`);
             
             this.state.professores = professoresAtivos;
             this.renderizarProfessores();
@@ -742,8 +756,21 @@ const ProfessoresModule = {
             
             // 2. Tentar a exclusão por PUT - Marcar explicitamente como inativo
             try {
-                // Preparar payload otimizado para garantir a inativação
-                const payload = professor ? {
+                // IMPORTANTE: Criar payload mínimo para alterar especificamente o campo 'ativo'
+                const payloadMinimo = {
+                    ativo: false
+                };
+                
+                // Primeiro tentar apenas alterar o campo 'ativo' para false
+                console.log("Tentando alterar especificamente o campo 'ativo' para false");
+                await ConfigModule.fetchApi(`/professores/${id}`, {
+                    method: 'PUT',
+                    body: JSON.stringify(payloadMinimo)
+                });
+                
+                // Depois, realizar a atualização completa para alterar o nome e outros campos
+                // Preparar payload completo
+                const payloadCompleto = professor ? {
                     ...professor,
                     ativo: false,
                     status: "inativo",
@@ -756,14 +783,24 @@ const ProfessoresModule = {
                     nome_professor: `[INATIVO] Professor ${id}`
                 };
                 
-                console.log("Enviando requisição PUT para inativar professor:", payload);
+                console.log("Enviando requisição PUT completa para inativar professor:", payloadCompleto);
                 
                 const resultado = await ConfigModule.fetchApi(`/professores/${id}`, {
                     method: 'PUT',
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify(payloadCompleto)
                 });
                 
                 console.log("Resultado da inativação via PUT:", resultado);
+                
+                // Verificar se o professor foi realmente inativado
+                const professorAtualizado = await ConfigModule.fetchApi(`/professores/${id}`);
+                console.log("Professor após inativação:", professorAtualizado);
+                
+                if (professorAtualizado && professorAtualizado.ativo === false) {
+                    console.log("Confirmado: Campo 'ativo' alterado para false com sucesso");
+                } else {
+                    console.warn("ATENÇÃO: Campo 'ativo' pode não ter sido alterado!");
+                }
                 
                 // Independentemente do resultado, vamos atualizar a UI
                 this.state.professores = this.state.professores.filter(
@@ -771,28 +808,62 @@ const ProfessoresModule = {
                 );
                 
                 this.renderizarProfessores();
-                this.mostrarSucesso("Professor removido com sucesso!");
+                this.mostrarSucesso("Professor removido com sucesso! A página será recarregada em 2 segundos para atualizar as contagens.");
                 
                 // Forçar a atualização do dashboard e da lista de professores
                 this.carregarProfessores().then(() => {
                     this.atualizarDashboard();
                     console.log("Dashboard e lista de professores atualizados após exclusão");
+                    
+                    // Recarregar a página após um pequeno delay para garantir atualização completa
+                    setTimeout(() => {
+                        console.log("Recarregando a página para garantir atualização completa");
+                        window.location.reload();
+                    }, 2000);
                 });
                 
                 return;
             } catch (error) {
                 console.error("Erro ao inativar professor:", error);
                 
-                // Mesmo com falha, atualizamos a UI
-                this.state.professores = this.state.professores.filter(
-                    p => (p.id_professor || p.id) !== id
-                );
-                
-                this.renderizarProfessores();
-                this.mostrarSucesso("Professor removido da interface. O banco de dados pode levar algum tempo para atualizar.");
-                
-                // Forçar a atualização do dashboard
-                this.atualizarDashboard();
+                // Tentar método alternativo - PUT com apenas {ativo: false}
+                try {
+                    console.log("Tentando método alternativo - apenas alterar o campo 'ativo'");
+                    await ConfigModule.fetchApi(`/professores/${id}`, {
+                        method: 'PUT',
+                        body: JSON.stringify({ ativo: false })
+                    });
+                    
+                    // Mesmo com falha parcial, atualizamos a UI
+                    this.state.professores = this.state.professores.filter(
+                        p => (p.id_professor || p.id) !== id
+                    );
+                    
+                    this.renderizarProfessores();
+                    this.mostrarSucesso("Professor removido com sucesso! A página será recarregada em 2 segundos para atualizar as contagens.");
+                    
+                    // Forçar a atualização do dashboard
+                    this.atualizarDashboard();
+                    
+                    // Recarregar a página após um pequeno delay
+                    setTimeout(() => {
+                        console.log("Recarregando a página para garantir atualização completa");
+                        window.location.reload();
+                    }, 2000);
+                } catch (error2) {
+                    console.error("Erro também na segunda tentativa:", error2);
+                    
+                    // Mesmo com falha, atualizamos a UI
+                    this.state.professores = this.state.professores.filter(
+                        p => (p.id_professor || p.id) !== id
+                    );
+                    
+                    this.renderizarProfessores();
+                    this.mostrarSucesso("Professor removido da interface. O banco de dados pode levar algum tempo para atualizar.");
+                    
+                    // Forçar a atualização do dashboard
+                    this.atualizarDashboard();
+                }
             }
         } catch (error) {
             console.error("Erro geral ao excluir professor:", error);
@@ -804,7 +875,15 @@ const ProfessoresModule = {
     atualizarDashboard: function() {
         console.log("Atualizando dashboard após modificação de professores");
         if (typeof DashboardModule !== 'undefined' && DashboardModule.atualizarDashboard) {
+            // Atualizar imediatamente
             DashboardModule.atualizarDashboard();
+            
+            // E garantir outra atualização após um pequeno delay
+            // para dar tempo ao backend de processar qualquer mudança pendente
+            setTimeout(() => {
+                console.log("Atualizando dashboard novamente após delay");
+                DashboardModule.atualizarDashboard();
+            }, 2000);
         } else {
             console.warn("Módulo de dashboard não encontrado para atualização");
             
