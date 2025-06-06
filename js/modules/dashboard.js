@@ -60,10 +60,20 @@ const DashboardModule = {
                 ConfigModule.fetchApi('/disciplinas').catch(() => [])
             ]);
             
+            // Filtrar professores inativos
+            const professoresAtivos = professores.filter(professor => {
+                // Verificar se o professor NÃO está marcado como inativo ou excluído
+                return !(professor.ativo === false || 
+                       professor.status === 'inativo' || 
+                       professor._deleted === true);
+            });
+            
+            console.log(`Total de professores: ${professores.length}, Professores ativos: ${professoresAtivos.length}`);
+            
             // Atualizar estado
             this.state.dadosEstatisticos = {
                 totalAlunos: alunos.length,
-                totalProfessores: professores.length,
+                totalProfessores: professoresAtivos.length, // Usar apenas professores ativos
                 totalTurmas: turmas.length,
                 totalDisciplinas: disciplinas.length
             };
