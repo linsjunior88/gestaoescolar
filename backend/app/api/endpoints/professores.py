@@ -23,10 +23,12 @@ def read_professores(
     id_professor: Optional[str] = Query(None, description="Filtrar por ID do professor"),
     nome: Optional[str] = Query(None, description="Filtrar por nome do professor"),
     email: Optional[str] = Query(None, description="Filtrar por email do professor"),
-    ativo: Optional[bool] = Query(None, description="Filtrar por status ativo")
+    ativo: Optional[bool] = Query(True, description="Filtrar por status ativo (padrão: apenas ativos)"),
+    incluir_inativos: bool = Query(False, description="Incluir professores inativos na resposta")
 ) -> Any:
     """
     Recupera todos os professores.
+    Por padrão, retorna apenas professores ativos.
     """
     try:
         query = db.query(Professor)
@@ -38,13 +40,28 @@ def read_professores(
             query = query.filter(Professor.nome_professor.ilike(f"%{nome}%"))
         if email:
             query = query.filter(Professor.email_professor == email)
-        if ativo is not None:
-            query = query.filter(Professor.ativo == ativo)
         
-        return query.offset(skip).limit(limit).all()
+        # Filtro de status ativo
+        if not incluir_inativos:
+            if ativo is not None:
+                query = query.filter(Professor.ativo == ativo)
+            else:
+                # Por padrão, mostrar apenas ativos
+                query = query.filter(Professor.ativo == True)
+        
+        professores = query.offset(skip).limit(limit).all()
+        
+        # Garantir que o campo ativo está presente em todos os registros
+        for professor in professores:
+            if not hasattr(professor, 'ativo') or professor.ativo is None:
+                professor.ativo = True  # Padrão para registros antigos
+        
+        return professores
     except Exception as e:
-        # Retorna um array vazio em caso de erro
+        # Log do erro para debug
         print(f"Erro ao consultar professores: {e}")
+        import traceback
+        traceback.print_exc()
         return []
 
 
@@ -115,7 +132,7 @@ def create_professor(
             email_professor=professor_in.email_professor,
             senha_professor=professor_in.senha_professor,
             especialidade=professor_in.especialidade,
-            ativo=True
+            ativo=professor_in.ativo if professor_in.ativo is not None else True
         )
         db.add(professor)
         db.commit()
@@ -355,4 +372,34 @@ def desativar_professor(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Erro ao desativar professor: {str(e)}"
-        ) 
+        )
+
+
+@router.get("/debug", response_model=List[dict])
+def debug_professores(
+    db: Session = Depends(get_db),
+) -> Any:
+    """
+    Endpoint de debug para verificar o campo ativo dos professores.
+    """
+    try:
+        professores = db.query(Professor).all()
+        
+        # Retornar informações detalhadas de debug
+        debug_info = []
+        for prof in professores:
+            debug_info.append({
+                "id": prof.id,
+                "id_professor": prof.id_professor,
+                "nome_professor": prof.nome_professor,
+                "ativo": getattr(prof, 'ativo', 'CAMPO_NAO_EXISTE'),
+                "campos_disponiveis": [attr for attr in dir(prof) if not attr.startswith('_')],
+                "repr": str(prof)
+            })
+        
+        return debug_info
+    except Exception as e:
+        print(f"Erro no debug: {e}")
+        import traceback
+        traceback.print_exc()
+        return [{"erro": str(e)}] 

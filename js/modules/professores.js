@@ -430,14 +430,7 @@ const ProfessoresModule = {
                     return false;
                 }
                 
-                // Verificação adicional para nome com [INATIVO]
-                const nome = professor.nome_professor || professor.nome || '';
-                if (nome.includes('[INATIVO]')) {
-                    console.log(`Professor ${professor.id_professor || professor.id} excluído por ter [INATIVO] no nome`);
-                    return false;
-                }
-                
-                // Professor está ativo
+                // Professor está ativo (ativo=true, ativo=undefined, ou ativo=null são considerados ativos)
                 return true;
             });
             
@@ -770,12 +763,29 @@ const ProfessoresModule = {
                 console.warn("Erro ao excluir vínculos, continuando com a desativação do professor:", error);
             }
             
-            // Agora desativar o professor usando o endpoint específico
+            // Exclusão lógica: marcar professor como inativo
             try {
                 console.log(`Desativando professor ${id}...`);
                 
-                const resultado = await ConfigModule.fetchApi(`/professores/${id}/desativar`, {
-                    method: 'DELETE'
+                // Obter dados atuais do professor
+                const professor = await ConfigModule.fetchApi(`/professores/${id}`);
+                console.log("Dados atuais do professor:", professor);
+                
+                if (!professor || (!professor.id_professor && !professor.id)) {
+                    throw new Error("Professor não encontrado ou resposta inválida da API");
+                }
+                
+                // Marcar como inativo usando apenas o campo ativo
+                const dadosAtualizacao = {
+                    ...professor,
+                    ativo: false
+                };
+                
+                console.log("Desativando professor com dados:", dadosAtualizacao);
+                
+                const resultado = await ConfigModule.fetchApi(`/professores/${id}`, {
+                    method: 'PUT',
+                    body: JSON.stringify(dadosAtualizacao)
                 });
                 
                 console.log("Professor desativado com sucesso:", resultado);
@@ -789,34 +799,9 @@ const ProfessoresModule = {
                 this.renderizarProfessores();
                 this.atualizarDashboard();
                 
-                return;
             } catch (error) {
                 console.error("Erro ao desativar professor:", error);
-                
-                // Se o endpoint específico falhar, tentar com o endpoint de ativo
-                try {
-                    console.log("Tentando desativar com endpoint alternativo...");
-                    
-                    const resultado = await ConfigModule.fetchApi(`/professores/${id}/ativo?ativo=false`, {
-                        method: 'PUT'
-                    });
-                    
-                    console.log("Professor desativado com endpoint alternativo:", resultado);
-                    this.mostrarSucesso("Professor removido com sucesso!");
-                    
-                    // Remover da interface e recarregar dados
-                    this.state.professores = this.state.professores.filter(
-                        p => (p.id_professor || p.id) !== id
-                    );
-                    
-                    this.renderizarProfessores();
-                    this.atualizarDashboard();
-                    
-                    return;
-                } catch (errorAlt) {
-                    console.error("Erro também no endpoint alternativo:", errorAlt);
-                    this.mostrarErro(`Erro ao desativar professor: ${errorAlt.message || 'Erro desconhecido'}`);
-                }
+                this.mostrarErro(`Erro ao desativar professor: ${error.message || 'Erro desconhecido'}`);
             }
         } catch (error) {
             console.error("Erro geral ao excluir professor:", error);
