@@ -12,7 +12,6 @@ import DisciplinasModule from './modules/disciplinas.js';
 import ProfessoresModule from './modules/professores.js';
 import AlunosModule from './modules/alunos.js';
 import NotasModule from './modules/notas.js';
-import GeradorPDFModule from './modules/gerador-pdf.js';
 
 // Objeto principal da aplicação
 const App = {
@@ -24,8 +23,7 @@ const App = {
         disciplinas: DisciplinasModule,
         professores: ProfessoresModule,
         alunos: AlunosModule,
-        notas: NotasModule,
-        geradorPDF: GeradorPDFModule
+        notas: NotasModule
     },
     
     // Links do menu
@@ -59,10 +57,49 @@ const App = {
             // Configurar atualizações automáticas do dashboard
             this.configurarAtualizacoesDashboard();
             
+            // Carregar o pdf-loader para contornar problemas de MIME
+            this.carregarPDFLoader();
+            
             console.log("Aplicação inicializada com sucesso!");
         } catch (error) {
             console.error("Erro ao inicializar aplicação:", error);
             this.mostrarErroInicializacao(error);
+        }
+    },
+    
+    // Carregar o loader do PDF
+    carregarPDFLoader: function() {
+        try {
+            // Criar elemento script
+            const script = document.createElement('script');
+            script.src = './js/pdf-loader.js';
+            script.type = 'text/javascript';
+            
+            // Adicionar manipuladores de eventos
+            script.onload = () => {
+                console.log("PDF Loader carregado com sucesso!");
+                // Após carregar o loader, carregar o gerador de PDF
+                if (window.carregarGeradorPDF) {
+                    setTimeout(() => {
+                        window.carregarGeradorPDF().then(sucesso => {
+                            if (sucesso) {
+                                console.log("Gerador de PDF inicializado com sucesso via loader!");
+                            } else {
+                                console.error("Falha ao inicializar gerador de PDF via loader");
+                            }
+                        });
+                    }, 1000);
+                }
+            };
+            
+            script.onerror = (error) => {
+                console.error("Erro ao carregar PDF Loader:", error);
+            };
+            
+            // Adicionar ao documento
+            document.body.appendChild(script);
+        } catch (error) {
+            console.error("Erro ao tentar carregar o PDF Loader:", error);
         }
     },
     

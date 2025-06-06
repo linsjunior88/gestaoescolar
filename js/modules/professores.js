@@ -37,18 +37,32 @@ const ProfessoresModule = {
     },
     
     // Inicializar módulo
-    init: function() {
+    init: async function() {
         console.log("Inicializando módulo de professores");
-        this.cachearElementos();
-        this.adicionarEventListeners();
-        this.carregarProfessores();
         
-        // Garantir que o dashboard seja atualizado após a inicialização
-        setTimeout(() => {
-            this.atualizarDashboard();
-        }, 1000);
-        
-        return this;
+        try {
+            // Inicializar elementos
+            this.cachearElementos();
+            
+            // Configurar eventos
+            this.adicionarEventListeners();
+            
+            // Carregar dados necessários
+            await this.carregarDisciplinas();
+            await this.carregarTurmas();
+            await this.carregarDisciplinasTurmas();
+            await this.carregarProfessores();
+            
+            // Garantir que o dashboard seja atualizado após a inicialização
+            setTimeout(() => {
+                this.atualizarDashboard();
+            }, 1000);
+            
+            console.log("Módulo de professores inicializado com sucesso");
+            return this;
+        } catch (error) {
+            console.error("Erro ao inicializar módulo de professores:", error);
+        }
     },
     
     // Cachear elementos DOM para melhor performance

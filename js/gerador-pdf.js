@@ -1190,8 +1190,24 @@ async function gerarPDFNotas() {
     }
 }
 
-// Registrar a função globalmente
-window.gerarPDFNotas = gerarPDFNotas;
+// Carregar estudantes carregados globalmente
+let estudantesCarregados = [];
 
-// Log para indicar que o script foi carregado
+// Função para definir estudantes carregados para uso posterior
+function definirEstudantesCarregados(estudantes) {
+    console.log('Definindo estudantes carregados para uso no PDF:', estudantes);
+    estudantesCarregados = estudantes;
+}
+
+// Função para obter estudantes carregados
+function obterEstudantesCarregados() {
+    return estudantesCarregados;
+}
+
+// Exportar as funções para o escopo global
+window.gerarPDFNotas = gerarPDFNotas;
+window.definirEstudantesCarregados = definirEstudantesCarregados;
+window.obterEstudantesCarregados = obterEstudantesCarregados;
+
+// Notificar que o módulo foi carregado
 console.log('Módulo gerador-pdf.js carregado com sucesso');
