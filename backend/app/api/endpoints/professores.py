@@ -131,7 +131,7 @@ def create_professor(
             nome_professor=professor_in.nome_professor,
             email_professor=professor_in.email_professor,
             senha_professor=professor_in.senha_professor,
-            especialidade=professor_in.especialidade,
+            telefone_professor=professor_in.telefone_professor,
             ativo=professor_in.ativo if professor_in.ativo is not None else True
         )
         db.add(professor)
@@ -193,7 +193,7 @@ def update_professor(
                 )
         
         # Atualizar os campos
-        for field in ["id_professor", "nome_professor", "email_professor", "senha_professor", "especialidade", "ativo"]:
+        for field in ["id_professor", "nome_professor", "email_professor", "senha_professor", "telefone_professor", "ativo"]:
             value = getattr(professor_in, field, None)
             if value is not None:
                 setattr(professor, field, value)

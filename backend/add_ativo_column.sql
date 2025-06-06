@@ -10,10 +10,6 @@ ALTER TABLE professor ADD COLUMN ativo BOOLEAN DEFAULT TRUE;
 -- Atualizar todos os registros existentes para ativo = TRUE
 UPDATE professor SET ativo = TRUE WHERE ativo IS NULL;
 
--- Adicionar outras colunas caso não existam
-ALTER TABLE professor ADD COLUMN senha_professor TEXT;
-ALTER TABLE professor ADD COLUMN especialidade TEXT;
-
 -- Verificar estrutura final
 -- Para SQLite:
 PRAGMA table_info(professor);
@@ -24,4 +20,4 @@ PRAGMA table_info(professor);
 -- WHERE table_name = 'professor';
 
 -- Mostrar alguns registros para verificar
-SELECT id_professor, nome_professor, ativo FROM professor LIMIT 5; 
+SELECT id_professor, nome_professor, telefone_professor, ativo FROM professor LIMIT 5; 

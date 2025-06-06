@@ -7,7 +7,7 @@ class ProfessorBase(BaseModel):
     id_professor: str
     nome_professor: str
     email_professor: Optional[str] = None
-    especialidade: Optional[str] = None
+    telefone_professor: Optional[str] = None
 
 
 class ProfessorCreate(ProfessorBase):
@@ -22,7 +22,7 @@ class ProfessorUpdate(BaseModel):
     nome_professor: Optional[str] = None
     email_professor: Optional[str] = None
     senha_professor: Optional[str] = None
-    especialidade: Optional[str] = None
+    telefone_professor: Optional[str] = None
     ativo: Optional[bool] = None
 
 

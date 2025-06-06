@@ -15,7 +15,7 @@ class Professor(Base):
     nome_professor = Column(String(100), nullable=False)
     email_professor = Column(String(100), nullable=True)
     senha_professor = Column(String(255), nullable=True)
-    especialidade = Column(String(100), nullable=True)
+    telefone_professor = Column(String(20), nullable=True)
     ativo = Column(Boolean, default=True, nullable=False)
     
     # Relacionamentos

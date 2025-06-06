@@ -777,7 +777,11 @@ const ProfessoresModule = {
                 
                 // Marcar como inativo usando apenas o campo ativo
                 const dadosAtualizacao = {
-                    ...professor,
+                    id_professor: professor.id_professor,
+                    nome_professor: professor.nome_professor,
+                    email_professor: professor.email_professor,
+                    senha_professor: professor.senha_professor,
+                    telefone_professor: professor.telefone_professor || null,
                     ativo: false
                 };
                 
@@ -1197,6 +1201,27 @@ const ProfessoresModule = {
         } catch (error) {
             console.error("Erro ao carregar turmas:", error);
             this.mostrarErro("Não foi possível carregar as turmas.");
+        }
+    },
+
+    // Função de teste para debug (temporária)
+    testarEndpointDebug: async function() {
+        try {
+            console.log("Testando endpoint debug...");
+            const resultado = await ConfigModule.fetchApi('/professores/debug');
+            console.log("Resultado do debug:", resultado);
+            
+            if (resultado && resultado.length > 0) {
+                const professor = resultado[0];
+                console.log("Primeiro professor debug:");
+                console.log("- ID:", professor.id);
+                console.log("- ID Professor:", professor.id_professor);
+                console.log("- Nome:", professor.nome_professor);
+                console.log("- Ativo:", professor.ativo);
+                console.log("- Campos disponíveis:", professor.campos_disponiveis);
+            }
+        } catch (error) {
+            console.error("Erro no teste debug:", error);
         }
     }
 };
