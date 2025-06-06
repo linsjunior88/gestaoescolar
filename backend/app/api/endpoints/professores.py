@@ -176,7 +176,7 @@ def update_professor(
                 )
         
         # Atualizar os campos
-        for field in ["id_professor", "nome_professor", "email_professor", "senha_professor", "especialidade"]:
+        for field in ["id_professor", "nome_professor", "email_professor", "senha_professor", "especialidade", "ativo"]:
             value = getattr(professor_in, field, None)
             if value is not None:
                 setattr(professor, field, value)

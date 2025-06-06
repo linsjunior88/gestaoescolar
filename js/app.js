@@ -34,7 +34,8 @@ const App = {
     
     // Estado atual da aplicação
     state: {
-        currentSection: 'dashboard'
+        currentSection: 'dashboard',
+        initializedModules: new Set() // Controlar quais módulos já foram inicializados
     },
     
     // Inicializar aplicação
@@ -209,11 +210,26 @@ const App = {
         const moduleName = moduleMap[linkId];
         
         if (moduleName) {
-            console.log(`Inicializando módulo: ${moduleName}`);
+            console.log(`Ativando módulo: ${moduleName}`);
             try {
                 if (this.modules[moduleName]) {
-                    // Para outros módulos ou se o módulo notas já estiver carregado
-                    this.modules[moduleName].init();
+                    // Verificar se o módulo já foi inicializado
+                    if (!this.state.initializedModules.has(moduleName)) {
+                        console.log(`Inicializando módulo pela primeira vez: ${moduleName}`);
+                        this.modules[moduleName].init();
+                        this.state.initializedModules.add(moduleName);
+                    } else {
+                        console.log(`Módulo ${moduleName} já foi inicializado, apenas ativando`);
+                        
+                        // Para o módulo de professores, apenas recarregar os dados se necessário
+                        if (moduleName === 'professores' && this.modules.professores.carregarProfessores) {
+                            // Usar um debounce para evitar chamadas múltiplas
+                            if (!this.modules.professores.state.carregandoProfessores) {
+                                console.log("Recarregando dados dos professores");
+                                this.modules.professores.carregarProfessores();
+                            }
+                        }
+                    }
                     
                     // Se estamos ativando o dashboard, forçar sua atualização
                     if (moduleName === 'dashboard' && this.modules.dashboard.atualizarDashboard) {

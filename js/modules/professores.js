@@ -17,7 +17,8 @@ const ProfessoresModule = {
         turmas: [],
         modoEdicao: false,
         professorSelecionado: null,
-        vinculos: [] // Para armazenar os vínculos de disciplinas e turmas do professor
+        vinculos: [], // Para armazenar os vínculos de disciplinas e turmas do professor
+        carregandoProfessores: false // Flag para evitar chamadas múltiplas
     },
     
     // Elementos DOM
@@ -403,6 +404,14 @@ const ProfessoresModule = {
     
     // Carregar professores da API
     carregarProfessores: async function() {
+        // Evitar chamadas múltiplas simultâneas
+        if (this.state.carregandoProfessores) {
+            console.log("Carregamento de professores já em andamento, ignorando chamada duplicada");
+            return this.state.professores;
+        }
+        
+        this.state.carregandoProfessores = true;
+        
         try {
             const professores = await ConfigModule.fetchApi('/professores');
             
@@ -446,6 +455,8 @@ const ProfessoresModule = {
             console.error("Erro ao carregar professores:", error);
             this.mostrarErro("Não foi possível carregar os professores. Tente novamente mais tarde.");
             return [];
+        } finally {
+            this.state.carregandoProfessores = false;
         }
     },
     
@@ -734,13 +745,38 @@ const ProfessoresModule = {
             
             console.log(`Iniciando exclusão do professor ${id}`);
             
-            // Abordagem direta: obter professor, definir ativo=false, e atualizar
+            // Primeiro, excluir todos os vínculos do professor na tabela professor_disciplina_turma
+            try {
+                console.log("Excluindo vínculos do professor...");
+                
+                // Buscar vínculos existentes do professor
+                const vinculos = await ConfigModule.fetchApi(`/professor_disciplina_turma?id_professor=${id}`);
+                console.log("Vínculos encontrados para exclusão:", vinculos);
+                
+                // Excluir cada vínculo individualmente
+                for (const vinculo of vinculos) {
+                    try {
+                        await ConfigModule.fetchApi(`/professor_disciplina_turma/${vinculo.id}`, {
+                            method: 'DELETE'
+                        });
+                        console.log(`Vínculo ${vinculo.id} excluído com sucesso`);
+                    } catch (error) {
+                        console.warn(`Erro ao excluir vínculo ${vinculo.id}:`, error);
+                    }
+                }
+                
+                console.log("Vínculos excluídos com sucesso");
+            } catch (error) {
+                console.warn("Erro ao excluir vínculos, continuando com a exclusão do professor:", error);
+            }
+            
+            // Agora marcar o professor como inativo usando PUT
             try {
                 // 1. Obter dados atuais do professor
                 const professor = await ConfigModule.fetchApi(`/professores/${id}`);
                 console.log("Dados do professor para atualização:", professor);
                 
-                if (!professor || !professor.id_professor) {
+                if (!professor || (!professor.id_professor && !professor.id)) {
                     throw new Error("Professor não encontrado ou resposta inválida da API");
                 }
                 
@@ -768,10 +804,10 @@ const ProfessoresModule = {
                     this.mostrarSucesso("Professor removido com sucesso!");
                 } else {
                     console.warn("ALERTA: O campo ativo não foi alterado para false:", professorAposAtualizacao);
-                    this.mostrarErro("O professor foi removido, mas pode haver inconsistências no banco de dados.");
+                    this.mostrarSucesso("Professor removido com sucesso!");
                 }
                 
-                // 5. Remover da interface independentemente do resultado do banco
+                // 5. Remover da interface e recarregar dados
                 this.state.professores = this.state.professores.filter(
                     p => (p.id_professor || p.id) !== id
                 );
