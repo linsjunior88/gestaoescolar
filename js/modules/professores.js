@@ -482,9 +482,20 @@ const ProfessoresModule = {
     carregarProfessores: async function() {
         try {
             const professores = await ConfigModule.fetchApi('/professores');
-            this.state.professores = professores;
+            
+            // Filtrar professores marcados como inativos/excluídos
+            const professoresAtivos = professores.filter(professor => {
+                // Verificar se o professor não está marcado como inativo ou excluído
+                if (professor.ativo === false || professor.status === 'inativo' || professor._deleted === true) {
+                    console.log(`Professor ${professor.id_professor || professor.id} está inativo ou excluído e não será exibido`);
+                    return false;
+                }
+                return true;
+            });
+            
+            this.state.professores = professoresAtivos;
             this.renderizarProfessores();
-            console.log("Professores carregados com sucesso:", professores);
+            console.log("Professores carregados com sucesso:", professoresAtivos);
         } catch (error) {
             console.error("Erro ao carregar professores:", error);
             this.mostrarErro("Não foi possível carregar os professores. Tente novamente mais tarde.");
@@ -782,8 +793,12 @@ const ProfessoresModule = {
                 
                 this.mostrarSucesso("Professor excluído com sucesso!");
                 
-                // Recarregar lista de professores
-                await this.carregarProfessores();
+                // Remover professor da lista local
+                this.state.professores = this.state.professores.filter(
+                    professor => (professor.id_professor || professor.id) !== id
+                );
+                this.renderizarProfessores();
+                
                 return; // Se o DELETE funcionou, não precisamos tentar os outros métodos
             } catch (deleteError) {
                 console.warn("Método DELETE falhou, tentando alternativa:", deleteError);
@@ -801,8 +816,12 @@ const ProfessoresModule = {
                     
                     this.mostrarSucesso("Professor excluído com sucesso!");
                     
-                    // Recarregar lista de professores
-                    await this.carregarProfessores();
+                    // Remover professor da lista local
+                    this.state.professores = this.state.professores.filter(
+                        professor => (professor.id_professor || professor.id) !== id
+                    );
+                    this.renderizarProfessores();
+                    
                     return;
                 } catch (postError) {
                     console.warn("Método POST com _method=DELETE falhou, tentando alternativa:", postError);
@@ -818,10 +837,14 @@ const ProfessoresModule = {
                             })
                         });
                         
-                        this.mostrarSucesso("Professor desativado com sucesso!");
+                        this.mostrarSucesso("Professor removido com sucesso!");
                         
-                        // Recarregar lista de professores
-                        await this.carregarProfessores();
+                        // Remover professor da lista local (mesmo sendo apenas um soft delete no backend)
+                        this.state.professores = this.state.professores.filter(
+                            professor => (professor.id_professor || professor.id) !== id
+                        );
+                        this.renderizarProfessores();
+                        
                         return;
                     } catch (putError) {
                         // Se todas as alternativas falharem, lançar o erro original
