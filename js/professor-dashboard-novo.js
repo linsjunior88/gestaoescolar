@@ -2519,18 +2519,18 @@ function carregarNotas() {
             return;
         }
     
-        console.log('Valores dos filtros:', {
-            idTurma,
-            idDisciplina,
-            idAluno,
-            ano,
-            bimestre,
-            professorId
-        });
-        
-        // Verificar se o elemento da tabela existe
-        const notasTabela = document.getElementById('notas-lista');
-        if (!notasTabela) {
+    console.log('Valores dos filtros:', {
+        idTurma,
+        idDisciplina,
+        idAluno,
+        ano,
+        bimestre,
+        professorId
+    });
+    
+    // Verificar se o elemento da tabela existe
+    const notasTabela = document.getElementById('notas-lista');
+    if (!notasTabela) {
             console.error('Elemento da tabela de notas (#notas-lista) não encontrado!');
             
             // Tentar inicializar a tabela novamente
@@ -2540,23 +2540,23 @@ function carregarNotas() {
             const notasTabela = document.getElementById('notas-lista');
             if (!notasTabela) {
                 alert('Erro: Tabela de notas não encontrada. Recarregue a página.');
-                return;
+        return;
             }
-        }
-        
-        // Mostrar indicador de carregamento
-        notasTabela.innerHTML = `
-            <tr class="text-center">
-                <td colspan="10">
-                    <div class="d-flex justify-content-center align-items-center" style="height: 100px;">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="visually-hidden">Carregando notas...</span>
-                        </div>
-                        <span class="ms-2">Carregando notas...</span>
+    }
+    
+    // Mostrar indicador de carregamento
+    notasTabela.innerHTML = `
+        <tr class="text-center">
+            <td colspan="10">
+                <div class="d-flex justify-content-center align-items-center" style="height: 100px;">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Carregando notas...</span>
                     </div>
-                </td>
-            </tr>
-        `;
+                    <span class="ms-2">Carregando notas...</span>
+                </div>
+            </td>
+        </tr>
+    `;
         
         // Armazenar informações de alunos, turmas e disciplinas
         const dadosAlunos = {};
@@ -2815,46 +2815,46 @@ function carregarNotas() {
             notasTabela.innerHTML = html;
         }
     
-        // Construir URL com parâmetros de consulta
-        const params = new URLSearchParams();
-        if (idTurma) params.append('turma_id', idTurma);
-        if (idDisciplina) params.append('disciplina_id', idDisciplina);
-        if (idAluno) params.append('aluno_id', idAluno);
-        if (ano) params.append('ano', ano);
-        if (bimestre) params.append('bimestre', bimestre);
-        
-        // Adicionar parâmetro do professor - fundamental para filtrar as notas
-        params.append('professor_id', professorId);
-        
-        // Construir a URL base para notas
-        let baseUrl = CONFIG.getApiUrl('/notas');
-        let url = `${baseUrl}?${params.toString()}`;
-        console.log('URL de consulta para notas:', url);
-        
+    // Construir URL com parâmetros de consulta
+    const params = new URLSearchParams();
+    if (idTurma) params.append('turma_id', idTurma);
+    if (idDisciplina) params.append('disciplina_id', idDisciplina);
+    if (idAluno) params.append('aluno_id', idAluno);
+    if (ano) params.append('ano', ano);
+    if (bimestre) params.append('bimestre', bimestre);
+    
+    // Adicionar parâmetro do professor - fundamental para filtrar as notas
+    params.append('professor_id', professorId);
+    
+    // Construir a URL base para notas
+    let baseUrl = CONFIG.getApiUrl('/notas');
+    let url = `${baseUrl}?${params.toString()}`;
+    console.log('URL de consulta para notas:', url);
+    
         // Configurar timeout para evitar espera infinita
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 segundos
         
         // Buscar notas com tratamento de erros aprimorado
         fetch(url, { signal: controller.signal })
-            .then(response => {
-                console.log("Resposta da API:", response.status, response.statusText);
+        .then(response => {
+            console.log("Resposta da API:", response.status, response.statusText);
                 clearTimeout(timeoutId);
-                
-                if (!response.ok) {
-                    throw new Error(`Erro na requisição: ${response.status} - ${response.statusText}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                console.log('Dados recebidos:', data);
-                
-                // Garantir que temos um array para trabalhar
-                let notas = Array.isArray(data) ? data : (data.notas || []);
-                
-                console.log('Array de notas processado:', notas);
-                
-                // Filtrar as notas para garantir que são apenas do professor atual
+            
+            if (!response.ok) {
+                throw new Error(`Erro na requisição: ${response.status} - ${response.statusText}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Dados recebidos:', data);
+            
+            // Garantir que temos um array para trabalhar
+            let notas = Array.isArray(data) ? data : (data.notas || []);
+            
+            console.log('Array de notas processado:', notas);
+            
+            // Filtrar as notas para garantir que são apenas do professor atual
                 // E aplicar os filtros selecionados
                 notas = notas.filter(nota => {
                     // Primeiro filtrar por professor
@@ -2902,22 +2902,22 @@ function carregarNotas() {
                 }
                 
                 // Se não temos notas, exibir mensagem
-                if (!notas || notas.length === 0) {
-                    notasTabela.innerHTML = `
-                        <tr class="text-center">
-                            <td colspan="10">
-                                <div class="alert alert-warning" role="alert">
-                                    <h4 class="alert-heading">Nenhuma nota encontrada</h4>
-                                    <p>Não foram encontradas notas com os filtros selecionados.</p>
-                                    <hr>
-                                    <p class="mb-0">Verifique se os filtros estão corretos e tente novamente.</p>
-                                </div>
-                            </td>
-                        </tr>
-                    `;
-                    return;
-                }
-                
+            if (!notas || notas.length === 0) {
+                notasTabela.innerHTML = `
+                    <tr class="text-center">
+                        <td colspan="10">
+                            <div class="alert alert-warning" role="alert">
+                                <h4 class="alert-heading">Nenhuma nota encontrada</h4>
+                                <p>Não foram encontradas notas com os filtros selecionados.</p>
+                                <hr>
+                                <p class="mb-0">Verifique se os filtros estão corretos e tente novamente.</p>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
                 // Salvar notas originais para uso na ordenação
                 notasOriginais = notas;
                 
@@ -2925,8 +2925,8 @@ function carregarNotas() {
                 const alunosIDs = new Set();
                 const turmasIDs = new Set();
                 const disciplinasIDs = new Set();
-                
-                notas.forEach(nota => {
+            
+            notas.forEach(nota => {
                     const alunoId = nota.id_aluno || nota.aluno_id;
                     const turmaId = nota.id_turma || nota.turma_id;
                     const disciplinaId = nota.id_disciplina || nota.disciplina_id;
@@ -2971,8 +2971,8 @@ function carregarNotas() {
                             `Consulta de notas com filtros - Turma: ${turmaTexto}, Disciplina: ${disciplinaTexto}`);
                         
                         console.log('Notas carregadas com sucesso:', notas.length);
-                    })
-                    .catch(error => {
+        })
+        .catch(error => {
                         console.error("Erro ao carregar dados complementares:", error);
                         
                         // Mesmo com erro, exibir os dados que temos
@@ -2986,18 +2986,18 @@ function carregarNotas() {
                 // Exibir mensagem de erro na tabela
                 const notasTabela = document.getElementById('notas-lista');
                 if (notasTabela) {
-                    notasTabela.innerHTML = `
-                        <tr class="text-center">
-                            <td colspan="10">
-                                <div class="alert alert-danger" role="alert">
-                                    <h4 class="alert-heading">Erro ao carregar notas</h4>
+            notasTabela.innerHTML = `
+                <tr class="text-center">
+                    <td colspan="10">
+                        <div class="alert alert-danger" role="alert">
+                            <h4 class="alert-heading">Erro ao carregar notas</h4>
                                     <p>${error.message || 'Ocorreu um erro ao tentar carregar as notas.'}</p>
                                     <hr>
                                     <p class="mb-0">Verifique sua conexão e tente novamente mais tarde.</p>
-                                </div>
-                            </td>
-                        </tr>
-                    `;
+                        </div>
+                    </td>
+                </tr>
+            `;
                 }
                 
                 // Se foi erro de timeout, alertar o usuário
@@ -3575,9 +3575,9 @@ function exibirFichaAluno(idAluno) {
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content">
                     <div class="modal-body text-center p-5">
-                        <div class="spinner-border text-primary" role="status">
+            <div class="spinner-border text-primary" role="status">
                             <span class="visually-hidden">Carregando...</span>
-                        </div>
+            </div>
                         <p class="mt-3 mb-0">Carregando informações do aluno...</p>
                     </div>
                 </div>
@@ -3597,9 +3597,9 @@ function exibirFichaAluno(idAluno) {
     
     // Definir um timeout para garantir que o modal não fique travado indefinidamente
     const timeoutId = setTimeout(() => {
-        loading.hide();
+            loading.hide();
         limparTodosModaisEBackdrops();
-        alert('O carregamento dos dados está demorando mais que o esperado. Tente novamente.');
+            alert('O carregamento dos dados está demorando mais que o esperado. Tente novamente.');
     }, 15000); // 15 segundos de timeout
     
     // Buscar dados do aluno
@@ -3751,13 +3751,13 @@ function exibirFichaAluno(idAluno) {
                 // Remover o modal do DOM
                 setTimeout(() => {
                     // Remover todos os backdrops e o modal para garantir limpeza
-                    limparTodosModaisEBackdrops();
-                    
+                limparTodosModaisEBackdrops();
+                
                     // Carregar notas do aluno que acabou de ser fechado
                     carregarNotasAluno(idAluno);
                 }, 300);
             });
-            
+                
             // Adicionar eventos aos botões de fechamento
             const btnCloseModal = document.getElementById('btnCloseModal');
             const btnFecharAluno = document.getElementById('btnFecharAluno');
@@ -3771,9 +3771,9 @@ function exibirFichaAluno(idAluno) {
             if (btnFecharAluno) {
                 btnFecharAluno.addEventListener('click', function() {
                     alunoModal.hide();
-                });
+                        });
             }
-            
+                        
             // Adicionar handler para tecla ESC diretamente no documento
             const escHandler = function(e) {
                 if (e.key === 'Escape') {
@@ -5351,11 +5351,11 @@ function limparTodosModaisEBackdrops() {
                 modal.remove();
             }
         });
-        
+    
         // 4. Remover classes e estilos que bloqueiam a interação
-        document.body.classList.remove('modal-open');
-        document.body.style.overflow = '';
-        document.body.style.paddingRight = '';
+    document.body.classList.remove('modal-open');
+    document.body.style.overflow = '';
+    document.body.style.paddingRight = '';
     }, 200);
     
     // 5. Remover botões de emergência que possam ter sido adicionados anteriormente
@@ -5439,7 +5439,7 @@ function configurarFechamentoEmergenciaModal() {
                     // Se não houver modal ativo, remover backdrop
                     if (!modalElemAtivo) {
                         console.log('Backdrop presente sem modal ativo - removendo automaticamente');
-                        limparTodosModaisEBackdrops();
+                    limparTodosModaisEBackdrops();
                     } else {
                         // Reiniciar o cronômetro para este backdrop
                         backdrop.setAttribute('data-time-check', Date.now().toString());

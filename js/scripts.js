@@ -114,13 +114,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Para o perfil escola, verificar credenciais específicas
                 if (username === 'administrador' && password === '2025@nazare') {
                     // Credenciais corretas, seguir com o login
-                    setTimeout(() => {
-                        // Armazena nas credenciais locais que é um administrador
-                        sessionStorage.setItem('userProfile', 'admin');
-                        
-                        // Redireciona para o dashboard administrativo
-                        window.location.href = profileData[selectedProfile].redirectURL;
-                    }, 1000);
+                setTimeout(() => {
+                    // Armazena nas credenciais locais que é um administrador
+                    sessionStorage.setItem('userProfile', 'admin');
+                    
+                    // Redireciona para o dashboard administrativo
+                    window.location.href = profileData[selectedProfile].redirectURL;
+                }, 1000);
                 } else {
                     // Credenciais incorretas, mostrar mensagem de erro
                     setTimeout(() => {

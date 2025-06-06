@@ -774,82 +774,64 @@ const ProfessoresModule = {
                 return;
             }
             
-            console.log(`Tentando excluir professor com ID: ${id}`);
-
-            // Usar somente a abordagem POST com _method=DELETE
+            // Método 1: Tentar o método DELETE padrão
             try {
-                const response = await ConfigModule.fetchApi(`/professores/${id}/inativar`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ 
-                        _method: 'DELETE',
-                        ativo: false,
-                        status: 'inativo'
-                    })
+                await ConfigModule.fetchApi(`/professores/${id}`, {
+                    method: 'DELETE'
                 });
                 
-                console.log("Resposta da API para exclusão:", response);
                 this.mostrarSucesso("Professor excluído com sucesso!");
                 
                 // Recarregar lista de professores
                 await this.carregarProfessores();
-                return;
-            } catch (error) {
-                console.error("Erro detalhado ao excluir professor:", error);
+                return; // Se o DELETE funcionou, não precisamos tentar os outros métodos
+            } catch (deleteError) {
+                console.warn("Método DELETE falhou, tentando alternativa:", deleteError);
                 
-                // Tentar uma abordagem final: atualizar o status do professor para inativo
+                // Método 2: Tentar com POST e campo _method=DELETE (convenção comum em frameworks)
                 try {
-                    console.log("Tentando alternativa final: marcar professor como inativo");
-                    const response = await ConfigModule.fetchApi(`/professores/${id}`, {
-                        method: 'PUT',
-                        body: JSON.stringify({ 
-                            ativo: false, 
-                            status: 'inativo',
-                            excluido: true
-                        })
+                    await ConfigModule.fetchApi(`/professores/${id}`, {
+                        method: 'POST',
+                        headers: {
+                            'X-HTTP-Method-Override': 'DELETE',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ _method: 'DELETE' })
                     });
                     
-                    console.log("Resposta da API para inativação:", response);
-                    this.mostrarSucesso("Professor marcado como inativo com sucesso!");
+                    this.mostrarSucesso("Professor excluído com sucesso!");
                     
                     // Recarregar lista de professores
                     await this.carregarProfessores();
                     return;
-                } catch (finalError) {
-                    console.error("Todas as tentativas de exclusão falharam:", finalError);
-                    throw error; // Lançar o erro original para exibição
+                } catch (postError) {
+                    console.warn("Método POST com _method=DELETE falhou, tentando alternativa:", postError);
+                    
+                    // Método 3: Tentar com PUT e campo ativo=false (soft delete)
+                    try {
+                        await ConfigModule.fetchApi(`/professores/${id}`, {
+                            method: 'PUT',
+                            body: JSON.stringify({ 
+                                ativo: false, 
+                                status: 'inativo',
+                                _deleted: true
+                            })
+                        });
+                        
+                        this.mostrarSucesso("Professor desativado com sucesso!");
+                        
+                        // Recarregar lista de professores
+                        await this.carregarProfessores();
+                        return;
+                    } catch (putError) {
+                        // Se todas as alternativas falharem, lançar o erro original
+                        throw deleteError;
+                    }
                 }
             }
         } catch (error) {
             console.error("Erro ao excluir professor:", error);
-            
-            // Extrair detalhes adicionais do erro para ajudar no diagnóstico
-            let mensagemErro = "Não foi possível excluir o professor.";
-            
-            if (error.message) {
-                mensagemErro += ` Erro: ${error.message}`;
-            }
-            
-            // Tentar extrair mais detalhes se for um erro JSON
-            try {
-                if (error.message && error.message.includes('{')) {
-                    const jsonStr = error.message.substring(error.message.indexOf('{'));
-                    const errorDetails = JSON.parse(jsonStr);
-                    
-                    if (errorDetails.detail) {
-                        mensagemErro += ` Detalhe: ${errorDetails.detail}`;
-                    }
-                }
-            } catch (e) {
-                console.warn("Não foi possível extrair detalhes adicionais do erro:", e);
-            }
-            
-            this.mostrarErro(mensagemErro);
-            
-            // Mostrar informações extras para ajudar a diagnosticar
-            this.mostrarErro("Nota: Esta operação pode requerer permissões especiais ou a API pode não suportar exclusão direta de professores.");
+            this.mostrarErro(`Não foi possível excluir o professor: ${error.message || 'Erro desconhecido'}`);
         }
     },
     
