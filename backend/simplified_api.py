@@ -187,6 +187,7 @@ class Professor(BaseModel):
     nome_professor: str
     email_professor: Optional[str] = None
     senha_professor: Optional[str] = None
+    ativo: Optional[bool] = True  # Campo ativo adicionado
     disciplinas: Optional[List[str]] = []
     mensagens: Optional[List[str]] = []
 
@@ -203,6 +204,7 @@ class ProfessorUpdate(BaseModel):
     nome_professor: Optional[str] = None
     email_professor: Optional[str] = None
     senha_professor: Optional[str] = None
+    ativo: Optional[bool] = None  # Campo ativo adicionado
     disciplinas: Optional[List[str]] = None
 
 # Modelo para vincular professor e disciplina
@@ -859,14 +861,85 @@ def delete_disciplina(disciplina_id: str = Path(..., description="ID ou código 
 # Endpoints para Professores
 # ==============================================================
 
+@app.get("/api/professores/filtro/", response_model=List[Professor])
+def read_professores_filtro(
+    ativo: Optional[bool] = Query(None, description="Filtrar por status ativo (true/false)")
+):
+    """Busca professores com filtro opcional por status ativo."""
+    print(f"=== INICIANDO BUSCA DE PROFESSORES COM FILTRO (ativo={ativo}) ===")
+    try:
+        # Construir query com filtro opcional
+        if ativo is not None:
+            query = """
+            SELECT p.id, p.id_professor, p.nome_professor, p.email_professor, p.ativo
+            FROM professor p
+            WHERE p.ativo = %s
+            ORDER BY p.nome_professor
+            """
+            params = (ativo,)
+        else:
+            query = """
+            SELECT p.id, p.id_professor, p.nome_professor, p.email_professor, p.ativo
+            FROM professor p
+            ORDER BY p.nome_professor
+            """
+            params = None
+            
+        print(f"Executando consulta: {query}")
+        results = execute_query(query, params)
+        
+        if not results:
+            print("Nenhum professor encontrado")
+            return []
+        
+        print(f"Encontrados {len(results)} professores")
+        
+        # Converter os resultados para objetos Professor
+        professores = []
+        for row in results:
+            # Para cada professor, buscar suas disciplinas em uma consulta separada
+            query_disciplinas = """
+            SELECT DISTINCT id_disciplina
+            FROM professor_disciplina_turma
+            WHERE id_professor = %s
+            """
+            disciplinas_result = execute_query(query_disciplinas, (row["id_professor"],))
+            
+            disciplinas = []
+            if disciplinas_result:
+                disciplinas = [d["id_disciplina"] for d in disciplinas_result]
+                print(f"Professor {row['id_professor']} tem {len(disciplinas)} disciplinas: {disciplinas}")
+            
+            professor = {
+                "id": row["id"],
+                "id_professor": row["id_professor"],
+                "nome_professor": row["nome_professor"],
+                "email_professor": row["email_professor"],
+                "senha_professor": None,  # Definir como None por padrão
+                "ativo": row["ativo"],
+                "disciplinas": disciplinas
+            }
+            professores.append(professor)
+        
+        print("Retornando lista de professores filtrada com sucesso")
+        return professores
+    except Exception as e:
+        print(f"ERRO ao buscar professores com filtro: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao buscar professores: {str(e)}"
+        )
+    finally:
+        print("=== FINALIZANDO BUSCA DE PROFESSORES COM FILTRO ===")
+
 @app.get("/api/professores/", response_model=List[Professor])
 def read_professores():
     """Busca todos os professores cadastrados."""
     print("=== INICIANDO BUSCA DE TODOS OS PROFESSORES ===")
     try:
-        # Consulta direta sem tentar acessar senha_professor
+        # Consulta direta incluindo campo ativo
         query = """
-        SELECT p.id, p.id_professor, p.nome_professor, p.email_professor
+        SELECT p.id, p.id_professor, p.nome_professor, p.email_professor, p.ativo
         FROM professor p
         ORDER BY p.nome_professor
         """
@@ -901,6 +974,7 @@ def read_professores():
                 "nome_professor": row["nome_professor"],
                 "email_professor": row["email_professor"],
                 "senha_professor": None,  # Definir como None por padrão
+                "ativo": row["ativo"],  # Adicionar campo ativo
                 "disciplinas": disciplinas
             }
             professores.append(professor)
@@ -921,9 +995,9 @@ def read_professor(professor_id: str = Path(..., description="ID ou código do p
     """Busca um professor específico pelo ID ou código."""
     print(f"=== INICIANDO BUSCA DO PROFESSOR {professor_id} ===")
     try:
-        # Consulta direta sem tentar acessar senha_professor
+        # Consulta direta incluindo campo ativo
         query = """
-        SELECT p.id, p.id_professor, p.nome_professor, p.email_professor
+        SELECT p.id, p.id_professor, p.nome_professor, p.email_professor, p.ativo
         FROM professor p
         WHERE p.id_professor = %s
         """
@@ -956,6 +1030,7 @@ def read_professor(professor_id: str = Path(..., description="ID ou código do p
             "nome_professor": result["nome_professor"],
             "email_professor": result["email_professor"],
             "senha_professor": None,  # Definir como None por padrão
+            "ativo": result["ativo"],  # Adicionar campo ativo
             "disciplinas": disciplinas
         }
         
@@ -990,15 +1065,16 @@ def create_professor(professor: ProfessorCreate):
         
         # Inserir o novo professor
         query = """
-        INSERT INTO professor (id_professor, nome_professor, email_professor, senha)
-        VALUES (%s, %s, %s, %s)
-        RETURNING id, id_professor, nome_professor, email_professor
+        INSERT INTO professor (id_professor, nome_professor, email_professor, senha, ativo)
+        VALUES (%s, %s, %s, %s, %s)
+        RETURNING id, id_professor, nome_professor, email_professor, ativo
         """
         params = (
             professor.id_professor,
             professor.nome_professor,
             professor.email_professor,
-            professor.senha_professor
+            professor.senha_professor,
+            professor.ativo
         )
         
         print(f"Executando query de inserção: {query}")
@@ -1098,6 +1174,7 @@ def create_professor(professor: ProfessorCreate):
             "nome_professor": result["nome_professor"],
             "email_professor": result["email_professor"],
             "senha_professor": None,  # Não retornar a senha
+            "ativo": result["ativo"],  # Adicionar campo ativo
             "disciplinas": disciplinas_com_turmas,
             "mensagens": mensagens
         }
@@ -1463,6 +1540,8 @@ def update_professor(
         if professor.senha_professor is not None:
             # Usamos o campo 'senha' no banco de dados
             updates["senha"] = professor.senha_professor
+        if professor.ativo is not None:
+            updates["ativo"] = professor.ativo  # Adicionar suporte ao campo ativo
         
         print(f"Campos a atualizar: {updates}")
         
@@ -1472,7 +1551,7 @@ def update_professor(
         
         # Construir a query de atualização
         set_clause = ", ".join(f"{field} = %s" for field in updates.keys())
-        query = f"UPDATE professor SET {set_clause} WHERE id = %s RETURNING id, id_professor, nome_professor, email_professor"
+        query = f"UPDATE professor SET {set_clause} WHERE id = %s RETURNING id, id_professor, nome_professor, email_professor, ativo"
         
         # Montar os parâmetros na ordem correta
         params = list(updates.values())
@@ -1573,13 +1652,21 @@ def login_professor(login_data: ProfessorLogin):
     """Endpoint para autenticação de professores via email e senha."""
     print(f"=== TENTATIVA DE LOGIN: {login_data.email_professor} ===")
     try:
-        # Buscar professor pelo email
+        # Buscar professor pelo email incluindo o campo ativo
         query = "SELECT * FROM professor WHERE email_professor = %s"
         result = execute_query(query, (login_data.email_professor,), fetch_one=True)
         
         if not result:
             print(f"Professor com email {login_data.email_professor} não encontrado")
             raise HTTPException(status_code=401, detail="Credenciais inválidas")
+        
+        # Verificar se o professor está ativo
+        if not result["ativo"]:
+            print(f"Professor {result['nome_professor']} está inativo")
+            raise HTTPException(
+                status_code=401, 
+                detail="Professor inativo. Entre em contato com a administração."
+            )
         
         # Verificar a senha (em produção, usaríamos verificação de hash)
         # Corrigido: usando "senha" ao invés de "senha_professor"
@@ -1605,6 +1692,7 @@ def login_professor(login_data: ProfessorLogin):
             "id_professor": result["id_professor"],
             "nome_professor": result["nome_professor"],
             "email_professor": result["email_professor"],
+            "ativo": result["ativo"],
             "disciplinas": disciplinas
         }
         
@@ -1636,13 +1724,97 @@ def login_professor(login_data: ProfessorLogin):
             print(f"Erro ao registrar log de login: {str(e)}")
         
         print(f"Login bem-sucedido para o professor {result['nome_professor']}")
-        return professor_data
+        return {
+            "message": "Login realizado com sucesso",
+            "professor": professor_data
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"ERRO no login: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro interno no servidor: {str(e)}"
+        )
+    finally:
+        print(f"=== FINALIZANDO LOGIN DO PROFESSOR ===")
+
+@app.patch("/api/professores/{professor_id}/status", response_model=Professor)
+def toggle_professor_status(
+    professor_id: str = Path(..., description="ID do professor"),
+    ativo: bool = Body(..., embed=True, description="Status ativo do professor")
+):
+    """Ativa ou inativa um professor."""
+    print(f"=== ALTERANDO STATUS DO PROFESSOR {professor_id} PARA {'ATIVO' if ativo else 'INATIVO'} ===")
+    try:
+        # Verificar se o professor existe
+        check_query = "SELECT id FROM professor WHERE id_professor = %s"
+        existing = execute_query(check_query, (professor_id,), fetch_one=True)
+        
+        if not existing:
+            print(f"Professor com ID {professor_id} não encontrado")
+            raise HTTPException(status_code=404, detail="Professor não encontrado")
+        
+        # Atualizar o status do professor
+        query = """
+        UPDATE professor 
+        SET ativo = %s 
+        WHERE id_professor = %s
+        RETURNING id, id_professor, nome_professor, email_professor, ativo
+        """
+        
+        print(f"Executando query: {query} com parâmetros: {ativo}, {professor_id}")
+        result = execute_query(query, (ativo, professor_id), fetch_one=True)
+        
+        if not result:
+            print("Falha ao atualizar status do professor")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Falha ao atualizar status do professor"
+            )
+        
+        # Registrar atividade no log
+        try:
+            log_data = {
+                "usuario": "Sistema",
+                "acao": "atualizar",
+                "entidade": "professor",
+                "entidade_id": professor_id,
+                "detalhe": f"Status alterado para {'ativo' if ativo else 'inativo'}",
+                "status": "concluído"
+            }
+            
+            log_query = """
+            INSERT INTO log_atividade (usuario, acao, entidade, entidade_id, detalhe, status)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            """
+            execute_query(log_query, (
+                log_data["usuario"], 
+                log_data["acao"], 
+                log_data["entidade"], 
+                log_data["entidade_id"], 
+                log_data["detalhe"], 
+                log_data["status"]
+            ), fetch=False)
+            
+        except Exception as e:
+            print(f"Erro ao registrar log de alteração de status: {str(e)}")
+        
+        # Buscar dados atualizados com as disciplinas
+        updated_professor = read_professor(professor_id)
+        print(f"Status do professor alterado com sucesso: {updated_professor}")
+        return updated_professor
         
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Erro durante login: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Erro durante login: {str(e)}")
+        print(f"ERRO ao alterar status do professor {professor_id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao alterar status do professor: {str(e)}"
+        )
+    finally:
+        print(f"=== FINALIZANDO ALTERAÇÃO DE STATUS DO PROFESSOR {professor_id} ===")
 
 @app.get("/api/professores/{professor_id}/dashboard")
 def get_professor_dashboard(professor_id: str):
