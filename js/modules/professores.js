@@ -406,40 +406,23 @@ const ProfessoresModule = {
         try {
             const professores = await ConfigModule.fetchApi('/professores');
             
-            // Debug: Verificar todos os professores e seus status
-            console.log("Todos os professores recebidos da API:", professores);
-            
-            // Verificar especificamente o campo 'ativo' em cada professor
-            professores.forEach(professor => {
-                console.log(`Professor ${professor.id_professor || professor.id} (${professor.nome_professor || professor.nome}) - Campo ativo:`, 
-                           professor.ativo === false ? 'INATIVO (false)' : (professor.ativo === true ? 'ATIVO (true)' : 'Indefinido'));
+            // Verificar campo 'ativo' para depuração
+            console.log("Verificando campo 'ativo' dos professores:");
+            professores.forEach(prof => {
+                console.log(`Professor ${prof.id_professor || prof.id} (${prof.nome_professor || "Sem nome"}): ativo=${prof.ativo}`);
             });
             
-            // Filtrar professores marcados como inativos/excluídos com verificação mais rigorosa
-            // IMPORTANTE: Dar prioridade ao campo 'ativo' na filtragem
+            // Filtrar professores apenas pelo campo 'ativo'
             const professoresAtivos = professores.filter(professor => {
-                // VERIFICAÇÃO PRINCIPAL: Verificar se o campo ativo é explicitamente false
+                // Verificar especificamente se o campo 'ativo' é false
                 if (professor.ativo === false) {
-                    console.log(`Professor ${professor.nome_professor || professor.id_professor || professor.id} EXCLUÍDO por ter campo ativo=false`);
+                    console.log(`Professor ${professor.id_professor || professor.id} excluído por ativo=false`);
                     return false;
                 }
-                
-                // Verificações secundárias
-                const isInativo = 
-                    professor.status === 'inativo' || 
-                    professor._deleted === true ||
-                    (professor.nome_professor && professor.nome_professor.includes('[INATIVO]'));
-                
-                if (isInativo) {
-                    console.log(`Professor ${professor.nome_professor || professor.id_professor || professor.id} EXCLUÍDO por outras flags de inatividade`);
-                    return false;
-                }
-                
                 return true;
             });
             
-            // Mostrar a diferença
-            console.log(`Total: ${professores.length}, Ativos: ${professoresAtivos.length}, Inativos: ${professores.length - professoresAtivos.length}`);
+            console.log(`Professores - Total: ${professores.length}, Ativos: ${professoresAtivos.length}`);
             
             this.state.professores = professoresAtivos;
             this.renderizarProfessores();
@@ -739,131 +722,104 @@ const ProfessoresModule = {
                 return;
             }
             
-            // SOLUÇÃO ALTERNATIVA: Como as abordagens anteriores não estão funcionando
-            // vamos usar uma solução mais robusta que contorne as limitações da API
-            
-            console.log("Iniciando processo de exclusão do professor", id);
-            
-            // 1. Primeiro, vamos tentar obter o professor completo
-            let professor;
+            // PRIMEIRO PASSO: Remover os vínculos do professor com turmas/disciplinas
             try {
-                professor = await ConfigModule.fetchApi(`/professores/${id}`);
-                console.log("Dados do professor obtidos com sucesso:", professor);
-            } catch (error) {
-                console.warn("Não foi possível obter os dados do professor:", error);
-                // Continue mesmo sem os dados completos
+                console.log(`Removendo vínculos do professor ${id} na tabela professor_disciplina_turma`);
+                
+                // Tentar remover vínculos com professor_disciplina_turma
+                const resultadoVinculos = await ConfigModule.fetchApi(`/professor_disciplina_turma/professor/${id}`, {
+                    method: 'DELETE'
+                }).catch(async (error) => {
+                    console.warn("Erro ao excluir vínculos com DELETE direto:", error);
+                    
+                    // Método alternativo: Buscar os vínculos e excluir um por um
+                    try {
+                        // Buscar todos os vínculos do professor
+                        const vinculos = await ConfigModule.fetchApi(`/professor_disciplina_turma?id_professor=${id}`);
+                        console.log(`Encontrados ${vinculos.length} vínculos para o professor ${id}:`, vinculos);
+                        
+                        // Excluir cada vínculo individualmente
+                        for (const vinculo of vinculos) {
+                            const vinculoId = vinculo.id || vinculo.id_vinculo;
+                            if (vinculoId) {
+                                console.log(`Excluindo vínculo ${vinculoId}`);
+                                await ConfigModule.fetchApi(`/professor_disciplina_turma/${vinculoId}`, {
+                                    method: 'DELETE'
+                                }).catch(e => console.warn(`Erro ao excluir vínculo ${vinculoId}:`, e));
+                            }
+                        }
+                        return { success: true, message: `${vinculos.length} vínculos excluídos manualmente` };
+                    } catch (e) {
+                        console.error("Erro ao remover vínculos manualmente:", e);
+                        
+                        // Último recurso: usar rota específica para limpeza de vínculos (se existir)
+                        return await ConfigModule.fetchApi(`/professores/${id}/limpar-vinculos`, {
+                            method: 'POST'
+                        }).catch(e => {
+                            console.error("Todas as tentativas de remover vínculos falharam:", e);
+                            return { success: false, message: "Não foi possível remover os vínculos" };
+                        });
+                    }
+                });
+                
+                console.log("Resultado da remoção de vínculos:", resultadoVinculos);
+            } catch (errorVinculos) {
+                console.error("Erro ao tentar remover vínculos:", errorVinculos);
+                // Continuar mesmo com erro nos vínculos
             }
             
-            // 2. Tentar a exclusão por PUT - Marcar explicitamente como inativo
+            // SEGUNDO PASSO: Desativar o professor (campo 'ativo' = false)
             try {
-                // IMPORTANTE: Criar payload mínimo para alterar especificamente o campo 'ativo'
-                const payloadMinimo = {
-                    ativo: false
-                };
+                console.log(`Desativando professor ${id} (campo ativo = false)`);
                 
-                // Primeiro tentar apenas alterar o campo 'ativo' para false
-                console.log("Tentando alterar especificamente o campo 'ativo' para false");
-                await ConfigModule.fetchApi(`/professores/${id}`, {
+                // Usar método PUT diretamente com payload mínimo focado no campo 'ativo'
+                const resultadoDesativacao = await ConfigModule.fetchApi(`/professores/${id}`, {
                     method: 'PUT',
-                    body: JSON.stringify(payloadMinimo)
+                    body: JSON.stringify({
+                        ativo: false
+                    })
                 });
                 
-                // Depois, realizar a atualização completa para alterar o nome e outros campos
-                // Preparar payload completo
-                const payloadCompleto = professor ? {
-                    ...professor,
-                    ativo: false,
-                    status: "inativo",
-                    _deleted: true,
-                    nome_professor: professor.nome_professor ? `[INATIVO] ${professor.nome_professor}` : `[INATIVO] Professor ${id}`
-                } : {
-                    ativo: false,
-                    status: "inativo",
-                    _deleted: true,
-                    nome_professor: `[INATIVO] Professor ${id}`
-                };
+                console.log("Resultado da desativação:", resultadoDesativacao);
                 
-                console.log("Enviando requisição PUT completa para inativar professor:", payloadCompleto);
-                
-                const resultado = await ConfigModule.fetchApi(`/professores/${id}`, {
-                    method: 'PUT',
-                    body: JSON.stringify(payloadCompleto)
-                });
-                
-                console.log("Resultado da inativação via PUT:", resultado);
-                
-                // Verificar se o professor foi realmente inativado
+                // Verificar se a atualização foi bem-sucedida
                 const professorAtualizado = await ConfigModule.fetchApi(`/professores/${id}`);
-                console.log("Professor após inativação:", professorAtualizado);
-                
                 if (professorAtualizado && professorAtualizado.ativo === false) {
-                    console.log("Confirmado: Campo 'ativo' alterado para false com sucesso");
+                    console.log("Confirmado: Professor foi marcado como inativo com sucesso");
+                    this.mostrarSucesso("Professor e seus vínculos foram removidos com sucesso!");
                 } else {
-                    console.warn("ATENÇÃO: Campo 'ativo' pode não ter sido alterado!");
+                    console.warn("ALERTA: O campo 'ativo' não foi alterado corretamente:", professorAtualizado);
+                    
+                    // Tentar novamente com uma abordagem diferente
+                    console.log("Tentando método alternativo para desativar o professor");
+                    await ConfigModule.fetchApi(`/professores/${id}/desativar`, {
+                        method: 'POST'
+                    }).catch(e => console.warn("Erro no método alternativo:", e));
+                    
+                    this.mostrarSucesso("Professor removido, mas pode haver inconsistências. Verifique o banco de dados.");
                 }
                 
-                // Independentemente do resultado, vamos atualizar a UI
+                // Atualizar a UI removendo o professor da lista
                 this.state.professores = this.state.professores.filter(
                     p => (p.id_professor || p.id) !== id
                 );
                 
                 this.renderizarProfessores();
-                this.mostrarSucesso("Professor removido com sucesso! A página será recarregada em 2 segundos para atualizar as contagens.");
                 
                 // Forçar a atualização do dashboard e da lista de professores
-                this.carregarProfessores().then(() => {
-                    this.atualizarDashboard();
-                    console.log("Dashboard e lista de professores atualizados após exclusão");
-                    
-                    // Recarregar a página após um pequeno delay para garantir atualização completa
-                    setTimeout(() => {
-                        console.log("Recarregando a página para garantir atualização completa");
-                        window.location.reload();
-                    }, 2000);
-                });
+                await this.carregarProfessores();
+                this.atualizarDashboard();
+                
+                // Recarregar a página após um pequeno delay para garantir atualização completa
+                setTimeout(() => {
+                    console.log("Recarregando a página para garantir atualização completa");
+                    window.location.reload();
+                }, 2000);
                 
                 return;
-            } catch (error) {
-                console.error("Erro ao inativar professor:", error);
-                
-                // Tentar método alternativo - PUT com apenas {ativo: false}
-                try {
-                    console.log("Tentando método alternativo - apenas alterar o campo 'ativo'");
-                    await ConfigModule.fetchApi(`/professores/${id}`, {
-                        method: 'PUT',
-                        body: JSON.stringify({ ativo: false })
-                    });
-                    
-                    // Mesmo com falha parcial, atualizamos a UI
-                    this.state.professores = this.state.professores.filter(
-                        p => (p.id_professor || p.id) !== id
-                    );
-                    
-                    this.renderizarProfessores();
-                    this.mostrarSucesso("Professor removido com sucesso! A página será recarregada em 2 segundos para atualizar as contagens.");
-                    
-                    // Forçar a atualização do dashboard
-                    this.atualizarDashboard();
-                    
-                    // Recarregar a página após um pequeno delay
-                    setTimeout(() => {
-                        console.log("Recarregando a página para garantir atualização completa");
-                        window.location.reload();
-                    }, 2000);
-                } catch (error2) {
-                    console.error("Erro também na segunda tentativa:", error2);
-                    
-                    // Mesmo com falha, atualizamos a UI
-                    this.state.professores = this.state.professores.filter(
-                        p => (p.id_professor || p.id) !== id
-                    );
-                    
-                    this.renderizarProfessores();
-                    this.mostrarSucesso("Professor removido da interface. O banco de dados pode levar algum tempo para atualizar.");
-                    
-                    // Forçar a atualização do dashboard
-                    this.atualizarDashboard();
-                }
+            } catch (errorDesativacao) {
+                console.error("Erro ao desativar professor:", errorDesativacao);
+                this.mostrarErro("Erro ao desativar o professor. Tente novamente.");
             }
         } catch (error) {
             console.error("Erro geral ao excluir professor:", error);

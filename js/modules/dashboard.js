@@ -60,39 +60,23 @@ const DashboardModule = {
                 ConfigModule.fetchApi('/disciplinas').catch(() => [])
             ]);
             
-            // Debug: Imprimir professores para verificar seus estados
-            console.log("Dashboard: Todos os professores obtidos da API:", professores);
-            
-            // Verificar especificamente o campo 'ativo' em cada professor
-            professores.forEach(professor => {
-                console.log(`Dashboard: Professor ${professor.id_professor || professor.id} (${professor.nome_professor || professor.nome}) - Campo ativo:`, 
-                           professor.ativo === false ? 'INATIVO (false)' : (professor.ativo === true ? 'ATIVO (true)' : 'Indefinido'));
+            // Verificar campo 'ativo' para depuração
+            console.log("Dashboard: Verificando campo 'ativo' dos professores:");
+            professores.forEach(prof => {
+                console.log(`Professor ${prof.id_professor || prof.id} (${prof.nome_professor || "Sem nome"}): ativo=${prof.ativo}`);
             });
             
-            // Filtrar professores inativos com verificação mais rigorosa
-            // IMPORTANTE: Dar prioridade ao campo 'ativo' na filtragem
+            // Filtrar professores apenas pelo campo 'ativo'
             const professoresAtivos = professores.filter(professor => {
-                // VERIFICAÇÃO PRINCIPAL: Verificar se o campo ativo é explicitamente false
+                // Verificar especificamente se o campo 'ativo' é false
                 if (professor.ativo === false) {
-                    console.log(`Dashboard: Professor ${professor.nome_professor || professor.id_professor || professor.id} EXCLUÍDO por ter campo ativo=false`);
+                    console.log(`Professor ${professor.id_professor || professor.id} excluído por ativo=false`);
                     return false;
                 }
-                
-                // Verificações secundárias
-                const isInativo = 
-                    professor.status === 'inativo' || 
-                    professor._deleted === true ||
-                    (professor.nome_professor && professor.nome_professor.includes('[INATIVO]'));
-                
-                if (isInativo) {
-                    console.log(`Dashboard: Professor ${professor.nome_professor || professor.id_professor || professor.id} EXCLUÍDO por outras flags de inatividade`);
-                    return false;
-                }
-                
                 return true;
             });
             
-            console.log(`Dashboard: Professores - Total: ${professores.length}, Ativos: ${professoresAtivos.length}, Inativos: ${professores.length - professoresAtivos.length}`);
+            console.log(`Dashboard: Professores - Total: ${professores.length}, Ativos: ${professoresAtivos.length}`);
             
             // Garantir que os valores sejam números válidos
             const totalAlunos = Array.isArray(alunos) ? alunos.length : 0;
