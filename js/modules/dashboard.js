@@ -100,11 +100,33 @@ const DashboardModule = {
             // Verificar campo 'ativo' para depuração de forma segura
             if (Array.isArray(professores)) {
                 console.log("Dashboard: Verificando professores ativos/inativos");
+                console.log("Total de professores antes da filtragem:", professores.length);
                 
-                // Filtrar professores apenas pelo campo 'ativo'
-                const professoresAtivos = professores.filter(professor => professor.ativo !== false);
+                // Mostrar log detalhado dos professores para debug
+                professores.forEach((p, idx) => {
+                    console.log(`Professor ${idx+1}/${professores.length}: ID=${p.id_professor || p.id}, Nome=${p.nome_professor || p.nome}, Ativo=${p.ativo}`);
+                });
                 
-                console.log(`Dashboard: Professores - Total: ${professores.length}, Ativos: ${professoresAtivos.length}`);
+                // Filtrar professores usando múltiplos critérios
+                const professoresAtivos = professores.filter(professor => {
+                    // Verificação explícita para o campo 'ativo'
+                    if (professor.ativo === false) {
+                        console.log(`Professor ${professor.id_professor || professor.id} excluído por ativo=false`);
+                        return false;
+                    }
+                    
+                    // Verificação adicional para nome com [INATIVO]
+                    const nome = professor.nome_professor || professor.nome || '';
+                    if (nome.includes('[INATIVO]')) {
+                        console.log(`Professor ${professor.id_professor || professor.id} excluído por ter [INATIVO] no nome`);
+                        return false;
+                    }
+                    
+                    // Professor está ativo
+                    return true;
+                });
+                
+                console.log(`Dashboard: Professores - Total: ${professores.length}, Ativos: ${professoresAtivos.length}, Inativos: ${professores.length - professoresAtivos.length}`);
                 
                 // Garantir que os valores sejam números válidos
                 const totalAlunos = Array.isArray(alunos) ? alunos.length : 0;
