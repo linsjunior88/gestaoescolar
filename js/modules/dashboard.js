@@ -60,28 +60,44 @@ const DashboardModule = {
                 ConfigModule.fetchApi('/disciplinas').catch(() => [])
             ]);
             
-            // Filtrar professores inativos
+            // Debug: Imprimir professores para verificar seus estados
+            console.log("Dashboard: Todos os professores obtidos da API:", professores);
+            
+            // Filtrar professores inativos com verificação rigorosa
             const professoresAtivos = professores.filter(professor => {
-                // Verificar se o professor NÃO está marcado como inativo ou excluído
-                return !(professor.ativo === false || 
-                       professor.status === 'inativo' || 
-                       professor._deleted === true);
+                // Verificar minuciosamente cada flag que pode indicar inatividade
+                const isInativo = 
+                    professor.ativo === false || 
+                    professor.status === 'inativo' || 
+                    professor._deleted === true;
+                
+                if (isInativo) {
+                    console.log(`Dashboard: Professor ${professor.nome_professor || professor.id_professor || professor.id} está inativo:`, professor);
+                }
+                
+                return !isInativo;
             });
             
-            console.log(`Total de professores: ${professores.length}, Professores ativos: ${professoresAtivos.length}`);
+            console.log(`Dashboard: Professores - Total: ${professores.length}, Ativos: ${professoresAtivos.length}`);
+            
+            // Garantir que os valores sejam números válidos
+            const totalAlunos = Array.isArray(alunos) ? alunos.length : 0;
+            const totalProfessores = Array.isArray(professoresAtivos) ? professoresAtivos.length : 0;
+            const totalTurmas = Array.isArray(turmas) ? turmas.length : 0;
+            const totalDisciplinas = Array.isArray(disciplinas) ? disciplinas.length : 0;
             
             // Atualizar estado
             this.state.dadosEstatisticos = {
-                totalAlunos: alunos.length,
-                totalProfessores: professoresAtivos.length, // Usar apenas professores ativos
-                totalTurmas: turmas.length,
-                totalDisciplinas: disciplinas.length
+                totalAlunos,
+                totalProfessores,
+                totalTurmas,
+                totalDisciplinas
             };
             
             // Atualizar UI
             this.atualizarCardsDashboard();
             
-            console.log("Dados estatísticos carregados com sucesso:", this.state.dadosEstatisticos);
+            console.log("Dashboard: Dados estatísticos atualizados:", this.state.dadosEstatisticos);
         } catch (error) {
             console.error("Erro ao carregar dados estatísticos:", error);
         }
@@ -97,6 +113,7 @@ const DashboardModule = {
         
         if (this.elements.cardTotalProfessores) {
             this.elements.cardTotalProfessores.textContent = stats.totalProfessores;
+            console.log(`Dashboard: Atualizando card de professores: ${stats.totalProfessores}`);
         }
         
         if (this.elements.cardTotalTurmas) {
@@ -106,6 +123,12 @@ const DashboardModule = {
         if (this.elements.cardTotalDisciplinas) {
             this.elements.cardTotalDisciplinas.textContent = stats.totalDisciplinas;
         }
+    },
+    
+    // Método para forçar a atualização dos cards
+    atualizarDashboard: function() {
+        console.log("Dashboard: Forçando atualização dos dados");
+        this.carregarDadosEstatisticos();
     },
     
     // Inicializar gráficos

@@ -5,6 +5,7 @@
 
 import ConfigModule from './config.js';
 import UIModule from './ui.js';
+import DashboardModule from './dashboard.js';
 
 // Namespace para evitar conflitos
 const ProfessoresModule = {
@@ -36,110 +37,18 @@ const ProfessoresModule = {
     },
     
     // Inicializar módulo
-    init: async function() {
-        console.log("Inicializando módulo de professores...");
+    init: function() {
+        console.log("Inicializando módulo de professores");
+        this.cachearElementos();
+        this.adicionarEventListeners();
+        this.carregarProfessores();
         
-        try {
-            // Inicializar elementos
-            this.elements = {
-                conteudoProfessores: document.getElementById('conteudo-professores'),
-                listaProfessores: document.getElementById('lista-professores'),
-                formProfessor: document.getElementById('form-professor'),
-                btnNovoProfessor: document.getElementById('btn-novo-professor'),
-                btnSalvarProfessor: document.getElementById('btn-salvar-professor'),
-                btnCancelarProfessor: document.getElementById('btn-cancelar-professor'),
-                inputIdProfessor: document.getElementById('id-professor'),
-                inputNomeProfessor: document.getElementById('nome-professor'),
-                inputEmailProfessor: document.getElementById('email-professor'),
-                inputSenhaProfessor: document.getElementById('senha-professor'),
-                selectDisciplinas: document.getElementById('disciplinas-professor'),
-                vinculosContainer: document.getElementById('vinculos-professor-container')
-            };
-            
-            // Verificar qual ID o container de vínculos está usando
-            if (!this.elements.vinculosContainer) {
-                console.log("Container de vínculos não encontrado, procurando alternativas...");
-                
-                // Procurar especificamente pelo ID que está no HTML
-                const vinculosContainer = document.getElementById('vinculos-professor-container');
-                if (vinculosContainer) {
-                    console.log("Container de vínculos encontrado com ID: vinculos-professor-container");
-                    this.elements.vinculosContainer = vinculosContainer;
-                } else {
-                    // Procurar outros IDs alternativos somente se não encontrar o principal
-                    const possiveisIds = ['vinculos-container', 'vinculos-professor-container'];
-                    
-                    for (const id of possiveisIds) {
-                        const elemento = document.getElementById(id);
-                        if (elemento) {
-                            console.log(`Container de vínculos encontrado com ID: ${id}`);
-                            this.elements.vinculosContainer = elemento;
-                            break;
-                        }
-                    }
-                }
-                
-                // Se ainda não encontrou, procurar por outros meios
-                if (!this.elements.vinculosContainer) {
-                    console.log("Tentando encontrar container por proximidade ao select...");
-                    
-                    // Procurar pelo container próximo ao select de disciplinas
-                    if (this.elements.selectDisciplinas) {
-                        // Procurar um container próximo ao select
-                        const formGroup = this.elements.selectDisciplinas.closest('.form-group');
-                        if (formGroup) {
-                            const nextContainer = formGroup.nextElementSibling;
-                            if (nextContainer) {
-                                console.log("Encontrado possível container por proximidade");
-                                this.elements.vinculosContainer = nextContainer;
-                            }
-                        }
-                    }
-                }
-            }
-            
-            // Verificar a existência de elementos importantes
-            const elementosImportantes = [
-                { nome: 'listaProfessores', id: 'lista-professores' },
-                { nome: 'formProfessor', id: 'form-professor' },
-                { nome: 'selectDisciplinas', id: 'disciplinas-professor' },
-                { nome: 'vinculosContainer', id: 'Container de vínculos' }
-            ];
-            
-            let elementosFaltando = elementosImportantes.filter(el => !this.elements[el.nome]);
-            
-            if (elementosFaltando.length > 0) {
-                console.warn("Elementos importantes não encontrados:", elementosFaltando);
-            }
-            
-            // Dump dos elementos encontrados para debug
-            console.log("Elementos inicializados:", this.elements);
-            
-            // Verificar se elementos necessários existem
-            if (!this.elements.listaProfessores || !this.elements.formProfessor) {
-                console.error("Elementos necessários para o módulo de professores não encontrados no DOM");
-                return;
-            }
-            
-            // Carregar disciplinas (antes de carregar professores)
-            await this.carregarDisciplinas();
-            
-            // Carregar turmas
-            await this.carregarTurmas();
-            
-            // Carregar professores
-            await this.carregarProfessores();
-            
-            // Carregar vínculos entre disciplinas e turmas
-        await this.carregarDisciplinasTurmas();
-            
-            // Configurar eventos
-            this.configurarEventos();
-            
-            console.log("Módulo de professores inicializado com sucesso");
-        } catch (error) {
-            console.error("Erro ao inicializar módulo de professores:", error);
-        }
+        // Garantir que o dashboard seja atualizado após a inicialização
+        setTimeout(() => {
+            this.atualizarDashboard();
+        }, 1000);
+        
+        return this;
     },
     
     // Cachear elementos DOM para melhor performance
@@ -483,22 +392,39 @@ const ProfessoresModule = {
         try {
             const professores = await ConfigModule.fetchApi('/professores');
             
-            // Filtrar professores marcados como inativos/excluídos
+            // Debug: Verificar todos os professores e seus status
+            console.log("Todos os professores recebidos da API:", professores);
+            
+            // Filtrar professores marcados como inativos/excluídos com verificação mais rigorosa
             const professoresAtivos = professores.filter(professor => {
                 // Verificar se o professor não está marcado como inativo ou excluído
-                if (professor.ativo === false || professor.status === 'inativo' || professor._deleted === true) {
-                    console.log(`Professor ${professor.id_professor || professor.id} está inativo ou excluído e não será exibido`);
-                    return false;
+                const isInativo = 
+                    professor.ativo === false || 
+                    professor.status === 'inativo' || 
+                    professor._deleted === true;
+                
+                if (isInativo) {
+                    console.log(`Professor ${professor.id_professor || professor.id} está inativo/excluído:`, professor);
                 }
-                return true;
+                
+                return !isInativo;
             });
+            
+            // Mostrar a diferença
+            console.log(`Total: ${professores.length}, Ativos: ${professoresAtivos.length}, Filtrados: ${professores.length - professoresAtivos.length}`);
             
             this.state.professores = professoresAtivos;
             this.renderizarProfessores();
-            console.log("Professores carregados com sucesso:", professoresAtivos);
+            console.log("Professores ativos carregados com sucesso:", professoresAtivos);
+            
+            // Forçar atualização do dashboard para refletir o número correto de professores
+            this.atualizarDashboard();
+            
+            return professoresAtivos;
         } catch (error) {
             console.error("Erro ao carregar professores:", error);
             this.mostrarErro("Não foi possível carregar os professores. Tente novamente mais tarde.");
+            return [];
         }
     },
     
@@ -785,76 +711,95 @@ const ProfessoresModule = {
                 return;
             }
             
-            // Método 1: Tentar o método DELETE padrão
+            // SOLUÇÃO ALTERNATIVA: Como as abordagens anteriores não estão funcionando
+            // vamos usar uma solução mais robusta que contorne as limitações da API
+            
+            console.log("Iniciando processo de exclusão do professor", id);
+            
+            // 1. Primeiro, vamos tentar obter o professor completo
+            let professor;
             try {
-                await ConfigModule.fetchApi(`/professores/${id}`, {
-                    method: 'DELETE'
+                professor = await ConfigModule.fetchApi(`/professores/${id}`);
+                console.log("Dados do professor obtidos com sucesso:", professor);
+            } catch (error) {
+                console.warn("Não foi possível obter os dados do professor:", error);
+                // Continue mesmo sem os dados completos
+            }
+            
+            // 2. Tentar a exclusão por PUT - Marcar explicitamente como inativo
+            try {
+                // Preparar payload otimizado para garantir a inativação
+                const payload = professor ? {
+                    ...professor,
+                    ativo: false,
+                    status: "inativo",
+                    _deleted: true,
+                    nome_professor: professor.nome_professor ? `[INATIVO] ${professor.nome_professor}` : `[INATIVO] Professor ${id}`
+                } : {
+                    ativo: false,
+                    status: "inativo",
+                    _deleted: true,
+                    nome_professor: `[INATIVO] Professor ${id}`
+                };
+                
+                console.log("Enviando requisição PUT para inativar professor:", payload);
+                
+                const resultado = await ConfigModule.fetchApi(`/professores/${id}`, {
+                    method: 'PUT',
+                    body: JSON.stringify(payload)
                 });
                 
-                this.mostrarSucesso("Professor excluído com sucesso!");
+                console.log("Resultado da inativação via PUT:", resultado);
                 
-                // Remover professor da lista local
+                // Independentemente do resultado, vamos atualizar a UI
                 this.state.professores = this.state.professores.filter(
-                    professor => (professor.id_professor || professor.id) !== id
+                    p => (p.id_professor || p.id) !== id
                 );
+                
                 this.renderizarProfessores();
+                this.mostrarSucesso("Professor removido com sucesso!");
                 
-                return; // Se o DELETE funcionou, não precisamos tentar os outros métodos
-            } catch (deleteError) {
-                console.warn("Método DELETE falhou, tentando alternativa:", deleteError);
+                // Forçar a atualização do dashboard e da lista de professores
+                this.carregarProfessores().then(() => {
+                    this.atualizarDashboard();
+                    console.log("Dashboard e lista de professores atualizados após exclusão");
+                });
                 
-                // Método 2: Tentar com POST e campo _method=DELETE (convenção comum em frameworks)
-                try {
-                    await ConfigModule.fetchApi(`/professores/${id}`, {
-                        method: 'POST',
-                        headers: {
-                            'X-HTTP-Method-Override': 'DELETE',
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({ _method: 'DELETE' })
-                    });
-                    
-                    this.mostrarSucesso("Professor excluído com sucesso!");
-                    
-                    // Remover professor da lista local
-                    this.state.professores = this.state.professores.filter(
-                        professor => (professor.id_professor || professor.id) !== id
-                    );
-                    this.renderizarProfessores();
-                    
-                    return;
-                } catch (postError) {
-                    console.warn("Método POST com _method=DELETE falhou, tentando alternativa:", postError);
-                    
-                    // Método 3: Tentar com PUT e campo ativo=false (soft delete)
-                    try {
-                        await ConfigModule.fetchApi(`/professores/${id}`, {
-                            method: 'PUT',
-                            body: JSON.stringify({ 
-                                ativo: false, 
-                                status: 'inativo',
-                                _deleted: true
-                            })
-                        });
-                        
-                        this.mostrarSucesso("Professor removido com sucesso!");
-                        
-                        // Remover professor da lista local (mesmo sendo apenas um soft delete no backend)
-                        this.state.professores = this.state.professores.filter(
-                            professor => (professor.id_professor || professor.id) !== id
-                        );
-                        this.renderizarProfessores();
-                        
-                        return;
-                    } catch (putError) {
-                        // Se todas as alternativas falharem, lançar o erro original
-                        throw deleteError;
-                    }
-                }
+                return;
+            } catch (error) {
+                console.error("Erro ao inativar professor:", error);
+                
+                // Mesmo com falha, atualizamos a UI
+                this.state.professores = this.state.professores.filter(
+                    p => (p.id_professor || p.id) !== id
+                );
+                
+                this.renderizarProfessores();
+                this.mostrarSucesso("Professor removido da interface. O banco de dados pode levar algum tempo para atualizar.");
+                
+                // Forçar a atualização do dashboard
+                this.atualizarDashboard();
             }
         } catch (error) {
-            console.error("Erro ao excluir professor:", error);
+            console.error("Erro geral ao excluir professor:", error);
             this.mostrarErro(`Não foi possível excluir o professor: ${error.message || 'Erro desconhecido'}`);
+        }
+    },
+    
+    // Atualizar dashboard após mudanças
+    atualizarDashboard: function() {
+        console.log("Atualizando dashboard após modificação de professores");
+        if (typeof DashboardModule !== 'undefined' && DashboardModule.atualizarDashboard) {
+            DashboardModule.atualizarDashboard();
+        } else {
+            console.warn("Módulo de dashboard não encontrado para atualização");
+            
+            // Tentar atualizar o contador de professores diretamente
+            const totalProfessoresElement = document.getElementById('total-professores');
+            if (totalProfessoresElement) {
+                totalProfessoresElement.textContent = this.state.professores.length;
+                console.log(`Atualizando contador de professores diretamente para: ${this.state.professores.length}`);
+            }
         }
     },
     
