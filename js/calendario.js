@@ -9,7 +9,7 @@ class CalendarioEscolar {
     constructor() {
         this.calendar = null;
         this.eventosCarregados = [];
-        this.filtrosAtivos = new Set(['feriado_nacional', 'feriado_estadual', 'feriado_municipal', 'evento_escolar', 'reuniao', 'conselho_classe', 'outro']);
+        this.filtrosAtivos = new Set(['feriado_nacional', 'feriado_estadual', 'feriado_municipal', 'evento_escolar', 'reuniao', 'conselho_classe', 'formatura', 'festa_junina', 'semana_pedagogica', 'outro']);
         this.eventoAtual = null;
         
         this.init();
@@ -462,7 +462,7 @@ class CalendarioEscolar {
             checkbox.checked = true;
         });
         
-        this.filtrosAtivos = new Set(['feriado_nacional', 'feriado_estadual', 'feriado_municipal', 'evento_escolar', 'reuniao', 'conselho_classe', 'outro']);
+        this.filtrosAtivos = new Set(['feriado_nacional', 'feriado_estadual', 'feriado_municipal', 'evento_escolar', 'reuniao', 'conselho_classe', 'formatura', 'festa_junina', 'semana_pedagogica', 'outro']);
         this.atualizarCalendarioEventos();
         this.atualizarEstatisticas();
     }
@@ -490,15 +490,42 @@ class CalendarioEscolar {
         const mes = dataAtual.getMonth() + 1;
         
         console.log(`📅 Calculando estatísticas para ${mes}/${ano}`);
+        console.log(`📋 Total de eventos carregados no sistema:`, this.eventosCarregados.length);
+        
+        // Mostrar todos os eventos para debug
+        if (this.eventosCarregados.length > 0) {
+            console.log('📝 Todos os eventos carregados:');
+            this.eventosCarregados.forEach((evento, index) => {
+                const dataEvento = new Date(evento.data_inicio);
+                const anoEvento = dataEvento.getFullYear();
+                const mesEvento = dataEvento.getMonth() + 1;
+                console.log(`   ${index + 1}. ${evento.titulo} - ${evento.data_inicio} (${mesEvento}/${anoEvento}) - Tipo: ${evento.tipo_evento}`);
+            });
+        }
         
         // Filtrar eventos do mês atual
         const eventosDoMes = this.eventosCarregados.filter(evento => {
             const dataEvento = new Date(evento.data_inicio);
-            return dataEvento.getFullYear() === ano && 
-                   (dataEvento.getMonth() + 1) === mes;
+            const anoEvento = dataEvento.getFullYear();
+            const mesEvento = dataEvento.getMonth() + 1;
+            
+            const incluido = anoEvento === ano && mesEvento === mes;
+            
+            if (!incluido && (evento.titulo.toLowerCase().includes('independência') || evento.titulo.toLowerCase().includes('independencia'))) {
+                console.log(`🔍 Evento Independência NÃO incluído: ${evento.titulo} - Data: ${evento.data_inicio} (${mesEvento}/${anoEvento}) vs filtro (${mes}/${ano})`);
+            }
+            
+            return incluido;
         });
         
         console.log(`📋 Eventos do mês ${mes}/${ano}:`, eventosDoMes.length);
+        
+        if (eventosDoMes.length > 0) {
+            console.log('📝 Eventos encontrados no mês:');
+            eventosDoMes.forEach((evento, index) => {
+                console.log(`   ${index + 1}. ${evento.titulo} - ${evento.data_inicio} - Tipo: ${evento.tipo_evento}`);
+            });
+        }
         
         // Calcular contadores por tipo
         const contadores = {
