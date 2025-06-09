@@ -13,8 +13,17 @@
     <link rel="stylesheet" href="css/dashboard.css">
     <!-- CSS para Modais -->
     <link rel="stylesheet" href="css/modals.css">
+    <!-- CSS do Calendário Escolar -->
+    <link rel="stylesheet" href="css/calendario.css">
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- FullCalendar CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css" rel="stylesheet">
+    <!-- FullCalendar JS -->
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
+    <!-- FullCalendar Localização PT-BR -->
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/locales/pt-br.global.min.js"></script>
 </head>
 <body>
     <!-- Barra de navegação -->
@@ -154,6 +163,75 @@
                         </div>
                         <div class="card-body">
                             <canvas id="chart-distribuicao"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Calendário Escolar -->
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="card mb-4">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-calendar-alt me-2"></i>Calendário Escolar
+                            </h5>
+                            <div class="btn-group">
+                                <button id="btn-novo-evento" class="btn btn-sm btn-primary">
+                                    <i class="fas fa-plus me-1"></i> Novo Evento
+                                </button>
+                                <button id="btn-filtros-calendario" class="btn btn-sm btn-outline-secondary">
+                                    <i class="fas fa-filter me-1"></i> Filtros
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body p-2">
+                            <div id="calendario-escolar"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="card-title">Estatísticas do Mês</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="stat-item mb-3">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="text-muted">Total de Eventos</span>
+                                    <span class="badge bg-primary" id="total-eventos-mes">0</span>
+                                </div>
+                            </div>
+                            <div class="stat-item mb-3">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="text-muted">Feriados</span>
+                                    <span class="badge bg-danger" id="total-feriados-mes">0</span>
+                                </div>
+                            </div>
+                            <div class="stat-item mb-3">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="text-muted">Eventos Escolares</span>
+                                    <span class="badge bg-success" id="total-eventos-escolares-mes">0</span>
+                                </div>
+                            </div>
+                            <div class="stat-item mb-3">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="text-muted">Reuniões</span>
+                                    <span class="badge bg-warning" id="total-reunioes-mes">0</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Próximos Eventos -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title">Próximos Eventos</h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="lista-proximos-eventos">
+                                <!-- Será preenchido via JavaScript -->
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -830,6 +908,212 @@
                             </div>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modais do Calendário Escolar -->
+    
+    <!-- Modal de Evento -->
+    <div class="modal fade" id="modalEvento" tabindex="-1" aria-labelledby="modalEventoLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalEventoLabel">Novo Evento</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="form-evento">
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="mb-3">
+                                    <label for="evento-titulo" class="form-label">Título do Evento *</label>
+                                    <input type="text" class="form-control" id="evento-titulo" required>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="evento-tipo" class="form-label">Tipo de Evento *</label>
+                                    <select class="form-select" id="evento-tipo" required>
+                                        <option value="">Selecione o tipo</option>
+                                        <option value="feriado_nacional">Feriado Nacional</option>
+                                        <option value="feriado_estadual">Feriado Estadual</option>
+                                        <option value="feriado_municipal">Feriado Municipal</option>
+                                        <option value="evento_escolar">Evento Escolar</option>
+                                        <option value="reuniao">Reunião</option>
+                                        <option value="conselho_classe">Conselho de Classe</option>
+                                        <option value="formatura">Formatura</option>
+                                        <option value="festa_junina">Festa Junina</option>
+                                        <option value="semana_pedagogica">Semana Pedagógica</option>
+                                        <option value="outro">Outro</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="evento-descricao" class="form-label">Descrição</label>
+                            <textarea class="form-control" id="evento-descricao" rows="3"></textarea>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="evento-data-inicio" class="form-label">Data de Início *</label>
+                                    <input type="date" class="form-control" id="evento-data-inicio" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="evento-data-fim" class="form-label">Data de Fim *</label>
+                                    <input type="date" class="form-control" id="evento-data-fim" required>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="evento-hora-inicio" class="form-label">Hora de Início</label>
+                                    <input type="time" class="form-control" id="evento-hora-inicio">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="evento-hora-fim" class="form-label">Hora de Fim</label>
+                                    <input type="time" class="form-control" id="evento-hora-fim">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="evento-cor" class="form-label">Cor do Evento</label>
+                                    <input type="color" class="form-control form-control-color" id="evento-cor" value="#3498db">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3 form-check form-switch mt-4">
+                                    <input class="form-check-input" type="checkbox" id="evento-recorrente">
+                                    <label class="form-check-label" for="evento-recorrente">
+                                        Evento Recorrente
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div id="recorrencia-options" class="mb-3 d-none">
+                            <label for="evento-recorrencia" class="form-label">Frequência de Recorrência</label>
+                            <select class="form-select" id="evento-recorrencia">
+                                <option value="">Selecione a frequência</option>
+                                <option value="diaria">Diária</option>
+                                <option value="semanal">Semanal</option>
+                                <option value="mensal">Mensal</option>
+                                <option value="anual">Anual</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="evento-observacoes" class="form-label">Observações</label>
+                            <textarea class="form-control" id="evento-observacoes" rows="2"></textarea>
+                        </div>
+                        
+                        <input type="hidden" id="evento-id">
+                        <input type="hidden" id="evento-criado-por" value="Sistema">
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Salvar Evento</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal de Filtros -->
+    <div class="modal fade" id="modalFiltros" tabindex="-1" aria-labelledby="modalFiltrosLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalFiltrosLabel">Filtros do Calendário</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Tipos de Evento</label>
+                        <div class="form-check">
+                            <input class="form-check-input filtro-tipo" type="checkbox" value="feriado_nacional" id="filtro-feriado-nacional" checked>
+                            <label class="form-check-label" for="filtro-feriado-nacional">
+                                <span class="badge" style="background-color: #e74c3c;">■</span> Feriados Nacionais
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input filtro-tipo" type="checkbox" value="feriado_estadual" id="filtro-feriado-estadual" checked>
+                            <label class="form-check-label" for="filtro-feriado-estadual">
+                                <span class="badge" style="background-color: #9b59b6;">■</span> Feriados Estaduais
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input filtro-tipo" type="checkbox" value="feriado_municipal" id="filtro-feriado-municipal" checked>
+                            <label class="form-check-label" for="filtro-feriado-municipal">
+                                <span class="badge" style="background-color: #f39c12;">■</span> Feriados Municipais
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input filtro-tipo" type="checkbox" value="evento_escolar" id="filtro-evento-escolar" checked>
+                            <label class="form-check-label" for="filtro-evento-escolar">
+                                <span class="badge" style="background-color: #27ae60;">■</span> Eventos Escolares
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input filtro-tipo" type="checkbox" value="reuniao" id="filtro-reuniao" checked>
+                            <label class="form-check-label" for="filtro-reuniao">
+                                <span class="badge" style="background-color: #3498db;">■</span> Reuniões
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input filtro-tipo" type="checkbox" value="conselho_classe" id="filtro-conselho-classe" checked>
+                            <label class="form-check-label" for="filtro-conselho-classe">
+                                <span class="badge" style="background-color: #8e44ad;">■</span> Conselho de Classe
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input filtro-tipo" type="checkbox" value="outro" id="filtro-outro" checked>
+                            <label class="form-check-label" for="filtro-outro">
+                                <span class="badge" style="background-color: #95a5a6;">■</span> Outros
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="btn-limpar-filtros">Limpar Filtros</button>
+                    <button type="button" class="btn btn-primary" id="btn-aplicar-filtros" data-bs-dismiss="modal">Aplicar Filtros</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal de Detalhes do Evento -->
+    <div class="modal fade" id="modalDetalhesEvento" tabindex="-1" aria-labelledby="modalDetalhesEventoLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalDetalhesEventoLabel">Detalhes do Evento</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="detalhes-evento-content">
+                    <!-- Conteúdo será preenchido dinamicamente -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-primary" id="btn-editar-evento">
+                        <i class="fas fa-edit me-1"></i> Editar
+                    </button>
+                    <button type="button" class="btn btn-outline-danger" id="btn-excluir-evento">
+                        <i class="fas fa-trash me-1"></i> Excluir
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
                 </div>
             </div>
         </div>

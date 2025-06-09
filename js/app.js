@@ -12,6 +12,7 @@ import DisciplinasModule from './modules/disciplinas.js';
 import ProfessoresModule from './modules/professores.js';
 import AlunosModule from './modules/alunos.js';
 import NotasModule from './modules/notas.js';
+import { CalendarioEscolar } from './calendario.js';
 
 // Objeto principal da aplicação
 const App = {
@@ -25,6 +26,9 @@ const App = {
         alunos: AlunosModule,
         notas: NotasModule
     },
+    
+    // Instância do calendário
+    calendario: null,
     
     // Links do menu
     links: {},
@@ -268,6 +272,19 @@ const App = {
                     if (moduleName === 'dashboard' && this.modules.dashboard.atualizarDashboard) {
                         console.log("Forçando atualização do dashboard ao navegar para ele");
                         this.modules.dashboard.atualizarDashboard();
+                        
+                        // Inicializar calendário se ainda não foi inicializado
+                        if (!this.calendario) {
+                            console.log("Inicializando calendário escolar...");
+                            setTimeout(() => {
+                                try {
+                                    this.calendario = new CalendarioEscolar();
+                                    console.log("Calendário escolar inicializado com sucesso!");
+                                } catch (error) {
+                                    console.error("Erro ao inicializar calendário:", error);
+                                }
+                            }, 500); // Aguardar um pouco para garantir que o DOM está pronto
+                        }
                     }
                 } else {
                     console.warn(`Módulo ${moduleName} não encontrado ou não inicializado.`);
