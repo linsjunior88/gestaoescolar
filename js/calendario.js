@@ -185,11 +185,22 @@ class CalendarioEscolar {
         console.log('📋 Eventos após filtros:', eventosFiltrados.length);
 
         const eventosFormatados = eventosFiltrados.map(evento => {
+            // Para eventos de dia inteiro, o FullCalendar trata a data de fim como exclusiva
+            // Então precisamos adicionar 1 dia se for um evento sem horário
+            let dataFim = evento.data_fim;
+            if (!evento.hora_inicio && !evento.hora_fim && evento.data_inicio !== evento.data_fim) {
+                // Adicionar 1 dia à data de fim para eventos de vários dias sem horário
+                const dataFimObj = new Date(evento.data_fim + 'T00:00:00');
+                dataFimObj.setDate(dataFimObj.getDate() + 1);
+                dataFim = dataFimObj.toISOString().split('T')[0];
+                console.log(`📅 Evento multi-dia ajustado: ${evento.titulo} - Original: ${evento.data_inicio} a ${evento.data_fim}, Ajustado: ${evento.data_inicio} a ${dataFim}`);
+            }
+            
             const eventoFormatado = {
                 id: evento.id,
                 title: evento.titulo,
                 start: evento.data_inicio + (evento.hora_inicio ? 'T' + evento.hora_inicio : ''),
-                end: evento.data_fim + (evento.hora_fim ? 'T' + evento.hora_fim : ''),
+                end: dataFim + (evento.hora_fim ? 'T' + evento.hora_fim : ''),
                 backgroundColor: evento.cor || this.getCorPorTipo(evento.tipo_evento),
                 borderColor: evento.cor || this.getCorPorTipo(evento.tipo_evento),
                 allDay: !evento.hora_inicio,
