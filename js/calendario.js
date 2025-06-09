@@ -18,6 +18,17 @@ class CalendarioEscolar {
     init() {
         this.initCalendar();
         this.bindEvents();
+        
+        // Aguardar um pouco antes de carregar os eventos para garantir que tudo está pronto
+        setTimeout(() => {
+            this.carregarEventos();
+            this.atualizarEstatisticas();
+        }, 100);
+    }
+
+    // Função pública para recarregar tudo
+    reload() {
+        console.log('🔄 Recarregando calendário completo...');
         this.carregarEventos();
         this.atualizarEstatisticas();
     }
@@ -112,35 +123,68 @@ class CalendarioEscolar {
 
     async carregarEventos() {
         try {
+            console.log('🔄 Carregando eventos do calendário...');
+            console.log('📍 URL da requisição:', `${API_BASE_URL}/calendario/eventos`);
+            
             const response = await makeRequest(`${API_BASE_URL}/calendario/eventos`);
-            this.eventosCarregados = response;
-            this.atualizarCalendarioEventos();
+            
+            console.log('📦 Resposta da API:', response);
+            console.log('📊 Total de eventos recebidos:', Array.isArray(response) ? response.length : 'Resposta não é array');
+            
+            if (Array.isArray(response)) {
+                this.eventosCarregados = response;
+                console.log('✅ Eventos carregados com sucesso:', this.eventosCarregados.length);
+                this.atualizarCalendarioEventos();
+            } else {
+                console.error('❌ Resposta da API não é um array:', response);
+                this.eventosCarregados = [];
+                this.mostrarMensagem('Erro: Formato de resposta da API inválido', 'error');
+            }
         } catch (error) {
-            console.error('Erro ao carregar eventos:', error);
-            this.mostrarMensagem('Erro ao carregar eventos do calendário', 'error');
+            console.error('❌ Erro ao carregar eventos:', error);
+            this.eventosCarregados = [];
+            this.mostrarMensagem('Erro ao carregar eventos do calendário: ' + error.message, 'error');
         }
     }
 
     atualizarCalendarioEventos() {
-        const eventosFiltrados = this.eventosCarregados.filter(evento => 
-            this.filtrosAtivos.has(evento.tipo_evento)
-        );
-
-        const eventosFormatados = eventosFiltrados.map(evento => ({
-            id: evento.id,
-            title: evento.titulo,
-            start: evento.data_inicio + (evento.hora_inicio ? 'T' + evento.hora_inicio : ''),
-            end: evento.data_fim + (evento.hora_fim ? 'T' + evento.hora_fim : ''),
-            backgroundColor: evento.cor || this.getCorPorTipo(evento.tipo_evento),
-            borderColor: evento.cor || this.getCorPorTipo(evento.tipo_evento),
-            allDay: !evento.hora_inicio,
-            extendedProps: {
-                ...evento
+        console.log('🔄 Atualizando eventos no calendário...');
+        console.log('📊 Total de eventos carregados:', this.eventosCarregados.length);
+        console.log('🎛️ Filtros ativos:', Array.from(this.filtrosAtivos));
+        
+        const eventosFiltrados = this.eventosCarregados.filter(evento => {
+            const incluir = this.filtrosAtivos.has(evento.tipo_evento);
+            if (!incluir) {
+                console.log(`⏭️ Evento filtrado: ${evento.titulo} (tipo: ${evento.tipo_evento})`);
             }
-        }));
+            return incluir;
+        });
+
+        console.log('📋 Eventos após filtros:', eventosFiltrados.length);
+
+        const eventosFormatados = eventosFiltrados.map(evento => {
+            const eventoFormatado = {
+                id: evento.id,
+                title: evento.titulo,
+                start: evento.data_inicio + (evento.hora_inicio ? 'T' + evento.hora_inicio : ''),
+                end: evento.data_fim + (evento.hora_fim ? 'T' + evento.hora_fim : ''),
+                backgroundColor: evento.cor || this.getCorPorTipo(evento.tipo_evento),
+                borderColor: evento.cor || this.getCorPorTipo(evento.tipo_evento),
+                allDay: !evento.hora_inicio,
+                extendedProps: {
+                    ...evento
+                }
+            };
+            console.log(`📅 Formatando evento: ${evento.titulo} (${evento.data_inicio})`);
+            return eventoFormatado;
+        });
+
+        console.log('🎯 Eventos formatados para o calendário:', eventosFormatados.length);
 
         this.calendar.removeAllEvents();
         this.calendar.addEventSource(eventosFormatados);
+        
+        console.log('✅ Calendário atualizado!');
     }
 
     getCorPorTipo(tipo) {
@@ -478,7 +522,39 @@ class CalendarioEscolar {
             alert(mensagem);
         }
     }
+
+    // Função de debug para verificar o estado do calendário
+    debug() {
+        console.log('🐛 DEBUG DO CALENDÁRIO:');
+        console.log('📊 Eventos carregados:', this.eventosCarregados.length);
+        console.log('🎛️ Filtros ativos:', Array.from(this.filtrosAtivos));
+        console.log('📅 Eventos no calendário:', this.calendar.getEvents().length);
+        console.log('🔗 API URL:', API_BASE_URL);
+        
+        if (this.eventosCarregados.length > 0) {
+            console.log('📝 Primeiro evento:', this.eventosCarregados[0]);
+        }
+        
+        return {
+            eventosCarregados: this.eventosCarregados.length,
+            filtrosAtivos: Array.from(this.filtrosAtivos),
+            eventosNoCalendario: this.calendar.getEvents().length,
+            apiUrl: API_BASE_URL
+        };
+    }
 }
 
 // Exportar para uso em outros módulos
-export { CalendarioEscolar }; 
+export { CalendarioEscolar };
+
+// Expor globalmente para debug
+if (typeof window !== 'undefined') {
+    window.debugCalendario = function() {
+        if (window.App && window.App.calendario) {
+            return window.App.calendario.debug();
+        } else {
+            console.log('❌ Calendário não inicializado ainda');
+            return null;
+        }
+    };
+} 

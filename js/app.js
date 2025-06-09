@@ -110,37 +110,7 @@ const App = {
     
     // Configurar atualizações automáticas do dashboard
     configurarAtualizacoesDashboard: function() {
-        console.log("Configurando atualizações automáticas do dashboard");
-        
-        // Rastrear última atividade do usuário
-        let ultimaAtividade = Date.now();
-        
-        // Atualizar timestamp de atividade em eventos do usuário
-        const atualizarAtividade = () => {
-            ultimaAtividade = Date.now();
-        };
-        
-        // Adicionar listeners para detectar atividade do usuário
-        document.addEventListener('click', atualizarAtividade);
-        document.addEventListener('keydown', atualizarAtividade);
-        document.addEventListener('scroll', atualizarAtividade);
-        
-        // Atualização automática mais inteligente - apenas se o usuário estiver inativo
-        setInterval(() => {
-            const tempoInativo = Date.now() - ultimaAtividade;
-            const inativoPorMais5Min = tempoInativo > 5 * 60 * 1000; // 5 minutos
-            const estaNoDashboard = this.state.currentSection === 'dashboard';
-            
-            // Só atualizar automaticamente se:
-            // 1. Usuário está inativo há mais de 5 minutos OU
-            // 2. Está no dashboard e inativo há mais de 1 minuto
-            if (inativoPorMais5Min || (estaNoDashboard && tempoInativo > 60 * 1000)) {
-                console.log("Atualizando dashboard automaticamente (usuário inativo)");
-                if (DashboardModule.atualizarDashboard) {
-                    DashboardModule.atualizarDashboard();
-                }
-            }
-        }, 2 * 60 * 1000); // Verificar a cada 2 minutos (menos frequente)
+        console.log("Configurando atualizações do dashboard");
         
         // Forçar atualização ao mudar de aba no navegador (apenas se estiver no dashboard)
         document.addEventListener('visibilitychange', () => {
@@ -150,13 +120,13 @@ const App = {
             }
         });
         
-        // Atualizar dashboard após inicialização completa
+        // Atualizar dashboard apenas uma vez após inicialização completa
         setTimeout(() => {
             if (DashboardModule.atualizarDashboard) {
                 console.log("Atualizando dashboard após inicialização");
                 DashboardModule.atualizarDashboard();
             }
-        }, 1500);
+        }, 2000);
     },
     
     // Inicializar links do menu
@@ -284,6 +254,14 @@ const App = {
                                     console.error("Erro ao inicializar calendário:", error);
                                 }
                             }, 500); // Aguardar um pouco para garantir que o DOM está pronto
+                        } else {
+                            // Se o calendário já existe, recarregar os eventos
+                            console.log("Recarregando eventos do calendário...");
+                            setTimeout(() => {
+                                if (this.calendario && this.calendario.reload) {
+                                    this.calendario.reload();
+                                }
+                            }, 100);
                         }
                     }
                 } else {
