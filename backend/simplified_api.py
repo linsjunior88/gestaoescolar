@@ -291,6 +291,46 @@ class LogCreate(BaseModel):
     detalhe: Optional[str] = None
     status: str = "concluído"  # concluído, pendente, erro
 
+# Modelos para Calendário Escolar
+class EventoCalendarioBase(BaseModel):
+    titulo: str
+    descricao: Optional[str] = None
+    data_inicio: str  # Formato: YYYY-MM-DD
+    data_fim: str  # Formato: YYYY-MM-DD
+    hora_inicio: Optional[str] = None  # Formato: HH:MM
+    hora_fim: Optional[str] = None  # Formato: HH:MM
+    tipo_evento: str  # feriado_nacional, feriado_estadual, feriado_municipal, evento_escolar, reuniao, etc.
+    cor: Optional[str] = "#3498db"  # Cor em hexadecimal para customização visual
+    recorrente: Optional[bool] = False
+    frequencia_recorrencia: Optional[str] = None  # diaria, semanal, mensal, anual
+    observacoes: Optional[str] = None
+
+class EventoCalendarioCreate(EventoCalendarioBase):
+    criado_por: str  # ID ou nome de quem está criando o evento
+
+class EventoCalendarioUpdate(BaseModel):
+    titulo: Optional[str] = None
+    descricao: Optional[str] = None
+    data_inicio: Optional[str] = None
+    data_fim: Optional[str] = None
+    hora_inicio: Optional[str] = None
+    hora_fim: Optional[str] = None
+    tipo_evento: Optional[str] = None
+    cor: Optional[str] = None
+    recorrente: Optional[bool] = None
+    frequencia_recorrencia: Optional[str] = None
+    observacoes: Optional[str] = None
+    ativo: Optional[bool] = None
+
+class EventoCalendario(EventoCalendarioBase):
+    id: int
+    criado_por: str
+    data_criacao: Optional[datetime] = None
+    ativo: Optional[bool] = True
+    
+    class Config:
+        from_attributes = True
+
 # ==============================================================
 # Rotas
 # ==============================================================
@@ -4311,6 +4351,618 @@ def excluir_vinculo(
 
 # Chamar a função para garantir que a tabela existe
 criar_tabela_vinculos()
+
+# ==============================================================
+# Função para criar tabela do Calendário Escolar
+# ==============================================================
+
+def criar_tabela_calendario():
+    """Cria a tabela calendario_escolar se ela não existir."""
+    try:
+        logger.info("Verificando se a tabela calendario_escolar existe...")
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Verificar se a tabela já existe
+        cursor.execute("SELECT to_regclass('public.calendario_escolar');")
+        table_exists = cursor.fetchone()[0]
+        
+        if table_exists:
+            logger.info("A tabela calendario_escolar já existe.")
+        else:
+            # Criar a tabela calendario_escolar
+            logger.info("Criando tabela calendario_escolar...")
+            cursor.execute("""
+            CREATE TABLE calendario_escolar (
+                id SERIAL PRIMARY KEY,
+                titulo VARCHAR(200) NOT NULL,
+                descricao TEXT,
+                data_inicio DATE NOT NULL,
+                data_fim DATE NOT NULL,
+                hora_inicio TIME,
+                hora_fim TIME,
+                tipo_evento VARCHAR(50) NOT NULL DEFAULT 'evento_escolar',
+                cor VARCHAR(7) DEFAULT '#3498db',
+                recorrente BOOLEAN DEFAULT FALSE,
+                frequencia_recorrencia VARCHAR(20),
+                observacoes TEXT,
+                criado_por VARCHAR(100) NOT NULL,
+                data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                ativo BOOLEAN DEFAULT TRUE,
+                CHECK (data_fim >= data_inicio),
+                CHECK (tipo_evento IN ('feriado_nacional', 'feriado_estadual', 'feriado_municipal', 'evento_escolar', 'reuniao', 'conselho_classe', 'formatura', 'festa_junina', 'semana_pedagogica', 'outro'))
+            );
+            """)
+            
+            # Adicionar comentário à tabela
+            cursor.execute("""
+            COMMENT ON TABLE calendario_escolar IS 'Tabela que armazena os eventos do calendário escolar';
+            """)
+            
+            # Criar índices para melhorar a performance
+            cursor.execute("""
+            CREATE INDEX idx_calendario_data_inicio ON calendario_escolar (data_inicio);
+            """)
+            
+            cursor.execute("""
+            CREATE INDEX idx_calendario_data_fim ON calendario_escolar (data_fim);
+            """)
+            
+            cursor.execute("""
+            CREATE INDEX idx_calendario_tipo_evento ON calendario_escolar (tipo_evento);
+            """)
+            
+            cursor.execute("""
+            CREATE INDEX idx_calendario_ativo ON calendario_escolar (ativo);
+            """)
+            
+            # Inserir alguns eventos padrão (feriados nacionais principais)
+            cursor.execute("""
+            INSERT INTO calendario_escolar (titulo, data_inicio, data_fim, tipo_evento, cor, criado_por, observacoes) VALUES
+            ('Confraternização Universal', '2024-01-01', '2024-01-01', 'feriado_nacional', '#e74c3c', 'Sistema', 'Feriado Nacional'),
+            ('Carnaval', '2024-02-12', '2024-02-13', 'feriado_nacional', '#9b59b6', 'Sistema', 'Feriado Nacional'),
+            ('Sexta-feira Santa', '2024-03-29', '2024-03-29', 'feriado_nacional', '#8b4513', 'Sistema', 'Feriado Nacional'),
+            ('Tiradentes', '2024-04-21', '2024-04-21', 'feriado_nacional', '#27ae60', 'Sistema', 'Feriado Nacional'),
+            ('Dia do Trabalhador', '2024-05-01', '2024-05-01', 'feriado_nacional', '#e67e22', 'Sistema', 'Feriado Nacional'),
+            ('Independência do Brasil', '2024-09-07', '2024-09-07', 'feriado_nacional', '#f1c40f', 'Sistema', 'Feriado Nacional'),
+            ('Nossa Senhora Aparecida', '2024-10-12', '2024-10-12', 'feriado_nacional', '#3498db', 'Sistema', 'Feriado Nacional'),
+            ('Finados', '2024-11-02', '2024-11-02', 'feriado_nacional', '#34495e', 'Sistema', 'Feriado Nacional'),
+            ('Proclamação da República', '2024-11-15', '2024-11-15', 'feriado_nacional', '#2ecc71', 'Sistema', 'Feriado Nacional'),
+            ('Natal', '2024-12-25', '2024-12-25', 'feriado_nacional', '#c0392b', 'Sistema', 'Feriado Nacional');
+            """)
+            
+            logger.info("Tabela calendario_escolar criada com dados iniciais!")
+        
+        cursor.close()
+        conn.close()
+        logger.info("Processo de verificação e criação da tabela calendario_escolar concluído!")
+        
+    except Exception as e:
+        logger.error(f"Erro ao criar tabela calendario_escolar: {e}")
+
+# ==============================================================
+# Endpoints para Calendário Escolar
+# ==============================================================
+
+@app.get("/api/calendario/teste")
+def teste_calendario():
+    """Endpoint de teste para verificar se o calendário está funcionando."""
+    try:
+        # Garantir que a tabela existe
+        criar_tabela_calendario()
+        return {
+            "status": "success",
+            "message": "Calendário escolar está funcionando!",
+            "endpoints": [
+                "GET /api/calendario/eventos - Listar eventos",
+                "POST /api/calendario/eventos - Criar evento",
+                "GET /api/calendario/eventos/{id} - Obter evento específico",
+                "PUT /api/calendario/eventos/{id} - Atualizar evento",
+                "DELETE /api/calendario/eventos/{id} - Deletar evento",
+                "GET /api/calendario/tipos-evento - Listar tipos de evento",
+                "GET /api/calendario/resumo-mensal/{ano}/{mes} - Resumo mensal"
+            ]
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"Erro no calendário: {str(e)}"
+        }
+
+@app.post("/api/calendario/eventos", response_model=EventoCalendario, status_code=status.HTTP_201_CREATED)
+def criar_evento_calendario(evento: EventoCalendarioCreate):
+    """Cria um novo evento no calendário escolar."""
+    print(f"=== CRIANDO EVENTO DO CALENDÁRIO: {evento.titulo} ===")
+    try:
+        # Garantir que a tabela existe
+        criar_tabela_calendario()
+        
+        # Validar datas
+        from datetime import datetime
+        try:
+            data_inicio = datetime.strptime(evento.data_inicio, '%Y-%m-%d').date()
+            data_fim = datetime.strptime(evento.data_fim, '%Y-%m-%d').date()
+            
+            if data_fim < data_inicio:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="A data de fim não pode ser anterior à data de início"
+                )
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Formato de data inválido. Use YYYY-MM-DD"
+            )
+        
+        # Validar horários se fornecidos
+        if evento.hora_inicio:
+            try:
+                datetime.strptime(evento.hora_inicio, '%H:%M')
+            except ValueError:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Formato de hora de início inválido. Use HH:MM"
+                )
+        
+        if evento.hora_fim:
+            try:
+                datetime.strptime(evento.hora_fim, '%H:%M')
+            except ValueError:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Formato de hora de fim inválido. Use HH:MM"
+                )
+        
+        # Inserir evento no banco
+        query = """
+        INSERT INTO calendario_escolar (
+            titulo, descricao, data_inicio, data_fim, hora_inicio, hora_fim,
+            tipo_evento, cor, recorrente, frequencia_recorrencia, observacoes, criado_por
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        RETURNING id, titulo, descricao, data_inicio, data_fim, hora_inicio, hora_fim,
+                  tipo_evento, cor, recorrente, frequencia_recorrencia, observacoes,
+                  criado_por, data_criacao, ativo
+        """
+        
+        params = (
+            evento.titulo,
+            evento.descricao,
+            evento.data_inicio,
+            evento.data_fim,
+            evento.hora_inicio,
+            evento.hora_fim,
+            evento.tipo_evento,
+            evento.cor,
+            evento.recorrente,
+            evento.frequencia_recorrencia,
+            evento.observacoes,
+            evento.criado_por
+        )
+        
+        result = execute_query(query, params, fetch_one=True)
+        
+        if not result:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Falha ao criar evento"
+            )
+        
+        # Formatar resposta
+        evento_criado = {
+            "id": result["id"],
+            "titulo": result["titulo"],
+            "descricao": result["descricao"],
+            "data_inicio": result["data_inicio"].strftime('%Y-%m-%d'),
+            "data_fim": result["data_fim"].strftime('%Y-%m-%d'),
+            "hora_inicio": result["hora_inicio"].strftime('%H:%M') if result["hora_inicio"] else None,
+            "hora_fim": result["hora_fim"].strftime('%H:%M') if result["hora_fim"] else None,
+            "tipo_evento": result["tipo_evento"],
+            "cor": result["cor"],
+            "recorrente": result["recorrente"],
+            "frequencia_recorrencia": result["frequencia_recorrencia"],
+            "observacoes": result["observacoes"],
+            "criado_por": result["criado_por"],
+            "data_criacao": result["data_criacao"],
+            "ativo": result["ativo"]
+        }
+        
+        print(f"Evento criado com sucesso: {evento_criado}")
+        return evento_criado
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"ERRO ao criar evento: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao criar evento: {str(e)}"
+        )
+    finally:
+        print("=== FINALIZANDO CRIAÇÃO DE EVENTO ===")
+
+@app.get("/api/calendario/eventos", response_model=List[EventoCalendario])
+def listar_eventos_calendario(
+    mes: Optional[int] = Query(None, description="Mês (1-12)"),
+    ano: Optional[int] = Query(None, description="Ano"),
+    tipo_evento: Optional[str] = Query(None, description="Tipo do evento"),
+    data_inicio: Optional[str] = Query(None, description="Data de início do período (YYYY-MM-DD)"),
+    data_fim: Optional[str] = Query(None, description="Data de fim do período (YYYY-MM-DD)")
+):
+    """Lista eventos do calendário com filtros opcionais."""
+    print(f"=== LISTANDO EVENTOS DO CALENDÁRIO ===")
+    try:
+        # Garantir que a tabela existe
+        criar_tabela_calendario()
+        
+        # Construir query base
+        query = """
+        SELECT id, titulo, descricao, data_inicio, data_fim, hora_inicio, hora_fim,
+               tipo_evento, cor, recorrente, frequencia_recorrencia, observacoes,
+               criado_por, data_criacao, ativo
+        FROM calendario_escolar
+        WHERE ativo = TRUE
+        """
+        params = []
+        
+        # Adicionar filtros
+        if mes and ano:
+            query += " AND EXTRACT(MONTH FROM data_inicio) = %s AND EXTRACT(YEAR FROM data_inicio) = %s"
+            params.extend([mes, ano])
+        elif ano:
+            query += " AND EXTRACT(YEAR FROM data_inicio) = %s"
+            params.append(ano)
+        
+        if tipo_evento:
+            query += " AND tipo_evento = %s"
+            params.append(tipo_evento)
+        
+        if data_inicio and data_fim:
+            query += " AND data_inicio >= %s AND data_fim <= %s"
+            params.extend([data_inicio, data_fim])
+        elif data_inicio:
+            query += " AND data_inicio >= %s"
+            params.append(data_inicio)
+        elif data_fim:
+            query += " AND data_fim <= %s"
+            params.append(data_fim)
+        
+        # Ordenar por data
+        query += " ORDER BY data_inicio ASC, hora_inicio ASC"
+        
+        results = execute_query(query, params)
+        
+        if not results:
+            return []
+        
+        # Formatar resultados
+        eventos = []
+        for row in results:
+            evento = {
+                "id": row["id"],
+                "titulo": row["titulo"],
+                "descricao": row["descricao"],
+                "data_inicio": row["data_inicio"].strftime('%Y-%m-%d'),
+                "data_fim": row["data_fim"].strftime('%Y-%m-%d'),
+                "hora_inicio": row["hora_inicio"].strftime('%H:%M') if row["hora_inicio"] else None,
+                "hora_fim": row["hora_fim"].strftime('%H:%M') if row["hora_fim"] else None,
+                "tipo_evento": row["tipo_evento"],
+                "cor": row["cor"],
+                "recorrente": row["recorrente"],
+                "frequencia_recorrencia": row["frequencia_recorrencia"],
+                "observacoes": row["observacoes"],
+                "criado_por": row["criado_por"],
+                "data_criacao": row["data_criacao"],
+                "ativo": row["ativo"]
+            }
+            eventos.append(evento)
+        
+        print(f"Encontrados {len(eventos)} eventos")
+        return eventos
+        
+    except Exception as e:
+        print(f"ERRO ao listar eventos: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao listar eventos: {str(e)}"
+        )
+    finally:
+        print("=== FINALIZANDO LISTAGEM DE EVENTOS ===")
+
+@app.get("/api/calendario/eventos/{evento_id}", response_model=EventoCalendario)
+def obter_evento_calendario(evento_id: int = Path(..., description="ID do evento")):
+    """Obtém um evento específico do calendário."""
+    print(f"=== OBTENDO EVENTO {evento_id} ===")
+    try:
+        query = """
+        SELECT id, titulo, descricao, data_inicio, data_fim, hora_inicio, hora_fim,
+               tipo_evento, cor, recorrente, frequencia_recorrencia, observacoes,
+               criado_por, data_criacao, ativo
+        FROM calendario_escolar
+        WHERE id = %s AND ativo = TRUE
+        """
+        
+        result = execute_query(query, (evento_id,), fetch_one=True)
+        
+        if not result:
+            raise HTTPException(status_code=404, detail="Evento não encontrado")
+        
+        # Formatar resposta
+        evento = {
+            "id": result["id"],
+            "titulo": result["titulo"],
+            "descricao": result["descricao"],
+            "data_inicio": result["data_inicio"].strftime('%Y-%m-%d'),
+            "data_fim": result["data_fim"].strftime('%Y-%m-%d'),
+            "hora_inicio": result["hora_inicio"].strftime('%H:%M') if result["hora_inicio"] else None,
+            "hora_fim": result["hora_fim"].strftime('%H:%M') if result["hora_fim"] else None,
+            "tipo_evento": result["tipo_evento"],
+            "cor": result["cor"],
+            "recorrente": result["recorrente"],
+            "frequencia_recorrencia": result["frequencia_recorrencia"],
+            "observacoes": result["observacoes"],
+            "criado_por": result["criado_por"],
+            "data_criacao": result["data_criacao"],
+            "ativo": result["ativo"]
+        }
+        
+        return evento
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"ERRO ao obter evento {evento_id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao obter evento: {str(e)}"
+        )
+    finally:
+        print(f"=== FINALIZANDO OBTENÇÃO DO EVENTO {evento_id} ===")
+
+@app.put("/api/calendario/eventos/{evento_id}", response_model=EventoCalendario)
+def atualizar_evento_calendario(
+    evento_id: int = Path(..., description="ID do evento"),
+    evento: EventoCalendarioUpdate = Body(...)
+):
+    """Atualiza um evento do calendário."""
+    print(f"=== ATUALIZANDO EVENTO {evento_id} ===")
+    try:
+        # Verificar se o evento existe
+        check_query = "SELECT id FROM calendario_escolar WHERE id = %s AND ativo = TRUE"
+        existing = execute_query(check_query, (evento_id,), fetch_one=True)
+        
+        if not existing:
+            raise HTTPException(status_code=404, detail="Evento não encontrado")
+        
+        # Construir campos para atualização
+        updates = {}
+        if evento.titulo is not None:
+            updates["titulo"] = evento.titulo
+        if evento.descricao is not None:
+            updates["descricao"] = evento.descricao
+        if evento.data_inicio is not None:
+            # Validar formato de data
+            try:
+                datetime.strptime(evento.data_inicio, '%Y-%m-%d')
+                updates["data_inicio"] = evento.data_inicio
+            except ValueError:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Formato de data de início inválido. Use YYYY-MM-DD"
+                )
+        if evento.data_fim is not None:
+            try:
+                datetime.strptime(evento.data_fim, '%Y-%m-%d')
+                updates["data_fim"] = evento.data_fim
+            except ValueError:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Formato de data de fim inválido. Use YYYY-MM-DD"
+                )
+        if evento.hora_inicio is not None:
+            if evento.hora_inicio:
+                try:
+                    datetime.strptime(evento.hora_inicio, '%H:%M')
+                except ValueError:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Formato de hora de início inválido. Use HH:MM"
+                    )
+            updates["hora_inicio"] = evento.hora_inicio
+        if evento.hora_fim is not None:
+            if evento.hora_fim:
+                try:
+                    datetime.strptime(evento.hora_fim, '%H:%M')
+                except ValueError:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Formato de hora de fim inválido. Use HH:MM"
+                    )
+            updates["hora_fim"] = evento.hora_fim
+        if evento.tipo_evento is not None:
+            updates["tipo_evento"] = evento.tipo_evento
+        if evento.cor is not None:
+            updates["cor"] = evento.cor
+        if evento.recorrente is not None:
+            updates["recorrente"] = evento.recorrente
+        if evento.frequencia_recorrencia is not None:
+            updates["frequencia_recorrencia"] = evento.frequencia_recorrencia
+        if evento.observacoes is not None:
+            updates["observacoes"] = evento.observacoes
+        if evento.ativo is not None:
+            updates["ativo"] = evento.ativo
+        
+        if not updates:
+            # Se não há nada para atualizar, retornar o evento atual
+            return obter_evento_calendario(evento_id)
+        
+        # Construir query de atualização
+        set_clause = ", ".join(f"{field} = %s" for field in updates.keys())
+        query = f"""
+        UPDATE calendario_escolar 
+        SET {set_clause}
+        WHERE id = %s
+        RETURNING id, titulo, descricao, data_inicio, data_fim, hora_inicio, hora_fim,
+                  tipo_evento, cor, recorrente, frequencia_recorrencia, observacoes,
+                  criado_por, data_criacao, ativo
+        """
+        
+        params = list(updates.values())
+        params.append(evento_id)
+        
+        result = execute_query(query, params, fetch_one=True)
+        
+        if not result:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Falha ao atualizar evento"
+            )
+        
+        # Formatar resposta
+        evento_atualizado = {
+            "id": result["id"],
+            "titulo": result["titulo"],
+            "descricao": result["descricao"],
+            "data_inicio": result["data_inicio"].strftime('%Y-%m-%d'),
+            "data_fim": result["data_fim"].strftime('%Y-%m-%d'),
+            "hora_inicio": result["hora_inicio"].strftime('%H:%M') if result["hora_inicio"] else None,
+            "hora_fim": result["hora_fim"].strftime('%H:%M') if result["hora_fim"] else None,
+            "tipo_evento": result["tipo_evento"],
+            "cor": result["cor"],
+            "recorrente": result["recorrente"],
+            "frequencia_recorrencia": result["frequencia_recorrencia"],
+            "observacoes": result["observacoes"],
+            "criado_por": result["criado_por"],
+            "data_criacao": result["data_criacao"],
+            "ativo": result["ativo"]
+        }
+        
+        print(f"Evento atualizado: {evento_atualizado}")
+        return evento_atualizado
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"ERRO ao atualizar evento {evento_id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao atualizar evento: {str(e)}"
+        )
+    finally:
+        print(f"=== FINALIZANDO ATUALIZAÇÃO DO EVENTO {evento_id} ===")
+
+@app.delete("/api/calendario/eventos/{evento_id}", status_code=status.HTTP_204_NO_CONTENT)
+def deletar_evento_calendario(evento_id: int = Path(..., description="ID do evento")):
+    """Deleta (inativa) um evento do calendário."""
+    print(f"=== DELETANDO EVENTO {evento_id} ===")
+    try:
+        # Verificar se o evento existe
+        check_query = "SELECT id FROM calendario_escolar WHERE id = %s AND ativo = TRUE"
+        existing = execute_query(check_query, (evento_id,), fetch_one=True)
+        
+        if not existing:
+            raise HTTPException(status_code=404, detail="Evento não encontrado")
+        
+        # Soft delete - marcar como inativo
+        query = "UPDATE calendario_escolar SET ativo = FALSE WHERE id = %s"
+        execute_query(query, (evento_id,), fetch=False)
+        
+        print(f"Evento {evento_id} deletado com sucesso")
+        return None
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"ERRO ao deletar evento {evento_id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao deletar evento: {str(e)}"
+        )
+    finally:
+        print(f"=== FINALIZANDO DELEÇÃO DO EVENTO {evento_id} ===")
+
+@app.get("/api/calendario/tipos-evento")
+def listar_tipos_evento():
+    """Lista os tipos de evento disponíveis."""
+    return {
+        "tipos": [
+            {"valor": "feriado_nacional", "label": "Feriado Nacional"},
+            {"valor": "feriado_estadual", "label": "Feriado Estadual"},
+            {"valor": "feriado_municipal", "label": "Feriado Municipal"},
+            {"valor": "evento_escolar", "label": "Evento Escolar"},
+            {"valor": "reuniao", "label": "Reunião"},
+            {"valor": "conselho_classe", "label": "Conselho de Classe"},
+            {"valor": "formatura", "label": "Formatura"},
+            {"valor": "festa_junina", "label": "Festa Junina"},
+            {"valor": "semana_pedagogica", "label": "Semana Pedagógica"},
+            {"valor": "outro", "label": "Outro"}
+        ]
+    }
+
+@app.get("/api/calendario/resumo-mensal/{ano}/{mes}")
+def resumo_mensal_calendario(
+    ano: int = Path(..., description="Ano"),
+    mes: int = Path(..., ge=1, le=12, description="Mês (1-12)")
+):
+    """Retorna um resumo dos eventos do mês especificado."""
+    print(f"=== RESUMO MENSAL DO CALENDÁRIO {mes}/{ano} ===")
+    try:
+        # Garantir que a tabela existe
+        criar_tabela_calendario()
+        
+        # Buscar eventos do mês
+        query = """
+        SELECT COUNT(*) as total_eventos,
+               tipo_evento,
+               COUNT(*) as quantidade
+        FROM calendario_escolar
+        WHERE EXTRACT(MONTH FROM data_inicio) = %s 
+        AND EXTRACT(YEAR FROM data_inicio) = %s
+        AND ativo = TRUE
+        GROUP BY tipo_evento
+        ORDER BY quantidade DESC
+        """
+        
+        results = execute_query(query, (mes, ano))
+        
+        # Contar total de eventos
+        total_query = """
+        SELECT COUNT(*) as total
+        FROM calendario_escolar
+        WHERE EXTRACT(MONTH FROM data_inicio) = %s 
+        AND EXTRACT(YEAR FROM data_inicio) = %s
+        AND ativo = TRUE
+        """
+        
+        total_result = execute_query(total_query, (mes, ano), fetch_one=True)
+        total_eventos = total_result["total"] if total_result else 0
+        
+        # Formatar resposta
+        resumo = {
+            "ano": ano,
+            "mes": mes,
+            "total_eventos": total_eventos,
+            "por_tipo": []
+        }
+        
+        for row in results:
+            resumo["por_tipo"].append({
+                "tipo": row["tipo_evento"],
+                "quantidade": row["quantidade"]
+            })
+        
+        return resumo
+        
+    except Exception as e:
+        print(f"ERRO ao gerar resumo mensal: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao gerar resumo mensal: {str(e)}"
+        )
+    finally:
+        print(f"=== FINALIZANDO RESUMO MENSAL {mes}/{ano} ===")
+
+# Chamar a função para garantir que a tabela do calendário existe
+criar_tabela_calendario()
 
 # Inicialização do servidor (quando executado diretamente)
 if __name__ == "__main__":

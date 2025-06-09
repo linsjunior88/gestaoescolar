@@ -259,5 +259,5 @@ O sistema é implantado no Render com dois serviços:
 ## Suporte
 
 Para suporte ou dúvidas, entre em contato com o desenvolvedor:
-- Email: linsjunior88@gmail.com
+- Email: linsjunior99@gmail.com
 - GitHub: https://github.com/linsjunior88
