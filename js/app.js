@@ -108,22 +108,14 @@ const App = {
         }
     },
     
-    // Configurar atualizações automáticas do dashboard
+    // Configurar atualizações do dashboard
     configurarAtualizacoesDashboard: function() {
-        console.log("Configurando atualizações do dashboard");
-        
-        // Forçar atualização ao mudar de aba no navegador (apenas se estiver no dashboard)
-        document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible' && this.state.currentSection === 'dashboard' && DashboardModule.atualizarDashboard) {
-                console.log("Página visível novamente, atualizando dashboard");
-                DashboardModule.atualizarDashboard();
-            }
-        });
+        console.log("Dashboard configurado - sem atualizações automáticas");
         
         // Atualizar dashboard apenas uma vez após inicialização completa
         setTimeout(() => {
             if (DashboardModule.atualizarDashboard) {
-                console.log("Atualizando dashboard após inicialização");
+                console.log("Atualizando dashboard após inicialização (única vez)");
                 DashboardModule.atualizarDashboard();
             }
         }, 2000);

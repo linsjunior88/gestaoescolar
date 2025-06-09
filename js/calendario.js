@@ -124,21 +124,43 @@ class CalendarioEscolar {
     async carregarEventos() {
         try {
             console.log('🔄 Carregando eventos do calendário...');
-            console.log('📍 URL da requisição:', `${API_BASE_URL}/calendario/eventos`);
             
-            const response = await makeRequest(`${API_BASE_URL}/calendario/eventos`);
-            
-            console.log('📦 Resposta da API:', response);
-            console.log('📊 Total de eventos recebidos:', Array.isArray(response) ? response.length : 'Resposta não é array');
-            
-            if (Array.isArray(response)) {
-                this.eventosCarregados = response;
-                console.log('✅ Eventos carregados com sucesso:', this.eventosCarregados.length);
-                this.atualizarCalendarioEventos();
+            // Usar ConfigModule se disponível
+            if (window.CONFIG && window.CONFIG.fetchApi) {
+                console.log('📡 Usando ConfigModule para carregar eventos...');
+                const response = await window.CONFIG.fetchApi('/calendario/eventos');
+                
+                console.log('📦 Resposta da API:', response);
+                console.log('📊 Total de eventos recebidos:', Array.isArray(response) ? response.length : 'Resposta não é array');
+                
+                if (Array.isArray(response)) {
+                    this.eventosCarregados = response;
+                    console.log('✅ Eventos carregados com sucesso:', this.eventosCarregados.length);
+                    this.atualizarCalendarioEventos();
+                } else {
+                    console.error('❌ Resposta da API não é um array:', response);
+                    this.eventosCarregados = [];
+                    this.mostrarMensagem('Erro: Formato de resposta da API inválido', 'error');
+                }
             } else {
-                console.error('❌ Resposta da API não é um array:', response);
-                this.eventosCarregados = [];
-                this.mostrarMensagem('Erro: Formato de resposta da API inválido', 'error');
+                // Fallback para makeRequest
+                console.log('📡 Usando makeRequest como fallback...');
+                console.log('📍 URL da requisição:', `${API_BASE_URL}/calendario/eventos`);
+                
+                const response = await makeRequest(`${API_BASE_URL}/calendario/eventos`);
+                
+                console.log('📦 Resposta da API:', response);
+                console.log('📊 Total de eventos recebidos:', Array.isArray(response) ? response.length : 'Resposta não é array');
+                
+                if (Array.isArray(response)) {
+                    this.eventosCarregados = response;
+                    console.log('✅ Eventos carregados com sucesso:', this.eventosCarregados.length);
+                    this.atualizarCalendarioEventos();
+                } else {
+                    console.error('❌ Resposta da API não é um array:', response);
+                    this.eventosCarregados = [];
+                    this.mostrarMensagem('Erro: Formato de resposta da API inválido', 'error');
+                }
             }
         } catch (error) {
             console.error('❌ Erro ao carregar eventos:', error);
@@ -258,7 +280,6 @@ class CalendarioEscolar {
 
     async salvarEvento() {
         try {
-            const formData = new FormData(document.getElementById('form-evento'));
             const eventoData = {
                 titulo: document.getElementById('evento-titulo').value,
                 descricao: document.getElementById('evento-descricao').value,
@@ -277,18 +298,36 @@ class CalendarioEscolar {
             const eventoId = document.getElementById('evento-id').value;
 
             let response;
-            if (eventoId) {
-                // Atualização
-                response = await makeRequest(`${API_BASE_URL}/calendario/eventos/${eventoId}`, {
-                    method: 'PUT',
-                    body: JSON.stringify(eventoData)
-                });
+            if (window.CONFIG && window.CONFIG.fetchApi) {
+                // Usar ConfigModule
+                if (eventoId) {
+                    // Atualização
+                    response = await window.CONFIG.fetchApi(`/calendario/eventos/${eventoId}`, {
+                        method: 'PUT',
+                        body: JSON.stringify(eventoData)
+                    });
+                } else {
+                    // Criação
+                    response = await window.CONFIG.fetchApi('/calendario/eventos', {
+                        method: 'POST',
+                        body: JSON.stringify(eventoData)
+                    });
+                }
             } else {
-                // Criação
-                response = await makeRequest(`${API_BASE_URL}/calendario/eventos`, {
-                    method: 'POST',
-                    body: JSON.stringify(eventoData)
-                });
+                // Fallback para makeRequest
+                if (eventoId) {
+                    // Atualização
+                    response = await makeRequest(`${API_BASE_URL}/calendario/eventos/${eventoId}`, {
+                        method: 'PUT',
+                        body: JSON.stringify(eventoData)
+                    });
+                } else {
+                    // Criação
+                    response = await makeRequest(`${API_BASE_URL}/calendario/eventos`, {
+                        method: 'POST',
+                        body: JSON.stringify(eventoData)
+                    });
+                }
             }
 
             this.mostrarMensagem('Evento salvo com sucesso!', 'success');
@@ -373,9 +412,17 @@ class CalendarioEscolar {
         }
 
         try {
-            await makeRequest(`${API_BASE_URL}/calendario/eventos/${this.eventoAtual.id}`, {
-                method: 'DELETE'
-            });
+            if (window.CONFIG && window.CONFIG.fetchApi) {
+                // Usar ConfigModule
+                await window.CONFIG.fetchApi(`/calendario/eventos/${this.eventoAtual.id}`, {
+                    method: 'DELETE'
+                });
+            } else {
+                // Fallback para makeRequest
+                await makeRequest(`${API_BASE_URL}/calendario/eventos/${this.eventoAtual.id}`, {
+                    method: 'DELETE'
+                });
+            }
 
             this.mostrarMensagem('Evento excluído com sucesso!', 'success');
             bootstrap.Modal.getInstance(document.getElementById('modalDetalhesEvento')).hide();
@@ -421,39 +468,76 @@ class CalendarioEscolar {
     }
 
     async atualizarEstatisticas() {
+        console.log('📊 Atualizando estatísticas do calendário...');
+        
+        // Verificar se os elementos DOM existem antes de tentar atualizá-los
+        const elementosEstatisticas = {
+            totalEventos: document.getElementById('total-eventos-mes'),
+            totalFeriados: document.getElementById('total-feriados-mes'),
+            totalEventosEscolares: document.getElementById('total-eventos-escolares-mes'),
+            totalReunioes: document.getElementById('total-reunioes-mes')
+        };
+        
+        // Se os elementos não existem, não fazer nada (pode não estar na página do dashboard)
+        if (!elementosEstatisticas.totalEventos) {
+            console.log('📄 Elementos de estatísticas não encontrados - não estamos na página do dashboard');
+            return;
+        }
+        
+        // Calcular estatísticas baseadas nos eventos já carregados
         const dataAtual = this.calendar.getDate();
         const ano = dataAtual.getFullYear();
         const mes = dataAtual.getMonth() + 1;
-
-        try {
-            const response = await makeRequest(`${API_BASE_URL}/calendario/resumo-mensal/${ano}/${mes}`);
-            
-            // Atualizar badges do painel
-            document.getElementById('total-eventos-mes').textContent = response.total_eventos;
-            
-            // Resetar contadores
-            document.getElementById('total-feriados-mes').textContent = '0';
-            document.getElementById('total-eventos-escolares-mes').textContent = '0';
-            document.getElementById('total-reunioes-mes').textContent = '0';
-
-            // Atualizar contadores por tipo
-            response.por_tipo.forEach(tipo => {
-                if (tipo.tipo.includes('feriado')) {
-                    const atual = parseInt(document.getElementById('total-feriados-mes').textContent);
-                    document.getElementById('total-feriados-mes').textContent = atual + tipo.quantidade;
-                } else if (tipo.tipo === 'evento_escolar') {
-                    document.getElementById('total-eventos-escolares-mes').textContent = tipo.quantidade;
-                } else if (tipo.tipo === 'reuniao') {
-                    document.getElementById('total-reunioes-mes').textContent = tipo.quantidade;
-                }
-            });
-
-            // Atualizar próximos eventos
-            this.atualizarProximosEventos();
-
-        } catch (error) {
-            console.error('Erro ao carregar estatísticas:', error);
+        
+        console.log(`📅 Calculando estatísticas para ${mes}/${ano}`);
+        
+        // Filtrar eventos do mês atual
+        const eventosDoMes = this.eventosCarregados.filter(evento => {
+            const dataEvento = new Date(evento.data_inicio);
+            return dataEvento.getFullYear() === ano && 
+                   (dataEvento.getMonth() + 1) === mes;
+        });
+        
+        console.log(`📋 Eventos do mês ${mes}/${ano}:`, eventosDoMes.length);
+        
+        // Calcular contadores por tipo
+        const contadores = {
+            total: eventosDoMes.length,
+            feriados: 0,
+            eventos_escolares: 0,
+            reunioes: 0
+        };
+        
+        eventosDoMes.forEach(evento => {
+            if (evento.tipo_evento.includes('feriado')) {
+                contadores.feriados++;
+            } else if (evento.tipo_evento === 'evento_escolar') {
+                contadores.eventos_escolares++;
+            } else if (evento.tipo_evento === 'reuniao') {
+                contadores.reunioes++;
+            }
+        });
+        
+        console.log('📊 Contadores calculados:', contadores);
+        
+        // Atualizar badges do painel apenas se os elementos existem
+        if (elementosEstatisticas.totalEventos) {
+            elementosEstatisticas.totalEventos.textContent = contadores.total;
         }
+        if (elementosEstatisticas.totalFeriados) {
+            elementosEstatisticas.totalFeriados.textContent = contadores.feriados;
+        }
+        if (elementosEstatisticas.totalEventosEscolares) {
+            elementosEstatisticas.totalEventosEscolares.textContent = contadores.eventos_escolares;
+        }
+        if (elementosEstatisticas.totalReunioes) {
+            elementosEstatisticas.totalReunioes.textContent = contadores.reunioes;
+        }
+        
+        // Atualizar próximos eventos
+        this.atualizarProximosEventos();
+        
+        console.log('✅ Estatísticas atualizadas com sucesso!');
     }
 
     atualizarProximosEventos() {
@@ -530,6 +614,8 @@ class CalendarioEscolar {
         console.log('🎛️ Filtros ativos:', Array.from(this.filtrosAtivos));
         console.log('📅 Eventos no calendário:', this.calendar.getEvents().length);
         console.log('🔗 API URL:', API_BASE_URL);
+        console.log('🛠️ ConfigModule disponível:', !!window.CONFIG);
+        console.log('🛠️ ConfigModule.fetchApi disponível:', !!(window.CONFIG && window.CONFIG.fetchApi));
         
         if (this.eventosCarregados.length > 0) {
             console.log('📝 Primeiro evento:', this.eventosCarregados[0]);
@@ -539,8 +625,29 @@ class CalendarioEscolar {
             eventosCarregados: this.eventosCarregados.length,
             filtrosAtivos: Array.from(this.filtrosAtivos),
             eventosNoCalendario: this.calendar.getEvents().length,
-            apiUrl: API_BASE_URL
+            apiUrl: API_BASE_URL,
+            configModuleDisponivel: !!window.CONFIG
         };
+    }
+
+    // Função para testar a API diretamente
+    async testarAPI() {
+        console.log('🧪 TESTANDO API DO CALENDÁRIO...');
+        
+        try {
+            if (window.CONFIG && window.CONFIG.fetchApi) {
+                console.log('🔄 Testando com ConfigModule...');
+                const response = await window.CONFIG.fetchApi('/calendario/eventos');
+                console.log('✅ Sucesso com ConfigModule:', response);
+                return response;
+            } else {
+                console.log('❌ ConfigModule não disponível');
+                return null;
+            }
+        } catch (error) {
+            console.error('❌ Erro no teste da API:', error);
+            throw error;
+        }
     }
 }
 
@@ -555,6 +662,31 @@ if (typeof window !== 'undefined') {
         } else {
             console.log('❌ Calendário não inicializado ainda');
             return null;
+        }
+    };
+    
+    window.testarAPICalendario = async function() {
+        if (window.App && window.App.calendario) {
+            try {
+                const resultado = await window.App.calendario.testarAPI();
+                console.log('🎯 Resultado do teste:', resultado);
+                return resultado;
+            } catch (error) {
+                console.error('❌ Falha no teste:', error);
+                return null;
+            }
+        } else {
+            console.log('❌ Calendário não inicializado ainda');
+            return null;
+        }
+    };
+    
+    window.recarregarEventosCalendario = function() {
+        if (window.App && window.App.calendario) {
+            console.log('🔄 Forçando recarga dos eventos...');
+            window.App.calendario.reload();
+        } else {
+            console.log('❌ Calendário não inicializado ainda');
         }
     };
 } 
