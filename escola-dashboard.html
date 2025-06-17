@@ -1127,18 +1127,47 @@
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     
+    <!-- Script de Inicialização -->
+    <script src="js/init.js"></script>
+    
     <!-- Script para forçar cores das notas -->
     <script src="js/forcar-cores-notas.js"></script>
     
-    <!-- Scripts do Sistema -->
-    <script src="js/config.js"></script>
-    <script src="js/modules/dashboard.js"></script>
-    <script src="js/modules/turmas.js"></script>
-    <script src="js/modules/disciplinas.js"></script>
-    <script src="js/modules/professores.js"></script>
-    <script src="js/modules/alunos.js"></script>
-    <script src="js/modules/notas.js"></script>
-    <script src="js/calendario.js"></script>
-    <script src="js/main.js"></script>
+    <!-- Scripts carregados condicionalmente após verificar API -->
+    <script>
+        // Carregar scripts avançados apenas se a API estiver funcionando
+        setTimeout(async () => {
+            try {
+                // Verificar se a API está respondendo
+                const response = await fetch('https://apinazarerodrigues.86dynamics.com.br/api/status');
+                if (response.ok) {
+                    console.log('✅ API funcionando - carregando scripts avançados...');
+                    
+                    // Carregar scripts dos módulos
+                    const scripts = [
+                        'js/config.js',
+                        'js/modules/dashboard.js',
+                        'js/modules/turmas.js',
+                        'js/modules/disciplinas.js',
+                        'js/modules/professores.js',
+                        'js/modules/alunos.js',
+                        'js/modules/notas.js',
+                        'js/calendario.js'
+                    ];
+                    
+                    for (const script of scripts) {
+                        const scriptElement = document.createElement('script');
+                        scriptElement.src = script;
+                        scriptElement.onerror = () => console.warn(`⚠️ Falha ao carregar: ${script}`);
+                        document.body.appendChild(scriptElement);
+                    }
+                } else {
+                    console.warn('⚠️ API não está respondendo - modo básico ativado');
+                }
+            } catch (error) {
+                console.warn('⚠️ Erro ao verificar API - modo básico ativado:', error);
+            }
+        }, 1000);
+    </script>
 </body>
 </html>
