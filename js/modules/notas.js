@@ -69,11 +69,12 @@ const NotasModule = {
     init: async function() {
         console.log("Inicializando módulo de notas");
         
+        // TEMPORARIAMENTE DESABILITADO - estava causando problemas com os filtros
         // Verificar e reconstruir a estrutura HTML se necessário
-        const integridadeOk = this.verificarIntegridadeHTML();
-        if (!integridadeOk) {
-            this.reconstruirInterfaceNotas();
-        }
+        // const integridadeOk = this.verificarIntegridadeHTML();
+        // if (!integridadeOk) {
+        //     this.reconstruirInterfaceNotas();
+        // }
         
         this.cachearElementos();
         this.adicionarEventListeners();
@@ -493,6 +494,24 @@ const NotasModule = {
         this.elements.filtroBimestre = document.getElementById('filtro-bimestre-nota');
         this.elements.filtroAno = document.getElementById('filtro-ano-nota');
         this.elements.btnFiltrar = document.getElementById('btn-filtrar-notas');
+        
+        // Debug detalhado para o filtro de turma
+        console.log("🔍 DEBUG - Buscando elemento filtro-turma-nota:");
+        console.log("Elemento encontrado:", this.elements.filtroTurma);
+        console.log("Existe no DOM:", !!document.getElementById('filtro-turma-nota'));
+        
+        if (!this.elements.filtroTurma) {
+            console.error("❌ PROBLEMA: Elemento filtro-turma-nota não foi encontrado!");
+            console.log("Todos os elementos com 'turma' no ID:", 
+                Array.from(document.querySelectorAll('[id*="turma"]')).map(el => ({
+                    id: el.id,
+                    tagName: el.tagName,
+                    classes: el.className
+                }))
+            );
+        } else {
+            console.log("✅ Elemento filtro-turma-nota encontrado com sucesso!");
+        }
         
         // Elementos para lançamento em massa
         this.elements.massaTurma = document.getElementById('massa-turma');
