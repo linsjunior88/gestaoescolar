@@ -4969,28 +4969,28 @@ criar_tabela_calendario()
 def calcular_medias():
     """Recalcula as médias finais de todas as notas"""
     try:
-        # Atualizar todas as médias usando a fórmula correta
+        # Atualizar todas as médias usando a fórmula correta com casts explícitos para PostgreSQL
         query = """
             UPDATE nota
             SET media = CASE
                 WHEN nota_mensal IS NOT NULL AND nota_bimestral IS NOT NULL THEN
                     CASE 
                         WHEN recuperacao IS NOT NULL AND recuperacao > 0 THEN
-                            ROUND(((nota_mensal + nota_bimestral) / 2 + recuperacao) / 2, 1)
+                            ROUND(((nota_mensal::numeric + nota_bimestral::numeric) / 2 + recuperacao::numeric) / 2, 1)
                         ELSE
-                            ROUND((nota_mensal + nota_bimestral) / 2, 1)
+                            ROUND((nota_mensal::numeric + nota_bimestral::numeric) / 2, 1)
                     END
                 WHEN nota_mensal IS NOT NULL THEN
                     CASE 
                         WHEN recuperacao IS NOT NULL AND recuperacao > 0 THEN
-                            ROUND((nota_mensal + recuperacao) / 2, 1)
+                            ROUND((nota_mensal::numeric + recuperacao::numeric) / 2, 1)
                         ELSE
                             nota_mensal
                     END
                 WHEN nota_bimestral IS NOT NULL THEN
                     CASE 
                         WHEN recuperacao IS NOT NULL AND recuperacao > 0 THEN
-                            ROUND((nota_bimestral + recuperacao) / 2, 1)
+                            ROUND((nota_bimestral::numeric + recuperacao::numeric) / 2, 1)
                         ELSE
                             nota_bimestral
                     END
