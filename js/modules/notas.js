@@ -388,13 +388,31 @@ const NotasModule = {
                                 <div class="table-responsive">
                                     <table class="table table-striped table-hover" id="tabela-grade-notas">
                                         <thead>
-                                            <tr>
-                                                <th>Aluno</th>
-                                                <th>Nota Mensal</th>
-                                                <th>Nota Bimestral</th>
-                                                <th>Recuperação</th>
-                                                <th>Média Final</th>
-                                                <th>Status</th>
+                                            <tr class="table-header-glass">
+                                                <th rowspan="3" class="subject-header">Disciplina</th>
+                                                <th colspan="12" class="bimesters-header">Bimestres</th>
+                                                <th rowspan="3" class="final-grade-header">Média Final</th>
+                                                <th rowspan="3" class="status-header">Situação</th>
+                                            </tr>
+                                            <tr class="bimester-labels">
+                                                <th colspan="3" class="bimester-group">1º Bimestre</th>
+                                                <th colspan="3" class="bimester-group">2º Bimestre</th>
+                                                <th colspan="3" class="bimester-group">3º Bimestre</th>
+                                                <th colspan="3" class="bimester-group">4º Bimestre</th>
+                                            </tr>
+                                            <tr class="grade-types">
+                                                <th class="grade-type">Mensal</th>
+                                                <th class="grade-type">Bimestral</th>
+                                                <th class="grade-type">Média</th>
+                                                <th class="grade-type">Mensal</th>
+                                                <th class="grade-type">Bimestral</th>
+                                                <th class="grade-type">Média</th>
+                                                <th class="grade-type">Mensal</th>
+                                                <th class="grade-type">Bimestral</th>
+                                                <th class="grade-type">Média</th>
+                                                <th class="grade-type">Mensal</th>
+                                                <th class="grade-type">Bimestral</th>
+                                                <th class="grade-type">Média</th>
                                             </tr>
                                         </thead>
                                         <tbody id="grade-notas-corpo">
@@ -1548,7 +1566,7 @@ const NotasModule = {
                             <thead>
                                 <tr class="table-header-glass">
                                     <th rowspan="3" class="subject-header">Disciplina</th>
-                                    <th colspan="9" class="bimesters-header">Bimestres</th>
+                                    <th colspan="12" class="bimesters-header">Bimestres</th>
                                     <th rowspan="3" class="final-grade-header">Média Final</th>
                                     <th rowspan="3" class="status-header">Situação</th>
                                 </tr>
@@ -1556,8 +1574,12 @@ const NotasModule = {
                                     <th colspan="3" class="bimester-group">1º Bimestre</th>
                                     <th colspan="3" class="bimester-group">2º Bimestre</th>
                                     <th colspan="3" class="bimester-group">3º Bimestre</th>
+                                    <th colspan="3" class="bimester-group">4º Bimestre</th>
                                 </tr>
                                 <tr class="grade-types">
+                                    <th class="grade-type">Mensal</th>
+                                    <th class="grade-type">Bimestral</th>
+                                    <th class="grade-type">Média</th>
                                     <th class="grade-type">Mensal</th>
                                     <th class="grade-type">Bimestral</th>
                                     <th class="grade-type">Média</th>
@@ -1609,6 +1631,11 @@ const NotasModule = {
                         <td class="grade-cell">${this.formatarNotaGlass(notasDisciplina['3']?.nota_mensal)}</td>
                         <td class="grade-cell">${this.formatarNotaGlass(notasDisciplina['3']?.nota_bimestral)}</td>
                         <td class="average-cell">${this.formatarMediaGlass(notasDisciplina['3'])}</td>
+                        
+                        <!-- 4º Bimestre -->
+                        <td class="grade-cell">${this.formatarNotaGlass(notasDisciplina['4']?.nota_mensal)}</td>
+                        <td class="grade-cell">${this.formatarNotaGlass(notasDisciplina['4']?.nota_bimestral)}</td>
+                        <td class="average-cell">${this.formatarMediaGlass(notasDisciplina['4'])}</td>
                         
                         <!-- Média Final -->
                         <td class="final-average">${this.formatarMediaFinalGlass(disciplina.media_anual)}</td>
@@ -1675,6 +1702,20 @@ const NotasModule = {
         // Mostrar modal
         const bsModal = new bootstrap.Modal(modal);
         bsModal.show();
+        
+        // Adicionar event listener para limpar quando o modal for fechado
+        modal.addEventListener('hidden.bs.modal', function () {
+            // Remover o modal do DOM completamente
+            modal.remove();
+            // Remover backdrop se existir
+            const backdrop = document.querySelector('.modal-backdrop');
+            if (backdrop) {
+                backdrop.remove();
+            }
+            // Restaurar scroll do body
+            document.body.classList.remove('modal-open');
+            document.body.style.removeProperty('padding-right');
+        });
         
         // Inicializar animações AOS se disponível
         if (typeof AOS !== 'undefined') {
@@ -3756,43 +3797,43 @@ const NotasModule = {
             
             /* Variáveis CSS para glassmorphism */
             :root {
-                --glass-bg: rgba(255, 255, 255, 0.25);
-                --glass-border: rgba(255, 255, 255, 0.18);
-                --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
-                --glass-backdrop: blur(20px);
-                --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                --glass-bg: rgba(255, 255, 255, 0.15);
+                --glass-border: rgba(255, 255, 255, 0.2);
+                --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
+                --glass-backdrop: blur(25px);
+                --primary-gradient: linear-gradient(135deg, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.1) 100%);
                 --success-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
                 --warning-gradient: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
                 --danger-gradient: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+                --header-gradient: linear-gradient(135deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0.1) 100%);
             }
             
             /* Modal glassmorphism */
             .glass-modal {
-                background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
-                backdrop-filter: blur(20px);
-                border: 1px solid rgba(255, 255, 255, 0.18);
+                background: rgba(255, 255, 255, 0.05);
+                backdrop-filter: blur(25px);
+                border: 1px solid rgba(255, 255, 255, 0.2);
                 border-radius: 20px;
-                box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+                box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
             }
             
             .glass-header {
-                background: linear-gradient(135deg, rgba(103, 126, 234, 0.8), rgba(118, 75, 162, 0.8));
-                backdrop-filter: blur(20px);
-                border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+                background: linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.1) 100%);
+                backdrop-filter: blur(25px);
+                border-bottom: 1px solid rgba(255, 255, 255, 0.2);
                 border-radius: 20px 20px 0 0;
                 padding: 1.5rem 2rem;
             }
             
             .glass-title {
-                color: white;
+                color: #2d3748;
                 font-weight: 600;
                 font-size: 1.5rem;
-                text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+                text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
             }
             
             .glass-close {
-                filter: brightness(0) invert(1);
-                opacity: 0.8;
+                opacity: 0.7;
                 transition: all 0.3s ease;
             }
             
@@ -3803,23 +3844,23 @@ const NotasModule = {
             
             .glass-body {
                 background: linear-gradient(135deg, 
-                    rgba(240, 248, 255, 0.9) 0%, 
-                    rgba(230, 240, 250, 0.8) 50%, 
-                    rgba(220, 235, 255, 0.9) 100%);
-                backdrop-filter: blur(20px);
+                    rgba(255, 255, 255, 0.1) 0%, 
+                    rgba(255, 255, 255, 0.05) 50%, 
+                    rgba(255, 255, 255, 0.1) 100%);
+                backdrop-filter: blur(25px);
                 padding: 2rem;
                 min-height: 80vh;
             }
             
             /* Container do boletim */
             .boletim-glass-container {
-                background: rgba(255, 255, 255, 0.95);
+                background: rgba(255, 255, 255, 0.15);
                 backdrop-filter: blur(30px);
                 border-radius: 24px;
-                border: 1px solid rgba(255, 255, 255, 0.3);
+                border: 1px solid rgba(255, 255, 255, 0.25);
                 box-shadow: 
-                    0 20px 40px rgba(0, 0, 0, 0.1),
-                    0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+                    0 20px 40px rgba(0, 0, 0, 0.05),
+                    0 0 0 1px rgba(255, 255, 255, 0.3) inset;
                 margin-bottom: 3rem;
                 overflow: hidden;
                 transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
@@ -3828,19 +3869,20 @@ const NotasModule = {
             .boletim-glass-container:hover {
                 transform: translateY(-5px);
                 box-shadow: 
-                    0 30px 60px rgba(0, 0, 0, 0.15),
-                    0 0 0 1px rgba(255, 255, 255, 0.6) inset;
+                    0 30px 60px rgba(0, 0, 0, 0.08),
+                    0 0 0 1px rgba(255, 255, 255, 0.4) inset;
             }
             
             /* Cabeçalho da escola */
             .glass-header-section {
                 background: linear-gradient(135deg, 
-                    rgba(103, 126, 234, 0.95) 0%, 
-                    rgba(118, 75, 162, 0.95) 100%);
-                backdrop-filter: blur(20px);
+                    rgba(255, 255, 255, 0.3) 0%, 
+                    rgba(255, 255, 255, 0.15) 100%);
+                backdrop-filter: blur(25px);
                 padding: 2rem;
                 position: relative;
                 overflow: hidden;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.2);
             }
             
             .glass-header-section::before {
@@ -3850,8 +3892,8 @@ const NotasModule = {
                 left: 0;
                 right: 0;
                 bottom: 0;
-                background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="50" cy="50" r="1" fill="rgba(255,255,255,0.1)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
-                opacity: 0.3;
+                background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="50" cy="50" r="0.5" fill="rgba(255,255,255,0.1)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+                opacity: 0.2;
             }
             
             .school-info {
@@ -3866,7 +3908,7 @@ const NotasModule = {
                 width: 80px;
                 height: 80px;
                 background: rgba(255, 255, 255, 0.2);
-                backdrop-filter: blur(10px);
+                backdrop-filter: blur(15px);
                 border-radius: 50%;
                 display: flex;
                 align-items: center;
@@ -3882,28 +3924,28 @@ const NotasModule = {
             
             .school-logo i {
                 font-size: 2rem;
-                color: white;
-                text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+                color: #4a5568;
+                text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
             }
             
             .school-details {
                 flex: 1;
                 text-align: center;
-                color: white;
+                color: #2d3748;
             }
             
             .school-name {
                 font-size: 2rem;
                 font-weight: 700;
                 margin: 0;
-                text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+                text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
                 letter-spacing: 1px;
             }
             
             .school-subtitle {
                 font-size: 1rem;
                 margin: 0.5rem 0;
-                opacity: 0.9;
+                opacity: 0.8;
                 font-weight: 300;
             }
             
@@ -3911,12 +3953,12 @@ const NotasModule = {
                 font-size: 1.5rem;
                 font-weight: 600;
                 margin: 0.5rem 0 0 0;
-                text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+                text-shadow: 0 1px 2px rgba(255, 255, 255, 0.3);
             }
             
             .year-badge .glass-badge {
-                background: rgba(255, 255, 255, 0.2);
-                backdrop-filter: blur(10px);
+                background: rgba(255, 255, 255, 0.25);
+                backdrop-filter: blur(15px);
                 border: 1px solid rgba(255, 255, 255, 0.3);
                 border-radius: 16px;
                 padding: 1rem 1.5rem;
@@ -3925,14 +3967,14 @@ const NotasModule = {
             }
             
             .year-badge .glass-badge:hover {
-                background: rgba(255, 255, 255, 0.3);
+                background: rgba(255, 255, 255, 0.35);
                 transform: scale(1.05);
             }
             
             .badge-label {
                 display: block;
                 font-size: 0.9rem;
-                color: rgba(255, 255, 255, 0.9);
+                color: #4a5568;
                 margin-bottom: 0.25rem;
             }
             
@@ -3940,21 +3982,21 @@ const NotasModule = {
                 display: block;
                 font-size: 1.5rem;
                 font-weight: 700;
-                color: white;
-                text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+                color: #2d3748;
+                text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
             }
             
             /* Informações do aluno */
             .student-info-glass {
                 background: linear-gradient(135deg, 
-                    rgba(255, 255, 255, 0.9) 0%, 
-                    rgba(240, 248, 255, 0.8) 100%);
-                backdrop-filter: blur(15px);
+                    rgba(255, 255, 255, 0.2) 0%, 
+                    rgba(255, 255, 255, 0.1) 100%);
+                backdrop-filter: blur(20px);
                 padding: 1.5rem 2rem;
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
-                border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+                border-bottom: 1px solid rgba(255, 255, 255, 0.2);
             }
             
             .info-row {
@@ -4018,8 +4060,8 @@ const NotasModule = {
                 width: 100%;
                 border-collapse: separate;
                 border-spacing: 0;
-                background: rgba(255, 255, 255, 0.7);
-                backdrop-filter: blur(15px);
+                background: rgba(255, 255, 255, 0.1);
+                backdrop-filter: blur(20px);
                 border-radius: 20px;
                 overflow: hidden;
                 box-shadow: 
@@ -4029,39 +4071,38 @@ const NotasModule = {
             
             .table-header-glass th {
                 background: linear-gradient(135deg, 
-                    rgba(103, 126, 234, 0.9) 0%, 
-                    rgba(118, 75, 162, 0.9) 100%);
-                color: white;
+                    rgba(255, 255, 255, 0.25) 0%, 
+                    rgba(255, 255, 255, 0.15) 100%);
+                color: #2d3748;
                 padding: 1rem;
                 font-weight: 600;
                 text-align: center;
                 border: none;
                 position: relative;
+                text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
             }
             
             .bimester-labels th {
                 background: linear-gradient(135deg, 
-                    rgba(103, 126, 234, 0.8) 0%, 
-                    rgba(118, 75, 162, 0.8) 100%);
+                    rgba(255, 255, 255, 0.2) 0%, 
+                    rgba(255, 255, 255, 0.1) 100%);
                 padding: 0.75rem;
                 font-size: 0.95rem;
+                color: #4a5568;
             }
             
             .grade-types th {
                 background: linear-gradient(135deg, 
-                    rgba(103, 126, 234, 0.7) 0%, 
-                    rgba(118, 75, 162, 0.7) 100%);
+                    rgba(255, 255, 255, 0.15) 0%, 
+                    rgba(255, 255, 255, 0.08) 100%);
                 padding: 0.5rem;
                 font-size: 0.85rem;
                 font-weight: 500;
-            }
-            
-            .glass-tbody tr {
-                transition: all 0.3s ease;
+                color: #4a5568;
             }
             
             .glass-tbody tr:hover {
-                background: rgba(103, 126, 234, 0.1);
+                background: rgba(255, 255, 255, 0.15);
                 transform: scale(1.01);
             }
             
@@ -4069,7 +4110,7 @@ const NotasModule = {
                 padding: 1rem 0.75rem;
                 text-align: center;
                 border: none;
-                border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+                border-bottom: 1px solid rgba(255, 255, 255, 0.2);
                 transition: all 0.3s ease;
             }
             
@@ -4078,7 +4119,7 @@ const NotasModule = {
                 color: #2d3748;
                 text-align: left !important;
                 padding-left: 1.5rem !important;
-                background: rgba(255, 255, 255, 0.5);
+                background: rgba(255, 255, 255, 0.1);
             }
             
             /* Formatação das notas */
@@ -4329,21 +4370,27 @@ const NotasModule = {
                 }
                 
                 .glass-header-section {
-                    background: #667eea !important;
+                    background: #f8f9fa !important;
+                    border: 2px solid #000 !important;
                     -webkit-print-color-adjust: exact;
                     print-color-adjust: exact;
                 }
                 
+                .school-name, .school-subtitle, .document-title,
+                .badge-year, .info-value, .ra-number {
+                    color: #000 !important;
+                }
+                
                 .glass-table {
                     background: white !important;
-                    border: 1px solid #000 !important;
+                    border: 2px solid #000 !important;
                 }
                 
                 .table-header-glass th,
                 .bimester-labels th,
                 .grade-types th {
-                    background: #667eea !important;
-                    color: white !important;
+                    background: #e9ecef !important;
+                    color: #000 !important;
                     -webkit-print-color-adjust: exact;
                     print-color-adjust: exact;
                     border: 1px solid #000 !important;
@@ -4351,12 +4398,24 @@ const NotasModule = {
                 
                 .glass-tbody td {
                     border: 1px solid #000 !important;
+                    color: #000 !important;
+                }
+                
+                .subject-name {
+                    background: #f8f9fa !important;
+                    color: #000 !important;
                 }
                 
                 .grade-value, .average-value, .final-value,
                 .status-badge, .legend-badge {
                     -webkit-print-color-adjust: exact;
                     print-color-adjust: exact;
+                    border: 1px solid #000 !important;
+                }
+                
+                .student-info-glass, .legend-glass {
+                    background: #f8f9fa !important;
+                    border: 1px solid #000 !important;
                 }
                 
                 @page {
