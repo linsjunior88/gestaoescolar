@@ -3729,17 +3729,38 @@ const NotasModule = {
             return '<span class="grade-empty">-</span>';
         }
         
-        // Determinar classe baseada no valor
-        let classe = 'grade-good';
+        // Sistema de cores inteligente baseado no valor da nota
+        let cor, classe;
+        
         if (notaNum >= 6.0) {
+            // Verde: notas boas (6.0 a 10.0)
+            // Verde mais escuro para notas mais altas, mais claro para notas mais baixas
+            const intensidade = Math.min((notaNum - 6) / 4, 1); // 0 a 1
+            const verdeEscuro = Math.floor(0 + (128 * intensidade)); // 0 a 128
+            const verdeClaro = Math.floor(128 + (127 * (1 - intensidade))); // 255 a 128
+            cor = `rgb(${verdeEscuro}, ${verdeClaro}, ${verdeEscuro})`;
             classe = 'grade-excellent';
         } else if (notaNum >= 4.0) {
+            // Amarelo: notas de recuperação (4.0 a 5.99)
+            // Amarelo mais claro próximo a 6, mais escuro próximo a 4
+            const intensidade = (notaNum - 4) / 2; // 0 a 1
+            const amareloR = 255; // Sempre 255 no vermelho
+            const amareloG = 255; // Sempre 255 no verde
+            const amareloB = Math.floor(0 + (150 * (1 - intensidade))); // 150 a 0 (mais escuro quando menor)
+            cor = `rgb(${amareloR}, ${amareloG}, ${amareloB})`;
             classe = 'grade-warning';
         } else {
+            // Vermelho: notas ruins (0 a 3.99)
+            // Vermelho mais claro próximo a 4, mais escuro próximo a 0
+            const intensidade = notaNum / 4; // 0 a 1
+            const vermelhoR = Math.floor(128 + (127 * (1 - intensidade))); // 255 a 128
+            const vermelhoG = Math.floor(0 + (100 * intensidade)); // 0 a 100
+            const vermelhoB = Math.floor(0 + (100 * intensidade)); // 0 a 100
+            cor = `rgb(${vermelhoR}, ${vermelhoG}, ${vermelhoB})`;
             classe = 'grade-danger';
         }
         
-        return `<span class="grade-value ${classe}">${notaNum.toFixed(1)}</span>`;
+        return `<span class="grade-value ${classe}" style="background-color: ${cor}; color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.5);">${notaNum.toFixed(1)}</span>`;
     },
 
     // Formatar média para exibição glassmorphism
@@ -3764,17 +3785,35 @@ const NotasModule = {
             media = bimestral;
         }
         
-        // Determinar classe baseada no valor
-        let classe = 'average-good';
+        // Sistema de cores inteligente baseado no valor da média
+        let cor, classe;
+        
         if (media >= 6.0) {
+            // Verde: médias boas (6.0 a 10.0)
+            const intensidade = Math.min((media - 6) / 4, 1);
+            const verdeEscuro = Math.floor(0 + (128 * intensidade));
+            const verdeClaro = Math.floor(128 + (127 * (1 - intensidade)));
+            cor = `rgb(${verdeEscuro}, ${verdeClaro}, ${verdeEscuro})`;
             classe = 'average-excellent';
         } else if (media >= 4.0) {
+            // Amarelo: médias de recuperação (4.0 a 5.99)
+            const intensidade = (media - 4) / 2;
+            const amareloR = 255;
+            const amareloG = 255;
+            const amareloB = Math.floor(0 + (150 * (1 - intensidade)));
+            cor = `rgb(${amareloR}, ${amareloG}, ${amareloB})`;
             classe = 'average-warning';
         } else {
+            // Vermelho: médias ruins (0 a 3.99)
+            const intensidade = media / 4;
+            const vermelhoR = Math.floor(128 + (127 * (1 - intensidade)));
+            const vermelhoG = Math.floor(0 + (100 * intensidade));
+            const vermelhoB = Math.floor(0 + (100 * intensidade));
+            cor = `rgb(${vermelhoR}, ${vermelhoG}, ${vermelhoB})`;
             classe = 'average-danger';
         }
         
-        return `<span class="average-value ${classe}">${media.toFixed(1)}</span>`;
+        return `<span class="average-value ${classe}" style="background-color: ${cor}; color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.5);">${media.toFixed(1)}</span>`;
     },
 
     // Formatar média final para exibição glassmorphism
@@ -3788,17 +3827,35 @@ const NotasModule = {
             return '<span class="final-empty">-</span>';
         }
         
-        // Determinar classe baseada no valor
-        let classe = 'final-good';
+        // Sistema de cores inteligente baseado no valor da média final
+        let cor, classe;
+        
         if (media >= 6.0) {
+            // Verde: médias finais boas (6.0 a 10.0)
+            const intensidade = Math.min((media - 6) / 4, 1);
+            const verdeEscuro = Math.floor(0 + (128 * intensidade));
+            const verdeClaro = Math.floor(128 + (127 * (1 - intensidade)));
+            cor = `rgb(${verdeEscuro}, ${verdeClaro}, ${verdeEscuro})`;
             classe = 'final-excellent';
         } else if (media >= 4.0) {
+            // Amarelo: médias finais de recuperação (4.0 a 5.99)
+            const intensidade = (media - 4) / 2;
+            const amareloR = 255;
+            const amareloG = 255;
+            const amareloB = Math.floor(0 + (150 * (1 - intensidade)));
+            cor = `rgb(${amareloR}, ${amareloG}, ${amareloB})`;
             classe = 'final-warning';
         } else {
+            // Vermelho: médias finais ruins (0 a 3.99)
+            const intensidade = media / 4;
+            const vermelhoR = Math.floor(128 + (127 * (1 - intensidade)));
+            const vermelhoG = Math.floor(0 + (100 * intensidade));
+            const vermelhoB = Math.floor(0 + (100 * intensidade));
+            cor = `rgb(${vermelhoR}, ${vermelhoG}, ${vermelhoB})`;
             classe = 'final-danger';
         }
         
-        return `<span class="final-value ${classe}">${media.toFixed(1)}</span>`;
+        return `<span class="final-value ${classe}" style="background-color: ${cor}; color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.5); font-weight: 700; font-size: 1.1rem;">${media.toFixed(1)}</span>`;
     },
 
     // Adicionar estilos glassmorphism modernos
