@@ -1405,23 +1405,46 @@ const NotasModule = {
     // Mostrar boletim de médias
     mostrarBoletimMedias: async function() {
         try {
-            // Obter ano atual ou usar 2025 como padrão
-            const anoAtual = new Date().getFullYear();
+            // Obter filtros aplicados
+            const filtros = {
+                turma_id: this.elements.filtroTurma ? this.elements.filtroTurma.value : '',
+                disciplina_id: this.elements.filtroDisciplina ? this.elements.filtroDisciplina.value : '',
+                aluno_id: this.elements.filtroAluno ? this.elements.filtroAluno.value : '',
+                ano: this.elements.filtroAno ? this.elements.filtroAno.value : new Date().getFullYear()
+            };
             
-            console.log("Carregando boletim de médias...");
+            console.log("Filtros aplicados para o boletim:", filtros);
             
-            // Buscar dados do boletim diretamente da API
-            const boletimData = await ConfigModule.fetchApi(`/boletim-medias?ano=${anoAtual}`);
+            // Verificar se pelo menos a turma foi selecionada
+            if (!filtros.turma_id) {
+                this.mostrarErro("Selecione uma turma para gerar o boletim de médias.");
+                return;
+            }
+            
+            this.mostrarInfo("Carregando boletim de médias... Por favor, aguarde.");
+            
+            // Construir parâmetros da URL baseado nos filtros
+            const params = new URLSearchParams();
+            params.append('ano', filtros.ano);
+            if (filtros.turma_id) params.append('turma_id', filtros.turma_id);
+            if (filtros.disciplina_id) params.append('disciplina_id', filtros.disciplina_id);
+            if (filtros.aluno_id) params.append('aluno_id', filtros.aluno_id);
+            
+            const endpoint = `/boletim-medias?${params.toString()}`;
+            console.log("Endpoint do boletim:", endpoint);
+            
+            // Buscar dados do boletim com os filtros aplicados
+            const boletimData = await ConfigModule.fetchApi(endpoint);
             
             console.log("Dados do boletim recebidos:", boletimData);
             
             if (!boletimData || !boletimData.boletim || boletimData.boletim.length === 0) {
-                this.mostrarInfo("Nenhum dado encontrado para o boletim de médias.");
+                this.mostrarInfo("Nenhum dado encontrado para o boletim de médias com os filtros aplicados.");
                 return;
             }
             
             // Criar e mostrar modal com os dados
-            this.exibirBoletimModal(boletimData);
+            this.exibirBoletimModal(boletimData, filtros);
             
         } catch (error) {
             console.error("Erro ao carregar boletim de médias:", error);
@@ -1430,7 +1453,7 @@ const NotasModule = {
     },
 
     // Exibir modal com boletim de médias
-    exibirBoletimModal: function(boletimData) {
+    exibirBoletimModal: function(boletimData, filtros) {
         const modalId = 'modalBoletimMedias';
         let modal = document.getElementById(modalId);
         
@@ -1445,96 +1468,172 @@ const NotasModule = {
             document.body.appendChild(modal);
         }
         
-        // Título do modal
-        const titulo = `📊 Boletim de Médias - ${boletimData.ano} (${boletimData.total_alunos} alunos)`;
+        // Determinar o tipo de boletim baseado nos filtros
+        const isBoletimIndividual = filtros.aluno_id && filtros.aluno_id !== '';
+        const isDisciplinaEspecifica = filtros.disciplina_id && filtros.disciplina_id !== '';
+        
+        // Título do modal baseado nos filtros
+        let titulo = `📊 Boletim Escolar - ${boletimData.ano}`;
+        if (isBoletimIndividual) {
+            titulo = `📋 Boletim Individual - ${boletimData.ano}`;
+        } else if (isDisciplinaEspecifica) {
+            titulo = `📚 Boletim por Disciplina - ${boletimData.ano}`;
+        }
         
         // Construir HTML do modal
         let html = `
-            <div class="modal-dialog modal-xl">
+            <div class="modal-dialog modal-fullscreen">
                 <div class="modal-content">
                     <div class="modal-header bg-primary text-white">
                         <h5 class="modal-title" id="${modalId}Label">
-                            <i class="fas fa-chart-line me-2"></i>${titulo}
+                            <i class="fas fa-graduation-cap me-2"></i>${titulo}
                         </h5>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
                     </div>
-                    <div class="modal-body">
-                        <div class="row mb-3">
-                            <div class="col-12">
-                                <div class="alert alert-info">
-                                    <i class="fas fa-info-circle me-2"></i>
-                                    <strong>Critérios de Avaliação:</strong>
-                                    <span class="badge bg-success ms-2">≥ 6.0 = Aprovado</span>
-                                    <span class="badge bg-warning ms-2">4.0 - 5.9 = Recuperação</span>
-                                    <span class="badge bg-danger ms-2">< 4.0 = Reprovado</span>
+                    <div class="modal-body p-4" style="background-color: #f8f9fa;">
+        `;
+        
+        // Para cada aluno, criar um boletim individual
+        boletimData.boletim.forEach((aluno, index) => {
+            // Cabeçalho do boletim para cada aluno
+            html += `
+                <div class="boletim-container mb-4" style="background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); page-break-inside: avoid;">
+                    <!-- Cabeçalho do Boletim -->
+                    <div class="boletim-header text-center p-4 border-bottom">
+                        <div class="row align-items-center">
+                            <div class="col-2">
+                                <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMzIiIGN5PSIzMiIgcj0iMzIiIGZpbGw9IiMwMDc5ZmYiLz4KPHN2ZyB4PSIxNiIgeT0iMTYiIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJ3aGl0ZSI+CjxwYXRoIGQ9Ik0xMiAzTDEgOWwxMSA2IDkuNS01LjJMMTIgM3ptMCA5TDEgNnYxMGwxMSA2VjEyeiIvPgo8L3N2Zz4KPC9zdmc+" alt="Logo" class="img-fluid" style="max-width: 64px;">
+                            </div>
+                            <div class="col-8">
+                                <h4 class="mb-1 text-primary fw-bold">ESCOLA NAZARÉ RODRIGUES</h4>
+                                <p class="mb-1 text-muted">SECRETARIA DE ESTADO DA EDUCAÇÃO</p>
+                                <h5 class="mb-0 text-dark">Boletim Escolar</h5>
+                            </div>
+                            <div class="col-2 text-end">
+                                <div class="badge bg-primary fs-6 p-2">
+                                    Ano Letivo<br><strong>${boletimData.ano}</strong>
                                 </div>
                             </div>
                         </div>
-        `;
-        
-        // Para cada aluno, mostrar suas disciplinas
-        boletimData.boletim.forEach(aluno => {
-            html += `
-                <div class="card mb-3">
-                    <div class="card-header">
-                        <h6 class="mb-0">
-                            <i class="fas fa-user me-2"></i>
-                            <strong>${aluno.nome_aluno}</strong> - ${aluno.id_turma} (${aluno.serie})
-                        </h6>
                     </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-sm table-striped">
-                                <thead class="table-dark">
+                    
+                    <!-- Dados do Aluno -->
+                    <div class="aluno-info p-3 bg-light border-bottom">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <table class="table table-borderless table-sm mb-0">
                                     <tr>
-                                        <th>Disciplina</th>
-                                        <th>1º Bim</th>
-                                        <th>2º Bim</th>
-                                        <th>3º Bim</th>
-                                        <th>4º Bim</th>
-                                        <th>Média Final</th>
-                                        <th>Situação</th>
+                                        <td class="fw-bold" style="width: 120px;">Nome do Aluno:</td>
+                                        <td class="text-uppercase fw-bold">${aluno.nome_aluno}</td>
                                     </tr>
-                                </thead>
-                                <tbody>
+                                    <tr>
+                                        <td class="fw-bold">Turma:</td>
+                                        <td><strong>${aluno.id_turma}</strong> - ${aluno.serie}</td>
+                                    </tr>
+                                </table>
+                            </div>
+                            <div class="col-md-4 text-end">
+                                <div class="badge bg-info fs-6 p-2">
+                                    RA: <strong>${aluno.id_aluno}</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Tabela de Notas -->
+                    <div class="p-3">
+                        <table class="table table-bordered table-hover mb-0">
+                            <thead class="table-dark">
+                                <tr class="text-center">
+                                    <th rowspan="2" class="align-middle" style="width: 25%;">Disciplina</th>
+                                    <th colspan="4">Bimestres</th>
+                                    <th rowspan="2" class="align-middle" style="width: 12%;">Média Final</th>
+                                    <th rowspan="2" class="align-middle" style="width: 15%;">Situação</th>
+                                </tr>
+                                <tr class="text-center">
+                                    <th style="width: 12%;">1º Bim</th>
+                                    <th style="width: 12%;">2º Bim</th>
+                                    <th style="width: 12%;">3º Bim</th>
+                                    <th style="width: 12%;">4º Bim</th>
+                                </tr>
+                            </thead>
+                            <tbody>
             `;
             
-            aluno.disciplinas.forEach(disciplina => {
-                const situacaoClass = disciplina.situacao === 'Aprovado' ? 'bg-success' : 
-                                     disciplina.situacao === 'Reprovado' ? 'bg-danger' : 'bg-warning';
+            // Ordenar disciplinas alfabeticamente
+            const disciplinasOrdenadas = aluno.disciplinas.sort((a, b) => 
+                (a.nome_disciplina || '').localeCompare(b.nome_disciplina || '')
+            );
+            
+            disciplinasOrdenadas.forEach(disciplina => {
+                // Determinar cor da situação
+                let situacaoClass = 'bg-success text-white';
+                let situacaoTexto = disciplina.situacao || 'Pendente';
+                
+                if (situacaoTexto === 'Reprovado') {
+                    situacaoClass = 'bg-danger text-white';
+                } else if (situacaoTexto === 'Recuperação' || situacaoTexto.includes('Recuperação')) {
+                    situacaoClass = 'bg-warning text-dark';
+                }
+                
+                // Formatar média final
+                const mediaFinal = disciplina.media_anual ? disciplina.media_anual.toFixed(1) : '-';
                 
                 html += `
                     <tr>
-                        <td><strong>${disciplina.nome_disciplina}</strong></td>
-                        <td>${this.formatarNotaBimestre(disciplina.notas_bimestrais['1'])}</td>
-                        <td>${this.formatarNotaBimestre(disciplina.notas_bimestrais['2'])}</td>
-                        <td>${this.formatarNotaBimestre(disciplina.notas_bimestrais['3'])}</td>
-                        <td>${this.formatarNotaBimestre(disciplina.notas_bimestrais['4'])}</td>
-                        <td><strong>${disciplina.media_anual ? disciplina.media_anual.toFixed(1) : '-'}</strong></td>
-                        <td>
-                            <span class="badge ${situacaoClass}">${disciplina.situacao}</span>
+                        <td class="fw-bold">${disciplina.nome_disciplina}</td>
+                        <td class="text-center">${this.formatarNotaBoletim(disciplina.notas_bimestrais['1'])}</td>
+                        <td class="text-center">${this.formatarNotaBoletim(disciplina.notas_bimestrais['2'])}</td>
+                        <td class="text-center">${this.formatarNotaBoletim(disciplina.notas_bimestrais['3'])}</td>
+                        <td class="text-center">${this.formatarNotaBoletim(disciplina.notas_bimestrais['4'])}</td>
+                        <td class="text-center fw-bold ${mediaFinal !== '-' && parseFloat(mediaFinal) >= 6.0 ? 'text-success' : mediaFinal !== '-' && parseFloat(mediaFinal) >= 4.0 ? 'text-warning' : 'text-danger'}">${mediaFinal}</td>
+                        <td class="text-center">
+                            <span class="badge ${situacaoClass} px-3 py-2">${situacaoTexto}</span>
                         </td>
                     </tr>
                 `;
             });
             
             html += `
-                                </tbody>
-                            </table>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Legenda -->
+                    <div class="p-3 border-top bg-light">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <h6 class="mb-2"><i class="fas fa-info-circle text-primary me-2"></i>Critérios de Avaliação:</h6>
+                                <div class="d-flex flex-wrap gap-3">
+                                    <span class="badge bg-success px-3 py-2">≥ 6.0 = Aprovado</span>
+                                    <span class="badge bg-warning text-dark px-3 py-2">4.0 - 5.9 = Recuperação</span>
+                                    <span class="badge bg-danger px-3 py-2">< 4.0 = Reprovado</span>
+                                </div>
+                            </div>
+                            <div class="col-md-4 text-end">
+                                <small class="text-muted">
+                                    <i class="fas fa-calendar me-1"></i>Gerado em: ${new Date().toLocaleDateString('pt-BR')}
+                                </small>
+                            </div>
                         </div>
                     </div>
                 </div>
             `;
+            
+            // Adicionar quebra de página entre alunos (exceto no último)
+            if (index < boletimData.boletim.length - 1) {
+                html += '<div style="page-break-after: always;"></div>';
+            }
         });
         
         html += `
                     </div>
-                    <div class="modal-footer">
+                    <div class="modal-footer bg-white border-top">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                             <i class="fas fa-times me-2"></i>Fechar
                         </button>
                         <button type="button" class="btn btn-primary" onclick="window.print()">
-                            <i class="fas fa-print me-2"></i>Imprimir
+                            <i class="fas fa-print me-2"></i>Imprimir Boletim
                         </button>
                     </div>
                 </div>
@@ -1543,25 +1642,168 @@ const NotasModule = {
         
         modal.innerHTML = html;
         
+        // Adicionar estilos específicos para impressão
+        this.adicionarEstilosImpressao();
+        
         // Mostrar modal
         const bsModal = new bootstrap.Modal(modal);
         bsModal.show();
     },
 
     // Formatar nota para exibição no boletim
-    formatarNotaBimestre: function(nota) {
+    formatarNotaBoletim: function(nota) {
         if (nota === null || nota === undefined || nota === '') {
-            return '<span class="text-muted">-</span>';
+            return '<span class="text-muted fw-bold">-</span>';
         }
         
         const notaNum = parseFloat(nota);
         if (isNaN(notaNum)) {
-            return '<span class="text-muted">-</span>';
+            return '<span class="text-muted fw-bold">-</span>';
         }
         
-        return notaNum.toFixed(1);
+        // Colorir a nota baseada no valor
+        let classe = 'text-dark';
+        if (notaNum >= 6.0) {
+            classe = 'text-success fw-bold';
+        } else if (notaNum >= 4.0) {
+            classe = 'text-warning fw-bold';
+        } else {
+            classe = 'text-danger fw-bold';
+        }
+        
+        return `<span class="${classe}">${notaNum.toFixed(1)}</span>`;
     },
 
+    // Adicionar estilos específicos para impressão do boletim
+    adicionarEstilosImpressao: function() {
+        // Verificar se os estilos já foram adicionados
+        if (document.getElementById('boletim-print-styles')) {
+            return;
+        }
+        
+        const estilos = document.createElement('style');
+        estilos.id = 'boletim-print-styles';
+        estilos.textContent = `
+            @media print {
+                /* Ocultar elementos desnecessários na impressão */
+                .modal-header, .modal-footer, .btn-close {
+                    display: none !important;
+                }
+                
+                /* Configurar página para impressão */
+                @page {
+                    size: A4;
+                    margin: 1cm;
+                }
+                
+                /* Estilo do container do boletim */
+                .boletim-container {
+                    background: white !important;
+                    box-shadow: none !important;
+                    border: 1px solid #000 !important;
+                    margin-bottom: 2cm !important;
+                    page-break-inside: avoid;
+                }
+                
+                /* Cabeçalho do boletim */
+                .boletim-header {
+                    border-bottom: 2px solid #000 !important;
+                }
+                
+                /* Tabela de notas */
+                .table {
+                    border: 1px solid #000 !important;
+                }
+                
+                .table th, .table td {
+                    border: 1px solid #000 !important;
+                    padding: 8px !important;
+                    font-size: 12px !important;
+                }
+                
+                .table-dark th {
+                    background-color: #343a40 !important;
+                    color: white !important;
+                    -webkit-print-color-adjust: exact;
+                    print-color-adjust: exact;
+                }
+                
+                /* Badges e cores */
+                .badge {
+                    -webkit-print-color-adjust: exact;
+                    print-color-adjust: exact;
+                }
+                
+                .text-success {
+                    color: #198754 !important;
+                }
+                
+                .text-warning {
+                    color: #fd7e14 !important;
+                }
+                
+                .text-danger {
+                    color: #dc3545 !important;
+                }
+                
+                /* Quebra de página */
+                .page-break {
+                    page-break-after: always;
+                }
+                
+                /* Modal em tela cheia para impressão */
+                .modal-dialog {
+                    max-width: none !important;
+                    margin: 0 !important;
+                }
+                
+                .modal-content {
+                    border: none !important;
+                    border-radius: 0 !important;
+                }
+                
+                .modal-body {
+                    padding: 0 !important;
+                    background: white !important;
+                }
+                
+                /* Ajustar fonte para impressão */
+                body {
+                    font-size: 12px !important;
+                    line-height: 1.4 !important;
+                }
+                
+                h4, h5, h6 {
+                    font-size: 14px !important;
+                }
+                
+                /* Garantir que as cores sejam impressas */
+                * {
+                    -webkit-print-color-adjust: exact;
+                    print-color-adjust: exact;
+                }
+            }
+            
+            /* Estilos para tela */
+            @media screen {
+                .boletim-container {
+                    transition: all 0.3s ease;
+                }
+                
+                .boletim-container:hover {
+                    transform: translateY(-2px);
+                    box-shadow: 0 4px 15px rgba(0,0,0,0.15) !important;
+                }
+                
+                .table-hover tbody tr:hover {
+                    background-color: rgba(0,123,255,0.1) !important;
+                }
+            }
+        `;
+        
+        document.head.appendChild(estilos);
+    },
+    
     // Imprimir boletim
     imprimirBoletim: function() {
         const conteudo = document.getElementById('conteudoBoletim');
