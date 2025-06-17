@@ -1,0 +1,37 @@
+{
+  "javascript.validate.enable": false,
+  "javascript.implicitProjectConfig.experimentalDecorators": true,
+  "javascript.implicitProjectConfig.checkJs": false,
+  "typescript.validate.enable": false,
+  "typescript.preferences.importModuleSpecifier": "relative",
+  "javascript.preferences.importModuleSpecifier": "relative",
+  "eslint.enable": false,
+  "js/ts.implicitProjectConfig.checkJs": false,
+  "javascript.suggestionActions.enabled": false,
+  "typescript.disableAutomaticTypeAcquisition": true,
+  "typescript.suggest.enabled": false,
+  "javascript.suggest.enabled": false,
+  "javascript.preferences.includePackageJsonAutoImports": "off",
+  "typescript.preferences.includePackageJsonAutoImports": "off",
+  "editor.quickSuggestions": {
+    "other": false,
+    "comments": false,
+    "strings": false
+  },
+  "editor.parameterHints.enabled": false,
+  "editor.suggestOnTriggerCharacters": false,
+  "files.associations": {
+    "*.js": "javascript",
+    "*.py": "python"
+  },
+  "emmet.includeLanguages": {
+    "javascript": "javascriptreact"
+  },
+  "python.defaultInterpreterPath": "python",
+  "files.exclude": {
+    "**/*.pyc": true,
+    "**/__pycache__": true
+  },
+  "cursor.cpp.disabledLanguages": ["javascript", "typescript"],
+  "cursor.general.enableAutocompletion": false
+} 

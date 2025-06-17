@@ -1536,81 +1536,82 @@ const NotasModule = {
             const notasPorBimestre = this.organizarNotasPorBimestre(aluno);
             
             html += `
-                <div class="boletim-glass-container" data-aos="fade-up" data-aos-delay="${index * 100}">
-                    <!-- Cabeçalho Glassmorphism -->
-                    <div class="glass-header-section">
-                        <div class="school-info">
-                            <div class="school-logo">
-                                <div class="logo-circle">
-                                    <i class="fas fa-graduation-cap"></i>
-                                </div>
+                <div class="boletim-profissional-container" data-aos="fade-up" data-aos-delay="${index * 100}">
+                    <!-- Cabeçalho Oficial -->
+                    <div class="cabecalho-oficial">
+                        <div class="logo-governo">
+                            <div class="brasao-sp">
+                                <i class="fas fa-university"></i>
                             </div>
-                            <div class="school-details">
-                                <h2 class="school-name">ESCOLA NAZARÉ RODRIGUES</h2>
-                                <p class="school-subtitle">SECRETARIA DE ESTADO DA EDUCAÇÃO</p>
-                                <h3 class="document-title">Boletim Escolar</h3>
-                            </div>
-                            <div class="year-badge">
-                                <div class="glass-badge">
-                                    <span class="badge-label">Ano Letivo</span>
-                                    <span class="badge-year">${boletimData.ano}</span>
-                                </div>
+                        </div>
+                        <div class="identificacao-escola">
+                            <h1 class="titulo-governo">GOVERNO DO ESTADO DE SÃO PAULO</h1>
+                            <h2 class="titulo-secretaria">SECRETARIA DE ESTADO DA EDUCAÇÃO</h2>
+                            <h3 class="titulo-documento">Boletim Escolar</h3>
+                        </div>
+                        <div class="ano-letivo-oficial">
+                            <div class="ano-badge-oficial">
+                                <span class="ano-label">Ano Letivo</span>
+                                <span class="ano-numero">${boletimData.ano}</span>
                             </div>
                         </div>
                     </div>
                     
                     <!-- Informações do Aluno -->
-                    <div class="student-info-glass">
-                        <div class="student-details">
-                            <div class="info-row">
-                                <span class="info-label">Nome do Aluno:</span>
-                                <span class="info-value">${aluno.nome_aluno}</span>
-                            </div>
-                            <div class="info-row">
-                                <span class="info-label">Turma:</span>
-                                <span class="info-value">${aluno.id_turma} - ${aluno.serie}</span>
-                            </div>
-                        </div>
-                        <div class="student-ra">
-                            <div class="ra-badge">
-                                <span class="ra-label">RA</span>
-                                <span class="ra-number">${aluno.id_aluno}</span>
-                            </div>
+                    <div class="info-aluno-oficial">
+                        <div class="linha-info">
+                            <span class="label-info">Nome do Aluno:</span>
+                            <span class="valor-info aluno-nome">${aluno.nome_aluno}</span>
+                            <span class="label-info ra-label">RA:</span>
+                            <span class="valor-info ra-numero">${aluno.id_aluno}</span>
                         </div>
                     </div>
                     
-                    <!-- Tabela de Notas Glassmorphism -->
-                    <div class="grades-table-container">
-                        <table class="glass-table">
+                    <!-- Informações da Escola -->
+                    <div class="info-escola-oficial">
+                        <div class="linha-info">
+                            <span class="label-info">Diretoria:</span>
+                            <span class="valor-info">REGIÃO METROPOLITANA</span>
+                            <span class="label-info">Escola:</span>
+                            <span class="valor-info">ESCOLA NAZARÉ RODRIGUES</span>
+                        </div>
+                        <div class="linha-info">
+                            <span class="label-info">Tipo de Ensino:</span>
+                            <span class="valor-info">ENSINO FUNDAMENTAL</span>
+                            <span class="label-info">Turma:</span>
+                            <span class="valor-info">${aluno.id_turma} - ${aluno.serie}</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Tabela de Notas Oficial -->
+                    <div class="tabela-notas-oficial">
+                        <table class="table-boletim-oficial">
                             <thead>
-                                <tr class="table-header-glass">
-                                    <th rowspan="3" class="subject-header">Disciplina</th>
-                                    <th colspan="12" class="bimesters-header">Bimestres</th>
-                                    <th rowspan="3" class="final-grade-header">Média Final</th>
-                                    <th rowspan="3" class="status-header">Situação</th>
+                                <tr class="header-disciplina">
+                                    <th rowspan="2" class="col-disciplina">Disciplina</th>
+                                    <th colspan="3" class="col-bimestre">1º Bimestre</th>
+                                    <th colspan="3" class="col-bimestre">2º Bimestre</th>
+                                    <th colspan="3" class="col-bimestre">3º Bimestre</th>
+                                    <th colspan="3" class="col-bimestre">4º Bimestre</th>
+                                    <th rowspan="2" class="col-media-final">Média Final</th>
+                                    <th rowspan="2" class="col-situacao">Situação</th>
                                 </tr>
-                                <tr class="bimester-labels">
-                                    <th colspan="3" class="bimester-group">1º Bimestre</th>
-                                    <th colspan="3" class="bimester-group">2º Bimestre</th>
-                                    <th colspan="3" class="bimester-group">3º Bimestre</th>
-                                    <th colspan="3" class="bimester-group">4º Bimestre</th>
-                                </tr>
-                                <tr class="grade-types">
-                                    <th class="grade-type">Mensal</th>
-                                    <th class="grade-type">Bimestral</th>
-                                    <th class="grade-type">Média</th>
-                                    <th class="grade-type">Mensal</th>
-                                    <th class="grade-type">Bimestral</th>
-                                    <th class="grade-type">Média</th>
-                                    <th class="grade-type">Mensal</th>
-                                    <th class="grade-type">Bimestral</th>
-                                    <th class="grade-type">Média</th>
-                                    <th class="grade-type">Mensal</th>
-                                    <th class="grade-type">Bimestral</th>
-                                    <th class="grade-type">Média</th>
+                                <tr class="header-notas">
+                                    <th class="col-nota">M</th>
+                                    <th class="col-nota">B</th>
+                                    <th class="col-nota">Média</th>
+                                    <th class="col-nota">M</th>
+                                    <th class="col-nota">B</th>
+                                    <th class="col-nota">Média</th>
+                                    <th class="col-nota">M</th>
+                                    <th class="col-nota">B</th>
+                                    <th class="col-nota">Média</th>
+                                    <th class="col-nota">M</th>
+                                    <th class="col-nota">B</th>
+                                    <th class="col-nota">Média</th>
                                 </tr>
                             </thead>
-                            <tbody class="glass-tbody">
+                            <tbody class="tbody-oficial">
             `;
             
             // Ordenar disciplinas alfabeticamente
@@ -1633,34 +1634,34 @@ const NotasModule = {
                 const notasDisciplina = notasPorBimestre[disciplina.nome_disciplina] || {};
                 
                 html += `
-                    <tr class="grade-row" data-aos="fade-left" data-aos-delay="${(disciplinaIndex * 50) + 200}">
-                        <td class="subject-name">${disciplina.nome_disciplina}</td>
+                    <tr class="linha-disciplina" data-aos="fade-left" data-aos-delay="${(disciplinaIndex * 50) + 200}">
+                        <td class="nome-disciplina">${disciplina.nome_disciplina}</td>
                         
                         <!-- 1º Bimestre -->
-                        <td class="grade-cell">${this.formatarNotaGlass(notasDisciplina['1']?.nota_mensal)}</td>
-                        <td class="grade-cell">${this.formatarNotaGlass(notasDisciplina['1']?.nota_bimestral)}</td>
-                        <td class="average-cell">${this.formatarMediaGlass(notasDisciplina['1'])}</td>
+                        <td class="celula-nota">${this.formatarNotaGlass(notasDisciplina['1']?.nota_mensal)}</td>
+                        <td class="celula-nota">${this.formatarNotaGlass(notasDisciplina['1']?.nota_bimestral)}</td>
+                        <td class="celula-media">${this.formatarMediaGlass(notasDisciplina['1'])}</td>
                         
                         <!-- 2º Bimestre -->
-                        <td class="grade-cell">${this.formatarNotaGlass(notasDisciplina['2']?.nota_mensal)}</td>
-                        <td class="grade-cell">${this.formatarNotaGlass(notasDisciplina['2']?.nota_bimestral)}</td>
-                        <td class="average-cell">${this.formatarMediaGlass(notasDisciplina['2'])}</td>
+                        <td class="celula-nota">${this.formatarNotaGlass(notasDisciplina['2']?.nota_mensal)}</td>
+                        <td class="celula-nota">${this.formatarNotaGlass(notasDisciplina['2']?.nota_bimestral)}</td>
+                        <td class="celula-media">${this.formatarMediaGlass(notasDisciplina['2'])}</td>
                         
                         <!-- 3º Bimestre -->
-                        <td class="grade-cell">${this.formatarNotaGlass(notasDisciplina['3']?.nota_mensal)}</td>
-                        <td class="grade-cell">${this.formatarNotaGlass(notasDisciplina['3']?.nota_bimestral)}</td>
-                        <td class="average-cell">${this.formatarMediaGlass(notasDisciplina['3'])}</td>
+                        <td class="celula-nota">${this.formatarNotaGlass(notasDisciplina['3']?.nota_mensal)}</td>
+                        <td class="celula-nota">${this.formatarNotaGlass(notasDisciplina['3']?.nota_bimestral)}</td>
+                        <td class="celula-media">${this.formatarMediaGlass(notasDisciplina['3'])}</td>
                         
                         <!-- 4º Bimestre -->
-                        <td class="grade-cell">${this.formatarNotaGlass(notasDisciplina['4']?.nota_mensal)}</td>
-                        <td class="grade-cell">${this.formatarNotaGlass(notasDisciplina['4']?.nota_bimestral)}</td>
-                        <td class="average-cell">${this.formatarMediaGlass(notasDisciplina['4'])}</td>
+                        <td class="celula-nota">${this.formatarNotaGlass(notasDisciplina['4']?.nota_mensal)}</td>
+                        <td class="celula-nota">${this.formatarNotaGlass(notasDisciplina['4']?.nota_bimestral)}</td>
+                        <td class="celula-media">${this.formatarMediaGlass(notasDisciplina['4'])}</td>
                         
                         <!-- Média Final -->
-                        <td class="final-average">${this.formatarMediaFinalGlass(disciplina.media_anual)}</td>
+                        <td class="celula-media-final">${this.formatarMediaFinalGlass(disciplina.media_anual)}</td>
                         
                         <!-- Situação -->
-                        <td class="status-cell">
+                        <td class="celula-situacao">
                             <span class="status-badge ${situacaoClass}">${situacao}</span>
                         </td>
                     </tr>
@@ -1672,20 +1673,20 @@ const NotasModule = {
                         </table>
                     </div>
                     
-                    <!-- Legenda Glassmorphism -->
-                    <div class="legend-glass">
-                        <div class="legend-content">
-                            <div class="legend-title">
+                    <!-- Legenda Oficial -->
+                    <div class="legenda-oficial">
+                        <div class="criterios-avaliacao">
+                            <div class="legenda-titulo">
                                 <i class="fas fa-info-circle"></i>
                                 Critérios de Avaliação
                             </div>
-                            <div class="legend-badges">
-                                <span class="legend-badge approved">≥ 6.0 = Aprovado</span>
-                                <span class="legend-badge recovery">4.0 - 5.9 = Recuperação</span>
-                                <span class="legend-badge failed">< 4.0 = Reprovado</span>
+                            <div class="legenda-items">
+                                <span class="legenda-item aprovado">≥ 6.0 = Aprovado</span>
+                                <span class="legenda-item recuperacao">4.0 - 5.9 = Recuperação</span>
+                                <span class="legenda-item reprovado">< 4.0 = Reprovado</span>
                             </div>
                         </div>
-                        <div class="generation-info">
+                        <div class="info-geracao">
                             <i class="fas fa-calendar-alt"></i>
                             Gerado em: ${new Date().toLocaleDateString('pt-BR')}
                         </div>
@@ -1717,6 +1718,12 @@ const NotasModule = {
         
         // Adicionar estilos glassmorphism
         this.adicionarEstilosGlassmorphism();
+        
+        // Adicionar estilos específicos para impressão
+        this.adicionarEstilosImpressao();
+        
+        // Carregar CSS dedicado para boletim profissional
+        this.carregarCSSBoletimProfissional();
         
         // Mostrar modal
         const bsModal = new bootstrap.Modal(modal);
@@ -3729,38 +3736,18 @@ const NotasModule = {
             return '<span class="grade-empty">-</span>';
         }
         
-        // Sistema de cores inteligente baseado no valor da nota
-        let cor, classe;
+        // Sistema de cores baseado no valor da nota (mais simples e eficaz)
+        let classeNota = '';
         
         if (notaNum >= 6.0) {
-            // Verde: notas boas (6.0 a 10.0)
-            // Verde mais escuro para notas mais altas, mais claro para notas mais baixas
-            const intensidade = Math.min((notaNum - 6) / 4, 1); // 0 a 1
-            const verdeEscuro = Math.floor(0 + (128 * intensidade)); // 0 a 128
-            const verdeClaro = Math.floor(128 + (127 * (1 - intensidade))); // 255 a 128
-            cor = `rgb(${verdeEscuro}, ${verdeClaro}, ${verdeEscuro})`;
-            classe = 'grade-excellent';
+            classeNota = 'nota-aprovado';
         } else if (notaNum >= 4.0) {
-            // Amarelo: notas de recuperação (4.0 a 5.99)
-            // Amarelo mais claro próximo a 6, mais escuro próximo a 4
-            const intensidade = (notaNum - 4) / 2; // 0 a 1
-            const amareloR = 255; // Sempre 255 no vermelho
-            const amareloG = 255; // Sempre 255 no verde
-            const amareloB = Math.floor(0 + (150 * (1 - intensidade))); // 150 a 0 (mais escuro quando menor)
-            cor = `rgb(${amareloR}, ${amareloG}, ${amareloB})`;
-            classe = 'grade-warning';
+            classeNota = 'nota-recuperacao';
         } else {
-            // Vermelho: notas ruins (0 a 3.99)
-            // Vermelho mais claro próximo a 4, mais escuro próximo a 0
-            const intensidade = notaNum / 4; // 0 a 1
-            const vermelhoR = Math.floor(128 + (127 * (1 - intensidade))); // 255 a 128
-            const vermelhoG = Math.floor(0 + (100 * intensidade)); // 0 a 100
-            const vermelhoB = Math.floor(0 + (100 * intensidade)); // 0 a 100
-            cor = `rgb(${vermelhoR}, ${vermelhoG}, ${vermelhoB})`;
-            classe = 'grade-danger';
+            classeNota = 'nota-reprovado';
         }
         
-        return `<span class="grade-value ${classe}" style="background-color: ${cor} !important; color: white !important; text-shadow: 0 1px 2px rgba(0,0,0,0.5) !important;">${notaNum.toFixed(1)}</span>`;
+        return `<span class="grade-value ${classeNota}">${notaNum.toFixed(1)}</span>`;
     },
 
     // Formatar média para exibição glassmorphism
@@ -3785,35 +3772,18 @@ const NotasModule = {
             media = bimestral;
         }
         
-        // Sistema de cores inteligente baseado no valor da média
-        let cor, classe;
+        // Sistema de cores baseado no valor da média
+        let classeMedia = '';
         
         if (media >= 6.0) {
-            // Verde: médias boas (6.0 a 10.0)
-            const intensidade = Math.min((media - 6) / 4, 1);
-            const verdeEscuro = Math.floor(0 + (128 * intensidade));
-            const verdeClaro = Math.floor(128 + (127 * (1 - intensidade)));
-            cor = `rgb(${verdeEscuro}, ${verdeClaro}, ${verdeEscuro})`;
-            classe = 'average-excellent';
+            classeMedia = 'nota-aprovado';
         } else if (media >= 4.0) {
-            // Amarelo: médias de recuperação (4.0 a 5.99)
-            const intensidade = (media - 4) / 2;
-            const amareloR = 255;
-            const amareloG = 255;
-            const amareloB = Math.floor(0 + (150 * (1 - intensidade)));
-            cor = `rgb(${amareloR}, ${amareloG}, ${amareloB})`;
-            classe = 'average-warning';
+            classeMedia = 'nota-recuperacao';
         } else {
-            // Vermelho: médias ruins (0 a 3.99)
-            const intensidade = media / 4;
-            const vermelhoR = Math.floor(128 + (127 * (1 - intensidade)));
-            const vermelhoG = Math.floor(0 + (100 * intensidade));
-            const vermelhoB = Math.floor(0 + (100 * intensidade));
-            cor = `rgb(${vermelhoR}, ${vermelhoG}, ${vermelhoB})`;
-            classe = 'average-danger';
+            classeMedia = 'nota-reprovado';
         }
         
-        return `<span class="average-value ${classe}" style="background-color: ${cor} !important; color: white !important; text-shadow: 0 1px 2px rgba(0,0,0,0.5) !important;">${media.toFixed(1)}</span>`;
+        return `<span class="average-value ${classeMedia}">${media.toFixed(1)}</span>`;
     },
 
     // Formatar média final para exibição glassmorphism
@@ -3827,35 +3797,18 @@ const NotasModule = {
             return '<span class="final-empty">-</span>';
         }
         
-        // Sistema de cores inteligente baseado no valor da média final
-        let cor, classe;
+        // Sistema de cores baseado no valor da média final
+        let classeMedia = '';
         
         if (media >= 6.0) {
-            // Verde: médias finais boas (6.0 a 10.0)
-            const intensidade = Math.min((media - 6) / 4, 1);
-            const verdeEscuro = Math.floor(0 + (128 * intensidade));
-            const verdeClaro = Math.floor(128 + (127 * (1 - intensidade)));
-            cor = `rgb(${verdeEscuro}, ${verdeClaro}, ${verdeEscuro})`;
-            classe = 'final-excellent';
+            classeMedia = 'nota-aprovado';
         } else if (media >= 4.0) {
-            // Amarelo: médias finais de recuperação (4.0 a 5.99)
-            const intensidade = (media - 4) / 2;
-            const amareloR = 255;
-            const amareloG = 255;
-            const amareloB = Math.floor(0 + (150 * (1 - intensidade)));
-            cor = `rgb(${amareloR}, ${amareloG}, ${amareloB})`;
-            classe = 'final-warning';
+            classeMedia = 'nota-recuperacao';
         } else {
-            // Vermelho: médias finais ruins (0 a 3.99)
-            const intensidade = media / 4;
-            const vermelhoR = Math.floor(128 + (127 * (1 - intensidade)));
-            const vermelhoG = Math.floor(0 + (100 * intensidade));
-            const vermelhoB = Math.floor(0 + (100 * intensidade));
-            cor = `rgb(${vermelhoR}, ${vermelhoG}, ${vermelhoB})`;
-            classe = 'final-danger';
+            classeMedia = 'nota-reprovado';
         }
         
-        return `<span class="final-value ${classe}" style="background-color: ${cor} !important; color: white !important; text-shadow: 0 1px 2px rgba(0,0,0,0.5) !important; font-weight: 700 !important; font-size: 1.1rem !important;">${media.toFixed(1)}</span>`;
+        return `<span class="final-value ${classeMedia}">${media.toFixed(1)}</span>`;
     },
 
     // Adicionar estilos glassmorphism modernos
@@ -3949,319 +3902,303 @@ const NotasModule = {
                     0 0 0 1px rgba(255, 255, 255, 0.4) inset;
             }
             
-            /* Cabeçalho da escola */
-            .glass-header-section {
-                background: linear-gradient(135deg, 
-                    rgba(255, 255, 255, 0.3) 0%, 
-                    rgba(255, 255, 255, 0.15) 100%);
-                backdrop-filter: blur(25px);
-                padding: 2rem;
-                position: relative;
-                overflow: hidden;
-                border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            /* Container do boletim profissional */
+            .boletim-profissional-container {
+                background: white;
+                border: 2px solid #000;
+                margin-bottom: 3rem;
+                font-family: Arial, sans-serif;
+                font-size: 12px;
+                line-height: 1.4;
+                page-break-inside: avoid;
             }
             
-            .glass-header-section::before {
-                content: '';
-                position: absolute;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="50" cy="50" r="0.5" fill="rgba(255,255,255,0.1)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
-                opacity: 0.2;
-            }
-            
-            .school-info {
+            /* Cabeçalho oficial */
+            .cabecalho-oficial {
                 display: flex;
                 align-items: center;
-                justify-content: space-between;
-                position: relative;
-                z-index: 1;
+                padding: 20px;
+                border-bottom: 2px solid #000;
+                background-color: #f8f9fa;
             }
             
-            .school-logo .logo-circle {
-                width: 80px;
-                height: 80px;
-                background: rgba(255, 255, 255, 0.2);
-                backdrop-filter: blur(15px);
+            .brasao-sp {
+                width: 60px;
+                height: 60px;
+                border: 2px solid #000;
                 border-radius: 50%;
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                border: 2px solid rgba(255, 255, 255, 0.3);
-                transition: all 0.3s ease;
+                margin-right: 20px;
             }
             
-            .school-logo .logo-circle:hover {
-                transform: rotate(360deg) scale(1.1);
-                background: rgba(255, 255, 255, 0.3);
+            .brasao-sp i {
+                font-size: 24px;
+                color: #000;
             }
             
-            .school-logo i {
-                font-size: 2rem;
-                color: #4a5568;
-                text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
-            }
-            
-            .school-details {
+            .identificacao-escola {
                 flex: 1;
                 text-align: center;
-                color: #2d3748;
             }
             
-            .school-name {
-                font-size: 2rem;
-                font-weight: 700;
+            .titulo-governo {
+                font-size: 16px;
+                font-weight: bold;
                 margin: 0;
-                text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
-                letter-spacing: 1px;
+                color: #000;
+                text-transform: uppercase;
             }
             
-            .school-subtitle {
-                font-size: 1rem;
-                margin: 0.5rem 0;
-                opacity: 0.8;
-                font-weight: 300;
+            .titulo-secretaria {
+                font-size: 12px;
+                font-weight: normal;
+                margin: 5px 0;
+                color: #000;
+                text-transform: uppercase;
             }
             
-            .document-title {
-                font-size: 1.5rem;
-                font-weight: 600;
-                margin: 0.5rem 0 0 0;
-                text-shadow: 0 1px 2px rgba(255, 255, 255, 0.3);
+            .titulo-documento {
+                font-size: 14px;
+                font-weight: bold;
+                margin: 5px 0 0 0;
+                color: #000;
             }
             
-            .year-badge .glass-badge {
-                background: rgba(255, 255, 255, 0.25);
-                backdrop-filter: blur(15px);
-                border: 1px solid rgba(255, 255, 255, 0.3);
-                border-radius: 16px;
-                padding: 1rem 1.5rem;
+            .ano-letivo-oficial {
+                margin-left: 20px;
+            }
+            
+            .ano-badge-oficial {
+                border: 2px solid #000;
+                padding: 10px 15px;
                 text-align: center;
-                transition: all 0.3s ease;
+                background: white;
             }
             
-            .year-badge .glass-badge:hover {
-                background: rgba(255, 255, 255, 0.35);
-                transform: scale(1.05);
-            }
-            
-            .badge-label {
+            .ano-label {
                 display: block;
-                font-size: 0.9rem;
-                color: #4a5568;
-                margin-bottom: 0.25rem;
+                font-size: 10px;
+                color: #000;
+                margin-bottom: 3px;
             }
             
-            .badge-year {
+            .ano-numero {
                 display: block;
-                font-size: 1.5rem;
-                font-weight: 700;
-                color: #2d3748;
-                text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
+                font-size: 18px;
+                font-weight: bold;
+                color: #000;
             }
             
-            /* Informações do aluno */
-            .student-info-glass {
-                background: linear-gradient(135deg, 
-                    rgba(255, 255, 255, 0.2) 0%, 
-                    rgba(255, 255, 255, 0.1) 100%);
-                backdrop-filter: blur(20px);
-                padding: 1.5rem 2rem;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            /* Informações do aluno e escola */
+            .info-aluno-oficial, .info-escola-oficial {
+                background: #f8f9fa;
+                border-bottom: 1px solid #000;
             }
             
-            .info-row {
+            .linha-info {
                 display: flex;
                 align-items: center;
-                margin-bottom: 0.75rem;
+                padding: 10px 20px;
+                border-bottom: 1px solid #ddd;
             }
             
-            .info-row:last-child {
-                margin-bottom: 0;
+            .linha-info:last-child {
+                border-bottom: none;
             }
             
-            .info-label {
-                font-weight: 600;
-                color: #4a5568;
-                margin-right: 1rem;
-                min-width: 120px;
+            .label-info {
+                font-weight: bold;
+                color: #000;
+                margin-right: 10px;
+                min-width: 100px;
             }
             
-            .info-value {
-                font-weight: 700;
-                color: #2d3748;
-                font-size: 1.1rem;
+            .valor-info {
+                color: #000;
+                margin-right: 30px;
             }
             
-            .ra-badge {
-                background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-                color: white;
-                padding: 1rem 1.5rem;
-                border-radius: 16px;
-                text-align: center;
-                box-shadow: 0 4px 15px rgba(79, 172, 254, 0.4);
-                transition: all 0.3s ease;
-            }
-            
-            .ra-badge:hover {
-                transform: translateY(-2px);
-                box-shadow: 0 6px 20px rgba(79, 172, 254, 0.6);
+            .aluno-nome {
+                font-weight: bold;
+                text-transform: uppercase;
+                flex: 1;
             }
             
             .ra-label {
-                display: block;
-                font-size: 0.8rem;
-                opacity: 0.9;
-                margin-bottom: 0.25rem;
+                margin-left: auto;
+                margin-right: 10px;
+                min-width: auto;
             }
             
-            .ra-number {
-                display: block;
-                font-size: 1.2rem;
-                font-weight: 700;
+            .ra-numero {
+                font-weight: bold;
+                background: #007bff;
+                color: white;
+                padding: 5px 10px;
+                border-radius: 4px;
             }
             
-            /* Tabela glassmorphism */
-            .grades-table-container {
-                padding: 2rem;
+            /* Tabela oficial */
+            .tabela-notas-oficial {
                 overflow-x: auto;
             }
             
-            .glass-table {
+            .table-boletim-oficial {
                 width: 100%;
-                border-collapse: separate;
-                border-spacing: 0;
-                background: rgba(255, 255, 255, 0.1);
-                backdrop-filter: blur(20px);
-                border-radius: 20px;
-                overflow: hidden;
-                box-shadow: 
-                    0 10px 30px rgba(0, 0, 0, 0.1),
-                    0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+                border-collapse: collapse;
+                border: 2px solid #000;
+                font-size: 11px;
             }
             
-            .table-header-glass th {
-                background: linear-gradient(135deg, 
-                    rgba(255, 255, 255, 0.25) 0%, 
-                    rgba(255, 255, 255, 0.15) 100%);
-                color: #2d3748;
-                padding: 1rem;
-                font-weight: 600;
+            .table-boletim-oficial th,
+            .table-boletim-oficial td {
+                border: 1px solid #000;
+                padding: 8px 4px;
                 text-align: center;
-                border: none;
-                position: relative;
-                text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
+                vertical-align: middle;
             }
             
-            .bimester-labels th {
-                background: linear-gradient(135deg, 
-                    rgba(255, 255, 255, 0.2) 0%, 
-                    rgba(255, 255, 255, 0.1) 100%);
-                padding: 0.75rem;
-                font-size: 0.95rem;
-                color: #4a5568;
+            .header-disciplina th,
+            .header-notas th {
+                background-color: #e9ecef;
+                font-weight: bold;
+                color: #000;
             }
             
-            .grade-types th {
-                background: linear-gradient(135deg, 
-                    rgba(255, 255, 255, 0.15) 0%, 
-                    rgba(255, 255, 255, 0.08) 100%);
-                padding: 0.5rem;
-                font-size: 0.85rem;
-                font-weight: 500;
-                color: #4a5568;
+            .col-disciplina {
+                width: 120px;
+                background-color: #f8f9fa;
+                font-weight: bold;
             }
             
-            .glass-tbody tr:hover {
-                background: rgba(255, 255, 255, 0.15);
-                transform: scale(1.01);
+            .col-bimestre {
+                background-color: #e9ecef;
+                font-weight: bold;
             }
             
-            .glass-tbody td {
-                padding: 1rem 0.75rem;
-                text-align: center;
-                border: none;
-                border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-                transition: all 0.3s ease;
+            .col-nota {
+                width: 30px;
+                font-size: 10px;
             }
             
-            .subject-name {
-                font-weight: 600;
-                color: #2d3748;
-                text-align: left !important;
-                padding-left: 1.5rem !important;
-                background: rgba(255, 255, 255, 0.1);
+            .col-media-final {
+                width: 60px;
+                background-color: #e9ecef;
+                font-weight: bold;
             }
             
-            /* Formatação das notas */
-            .grade-value, .average-value, .final-value {
-                display: inline-block;
-                padding: 0.5rem 1rem;
-                border-radius: 12px;
-                font-weight: 700;
-                font-size: 0.95rem;
-                transition: all 0.3s ease;
-                backdrop-filter: blur(10px);
+            .col-situacao {
+                width: 80px;
+                background-color: #e9ecef;
+                font-weight: bold;
             }
             
-            .grade-excellent, .average-excellent, .final-excellent {
-                background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            .nome-disciplina {
+                text-align: left;
+                font-weight: bold;
+                background-color: #f8f9fa;
+                padding-left: 10px;
+            }
+            
+            .celula-nota,
+            .celula-media,
+            .celula-media-final {
+                font-weight: bold;
+            }
+            
+            /* Legenda oficial */
+            .legenda-oficial {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 15px 20px;
+                background-color: #f8f9fa;
+                border-top: 1px solid #000;
+            }
+            
+            .criterios-avaliacao {
+                display: flex;
+                align-items: center;
+                gap: 20px;
+            }
+            
+            .legenda-titulo {
+                font-weight: bold;
+                color: #000;
+                display: flex;
+                align-items: center;
+                gap: 5px;
+            }
+            
+            .legenda-items {
+                display: flex;
+                gap: 15px;
+            }
+            
+            .legenda-item {
+                padding: 5px 10px;
+                border-radius: 4px;
+                font-weight: bold;
+                font-size: 11px;
+                border: 1px solid transparent;
+            }
+            
+            .legenda-item.aprovado {
+                background-color: #28a745;
                 color: white;
-                box-shadow: 0 4px 15px rgba(79, 172, 254, 0.4);
+                border-color: #1e7e34;
             }
             
-            .grade-warning, .average-warning, .final-warning {
-                background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+            .legenda-item.recuperacao {
+                background-color: #ffc107;
+                color: #212529;
+                border-color: #e0a800;
+            }
+            
+            .legenda-item.reprovado {
+                background-color: #dc3545;
                 color: white;
-                box-shadow: 0 4px 15px rgba(250, 112, 154, 0.4);
+                border-color: #c82333;
             }
             
-            .grade-danger, .average-danger, .final-danger {
-                background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
-                color: white;
-                box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
-            }
-            
-            .grade-empty, .average-empty, .final-empty {
-                color: #a0aec0;
-                font-style: italic;
-                font-weight: 400;
+            .info-geracao {
+                color: #6c757d;
+                font-size: 11px;
+                display: flex;
+                align-items: center;
+                gap: 5px;
             }
             
             /* Badges de situação */
             .status-badge {
                 display: inline-block;
-                padding: 0.75rem 1.5rem;
-                border-radius: 20px;
+                padding: 0.5rem 1rem;
+                border-radius: 12px;
                 font-weight: 600;
-                font-size: 0.9rem;
+                font-size: 0.85rem;
                 text-transform: uppercase;
                 letter-spacing: 0.5px;
-                transition: all 0.3s ease;
-                backdrop-filter: blur(10px);
+                border: 1px solid transparent;
             }
             
             .status-approved {
-                background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-                color: white;
-                box-shadow: 0 4px 15px rgba(79, 172, 254, 0.4);
+                background-color: #28a745 !important;
+                color: white !important;
+                border-color: #1e7e34 !important;
             }
             
             .status-recovery {
-                background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
-                color: white;
-                box-shadow: 0 4px 15px rgba(250, 112, 154, 0.4);
+                background-color: #ffc107 !important;
+                color: #212529 !important;
+                border-color: #e0a800 !important;
             }
             
             .status-failed {
-                background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
-                color: white;
-                box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+                background-color: #dc3545 !important;
+                color: white !important;
+                border-color: #c82333 !important;
             }
             
             .status-badge:hover {
@@ -4498,6 +4435,208 @@ const NotasModule = {
                     size: A4;
                     margin: 1cm;
                 }
+                
+                /* Estilos específicos para o boletim profissional */
+                .boletim-profissional-container {
+                    background: white !important;
+                    border: 2px solid #000 !important;
+                    page-break-inside: avoid;
+                    margin-bottom: 2cm !important;
+                    font-size: 11px !important;
+                }
+                
+                .cabecalho-oficial {
+                    background-color: #f8f9fa !important;
+                    border-bottom: 2px solid #000 !important;
+                    -webkit-print-color-adjust: exact;
+                    print-color-adjust: exact;
+                }
+                
+                .brasao-sp {
+                    border: 2px solid #000 !important;
+                }
+                
+                .titulo-governo, .titulo-secretaria, .titulo-documento,
+                .ano-numero, .label-info, .valor-info {
+                    color: #000 !important;
+                }
+                
+                .ano-badge-oficial {
+                    border: 2px solid #000 !important;
+                    background: white !important;
+                }
+                
+                .info-aluno-oficial, .info-escola-oficial {
+                    background: #f8f9fa !important;
+                    border-bottom: 1px solid #000 !important;
+                    -webkit-print-color-adjust: exact;
+                    print-color-adjust: exact;
+                }
+                
+                .linha-info {
+                    border-bottom: 1px solid #ddd !important;
+                }
+                
+                .ra-numero {
+                    background: #007bff !important;
+                    color: white !important;
+                    -webkit-print-color-adjust: exact;
+                    print-color-adjust: exact;
+                }
+                
+                .table-boletim-oficial {
+                    border: 2px solid #000 !important;
+                }
+                
+                .table-boletim-oficial th,
+                .table-boletim-oficial td {
+                    border: 1px solid #000 !important;
+                    color: #000 !important;
+                }
+                
+                .header-disciplina th,
+                .header-notas th {
+                    background-color: #e9ecef !important;
+                    -webkit-print-color-adjust: exact;
+                    print-color-adjust: exact;
+                }
+                
+                .col-disciplina,
+                .nome-disciplina {
+                    background-color: #f8f9fa !important;
+                    -webkit-print-color-adjust: exact;
+                    print-color-adjust: exact;
+                }
+                
+                .col-bimestre,
+                .col-media-final,
+                .col-situacao {
+                    background-color: #e9ecef !important;
+                    -webkit-print-color-adjust: exact;
+                    print-color-adjust: exact;
+                }
+                
+                .legenda-oficial {
+                    background-color: #f8f9fa !important;
+                    border-top: 1px solid #000 !important;
+                    -webkit-print-color-adjust: exact;
+                    print-color-adjust: exact;
+                }
+                
+                .legenda-titulo {
+                    color: #000 !important;
+                }
+                
+                .legenda-item.aprovado {
+                    background-color: #28a745 !important;
+                    color: white !important;
+                    -webkit-print-color-adjust: exact;
+                    print-color-adjust: exact;
+                }
+                
+                .legenda-item.recuperacao {
+                    background-color: #ffc107 !important;
+                    color: #212529 !important;
+                    -webkit-print-color-adjust: exact;
+                    print-color-adjust: exact;
+                }
+                
+                .legenda-item.reprovado {
+                    background-color: #dc3545 !important;
+                    color: white !important;
+                    -webkit-print-color-adjust: exact;
+                    print-color-adjust: exact;
+                }
+                
+                /* Garantir que as cores das notas sejam impressas */
+                .nota-aprovado {
+                    background-color: #28a745 !important;
+                    color: white !important;
+                    -webkit-print-color-adjust: exact;
+                    print-color-adjust: exact;
+                }
+                
+                .nota-recuperacao {
+                    background-color: #ffc107 !important;
+                    color: #212529 !important;
+                    -webkit-print-color-adjust: exact;
+                    print-color-adjust: exact;
+                }
+                
+                .nota-reprovado {
+                    background-color: #dc3545 !important;
+                    color: white !important;
+                    -webkit-print-color-adjust: exact;
+                    print-color-adjust: exact;
+                }
+                
+                .status-approved {
+                    background-color: #28a745 !important;
+                    color: white !important;
+                    -webkit-print-color-adjust: exact;
+                    print-color-adjust: exact;
+                }
+                
+                .status-recovery {
+                    background-color: #ffc107 !important;
+                    color: #212529 !important;
+                    -webkit-print-color-adjust: exact;
+                    print-color-adjust: exact;
+                }
+                
+                .status-failed {
+                    background-color: #dc3545 !important;
+                    color: white !important;
+                    -webkit-print-color-adjust: exact;
+                    print-color-adjust: exact;
+                }
+            }
+            
+            /* Remover estilos conflitantes */
+            .grade-excellent, .average-excellent, .final-excellent,
+            .grade-warning, .average-warning, .final-warning,
+            .grade-danger, .average-danger, .final-danger {
+                background: none !important;
+                box-shadow: none !important;
+            }
+            
+            /* Formatação das notas */
+            .grade-value, .average-value, .final-value {
+                display: inline-block;
+                padding: 0.4rem 0.8rem;
+                border-radius: 8px;
+                font-weight: 700;
+                font-size: 0.9rem;
+                text-align: center;
+                min-width: 40px;
+                border: 1px solid transparent;
+            }
+            
+            /* Classes de cores para notas */
+            .nota-aprovado {
+                background-color: #28a745 !important;
+                color: white !important;
+                border-color: #1e7e34 !important;
+            }
+            
+            .nota-recuperacao {
+                background-color: #ffc107 !important;
+                color: #212529 !important;  
+                border-color: #e0a800 !important;
+            }
+            
+            .nota-reprovado {
+                background-color: #dc3545 !important;
+                color: white !important; 
+                border-color: #c82333 !important;
+            }
+            
+            .grade-empty, .average-empty, .final-empty {
+                background-color: #f8f9fa !important;
+                color: #6c757d !important;
+                border-color: #dee2e6 !important;
+                font-style: italic;
+                font-weight: 400;
             }
         `;
         
@@ -4516,6 +4655,174 @@ const NotasModule = {
             };
             document.head.appendChild(aosScript);
         }
+    },
+    // Carregar CSS dedicado para boletim profissional
+    carregarCSSBoletimProfissional: function() {
+        // Verificar se os estilos já foram adicionados
+        if (document.getElementById('boletim-profissional-styles')) {
+            return;
+        }
+        
+        const estilos = document.createElement('style');
+        estilos.id = 'boletim-profissional-styles';
+        estilos.textContent = `
+            /* Adicionar estilos específicos para o boletim profissional */
+            .boletim-profissional-container {
+                background: white !important;
+                border: 2px solid #000 !important;
+                page-break-inside: avoid;
+                margin-bottom: 2cm !important;
+                font-size: 11px !important;
+            }
+            
+            .cabecalho-oficial {
+                background-color: #f8f9fa !important;
+                border-bottom: 2px solid #000 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            
+            .brasao-sp {
+                border: 2px solid #000 !important;
+            }
+            
+            .titulo-governo, .titulo-secretaria, .titulo-documento,
+            .ano-numero, .label-info, .valor-info {
+                color: #000 !important;
+            }
+            
+            .ano-badge-oficial {
+                border: 2px solid #000 !important;
+                background: white !important;
+            }
+            
+            .info-aluno-oficial, .info-escola-oficial {
+                background: #f8f9fa !important;
+                border-bottom: 1px solid #000 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            
+            .linha-info {
+                border-bottom: 1px solid #ddd !important;
+            }
+            
+            .ra-numero {
+                background: #007bff !important;
+                color: white !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            
+            .table-boletim-oficial {
+                border: 2px solid #000 !important;
+            }
+            
+            .table-boletim-oficial th,
+            .table-boletim-oficial td {
+                border: 1px solid #000 !important;
+                color: #000 !important;
+            }
+            
+            .header-disciplina th,
+            .header-notas th {
+                background-color: #e9ecef !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            
+            .col-disciplina,
+            .nome-disciplina {
+                background-color: #f8f9fa !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            
+            .col-bimestre,
+            .col-media-final,
+            .col-situacao {
+                background-color: #e9ecef !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            
+            .legenda-oficial {
+                background-color: #f8f9fa !important;
+                border-top: 1px solid #000 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            
+            .legenda-titulo {
+                color: #000 !important;
+            }
+            
+            .legenda-item.aprovado {
+                background-color: #28a745 !important;
+                color: white !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            
+            .legenda-item.recuperacao {
+                background-color: #ffc107 !important;
+                color: #212529 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            
+            .legenda-item.reprovado {
+                background-color: #dc3545 !important;
+                color: white !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            
+            /* Garantir que as cores das notas sejam impressas */
+            .nota-aprovado {
+                background-color: #28a745 !important;
+                color: white !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            
+            .nota-recuperacao {
+                background-color: #ffc107 !important;
+                color: #212529 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            
+            .nota-reprovado {
+                background-color: #dc3545 !important;
+                color: white !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            
+            .status-approved {
+                background-color: #28a745 !important;
+                color: white !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            
+            .status-recovery {
+                background-color: #ffc107 !important;
+                color: #212529 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            
+            .status-failed {
+                background-color: #dc3545 !important;
+                color: white !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+        `;
+        
+        document.head.appendChild(estilos);
     }
 };
 

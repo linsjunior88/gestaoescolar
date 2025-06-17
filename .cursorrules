@@ -1,0 +1,30 @@
+# Cursor Rules for School Management System
+
+## Project Context
+This is a school management system with:
+- Backend: Python FastAPI (simplified_api.py) 
+- Frontend: Vanilla JavaScript modules
+- Database: PostgreSQL via production API
+
+## Code Style Guidelines
+- Use ES6+ JavaScript features
+- Avoid TypeScript validation and suggestions
+- Keep vanilla JavaScript without frameworks
+- Use modular approach with ES6 imports/exports
+
+## Editor Behavior
+- Disable automatic type checking
+- Disable JavaScript/TypeScript suggestions
+- Disable auto-imports from package.json
+- Focus on vanilla JavaScript without IntelliSense interference
+
+## File Handling
+- Main JavaScript files are in js/modules/
+- Python files are in backend/
+- Ignore __pycache__ and .pyc files
+- HTML files use script type="module"
+
+## Development Notes
+- API runs at https://apinazarerodrigues.86dynamics.com.br/api
+- Database uses PostgreSQL with explicit type casting (::numeric)
+- Frontend handles bulletin generation and student grade management 
