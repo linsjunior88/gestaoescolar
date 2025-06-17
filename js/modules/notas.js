@@ -1588,7 +1588,7 @@ const NotasModule = {
                 const notasPorBimestre = this.organizarNotasPorBimestre(aluno);
                 
                 html += `
-                    <div class="boletim-glass-container" data-aos="fade-up" data-aos-delay="${index * 100}">
+                    <div class="boletim-glass-container">
                         <!-- Cabeçalho Glassmorphism -->
                         <div class="glass-header-section">
                             <div class="school-info">
@@ -1701,7 +1701,7 @@ const NotasModule = {
                         const notasDisciplina = notasPorBimestre[disciplina.nome_disciplina] || {};
                         
                         html += `
-                            <tr class="grade-row" data-aos="fade-left" data-aos-delay="${(disciplinaIndex * 50) + 200}">
+                            <tr class="grade-row">
                                 <td class="subject-name">${disciplina.nome_disciplina || 'Disciplina não informada'}</td>
                                 
                                 <!-- 1º Bimestre -->
@@ -1799,22 +1799,37 @@ const NotasModule = {
         
         try {
             // Adicionar estilos glassmorphism
-            console.log("🎨 Adicionando estilos glassmorphism");
-            this.adicionarEstilosGlassmorphism();
+            console.log("🎨 Pulando estilos glassmorphism temporariamente");
+            // this.adicionarEstilosGlassmorphism();
             
             // Adicionar estilos específicos para impressão
-            console.log("🖨️ Adicionando estilos de impressão");
-            this.adicionarEstilosImpressao();
+            console.log("🖨️ Pulando estilos de impressão temporariamente");
+            // this.adicionarEstilosImpressao();
             
             // Carregar CSS dedicado para boletim profissional
-            console.log("📄 Carregando CSS profissional");
-            this.carregarCSSBoletimProfissional();
+            console.log("📄 Pulando CSS profissional temporariamente");
+            // this.carregarCSSBoletimProfissional();
             
+        } catch (styleError) {
+            console.error("⚠️ Erro ao aplicar estilos:", styleError);
+            // Continua mesmo se houver erro nos estilos
+        }
+        
+        try {
             // Mostrar modal
             console.log("🎭 Mostrando modal");
             const bsModal = new bootstrap.Modal(modal);
             bsModal.show();
             
+            console.log("🎉 Modal exibido com sucesso!");
+            
+        } catch (modalError) {
+            console.error("❌ Erro ao exibir modal:", modalError);
+            alert("Erro ao exibir boletim: " + modalError.message);
+            return;
+        }
+        
+        try {
             // Adicionar event listener para limpar quando o modal for fechado
             modal.addEventListener('hidden.bs.modal', function () {
                 console.log("🧹 Limpando modal");
@@ -1830,18 +1845,16 @@ const NotasModule = {
                 document.body.style.removeProperty('padding-right');
             });
             
-            // Inicializar animações AOS se disponível
-            if (typeof AOS !== 'undefined') {
-                console.log("✨ Inicializando animações AOS");
-                AOS.refresh();
-            }
-            
-            console.log("🎉 Boletim exibido com sucesso!");
-            
-        } catch (error) {
-            console.error("❌ Erro ao exibir modal:", error);
-            alert("Erro ao exibir boletim: " + error.message);
+        } catch (listenerError) {
+            console.error("⚠️ Erro ao adicionar event listener:", listenerError);
+            // Continua mesmo se houver erro no listener
         }
+        
+        // Remover inicialização do AOS que pode estar causando conflito
+        // if (typeof AOS !== 'undefined') {
+        //     console.log("✨ Inicializando animações AOS");
+        //     AOS.refresh();
+        // }
     },
 
     // Formatar nota para exibição no boletim
@@ -3925,7 +3938,7 @@ const NotasModule = {
         return `<span class="final-value ${classeMedia}">${media.toFixed(1)}</span>`;
     },
 
-    // Adicionar estilos glassmorphism modernos
+    // Adicionar estilos glassmorphism modernos - VERSÃO SIMPLIFICADA
     adicionarEstilosGlassmorphism: function() {
         // Verificar se os estilos já foram adicionados
         if (document.getElementById('glassmorphism-styles')) {
@@ -3935,66 +3948,33 @@ const NotasModule = {
         const estilos = document.createElement('style');
         estilos.id = 'glassmorphism-styles';
         estilos.textContent = `
-            /* Importar AOS para animações */
-            @import url('https://unpkg.com/aos@2.3.1/dist/aos.css');
-            
-            /* Container do boletim */
+            /* Estilos básicos para o boletim */
             .boletim-glass-container {
-                background: rgba(255, 255, 255, 0.15);
-                backdrop-filter: blur(30px);
-                border-radius: 24px;
-                border: 1px solid rgba(255, 255, 255, 0.25);
-                box-shadow: 
-                    0 20px 40px rgba(0, 0, 0, 0.05),
-                    0 0 0 1px rgba(255, 255, 255, 0.3) inset;
-                margin-bottom: 3rem;
+                background: rgba(255, 255, 255, 0.95);
+                border-radius: 16px;
+                border: 1px solid rgba(255, 255, 255, 0.3);
+                box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+                margin-bottom: 2rem;
                 overflow: hidden;
-                transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+                padding: 0;
             }
             
-            .boletim-glass-container:hover {
-                transform: translateY(-5px);
-                box-shadow: 
-                    0 30px 60px rgba(0, 0, 0, 0.08),
-                    0 0 0 1px rgba(255, 255, 255, 0.4) inset;
-            }
-            
-            /* Cabeçalho da escola */
             .glass-header-section {
-                background: linear-gradient(135deg, 
-                    rgba(255, 255, 255, 0.3) 0%, 
-                    rgba(255, 255, 255, 0.15) 100%);
-                backdrop-filter: blur(25px);
+                background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.1));
                 padding: 2rem;
-                position: relative;
-                overflow: hidden;
                 border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-            }
-            
-            .glass-header-section::before {
-                content: '';
-                position: absolute;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="50" cy="50" r="0.5" fill="rgba(255,255,255,0.1)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
-                opacity: 0.2;
             }
             
             .school-info {
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
-                position: relative;
-                z-index: 1;
             }
             
             .school-logo .logo-circle {
-                width: 80px;
-                height: 80px;
-                background: rgba(255, 255, 255, 0.2);
-                backdrop-filter: blur(15px);
+                width: 60px;
+                height: 60px;
+                background: rgba(255, 255, 255, 0.3);
                 border-radius: 50%;
                 display: flex;
                 align-items: center;
