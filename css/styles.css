@@ -4,6 +4,40 @@ body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
+/* Estilos para notas glassmorphism */
+.grade-value, .average-value, .final-value {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-align: center;
+    min-width: 35px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.grade-empty, .average-empty, .final-empty {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    text-align: center;
+    min-width: 35px;
+    color: #999;
+    background-color: rgba(200, 200, 200, 0.3);
+    border: 1px solid rgba(200, 200, 200, 0.4);
+}
+
+/* Classes de situação final */
+.final-value {
+    font-weight: 700 !important;
+    font-size: 1.1rem !important;
+    padding: 6px 12px;
+    min-width: 45px;
+}
+
 /* Estilo do card do login */
 .card {
     overflow: hidden;
