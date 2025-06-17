@@ -1,0 +1,457 @@
+/* 
+ * CORES DAS NOTAS DO BOLETIM ESCOLAR
+ * Este arquivo força a aplicação das cores corretas nas notas
+ * Sobrescreve qualquer estilo Bootstrap que possa interferir
+ */
+
+/* FORÇAR CORES DAS NOTAS - MÁXIMA PRIORIDADE */
+.grade-value,
+.average-value,
+.final-value {
+    background-color: inherit !important;
+    color: white !important;
+    border: none !important;
+    padding: 4px 8px !important;
+    border-radius: 4px !important;
+    font-weight: 500 !important;
+    display: inline-block !important;
+    min-width: 35px !important;
+    text-align: center !important;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5) !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+}
+
+.final-value {
+    font-weight: 700 !important;
+    font-size: 1.1rem !important;
+    min-width: 40px !important;
+}
+
+/* Sobrescrever TODAS as classes Bootstrap que possam interferir */
+.modal .grade-value,
+.modal .average-value,
+.modal .final-value,
+.glass-table .grade-value,
+.glass-table .average-value,
+.glass-table .final-value,
+.boletim-container .grade-value,
+.boletim-container .average-value,
+.boletim-container .final-value {
+    background-color: inherit !important;
+    color: white !important;
+    border: none !important;
+}
+
+/* Remover estilos Bootstrap específicos */
+.grade-value.badge,
+.average-value.badge,
+.final-value.badge,
+.grade-value.bg-primary,
+.average-value.bg-primary,
+.final-value.bg-primary,
+.grade-value.bg-info,
+.average-value.bg-info,
+.final-value.bg-info,
+.grade-value.bg-success,
+.average-value.bg-success,
+.final-value.bg-success,
+.grade-value.bg-warning,
+.average-value.bg-warning,
+.final-value.bg-warning,
+.grade-value.bg-danger,
+.average-value.bg-danger,
+.final-value.bg-danger,
+.grade-value.text-primary,
+.average-value.text-primary,
+.final-value.text-primary,
+.grade-value.text-info,
+.average-value.text-info,
+.final-value.text-info,
+.grade-value.text-success,
+.average-value.text-success,
+.final-value.text-success,
+.grade-value.text-warning,
+.average-value.text-warning,
+.final-value.text-warning,
+.grade-value.text-danger,
+.average-value.text-danger,
+.final-value.text-danger {
+    background-color: inherit !important;
+    color: white !important;
+    border: none !important;
+}
+
+/* Garantir que elementos vazios tenham aparência correta */
+.grade-empty,
+.average-empty,
+.final-empty {
+    color: #6c757d !important;
+    font-style: italic !important;
+    background: none !important;
+    border: none !important;
+}
+
+/* Estilos para impressão das cores */
+@media print {
+    /* FORÇAR MODO PAISAGEM */
+    @page {
+        size: A4 landscape;
+        margin: 0.5cm;
+    }
+    
+    /* Ocultar elementos desnecessários */
+    .modal-header,
+    .modal-footer,
+    .btn-close,
+    .glass-header,
+    .glass-footer,
+    button,
+    .btn {
+        display: none !important;
+    }
+    
+    /* Container principal para impressão */
+    .modal-dialog {
+        max-width: none !important;
+        margin: 0 !important;
+        height: 100vh !important;
+    }
+    
+    .modal-content {
+        border: none !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        background: white !important;
+        height: 100vh !important;
+    }
+    
+    .modal-body {
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+    
+    /* Layout compacto para o boletim */
+    .boletim-glass-container {
+        background: white !important;
+        backdrop-filter: none !important;
+        border: 2px solid #000 !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        margin: 0 !important;
+        padding: 10px !important;
+        page-break-inside: avoid;
+    }
+    
+    /* Cabeçalho compacto */
+    .glass-header-section {
+        background: white !important;
+        border-bottom: 2px solid #000 !important;
+        padding: 10px !important;
+        margin-bottom: 10px !important;
+    }
+    
+    .school-info {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        flex-wrap: nowrap !important;
+    }
+    
+    .school-details {
+        text-align: center !important;
+        flex: 1 !important;
+    }
+    
+    .school-name {
+        font-size: 18px !important;
+        font-weight: bold !important;
+        margin: 0 !important;
+        color: #000 !important;
+    }
+    
+    .school-subtitle {
+        font-size: 12px !important;
+        margin: 2px 0 !important;
+        color: #000 !important;
+    }
+    
+    .document-title {
+        font-size: 16px !important;
+        font-weight: bold !important;
+        margin: 5px 0 !important;
+        color: #000 !important;
+    }
+    
+    .year-badge {
+        text-align: right !important;
+    }
+    
+    .glass-badge {
+        background: #f0f0f0 !important;
+        border: 1px solid #000 !important;
+        padding: 5px 10px !important;
+        border-radius: 0 !important;
+    }
+    
+    .badge-label,
+    .badge-year {
+        color: #000 !important;
+        font-size: 12px !important;
+        font-weight: bold !important;
+    }
+    
+    /* Informações do aluno compactas */
+    .student-info-glass {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        background: #f8f8f8 !important;
+        border: 1px solid #000 !important;
+        padding: 8px !important;
+        margin-bottom: 10px !important;
+    }
+    
+    .student-details {
+        flex: 1 !important;
+    }
+    
+    .info-row {
+        display: inline-block !important;
+        margin-right: 30px !important;
+        font-size: 11px !important;
+        color: #000 !important;
+    }
+    
+    .info-label {
+        font-weight: bold !important;
+        margin-right: 5px !important;
+    }
+    
+    .info-value {
+        font-weight: normal !important;
+    }
+    
+    .student-ra {
+        text-align: right !important;
+    }
+    
+    .ra-badge {
+        background: white !important;
+        border: 1px solid #000 !important;
+        padding: 5px 10px !important;
+    }
+    
+    .ra-label,
+    .ra-number {
+        color: #000 !important;
+        font-size: 11px !important;
+        font-weight: bold !important;
+    }
+    
+    /* Tabela compacta e profissional */
+    .grades-table-container {
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    
+    .glass-table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+        border: 2px solid #000 !important;
+        background: white !important;
+        font-size: 9px !important;
+    }
+    
+    .glass-table th,
+    .glass-table td {
+        border: 1px solid #000 !important;
+        padding: 3px 2px !important;
+        text-align: center !important;
+        vertical-align: middle !important;
+        color: #000 !important;
+        background: white !important;
+    }
+    
+    /* Cabeçalho da tabela */
+    .table-header-glass th {
+        background: #e0e0e0 !important;
+        font-weight: bold !important;
+        font-size: 8px !important;
+        padding: 4px 2px !important;
+    }
+    
+    .subject-header {
+        width: 15% !important;
+        font-size: 9px !important;
+    }
+    
+    .bimesters-header {
+        font-size: 8px !important;
+    }
+    
+    .bimester-group {
+        background: #f0f0f0 !important;
+        font-size: 7px !important;
+    }
+    
+    .grade-type {
+        font-size: 6px !important;
+        padding: 2px 1px !important;
+        width: 6% !important;
+    }
+    
+    .final-grade-header,
+    .status-header {
+        width: 8% !important;
+        font-size: 8px !important;
+    }
+    
+    /* Células de dados */
+    .subject-name {
+        text-align: left !important;
+        padding: 4px 6px !important;
+        font-size: 9px !important;
+        font-weight: bold !important;
+        background: #f8f8f8 !important;
+    }
+    
+    .grade-cell,
+    .average-cell,
+    .final-average {
+        width: 6% !important;
+        font-size: 8px !important;
+        padding: 3px 1px !important;
+    }
+    
+    .status-cell {
+        font-size: 7px !important;
+        width: 8% !important;
+    }
+    
+    /* Cores das notas para impressão */
+    .grade-value,
+    .average-value,
+    .final-value {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
+        font-size: 8px !important;
+        padding: 2px 4px !important;
+        border-radius: 2px !important;
+        min-width: 25px !important;
+        font-weight: bold !important;
+    }
+    
+    /* Status badges para impressão */
+    .status-badge {
+        font-size: 7px !important;
+        padding: 2px 4px !important;
+        border: 1px solid #000 !important;
+        background: white !important;
+        color: #000 !important;
+        font-weight: bold !important;
+    }
+    
+    .status-approved {
+        background: #d4edda !important;
+        border-color: #28a745 !important;
+    }
+    
+    .status-recovery {
+        background: #fff3cd !important;
+        border-color: #ffc107 !important;
+    }
+    
+    .status-failed {
+        background: #f8d7da !important;
+        border-color: #dc3545 !important;
+    }
+    
+    /* Legenda compacta */
+    .legend-glass {
+        margin-top: 10px !important;
+        border-top: 1px solid #000 !important;
+        padding-top: 5px !important;
+        background: white !important;
+    }
+    
+    .legend-content {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+    }
+    
+    .legend-title {
+        font-size: 9px !important;
+        font-weight: bold !important;
+        color: #000 !important;
+    }
+    
+    .legend-badges {
+        display: flex !important;
+        gap: 10px !important;
+    }
+    
+    .legend-badge {
+        font-size: 7px !important;
+        padding: 2px 4px !important;
+        border: 1px solid #000 !important;
+        background: white !important;
+        color: #000 !important;
+    }
+    
+    .legend-badge.approved {
+        background: #d4edda !important;
+    }
+    
+    .legend-badge.recovery {
+        background: #fff3cd !important;
+    }
+    
+    .legend-badge.failed {
+        background: #f8d7da !important;
+    }
+    
+    /* Quebra de página entre boletins */
+    .boletim-glass-container:not(:last-child) {
+        page-break-after: always !important;
+    }
+    
+    /* Esconder elementos glassmorphism na impressão */
+    .glass-body *:not(.boletim-glass-container):not(.boletim-glass-container *) {
+        display: none !important;
+    }
+}
+
+/* Animação suave para aplicação das cores */
+.grade-value,
+.average-value,
+.final-value {
+    transition: all 0.3s ease !important;
+}
+
+/* Hover effect */
+.grade-value:hover,
+.average-value:hover,
+.final-value:hover {
+    transform: scale(1.05) !important;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2) !important;
+}
+
+/* Garantir especificidade máxima com seletores compostos */
+.modal-dialog .modal-content .modal-body .glass-table .grade-value,
+.modal-dialog .modal-content .modal-body .glass-table .average-value,
+.modal-dialog .modal-content .modal-body .glass-table .final-value {
+    background-color: inherit !important;
+    color: white !important;
+    border: none !important;
+}
+
+/* Para casos extremos onde outras bibliotecas possam interferir */
+span[class*="grade-value"],
+span[class*="average-value"],
+span[class*="final-value"] {
+    background-color: inherit !important;
+    color: white !important;
+    border: none !important;
+} 

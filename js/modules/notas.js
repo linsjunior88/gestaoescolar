@@ -1705,7 +1705,13 @@ const NotasModule = {
                         <button type="button" class="btn glass-btn secondary" data-bs-dismiss="modal">
                             <i class="fas fa-times me-2"></i>Fechar
                         </button>
-                        <button type="button" class="btn glass-btn primary" onclick="window.print()">
+                        <button type="button" class="btn glass-btn warning" id="btnForcarCores">
+                            <i class="fas fa-palette me-2"></i>Aplicar Cores
+                        </button>
+                        <button type="button" class="btn glass-btn info" id="btnPreVisualizacao">
+                            <i class="fas fa-eye me-2"></i>Pré-visualizar
+                        </button>
+                        <button type="button" class="btn glass-btn primary" id="btnImprimirBoletim">
                             <i class="fas fa-print me-2"></i>Imprimir Boletim
                         </button>
                     </div>
@@ -1718,30 +1724,94 @@ const NotasModule = {
         // Adicionar estilos glassmorphism
         this.adicionarEstilosGlassmorphism();
         
-        // Mostrar modal
+        // Exibir modal
         const bsModal = new bootstrap.Modal(modal);
         bsModal.show();
         
-        // Adicionar event listener para limpar quando o modal for fechado
-        modal.addEventListener('hidden.bs.modal', function () {
-            // Remover o modal do DOM completamente
-            modal.remove();
-            // Remover backdrop se existir
-            const backdrop = document.querySelector('.modal-backdrop');
-            if (backdrop) {
-                backdrop.remove();
-            }
-            // Restaurar scroll do body
-            document.body.classList.remove('modal-open');
-            document.body.style.removeProperty('padding-right');
-        });
+        // FORÇAR aplicação das cores após renderização
+        setTimeout(() => {
+            this.forcarCoresNotas();
+        }, 500);
         
-        // Inicializar animações AOS se disponível
-        if (typeof AOS !== 'undefined') {
-            AOS.refresh();
+        // Adicionar listener para aplicar cores manualmente
+        const btnForcarCores = modal.querySelector('#btnForcarCores');
+        if (btnForcarCores) {
+            btnForcarCores.addEventListener('click', () => {
+                this.forcarCoresNotas();
+                // Mostrar mensagem de sucesso
+                this.mostrarSucesso('🎨 Cores aplicadas com sucesso!');
+            });
+        }
+        
+        // Adicionar listener para pré-visualização
+        const btnPreVisualizacao = modal.querySelector('#btnPreVisualizacao');
+        if (btnPreVisualizacao) {
+            btnPreVisualizacao.addEventListener('click', () => {
+                this.preVisualizarImpressao();
+            });
+        }
+        
+        // Adicionar listener para impressão
+        const btnImprimir = modal.querySelector('#btnImprimirBoletim');
+        if (btnImprimir) {
+            btnImprimir.addEventListener('click', () => {
+                this.imprimirBoletimOtimizado();
+            });
         }
     },
-
+    
+    // Função para forçar a aplicação das cores das notas
+    forcarCoresNotas: function() {
+        // Selecionar todos os elementos de nota e aplicar as cores corretas
+        const gradeElements = document.querySelectorAll('.grade-value, .average-value, .final-value');
+        
+        gradeElements.forEach(element => {
+            const nota = parseFloat(element.textContent);
+            if (!isNaN(nota)) {
+                let cor;
+                
+                if (nota >= 6.0) {
+                    // Verde para notas boas (6.0 a 10.0)
+                    const intensidade = Math.min((nota - 6) / 4, 1);
+                    const verdeEscuro = Math.floor(0 + (128 * intensidade));
+                    const verdeClaro = Math.floor(128 + (127 * (1 - intensidade)));
+                    cor = `rgb(${verdeEscuro}, ${verdeClaro}, ${verdeEscuro})`;
+                } else if (nota >= 4.0) {
+                    // Amarelo para notas de recuperação (4.0 a 5.99)
+                    const intensidade = (nota - 4) / 2;
+                    const amareloR = 255;
+                    const amareloG = 255;
+                    const amareloB = Math.floor(0 + (150 * (1 - intensidade)));
+                    cor = `rgb(${amareloR}, ${amareloG}, ${amareloB})`;
+                } else {
+                    // Vermelho para notas ruins (0 a 3.99)
+                    const intensidade = nota / 4;
+                    const vermelhoR = Math.floor(128 + (127 * (1 - intensidade)));
+                    const vermelhoG = Math.floor(0 + (100 * intensidade));
+                    const vermelhoB = Math.floor(0 + (100 * intensidade));
+                    cor = `rgb(${vermelhoR}, ${vermelhoG}, ${vermelhoB})`;
+                }
+                
+                // Aplicar a cor forçadamente
+                element.style.setProperty('background-color', cor, 'important');
+                element.style.setProperty('color', 'white', 'important');
+                element.style.setProperty('text-shadow', '0 1px 2px rgba(0,0,0,0.5)', 'important');
+                element.style.setProperty('border', 'none', 'important');
+                element.style.setProperty('padding', '4px 8px', 'important');
+                element.style.setProperty('border-radius', '4px', 'important');
+                element.style.setProperty('font-weight', '500', 'important');
+                element.style.setProperty('display', 'inline-block', 'important');
+                element.style.setProperty('min-width', '35px', 'important');
+                element.style.setProperty('text-align', 'center', 'important');
+                
+                // Remover classes Bootstrap que possam interferir
+                element.classList.remove('badge', 'bg-primary', 'bg-info', 'bg-success', 'bg-warning', 'bg-danger', 'text-primary', 'text-info', 'text-success', 'text-warning', 'text-danger');
+            }
+        });
+        
+        console.log('🎨 Cores das notas aplicadas forçadamente!');
+    },
+    
     // Formatar nota para exibição no boletim
     formatarNotaBoletim: function(nota) {
         if (nota === null || nota === undefined || nota === '') {
@@ -3720,7 +3790,7 @@ const NotasModule = {
 
     // Formatar nota para exibição glassmorphism
     formatarNotaGlass: function(nota) {
-        if (nota === null || nota === undefined || nota === '') {
+        if (!nota || nota === '' || nota === null || nota === undefined) {
             return '<span class="grade-empty">-</span>';
         }
         
@@ -3760,7 +3830,8 @@ const NotasModule = {
             classe = 'grade-danger';
         }
         
-        return `<span class="grade-value ${classe}" style="background-color: ${cor} !important; color: white !important; text-shadow: 0 1px 2px rgba(0,0,0,0.5) !important;">${notaNum.toFixed(1)}</span>`;
+        // FORÇAR a aplicação das cores removendo qualquer classe Bootstrap que possa interferir
+        return `<span class="grade-value ${classe}" style="background-color: ${cor} !important; color: white !important; text-shadow: 0 1px 2px rgba(0,0,0,0.5) !important; border: none !important; padding: 4px 8px !important; border-radius: 4px !important; font-weight: 500 !important; display: inline-block !important; min-width: 35px !important; text-align: center !important;">${notaNum.toFixed(1)}</span>`;
     },
 
     // Formatar média para exibição glassmorphism
@@ -3813,7 +3884,8 @@ const NotasModule = {
             classe = 'average-danger';
         }
         
-        return `<span class="average-value ${classe}" style="background-color: ${cor} !important; color: white !important; text-shadow: 0 1px 2px rgba(0,0,0,0.5) !important;">${media.toFixed(1)}</span>`;
+        // FORÇAR a aplicação das cores removendo qualquer classe Bootstrap que possa interferir
+        return `<span class="average-value ${classe}" style="background-color: ${cor} !important; color: white !important; text-shadow: 0 1px 2px rgba(0,0,0,0.5) !important; border: none !important; padding: 4px 8px !important; border-radius: 4px !important; font-weight: 500 !important; display: inline-block !important; min-width: 35px !important; text-align: center !important;">${media.toFixed(1)}</span>`;
     },
 
     // Formatar média final para exibição glassmorphism
@@ -3855,7 +3927,8 @@ const NotasModule = {
             classe = 'final-danger';
         }
         
-        return `<span class="final-value ${classe}" style="background-color: ${cor} !important; color: white !important; text-shadow: 0 1px 2px rgba(0,0,0,0.5) !important; font-weight: 700 !important; font-size: 1.1rem !important;">${media.toFixed(1)}</span>`;
+        // FORÇAR a aplicação das cores removendo qualquer classe Bootstrap que possa interferir
+        return `<span class="final-value ${classe}" style="background-color: ${cor} !important; color: white !important; text-shadow: 0 1px 2px rgba(0,0,0,0.5) !important; font-weight: 700 !important; font-size: 1.1rem !important; border: none !important; padding: 4px 8px !important; border-radius: 4px !important; display: inline-block !important; min-width: 40px !important; text-align: center !important;">${media.toFixed(1)}</span>`;
     },
 
     // Adicionar estilos glassmorphism modernos
@@ -3870,6 +3943,50 @@ const NotasModule = {
         estilos.textContent = `
             /* Importar AOS para animações */
             @import url('https://unpkg.com/aos@2.3.1/dist/aos.css');
+            
+            /* FORÇAR CORES DAS NOTAS - SOBRESCREVER QUALQUER ESTILO BOOTSTRAP */
+            .grade-value, .average-value, .final-value {
+                background-color: inherit !important;
+                color: white !important;
+                border: none !important;
+                padding: 4px 8px !important;
+                border-radius: 4px !important;
+                font-weight: 500 !important;
+                display: inline-block !important;
+                min-width: 35px !important;
+                text-align: center !important;
+                text-shadow: 0 1px 2px rgba(0,0,0,0.5) !important;
+            }
+            
+            .final-value {
+                font-weight: 700 !important;
+                font-size: 1.1rem !important;
+                min-width: 40px !important;
+            }
+            
+            /* Sobrescrever qualquer classe Bootstrap que possa interferir */
+            .glass-table .grade-value.badge,
+            .glass-table .average-value.badge,
+            .glass-table .final-value.badge,
+            .glass-table .grade-value.bg-primary,
+            .glass-table .average-value.bg-primary,
+            .glass-table .final-value.bg-primary,
+            .glass-table .grade-value.bg-info,
+            .glass-table .average-value.bg-info,
+            .glass-table .final-value.bg-info,
+            .glass-table .grade-value.bg-success,
+            .glass-table .average-value.bg-success,
+            .glass-table .final-value.bg-success,
+            .glass-table .grade-value.bg-warning,
+            .glass-table .average-value.bg-warning,
+            .glass-table .final-value.bg-warning,
+            .glass-table .grade-value.bg-danger,
+            .glass-table .average-value.bg-danger,
+            .glass-table .final-value.bg-danger {
+                background-color: inherit !important;
+                color: white !important;
+                border: none !important;
+            }
             
             /* Variáveis CSS para glassmorphism */
             :root {
@@ -4516,6 +4633,142 @@ const NotasModule = {
             };
             document.head.appendChild(aosScript);
         }
+    },
+    
+    // Função para impressão otimizada do boletim
+    imprimirBoletimOtimizado: function() {
+        // Adicionar classe para impressão
+        document.body.classList.add('printing-boletim');
+        
+        // Criar estilos específicos para impressão se não existirem
+        if (!document.getElementById('print-boletim-styles')) {
+            const printStyles = document.createElement('style');
+            printStyles.id = 'print-boletim-styles';
+            printStyles.textContent = `
+                @media print {
+                    /* Forçar modo paisagem */
+                    @page {
+                        size: A4 landscape;
+                        margin: 0.5cm;
+                    }
+                    
+                    /* Ocultar tudo exceto o boletim */
+                    body.printing-boletim * {
+                        visibility: hidden;
+                    }
+                    
+                    body.printing-boletim .modal,
+                    body.printing-boletim .modal *,
+                    body.printing-boletim .boletim-glass-container,
+                    body.printing-boletim .boletim-glass-container * {
+                        visibility: visible;
+                    }
+                    
+                    /* Otimizar layout do modal para impressão */
+                    body.printing-boletim .modal {
+                        position: static !important;
+                        display: block !important;
+                        padding: 0 !important;
+                        margin: 0 !important;
+                        background: none !important;
+                    }
+                    
+                    body.printing-boletim .modal-dialog {
+                        max-width: none !important;
+                        margin: 0 !important;
+                        padding: 0 !important;
+                    }
+                    
+                    body.printing-boletim .modal-content {
+                        border: none !important;
+                        box-shadow: none !important;
+                        background: white !important;
+                    }
+                    
+                    body.printing-boletim .modal-body {
+                        padding: 0 !important;
+                        margin: 0 !important;
+                    }
+                    
+                    /* Compactar ainda mais o layout */
+                    body.printing-boletim .glass-table {
+                        font-size: 8px !important;
+                    }
+                    
+                    body.printing-boletim .glass-table th,
+                    body.printing-boletim .glass-table td {
+                        padding: 2px 1px !important;
+                    }
+                    
+                    body.printing-boletim .grade-value,
+                    body.printing-boletim .average-value,
+                    body.printing-boletim .final-value {
+                        font-size: 7px !important;
+                        padding: 1px 3px !important;
+                        min-width: 20px !important;
+                    }
+                }
+            `;
+            document.head.appendChild(printStyles);
+        }
+        
+        // Aguardar um pouco para garantir que os estilos sejam aplicados
+        setTimeout(() => {
+            // Executar impressão
+            window.print();
+            
+            // Remover classe após impressão
+            setTimeout(() => {
+                document.body.classList.remove('printing-boletim');
+            }, 1000);
+        }, 100);
+        
+        console.log('🖨️ Iniciando impressão otimizada do boletim...');
+    },
+
+    // Adicionar listener para pré-visualização
+    preVisualizarImpressao: function() {
+        // Adicionar classe para pré-visualização
+        document.body.classList.add('preview-boletim');
+        
+        // Criar estilos específicos para pré-visualização se não existirem
+        if (!document.getElementById('preview-boletim-styles')) {
+            const previewStyles = document.createElement('style');
+            previewStyles.id = 'preview-boletim-styles';
+            previewStyles.textContent = `
+                /* Estilos para pré-visualização */
+                body.preview-boletim .boletim-glass-container {
+                    border: 2px dashed #007bff;
+                    padding: 1rem;
+                }
+                
+                body.preview-boletim .boletim-glass-container::before {
+                    content: 'Pré-visualização';
+                    display: block;
+                    font-weight: bold;
+                    margin-bottom: 0.5rem;
+                    color: #007bff;
+                }
+                
+                body.preview-boletim .boletim-glass-container::after {
+                    content: 'Clique para imprimir';
+                    display: block;
+                    font-size: 0.8rem;
+                    color: #6c757d;
+                }
+            `;
+            document.head.appendChild(previewStyles);
+        }
+        
+        // Aguardar um pouco para garantir que os estilos sejam aplicados
+        setTimeout(() => {
+            // Remover classe após pré-visualização
+            setTimeout(() => {
+                document.body.classList.remove('preview-boletim');
+            }, 1000);
+        }, 100);
+        
+        console.log('👁️ Pré-visualização iniciada...');
     }
 };
 
