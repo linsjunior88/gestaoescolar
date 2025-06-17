@@ -3760,7 +3760,7 @@ const NotasModule = {
             classe = 'grade-danger';
         }
         
-        return `<span class="grade-value ${classe}" style="background-color: ${cor}; color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.5);">${notaNum.toFixed(1)}</span>`;
+        return `<span class="grade-value ${classe}" style="background-color: ${cor} !important; color: white !important; text-shadow: 0 1px 2px rgba(0,0,0,0.5) !important;">${notaNum.toFixed(1)}</span>`;
     },
 
     // Formatar média para exibição glassmorphism
@@ -3813,7 +3813,7 @@ const NotasModule = {
             classe = 'average-danger';
         }
         
-        return `<span class="average-value ${classe}" style="background-color: ${cor}; color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.5);">${media.toFixed(1)}</span>`;
+        return `<span class="average-value ${classe}" style="background-color: ${cor} !important; color: white !important; text-shadow: 0 1px 2px rgba(0,0,0,0.5) !important;">${media.toFixed(1)}</span>`;
     },
 
     // Formatar média final para exibição glassmorphism
@@ -3855,7 +3855,7 @@ const NotasModule = {
             classe = 'final-danger';
         }
         
-        return `<span class="final-value ${classe}" style="background-color: ${cor}; color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.5); font-weight: 700; font-size: 1.1rem;">${media.toFixed(1)}</span>`;
+        return `<span class="final-value ${classe}" style="background-color: ${cor} !important; color: white !important; text-shadow: 0 1px 2px rgba(0,0,0,0.5) !important; font-weight: 700 !important; font-size: 1.1rem !important;">${media.toFixed(1)}</span>`;
     },
 
     // Adicionar estilos glassmorphism modernos
