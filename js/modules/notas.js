@@ -1536,82 +1536,81 @@ const NotasModule = {
             const notasPorBimestre = this.organizarNotasPorBimestre(aluno);
             
             html += `
-                <div class="boletim-profissional-container" data-aos="fade-up" data-aos-delay="${index * 100}">
-                    <!-- Cabeçalho Oficial -->
-                    <div class="cabecalho-oficial">
-                        <div class="logo-governo">
-                            <div class="brasao-sp">
-                                <i class="fas fa-university"></i>
+                <div class="boletim-glass-container" data-aos="fade-up" data-aos-delay="${index * 100}">
+                    <!-- Cabeçalho Glassmorphism -->
+                    <div class="glass-header-section">
+                        <div class="school-info">
+                            <div class="school-logo">
+                                <div class="logo-circle">
+                                    <i class="fas fa-graduation-cap"></i>
+                                </div>
                             </div>
-                        </div>
-                        <div class="identificacao-escola">
-                            <h1 class="titulo-governo">GOVERNO DO ESTADO DE SÃO PAULO</h1>
-                            <h2 class="titulo-secretaria">SECRETARIA DE ESTADO DA EDUCAÇÃO</h2>
-                            <h3 class="titulo-documento">Boletim Escolar</h3>
-                        </div>
-                        <div class="ano-letivo-oficial">
-                            <div class="ano-badge-oficial">
-                                <span class="ano-label">Ano Letivo</span>
-                                <span class="ano-numero">${boletimData.ano}</span>
+                            <div class="school-details">
+                                <h2 class="school-name">PREFEITURA MUNICIPAL DE TIMON - MA</h2>
+                                <p class="school-subtitle">SECRETARIA MUNICIPAL DE EDUCAÇÃO</p>
+                                <h3 class="document-title">Boletim Escolar</h3>
+                            </div>
+                            <div class="year-badge">
+                                <div class="glass-badge">
+                                    <span class="badge-label">Ano Letivo</span>
+                                    <span class="badge-year">${boletimData.ano}</span>
+                                </div>
                             </div>
                         </div>
                     </div>
                     
                     <!-- Informações do Aluno -->
-                    <div class="info-aluno-oficial">
-                        <div class="linha-info">
-                            <span class="label-info">Nome do Aluno:</span>
-                            <span class="valor-info aluno-nome">${aluno.nome_aluno}</span>
-                            <span class="label-info ra-label">RA:</span>
-                            <span class="valor-info ra-numero">${aluno.id_aluno}</span>
+                    <div class="student-info-glass">
+                        <div class="student-details">
+                            <div class="info-row">
+                                <span class="info-label">Nome do Aluno:</span>
+                                <span class="info-value">${aluno.nome_aluno}</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Turma:</span>
+                                <span class="info-value">${aluno.id_turma} - ${aluno.serie}</span>
+                            </div>
+                        </div>
+                        <div class="student-ra">
+                            <div class="ra-badge">
+                                <span class="ra-label">RA</span>
+                                <span class="ra-number">${aluno.id_aluno}</span>
+                            </div>
                         </div>
                     </div>
                     
-                    <!-- Informações da Escola -->
-                    <div class="info-escola-oficial">
-                        <div class="linha-info">
-                            <span class="label-info">Diretoria:</span>
-                            <span class="valor-info">REGIÃO METROPOLITANA</span>
-                            <span class="label-info">Escola:</span>
-                            <span class="valor-info">ESCOLA NAZARÉ RODRIGUES</span>
-                        </div>
-                        <div class="linha-info">
-                            <span class="label-info">Tipo de Ensino:</span>
-                            <span class="valor-info">ENSINO FUNDAMENTAL</span>
-                            <span class="label-info">Turma:</span>
-                            <span class="valor-info">${aluno.id_turma} - ${aluno.serie}</span>
-                        </div>
-                    </div>
-                    
-                    <!-- Tabela de Notas Oficial -->
-                    <div class="tabela-notas-oficial">
-                        <table class="table-boletim-oficial">
+                    <!-- Tabela de Notas Glassmorphism -->
+                    <div class="grades-table-container">
+                        <table class="glass-table">
                             <thead>
-                                <tr class="header-disciplina">
-                                    <th rowspan="2" class="col-disciplina">Disciplina</th>
-                                    <th colspan="3" class="col-bimestre">1º Bimestre</th>
-                                    <th colspan="3" class="col-bimestre">2º Bimestre</th>
-                                    <th colspan="3" class="col-bimestre">3º Bimestre</th>
-                                    <th colspan="3" class="col-bimestre">4º Bimestre</th>
-                                    <th rowspan="2" class="col-media-final">Média Final</th>
-                                    <th rowspan="2" class="col-situacao">Situação</th>
+                                <tr class="table-header-glass">
+                                    <th rowspan="3" class="subject-header">Disciplina</th>
+                                    <th colspan="12" class="bimesters-header">Bimestres</th>
+                                    <th rowspan="3" class="final-grade-header">Média Final</th>
+                                    <th rowspan="3" class="status-header">Situação</th>
                                 </tr>
-                                <tr class="header-notas">
-                                    <th class="col-nota">M</th>
-                                    <th class="col-nota">B</th>
-                                    <th class="col-nota">Média</th>
-                                    <th class="col-nota">M</th>
-                                    <th class="col-nota">B</th>
-                                    <th class="col-nota">Média</th>
-                                    <th class="col-nota">M</th>
-                                    <th class="col-nota">B</th>
-                                    <th class="col-nota">Média</th>
-                                    <th class="col-nota">M</th>
-                                    <th class="col-nota">B</th>
-                                    <th class="col-nota">Média</th>
+                                <tr class="bimester-labels">
+                                    <th colspan="3" class="bimester-group">1º Bimestre</th>
+                                    <th colspan="3" class="bimester-group">2º Bimestre</th>
+                                    <th colspan="3" class="bimester-group">3º Bimestre</th>
+                                    <th colspan="3" class="bimester-group">4º Bimestre</th>
+                                </tr>
+                                <tr class="grade-types">
+                                    <th class="grade-type">Mensal</th>
+                                    <th class="grade-type">Bimestral</th>
+                                    <th class="grade-type">Média</th>
+                                    <th class="grade-type">Mensal</th>
+                                    <th class="grade-type">Bimestral</th>
+                                    <th class="grade-type">Média</th>
+                                    <th class="grade-type">Mensal</th>
+                                    <th class="grade-type">Bimestral</th>
+                                    <th class="grade-type">Média</th>
+                                    <th class="grade-type">Mensal</th>
+                                    <th class="grade-type">Bimestral</th>
+                                    <th class="grade-type">Média</th>
                                 </tr>
                             </thead>
-                            <tbody class="tbody-oficial">
+                            <tbody class="glass-tbody">
             `;
             
             // Ordenar disciplinas alfabeticamente
@@ -1634,34 +1633,34 @@ const NotasModule = {
                 const notasDisciplina = notasPorBimestre[disciplina.nome_disciplina] || {};
                 
                 html += `
-                    <tr class="linha-disciplina" data-aos="fade-left" data-aos-delay="${(disciplinaIndex * 50) + 200}">
-                        <td class="nome-disciplina">${disciplina.nome_disciplina}</td>
+                    <tr class="grade-row" data-aos="fade-left" data-aos-delay="${(disciplinaIndex * 50) + 200}">
+                        <td class="subject-name">${disciplina.nome_disciplina}</td>
                         
                         <!-- 1º Bimestre -->
-                        <td class="celula-nota">${this.formatarNotaGlass(notasDisciplina['1']?.nota_mensal)}</td>
-                        <td class="celula-nota">${this.formatarNotaGlass(notasDisciplina['1']?.nota_bimestral)}</td>
-                        <td class="celula-media">${this.formatarMediaGlass(notasDisciplina['1'])}</td>
+                        <td class="grade-cell">${this.formatarNotaGlass(notasDisciplina['1']?.nota_mensal)}</td>
+                        <td class="grade-cell">${this.formatarNotaGlass(notasDisciplina['1']?.nota_bimestral)}</td>
+                        <td class="average-cell">${this.formatarMediaGlass(notasDisciplina['1'])}</td>
                         
                         <!-- 2º Bimestre -->
-                        <td class="celula-nota">${this.formatarNotaGlass(notasDisciplina['2']?.nota_mensal)}</td>
-                        <td class="celula-nota">${this.formatarNotaGlass(notasDisciplina['2']?.nota_bimestral)}</td>
-                        <td class="celula-media">${this.formatarMediaGlass(notasDisciplina['2'])}</td>
+                        <td class="grade-cell">${this.formatarNotaGlass(notasDisciplina['2']?.nota_mensal)}</td>
+                        <td class="grade-cell">${this.formatarNotaGlass(notasDisciplina['2']?.nota_bimestral)}</td>
+                        <td class="average-cell">${this.formatarMediaGlass(notasDisciplina['2'])}</td>
                         
                         <!-- 3º Bimestre -->
-                        <td class="celula-nota">${this.formatarNotaGlass(notasDisciplina['3']?.nota_mensal)}</td>
-                        <td class="celula-nota">${this.formatarNotaGlass(notasDisciplina['3']?.nota_bimestral)}</td>
-                        <td class="celula-media">${this.formatarMediaGlass(notasDisciplina['3'])}</td>
+                        <td class="grade-cell">${this.formatarNotaGlass(notasDisciplina['3']?.nota_mensal)}</td>
+                        <td class="grade-cell">${this.formatarNotaGlass(notasDisciplina['3']?.nota_bimestral)}</td>
+                        <td class="average-cell">${this.formatarMediaGlass(notasDisciplina['3'])}</td>
                         
                         <!-- 4º Bimestre -->
-                        <td class="celula-nota">${this.formatarNotaGlass(notasDisciplina['4']?.nota_mensal)}</td>
-                        <td class="celula-nota">${this.formatarNotaGlass(notasDisciplina['4']?.nota_bimestral)}</td>
-                        <td class="celula-media">${this.formatarMediaGlass(notasDisciplina['4'])}</td>
+                        <td class="grade-cell">${this.formatarNotaGlass(notasDisciplina['4']?.nota_mensal)}</td>
+                        <td class="grade-cell">${this.formatarNotaGlass(notasDisciplina['4']?.nota_bimestral)}</td>
+                        <td class="average-cell">${this.formatarMediaGlass(notasDisciplina['4'])}</td>
                         
                         <!-- Média Final -->
-                        <td class="celula-media-final">${this.formatarMediaFinalGlass(disciplina.media_anual)}</td>
+                        <td class="final-average">${this.formatarMediaFinalGlass(disciplina.media_anual)}</td>
                         
                         <!-- Situação -->
-                        <td class="celula-situacao">
+                        <td class="status-cell">
                             <span class="status-badge ${situacaoClass}">${situacao}</span>
                         </td>
                     </tr>
@@ -1673,20 +1672,20 @@ const NotasModule = {
                         </table>
                     </div>
                     
-                    <!-- Legenda Oficial -->
-                    <div class="legenda-oficial">
-                        <div class="criterios-avaliacao">
-                            <div class="legenda-titulo">
+                    <!-- Legenda Glassmorphism -->
+                    <div class="legend-glass">
+                        <div class="legend-content">
+                            <div class="legend-title">
                                 <i class="fas fa-info-circle"></i>
                                 Critérios de Avaliação
                             </div>
-                            <div class="legenda-items">
-                                <span class="legenda-item aprovado">≥ 6.0 = Aprovado</span>
-                                <span class="legenda-item recuperacao">4.0 - 5.9 = Recuperação</span>
-                                <span class="legenda-item reprovado">< 4.0 = Reprovado</span>
+                            <div class="legend-badges">
+                                <span class="legend-badge approved">≥ 6.0 = Aprovado</span>
+                                <span class="legend-badge recovery">4.0 - 5.9 = Recuperação</span>
+                                <span class="legend-badge failed">< 4.0 = Reprovado</span>
                             </div>
                         </div>
-                        <div class="info-geracao">
+                        <div class="generation-info">
                             <i class="fas fa-calendar-alt"></i>
                             Gerado em: ${new Date().toLocaleDateString('pt-BR')}
                         </div>
@@ -3902,308 +3901,253 @@ const NotasModule = {
                     0 0 0 1px rgba(255, 255, 255, 0.4) inset;
             }
             
-            /* Container do boletim profissional */
-            .boletim-profissional-container {
-                background: white;
-                border: 2px solid #000;
-                margin-bottom: 3rem;
-                font-family: Arial, sans-serif;
-                font-size: 12px;
-                line-height: 1.4;
-                page-break-inside: avoid;
+            /* Cabeçalho da escola */
+            .glass-header-section {
+                background: linear-gradient(135deg, 
+                    rgba(255, 255, 255, 0.3) 0%, 
+                    rgba(255, 255, 255, 0.15) 100%);
+                backdrop-filter: blur(25px);
+                padding: 2rem;
+                position: relative;
+                overflow: hidden;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.2);
             }
             
-            /* Cabeçalho oficial */
-            .cabecalho-oficial {
+            .glass-header-section::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="50" cy="50" r="0.5" fill="rgba(255,255,255,0.1)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+                opacity: 0.2;
+            }
+            
+            .school-info {
                 display: flex;
                 align-items: center;
-                padding: 20px;
-                border-bottom: 2px solid #000;
-                background-color: #f8f9fa;
+                justify-content: space-between;
+                position: relative;
+                z-index: 1;
             }
             
-            .brasao-sp {
-                width: 60px;
-                height: 60px;
-                border: 2px solid #000;
+            .school-logo .logo-circle {
+                width: 80px;
+                height: 80px;
+                background: rgba(255, 255, 255, 0.2);
+                backdrop-filter: blur(15px);
                 border-radius: 50%;
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                margin-right: 20px;
+                border: 2px solid rgba(255, 255, 255, 0.3);
+                transition: all 0.3s ease;
             }
             
-            .brasao-sp i {
-                font-size: 24px;
-                color: #000;
+            .school-logo .logo-circle:hover {
+                transform: rotate(360deg) scale(1.1);
+                background: rgba(255, 255, 255, 0.3);
             }
             
-            .identificacao-escola {
+            .school-logo i {
+                font-size: 2rem;
+                color: #4a5568;
+                text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
+            }
+            
+            .school-details {
                 flex: 1;
                 text-align: center;
+                color: #2d3748;
             }
             
-            .titulo-governo {
-                font-size: 16px;
-                font-weight: bold;
+            .school-name {
+                font-size: 2rem;
+                font-weight: 700;
                 margin: 0;
-                color: #000;
-                text-transform: uppercase;
+                text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
+                letter-spacing: 1px;
             }
             
-            .titulo-secretaria {
-                font-size: 12px;
-                font-weight: normal;
-                margin: 5px 0;
-                color: #000;
-                text-transform: uppercase;
+            .school-subtitle {
+                font-size: 1rem;
+                margin: 0.5rem 0;
+                opacity: 0.8;
+                font-weight: 300;
             }
             
-            .titulo-documento {
-                font-size: 14px;
-                font-weight: bold;
-                margin: 5px 0 0 0;
-                color: #000;
+            .document-title {
+                font-size: 1.5rem;
+                font-weight: 600;
+                margin: 0.5rem 0 0 0;
+                text-shadow: 0 1px 2px rgba(255, 255, 255, 0.3);
             }
             
-            .ano-letivo-oficial {
-                margin-left: 20px;
-            }
-            
-            .ano-badge-oficial {
-                border: 2px solid #000;
-                padding: 10px 15px;
+            .year-badge .glass-badge {
+                background: rgba(255, 255, 255, 0.25);
+                backdrop-filter: blur(15px);
+                border: 1px solid rgba(255, 255, 255, 0.3);
+                border-radius: 16px;
+                padding: 1rem 1.5rem;
                 text-align: center;
-                background: white;
+                transition: all 0.3s ease;
             }
             
-            .ano-label {
+            .year-badge .glass-badge:hover {
+                background: rgba(255, 255, 255, 0.35);
+                transform: scale(1.05);
+            }
+            
+            .badge-label {
                 display: block;
-                font-size: 10px;
-                color: #000;
-                margin-bottom: 3px;
+                font-size: 0.9rem;
+                color: #4a5568;
+                margin-bottom: 0.25rem;
             }
             
-            .ano-numero {
+            .badge-year {
                 display: block;
-                font-size: 18px;
-                font-weight: bold;
-                color: #000;
+                font-size: 1.5rem;
+                font-weight: 700;
+                color: #2d3748;
+                text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
             }
             
-            /* Informações do aluno e escola */
-            .info-aluno-oficial, .info-escola-oficial {
-                background: #f8f9fa;
-                border-bottom: 1px solid #000;
-            }
-            
-            .linha-info {
-                display: flex;
-                align-items: center;
-                padding: 10px 20px;
-                border-bottom: 1px solid #ddd;
-            }
-            
-            .linha-info:last-child {
-                border-bottom: none;
-            }
-            
-            .label-info {
-                font-weight: bold;
-                color: #000;
-                margin-right: 10px;
-                min-width: 100px;
-            }
-            
-            .valor-info {
-                color: #000;
-                margin-right: 30px;
-            }
-            
-            .aluno-nome {
-                font-weight: bold;
-                text-transform: uppercase;
-                flex: 1;
-            }
-            
-            .ra-label {
-                margin-left: auto;
-                margin-right: 10px;
-                min-width: auto;
-            }
-            
-            .ra-numero {
-                font-weight: bold;
-                background: #007bff;
-                color: white;
-                padding: 5px 10px;
-                border-radius: 4px;
-            }
-            
-            /* Tabela oficial */
-            .tabela-notas-oficial {
-                overflow-x: auto;
-            }
-            
-            .table-boletim-oficial {
-                width: 100%;
-                border-collapse: collapse;
-                border: 2px solid #000;
-                font-size: 11px;
-            }
-            
-            .table-boletim-oficial th,
-            .table-boletim-oficial td {
-                border: 1px solid #000;
-                padding: 8px 4px;
-                text-align: center;
-                vertical-align: middle;
-            }
-            
-            .header-disciplina th,
-            .header-notas th {
-                background-color: #e9ecef;
-                font-weight: bold;
-                color: #000;
-            }
-            
-            .col-disciplina {
-                width: 120px;
-                background-color: #f8f9fa;
-                font-weight: bold;
-            }
-            
-            .col-bimestre {
-                background-color: #e9ecef;
-                font-weight: bold;
-            }
-            
-            .col-nota {
-                width: 30px;
-                font-size: 10px;
-            }
-            
-            .col-media-final {
-                width: 60px;
-                background-color: #e9ecef;
-                font-weight: bold;
-            }
-            
-            .col-situacao {
-                width: 80px;
-                background-color: #e9ecef;
-                font-weight: bold;
-            }
-            
-            .nome-disciplina {
-                text-align: left;
-                font-weight: bold;
-                background-color: #f8f9fa;
-                padding-left: 10px;
-            }
-            
-            .celula-nota,
-            .celula-media,
-            .celula-media-final {
-                font-weight: bold;
-            }
-            
-            /* Legenda oficial */
-            .legenda-oficial {
+            /* Informações do aluno */
+            .student-info-glass {
+                background: linear-gradient(135deg, 
+                    rgba(255, 255, 255, 0.2) 0%, 
+                    rgba(255, 255, 255, 0.1) 100%);
+                backdrop-filter: blur(20px);
+                padding: 1.5rem 2rem;
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
-                padding: 15px 20px;
-                background-color: #f8f9fa;
-                border-top: 1px solid #000;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.2);
             }
             
-            .criterios-avaliacao {
+            .info-row {
                 display: flex;
                 align-items: center;
-                gap: 20px;
+                margin-bottom: 0.75rem;
             }
             
-            .legenda-titulo {
-                font-weight: bold;
-                color: #000;
-                display: flex;
-                align-items: center;
-                gap: 5px;
+            .info-row:last-child {
+                margin-bottom: 0;
             }
             
-            .legenda-items {
-                display: flex;
-                gap: 15px;
-            }
-            
-            .legenda-item {
-                padding: 5px 10px;
-                border-radius: 4px;
-                font-weight: bold;
-                font-size: 11px;
-                border: 1px solid transparent;
-            }
-            
-            .legenda-item.aprovado {
-                background-color: #28a745;
-                color: white;
-                border-color: #1e7e34;
-            }
-            
-            .legenda-item.recuperacao {
-                background-color: #ffc107;
-                color: #212529;
-                border-color: #e0a800;
-            }
-            
-            .legenda-item.reprovado {
-                background-color: #dc3545;
-                color: white;
-                border-color: #c82333;
-            }
-            
-            .info-geracao {
-                color: #6c757d;
-                font-size: 11px;
-                display: flex;
-                align-items: center;
-                gap: 5px;
-            }
-            
-            /* Badges de situação */
-            .status-badge {
-                display: inline-block;
-                padding: 0.5rem 1rem;
-                border-radius: 12px;
+            .info-label {
                 font-weight: 600;
-                font-size: 0.85rem;
-                text-transform: uppercase;
-                letter-spacing: 0.5px;
-                border: 1px solid transparent;
+                color: #4a5568;
+                margin-right: 1rem;
+                min-width: 120px;
             }
             
-            .status-approved {
-                background-color: #28a745 !important;
-                color: white !important;
-                border-color: #1e7e34 !important;
+            .info-value {
+                font-weight: 700;
+                color: #2d3748;
+                font-size: 1.1rem;
             }
             
-            .status-recovery {
-                background-color: #ffc107 !important;
-                color: #212529 !important;
-                border-color: #e0a800 !important;
+            .ra-badge {
+                background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+                color: white;
+                padding: 1rem 1.5rem;
+                border-radius: 16px;
+                text-align: center;
+                box-shadow: 0 4px 15px rgba(79, 172, 254, 0.4);
+                transition: all 0.3s ease;
             }
             
-            .status-failed {
-                background-color: #dc3545 !important;
-                color: white !important;
-                border-color: #c82333 !important;
-            }
-            
-            .status-badge:hover {
+            .ra-badge:hover {
                 transform: translateY(-2px);
-                box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+                box-shadow: 0 6px 20px rgba(79, 172, 254, 0.6);
+            }
+            
+            .ra-label {
+                display: block;
+                font-size: 0.8rem;
+                opacity: 0.9;
+                margin-bottom: 0.25rem;
+            }
+            
+            .ra-number {
+                display: block;
+                font-size: 1.2rem;
+                font-weight: 700;
+            }
+            
+            /* Tabela glassmorphism */
+            .grades-table-container {
+                padding: 2rem;
+                overflow-x: auto;
+            }
+            
+            .glass-table {
+                width: 100%;
+                border-collapse: separate;
+                border-spacing: 0;
+                background: rgba(255, 255, 255, 0.1);
+                backdrop-filter: blur(20px);
+                border-radius: 20px;
+                overflow: hidden;
+                box-shadow: 
+                    0 10px 30px rgba(0, 0, 0, 0.1),
+                    0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+            }
+            
+            .table-header-glass th {
+                background: linear-gradient(135deg, 
+                    rgba(255, 255, 255, 0.25) 0%, 
+                    rgba(255, 255, 255, 0.15) 100%);
+                color: #2d3748;
+                padding: 1rem;
+                font-weight: 600;
+                text-align: center;
+                border: none;
+                position: relative;
+                text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
+            }
+            
+            .bimester-labels th {
+                background: linear-gradient(135deg, 
+                    rgba(255, 255, 255, 0.2) 0%, 
+                    rgba(255, 255, 255, 0.1) 100%);
+                padding: 0.75rem;
+                font-size: 0.95rem;
+                color: #4a5568;
+            }
+            
+            .grade-types th {
+                background: linear-gradient(135deg, 
+                    rgba(255, 255, 255, 0.15) 0%, 
+                    rgba(255, 255, 255, 0.08) 100%);
+                padding: 0.5rem;
+                font-size: 0.85rem;
+                font-weight: 500;
+                color: #4a5568;
+            }
+            
+            .glass-tbody tr:hover {
+                background: rgba(255, 255, 255, 0.15);
+                transform: scale(1.01);
+            }
+            
+            .glass-tbody td {
+                padding: 1rem 0.75rem;
+                text-align: center;
+                border: none;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+                transition: all 0.3s ease;
+            }
+            
+            .subject-name {
+                font-weight: 600;
+                color: #2d3748;
+                text-align: left !important;
+                padding-left: 1.5rem !important;
+                background: rgba(255, 255, 255, 0.1);
             }
             
             /* Legenda glassmorphism */
