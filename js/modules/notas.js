@@ -3823,63 +3823,6 @@ const NotasModule = {
             /* Importar AOS para animações */
             @import url('https://unpkg.com/aos@2.3.1/dist/aos.css');
             
-            /* Variáveis CSS para glassmorphism */
-            :root {
-                --glass-bg: rgba(255, 255, 255, 0.15);
-                --glass-border: rgba(255, 255, 255, 0.2);
-                --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
-                --glass-backdrop: blur(25px);
-                --primary-gradient: linear-gradient(135deg, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.1) 100%);
-                --success-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-                --warning-gradient: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
-                --danger-gradient: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
-                --header-gradient: linear-gradient(135deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0.1) 100%);
-            }
-            
-            /* Modal glassmorphism */
-            .glass-modal {
-                background: rgba(255, 255, 255, 0.05);
-                backdrop-filter: blur(25px);
-                border: 1px solid rgba(255, 255, 255, 0.2);
-                border-radius: 20px;
-                box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
-            }
-            
-            .glass-header {
-                background: linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.1) 100%);
-                backdrop-filter: blur(25px);
-                border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-                border-radius: 20px 20px 0 0;
-                padding: 1.5rem 2rem;
-            }
-            
-            .glass-title {
-                color: #2d3748;
-                font-weight: 600;
-                font-size: 1.5rem;
-                text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
-            }
-            
-            .glass-close {
-                opacity: 0.7;
-                transition: all 0.3s ease;
-            }
-            
-            .glass-close:hover {
-                opacity: 1;
-                transform: scale(1.1);
-            }
-            
-            .glass-body {
-                background: linear-gradient(135deg, 
-                    rgba(255, 255, 255, 0.1) 0%, 
-                    rgba(255, 255, 255, 0.05) 50%, 
-                    rgba(255, 255, 255, 0.1) 100%);
-                backdrop-filter: blur(25px);
-                padding: 2rem;
-                min-height: 80vh;
-            }
-            
             /* Container do boletim */
             .boletim-glass-container {
                 background: rgba(255, 255, 255, 0.15);
@@ -4150,197 +4093,375 @@ const NotasModule = {
                 background: rgba(255, 255, 255, 0.1);
             }
             
-            /* Legenda glassmorphism */
+            /* Cores das notas com gradientes suaves para tela */
+            .nota-aprovado {
+                background: linear-gradient(135deg, 
+                    rgba(34, 197, 94, 0.9) 0%, 
+                    rgba(22, 163, 74, 0.8) 50%, 
+                    rgba(21, 128, 61, 0.7) 100%) !important;
+                color: white !important;
+                border: 1px solid rgba(34, 197, 94, 0.6) !important;
+                backdrop-filter: blur(10px);
+                border-radius: 8px;
+                padding: 0.5rem;
+                font-weight: 600;
+                text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+                box-shadow: 0 2px 8px rgba(34, 197, 94, 0.3);
+            }
+            
+            .nota-recuperacao {
+                background: linear-gradient(135deg, 
+                    rgba(251, 191, 36, 0.9) 0%, 
+                    rgba(245, 158, 11, 0.8) 50%, 
+                    rgba(217, 119, 6, 0.7) 100%) !important;
+                color: #451a03 !important;
+                border: 1px solid rgba(251, 191, 36, 0.6) !important;
+                backdrop-filter: blur(10px);
+                border-radius: 8px;
+                padding: 0.5rem;
+                font-weight: 600;
+                text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
+                box-shadow: 0 2px 8px rgba(251, 191, 36, 0.3);
+            }
+            
+            .nota-reprovado {
+                background: linear-gradient(135deg, 
+                    rgba(239, 68, 68, 0.9) 0%, 
+                    rgba(220, 38, 38, 0.8) 50%, 
+                    rgba(185, 28, 28, 0.7) 100%) !important;
+                color: white !important;
+                border: 1px solid rgba(239, 68, 68, 0.6) !important;
+                backdrop-filter: blur(10px);
+                border-radius: 8px;
+                padding: 0.5rem;
+                font-weight: 600;
+                text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+                box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+            }
+            
+            /* Legenda glassmorphism com gradientes atualizados */
             .legend-glass {
                 background: linear-gradient(135deg, 
-                    rgba(255, 255, 255, 0.9) 0%, 
-                    rgba(240, 248, 255, 0.8) 100%);
-                backdrop-filter: blur(15px);
-                border-top: 1px solid rgba(255, 255, 255, 0.3);
+                    rgba(255, 255, 255, 0.2) 0%, 
+                    rgba(255, 255, 255, 0.1) 100%);
+                backdrop-filter: blur(20px);
                 padding: 1.5rem 2rem;
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
+                border-top: 1px solid rgba(255, 255, 255, 0.2);
+                border-radius: 0 0 24px 24px;
+            }
+            
+            .legend-content {
+                display: flex;
+                align-items: center;
+                gap: 2rem;
             }
             
             .legend-title {
-                font-weight: 600;
-                color: #4a5568;
-                margin-bottom: 1rem;
                 display: flex;
                 align-items: center;
                 gap: 0.5rem;
+                font-weight: 600;
+                color: #2d3748;
+                font-size: 1rem;
             }
             
             .legend-badges {
                 display: flex;
                 gap: 1rem;
-                flex-wrap: wrap;
             }
             
             .legend-badge {
-                padding: 0.5rem 1rem;
+                padding: 0.75rem 1rem;
                 border-radius: 12px;
                 font-weight: 600;
                 font-size: 0.85rem;
                 backdrop-filter: blur(10px);
                 transition: all 0.3s ease;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
             }
             
             .legend-badge.approved {
-                background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+                background: linear-gradient(135deg, 
+                    rgba(34, 197, 94, 0.9) 0%, 
+                    rgba(22, 163, 74, 0.8) 50%, 
+                    rgba(21, 128, 61, 0.7) 100%);
                 color: white;
+                border: 1px solid rgba(34, 197, 94, 0.6);
+                text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
             }
             
             .legend-badge.recovery {
-                background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
-                color: white;
+                background: linear-gradient(135deg, 
+                    rgba(251, 191, 36, 0.9) 0%, 
+                    rgba(245, 158, 11, 0.8) 50%, 
+                    rgba(217, 119, 6, 0.7) 100%);
+                color: #451a03;
+                border: 1px solid rgba(251, 191, 36, 0.6);
+                text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
             }
             
             .legend-badge.failed {
-                background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+                background: linear-gradient(135deg, 
+                    rgba(239, 68, 68, 0.9) 0%, 
+                    rgba(220, 38, 38, 0.8) 50%, 
+                    rgba(185, 28, 28, 0.7) 100%);
                 color: white;
+                border: 1px solid rgba(239, 68, 68, 0.6);
+                text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+            }
+            
+            .legend-badge:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
             }
             
             .generation-info {
-                color: #718096;
+                color: #6c757d;
                 font-size: 0.9rem;
                 display: flex;
                 align-items: center;
                 gap: 0.5rem;
+                opacity: 0.8;
             }
             
-            /* Footer glassmorphism */
-            .glass-footer {
-                background: linear-gradient(135deg, 
-                    rgba(255, 255, 255, 0.9) 0%, 
-                    rgba(240, 248, 255, 0.8) 100%);
-                backdrop-filter: blur(20px);
-                border-top: 1px solid rgba(255, 255, 255, 0.3);
-                border-radius: 0 0 20px 20px;
-                padding: 1.5rem 2rem;
-            }
-            
-            .glass-btn {
-                padding: 0.75rem 2rem;
-                border-radius: 16px;
+            /* Status badges com gradientes */
+            .status-badge {
+                display: inline-block;
+                padding: 0.5rem 1rem;
+                border-radius: 12px;
                 font-weight: 600;
-                border: none;
-                transition: all 0.3s ease;
+                font-size: 0.85rem;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
                 backdrop-filter: blur(10px);
-                position: relative;
-                overflow: hidden;
+                transition: all 0.3s ease;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
             }
             
-            .glass-btn.primary {
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                color: white;
-                box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            .status-approved {
+                background: linear-gradient(135deg, 
+                    rgba(34, 197, 94, 0.9) 0%, 
+                    rgba(22, 163, 74, 0.8) 50%, 
+                    rgba(21, 128, 61, 0.7) 100%) !important;
+                color: white !important;
+                border: 1px solid rgba(34, 197, 94, 0.6) !important;
+                text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
             }
             
-            .glass-btn.secondary {
-                background: rgba(255, 255, 255, 0.7);
-                color: #4a5568;
-                border: 1px solid rgba(255, 255, 255, 0.3);
+            .status-recovery {
+                background: linear-gradient(135deg, 
+                    rgba(251, 191, 36, 0.9) 0%, 
+                    rgba(245, 158, 11, 0.8) 50%, 
+                    rgba(217, 119, 6, 0.7) 100%) !important;
+                color: #451a03 !important;
+                border: 1px solid rgba(251, 191, 36, 0.6) !important;
+                text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
             }
             
-            .glass-btn:hover {
+            .status-failed {
+                background: linear-gradient(135deg, 
+                    rgba(239, 68, 68, 0.9) 0%, 
+                    rgba(220, 38, 38, 0.8) 50%, 
+                    rgba(185, 28, 28, 0.7) 100%) !important;
+                color: white !important;
+                border: 1px solid rgba(239, 68, 68, 0.6) !important;
+                text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+            }
+            
+            .status-badge:hover {
                 transform: translateY(-2px);
-                box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+                box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
             }
             
-            .glass-btn.primary:hover {
-                background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
-            }
-            
-            .glass-btn.secondary:hover {
-                background: rgba(255, 255, 255, 0.9);
-            }
-            
-            /* Quebra de página */
-            .page-break {
-                page-break-after: always;
-                height: 0;
-                margin: 0;
-                padding: 0;
-            }
-            
-            /* Animações personalizadas */
-            @keyframes float {
-                0%, 100% { transform: translateY(0px); }
-                50% { transform: translateY(-10px); }
-            }
-            
-            @keyframes glow {
-                0%, 100% { box-shadow: 0 4px 15px rgba(79, 172, 254, 0.4); }
-                50% { box-shadow: 0 6px 25px rgba(79, 172, 254, 0.8); }
-            }
-            
-            .glass-table:hover {
-                animation: glow 2s ease-in-out infinite;
-            }
-            
-            /* Responsividade */
-            @media (max-width: 768px) {
-                .school-info {
-                    flex-direction: column;
-                    gap: 1rem;
-                }
-                
-                .student-info-glass {
-                    flex-direction: column;
-                    gap: 1rem;
-                }
-                
-                .legend-glass {
-                    flex-direction: column;
-                    gap: 1rem;
-                }
-                
-                .glass-table {
-                    font-size: 0.8rem;
-                }
-                
-                .grade-value, .average-value, .final-value {
-                    padding: 0.25rem 0.5rem;
-                    font-size: 0.8rem;
-                }
-            }
-            
-            /* Estilos para impressão */
+            /* ESTILOS PARA IMPRESSÃO - Layout Profissional */
             @media print {
-                .glass-header, .glass-footer {
-                    display: none !important;
+                * {
+                    -webkit-print-color-adjust: exact !important;
+                    color-adjust: exact !important;
+                    print-color-adjust: exact !important;
                 }
                 
-                .glass-body {
+                body {
                     background: white !important;
+                    font-family: Arial, sans-serif !important;
+                    font-size: 12px !important;
+                    line-height: 1.4 !important;
+                    margin: 0 !important;
                     padding: 0 !important;
                 }
                 
+                @page {
+                    size: A4 landscape !important;
+                    margin: 0.8cm !important;
+                }
+                
+                /* Transformar glassmorphism em layout profissional para impressão */
                 .boletim-glass-container {
                     background: white !important;
-                    box-shadow: none !important;
+                    backdrop-filter: none !important;
                     border: 2px solid #000 !important;
-                    page-break-inside: avoid;
-                    margin-bottom: 2cm !important;
+                    border-radius: 0 !important;
+                    box-shadow: none !important;
+                    page-break-inside: avoid !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    width: 100% !important;
+                    max-width: none !important;
                 }
                 
                 .glass-header-section {
                     background: #f8f9fa !important;
-                    border: 2px solid #000 !important;
-                    -webkit-print-color-adjust: exact;
-                    print-color-adjust: exact;
+                    backdrop-filter: none !important;
+                    border-bottom: 2px solid #000 !important;
+                    border-radius: 0 !important;
+                    padding: 15px !important;
+                    margin: 0 !important;
                 }
                 
-                .school-name, .school-subtitle, .document-title,
-                .badge-year, .info-value, .ra-number {
+                .glass-header-section::before {
+                    display: none !important;
+                }
+                
+                .school-info {
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: space-between !important;
+                    flex-wrap: nowrap !important;
+                }
+                
+                .school-logo .logo-circle {
+                    width: 50px !important;
+                    height: 50px !important;
+                    background: white !important;
+                    backdrop-filter: none !important;
+                    border: 2px solid #000 !important;
+                    border-radius: 50% !important;
+                    margin-right: 15px !important;
+                }
+                
+                .school-logo i {
+                    font-size: 20px !important;
                     color: #000 !important;
+                    text-shadow: none !important;
+                }
+                
+                .school-name {
+                    font-size: 18px !important;
+                    font-weight: bold !important;
+                    text-shadow: none !important;
+                    color: #000 !important;
+                    text-transform: uppercase !important;
+                    margin: 0 !important;
+                }
+                
+                .school-subtitle {
+                    font-size: 12px !important;
+                    color: #000 !important;
+                    text-transform: uppercase !important;
+                    margin: 2px 0 !important;
+                }
+                
+                .document-title {
+                    font-size: 14px !important;
+                    font-weight: bold !important;
+                    color: #000 !important;
+                    text-shadow: none !important;
+                    margin: 2px 0 !important;
+                }
+                
+                .year-badge .glass-badge {
+                    background: white !important;
+                    backdrop-filter: none !important;
+                    border: 2px solid #000 !important;
+                    border-radius: 0 !important;
+                    padding: 8px 12px !important;
+                }
+                
+                .badge-label {
+                    font-size: 9px !important;
+                    color: #000 !important;
+                    margin-bottom: 2px !important;
+                }
+                
+                .badge-year {
+                    font-size: 16px !important;
+                    font-weight: bold !important;
+                    color: #000 !important;
+                    text-shadow: none !important;
+                }
+                
+                .student-info-glass {
+                    background: #f8f9fa !important;
+                    backdrop-filter: none !important;
+                    border-bottom: 1px solid #000 !important;
+                    padding: 10px 15px !important;
+                    display: block !important;
+                }
+                
+                .student-details {
+                    width: 100% !important;
+                    margin-bottom: 8px !important;
+                }
+                
+                .info-row {
+                    display: inline-block !important;
+                    margin-right: 30px !important;
+                    margin-bottom: 0 !important;
+                }
+                
+                .info-label {
+                    font-weight: bold !important;
+                    color: #000 !important;
+                    margin-right: 8px !important;
+                    min-width: auto !important;
+                }
+                
+                .info-value {
+                    font-weight: bold !important;
+                    color: #000 !important;
+                    text-transform: uppercase !important;
+                }
+                
+                .ra-badge {
+                    background: #007bff !important;
+                    color: white !important;
+                    border-radius: 4px !important;
+                    padding: 4px 8px !important;
+                    box-shadow: none !important;
+                    display: inline-block !important;
+                    float: right !important;
+                    margin-top: -25px !important;
+                }
+                
+                .grades-table-container {
+                    padding: 0 !important;
+                    overflow: visible !important;
+                    margin: 0 !important;
                 }
                 
                 .glass-table {
                     background: white !important;
+                    backdrop-filter: none !important;
                     border: 2px solid #000 !important;
+                    border-radius: 0 !important;
+                    box-shadow: none !important;
+                    border-collapse: collapse !important;
+                    font-size: 9px !important;
+                    width: 100% !important;
+                    margin: 0 !important;
+                }
+                
+                .glass-table th,
+                .glass-table td {
+                    border: 1px solid #000 !important;
+                    padding: 4px 2px !important;
+                    background: transparent !important;
+                    backdrop-filter: none !important;
+                    text-align: center !important;
+                    vertical-align: middle !important;
                 }
                 
                 .table-header-glass th,
@@ -4348,257 +4469,161 @@ const NotasModule = {
                 .grade-types th {
                     background: #e9ecef !important;
                     color: #000 !important;
-                    -webkit-print-color-adjust: exact;
-                    print-color-adjust: exact;
-                    border: 1px solid #000 !important;
-                }
-                
-                .glass-tbody td {
-                    border: 1px solid #000 !important;
-                    color: #000 !important;
+                    font-weight: bold !important;
+                    text-shadow: none !important;
+                    font-size: 8px !important;
                 }
                 
                 .subject-name {
                     background: #f8f9fa !important;
+                    text-align: left !important;
+                    font-weight: bold !important;
                     color: #000 !important;
+                    padding-left: 8px !important;
+                    width: 100px !important;
                 }
                 
-                .grade-value, .average-value, .final-value,
-                .status-badge, .legend-badge {
-                    -webkit-print-color-adjust: exact;
-                    print-color-adjust: exact;
-                    border: 1px solid #000 !important;
-                }
-                
-                .student-info-glass, .legend-glass {
-                    background: #f8f9fa !important;
-                    border: 1px solid #000 !important;
-                }
-                
-                @page {
-                    size: A4;
-                    margin: 1cm;
-                }
-                
-                /* Estilos específicos para o boletim profissional */
-                .boletim-profissional-container {
-                    background: white !important;
-                    border: 2px solid #000 !important;
-                    page-break-inside: avoid;
-                    margin-bottom: 2cm !important;
-                    font-size: 11px !important;
-                }
-                
-                .cabecalho-oficial {
-                    background-color: #f8f9fa !important;
-                    border-bottom: 2px solid #000 !important;
-                    -webkit-print-color-adjust: exact;
-                    print-color-adjust: exact;
-                }
-                
-                .brasao-sp {
-                    border: 2px solid #000 !important;
-                }
-                
-                .titulo-governo, .titulo-secretaria, .titulo-documento,
-                .ano-numero, .label-info, .valor-info {
-                    color: #000 !important;
-                }
-                
-                .ano-badge-oficial {
-                    border: 2px solid #000 !important;
-                    background: white !important;
-                }
-                
-                .info-aluno-oficial, .info-escola-oficial {
-                    background: #f8f9fa !important;
-                    border-bottom: 1px solid #000 !important;
-                    -webkit-print-color-adjust: exact;
-                    print-color-adjust: exact;
-                }
-                
-                .linha-info {
-                    border-bottom: 1px solid #ddd !important;
-                }
-                
-                .ra-numero {
-                    background: #007bff !important;
-                    color: white !important;
-                    -webkit-print-color-adjust: exact;
-                    print-color-adjust: exact;
-                }
-                
-                .table-boletim-oficial {
-                    border: 2px solid #000 !important;
-                }
-                
-                .table-boletim-oficial th,
-                .table-boletim-oficial td {
-                    border: 1px solid #000 !important;
-                    color: #000 !important;
-                }
-                
-                .header-disciplina th,
-                .header-notas th {
-                    background-color: #e9ecef !important;
-                    -webkit-print-color-adjust: exact;
-                    print-color-adjust: exact;
-                }
-                
-                .col-disciplina,
-                .nome-disciplina {
-                    background-color: #f8f9fa !important;
-                    -webkit-print-color-adjust: exact;
-                    print-color-adjust: exact;
-                }
-                
-                .col-bimestre,
-                .col-media-final,
-                .col-situacao {
-                    background-color: #e9ecef !important;
-                    -webkit-print-color-adjust: exact;
-                    print-color-adjust: exact;
-                }
-                
-                .legenda-oficial {
-                    background-color: #f8f9fa !important;
-                    border-top: 1px solid #000 !important;
-                    -webkit-print-color-adjust: exact;
-                    print-color-adjust: exact;
-                }
-                
-                .legenda-titulo {
-                    color: #000 !important;
-                }
-                
-                .legenda-item.aprovado {
-                    background-color: #28a745 !important;
-                    color: white !important;
-                    -webkit-print-color-adjust: exact;
-                    print-color-adjust: exact;
-                }
-                
-                .legenda-item.recuperacao {
-                    background-color: #ffc107 !important;
-                    color: #212529 !important;
-                    -webkit-print-color-adjust: exact;
-                    print-color-adjust: exact;
-                }
-                
-                .legenda-item.reprovado {
-                    background-color: #dc3545 !important;
-                    color: white !important;
-                    -webkit-print-color-adjust: exact;
-                    print-color-adjust: exact;
-                }
-                
-                /* Garantir que as cores das notas sejam impressas */
+                /* Cores das notas sólidas para impressão */
                 .nota-aprovado {
-                    background-color: #28a745 !important;
+                    background: #22c55e !important;
                     color: white !important;
-                    -webkit-print-color-adjust: exact;
-                    print-color-adjust: exact;
+                    border: 1px solid #16a34a !important;
+                    border-radius: 3px !important;
+                    padding: 2px 4px !important;
+                    backdrop-filter: none !important;
+                    text-shadow: none !important;
+                    box-shadow: none !important;
+                    font-weight: bold !important;
                 }
                 
                 .nota-recuperacao {
-                    background-color: #ffc107 !important;
-                    color: #212529 !important;
-                    -webkit-print-color-adjust: exact;
-                    print-color-adjust: exact;
+                    background: #eab308 !important;
+                    color: #451a03 !important;
+                    border: 1px solid #ca8a04 !important;
+                    border-radius: 3px !important;
+                    padding: 2px 4px !important;
+                    backdrop-filter: none !important;
+                    text-shadow: none !important;
+                    box-shadow: none !important;
+                    font-weight: bold !important;
                 }
                 
                 .nota-reprovado {
-                    background-color: #dc3545 !important;
+                    background: #ef4444 !important;
                     color: white !important;
-                    -webkit-print-color-adjust: exact;
-                    print-color-adjust: exact;
+                    border: 1px solid #dc2626 !important;
+                    border-radius: 3px !important;
+                    padding: 2px 4px !important;
+                    backdrop-filter: none !important;
+                    text-shadow: none !important;
+                    box-shadow: none !important;
+                    font-weight: bold !important;
                 }
                 
                 .status-approved {
-                    background-color: #28a745 !important;
+                    background: #22c55e !important;
                     color: white !important;
-                    -webkit-print-color-adjust: exact;
-                    print-color-adjust: exact;
+                    border: 1px solid #16a34a !important;
+                    border-radius: 3px !important;
+                    backdrop-filter: none !important;
+                    text-shadow: none !important;
+                    box-shadow: none !important;
+                    padding: 2px 6px !important;
+                    font-size: 8px !important;
                 }
                 
                 .status-recovery {
-                    background-color: #ffc107 !important;
-                    color: #212529 !important;
-                    -webkit-print-color-adjust: exact;
-                    print-color-adjust: exact;
+                    background: #eab308 !important;
+                    color: #451a03 !important;
+                    border: 1px solid #ca8a04 !important;
+                    border-radius: 3px !important;
+                    backdrop-filter: none !important;
+                    text-shadow: none !important;
+                    box-shadow: none !important;
+                    padding: 2px 6px !important;
+                    font-size: 8px !important;
                 }
                 
                 .status-failed {
-                    background-color: #dc3545 !important;
+                    background: #ef4444 !important;
                     color: white !important;
-                    -webkit-print-color-adjust: exact;
-                    print-color-adjust: exact;
+                    border: 1px solid #dc2626 !important;
+                    border-radius: 3px !important;
+                    backdrop-filter: none !important;
+                    text-shadow: none !important;
+                    box-shadow: none !important;
+                    padding: 2px 6px !important;
+                    font-size: 8px !important;
                 }
-            }
-            
-            /* Remover estilos conflitantes */
-            .grade-excellent, .average-excellent, .final-excellent,
-            .grade-warning, .average-warning, .final-warning,
-            .grade-danger, .average-danger, .final-danger {
-                background: none !important;
-                box-shadow: none !important;
-            }
-            
-            /* Formatação das notas */
-            .grade-value, .average-value, .final-value {
-                display: inline-block;
-                padding: 0.4rem 0.8rem;
-                border-radius: 8px;
-                font-weight: 700;
-                font-size: 0.9rem;
-                text-align: center;
-                min-width: 40px;
-                border: 1px solid transparent;
-            }
-            
-            /* Classes de cores para notas */
-            .nota-aprovado {
-                background-color: #28a745 !important;
-                color: white !important;
-                border-color: #1e7e34 !important;
-            }
-            
-            .nota-recuperacao {
-                background-color: #ffc107 !important;
-                color: #212529 !important;  
-                border-color: #e0a800 !important;
-            }
-            
-            .nota-reprovado {
-                background-color: #dc3545 !important;
-                color: white !important; 
-                border-color: #c82333 !important;
-            }
-            
-            .grade-empty, .average-empty, .final-empty {
-                background-color: #f8f9fa !important;
-                color: #6c757d !important;
-                border-color: #dee2e6 !important;
-                font-style: italic;
-                font-weight: 400;
+                
+                .legend-glass {
+                    background: #f8f9fa !important;
+                    backdrop-filter: none !important;
+                    border-top: 1px solid #000 !important;
+                    border-radius: 0 !important;
+                    padding: 8px 15px !important;
+                    display: flex !important;
+                    justify-content: space-between !important;
+                    align-items: center !important;
+                }
+                
+                .legend-title {
+                    color: #000 !important;
+                    font-weight: bold !important;
+                    font-size: 10px !important;
+                }
+                
+                .legend-badge {
+                    backdrop-filter: none !important;
+                    border-radius: 3px !important;
+                    padding: 3px 6px !important;
+                    font-size: 8px !important;
+                    box-shadow: none !important;
+                    text-shadow: none !important;
+                    margin: 0 2px !important;
+                }
+                
+                .legend-badge.approved {
+                    background: #22c55e !important;
+                    color: white !important;
+                    border: 1px solid #16a34a !important;
+                }
+                
+                .legend-badge.recovery {
+                    background: #eab308 !important;
+                    color: #451a03 !important;
+                    border: 1px solid #ca8a04 !important;
+                }
+                
+                .legend-badge.failed {
+                    background: #ef4444 !important;
+                    color: white !important;
+                    border: 1px solid #dc2626 !important;
+                }
+                
+                .generation-info {
+                    color: #6c757d !important;
+                    font-size: 8px !important;
+                }
+                
+                /* Ocultar elementos desnecessários na impressão */
+                .btn, button, .no-print {
+                    display: none !important;
+                }
+                
+                /* Forçar quebras de página adequadas */
+                .boletim-glass-container {
+                    page-break-after: always !important;
+                }
+                
+                .boletim-glass-container:last-child {
+                    page-break-after: avoid !important;
+                }
             }
         `;
         
         document.head.appendChild(estilos);
-        
-        // Carregar AOS para animações se não estiver carregado
-        if (typeof AOS === 'undefined') {
-            const aosScript = document.createElement('script');
-            aosScript.src = 'https://unpkg.com/aos@2.3.1/dist/aos.js';
-            aosScript.onload = function() {
-                AOS.init({
-                    duration: 800,
-                    easing: 'ease-out-cubic',
-                    once: true
-                });
-            };
-            document.head.appendChild(aosScript);
-        }
+        console.log("✅ Estilos glassmorphism com gradientes adicionados com sucesso");
     },
     // Carregar CSS dedicado para boletim profissional
     carregarCSSBoletimProfissional: function() {
