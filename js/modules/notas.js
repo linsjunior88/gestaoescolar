@@ -1480,84 +1480,96 @@ const NotasModule = {
             titulo = `📚 Boletim por Disciplina - ${boletimData.ano}`;
         }
         
-        // Construir HTML do modal
+        // Construir HTML do modal com design glassmorphism
         let html = `
             <div class="modal-dialog modal-fullscreen">
-                <div class="modal-content">
-                    <div class="modal-header bg-primary text-white">
-                        <h5 class="modal-title" id="${modalId}Label">
-                            <i class="fas fa-graduation-cap me-2"></i>${titulo}
+                <div class="modal-content glass-modal">
+                    <div class="modal-header glass-header">
+                        <h5 class="modal-title glass-title" id="${modalId}Label">
+                            <i class="fas fa-graduation-cap me-3"></i>${titulo}
                         </h5>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                        <button type="button" class="btn-close glass-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
                     </div>
-                    <div class="modal-body p-4" style="background-color: #f8f9fa;">
+                    <div class="modal-body glass-body">
         `;
         
         // Para cada aluno, criar um boletim individual
         boletimData.boletim.forEach((aluno, index) => {
-            // Cabeçalho do boletim para cada aluno
+            // Buscar todas as notas do aluno para organizar por bimestre
+            const notasPorBimestre = this.organizarNotasPorBimestre(aluno);
+            
             html += `
-                <div class="boletim-container mb-4" style="background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); page-break-inside: avoid;">
-                    <!-- Cabeçalho do Boletim -->
-                    <div class="boletim-header text-center p-4 border-bottom">
-                        <div class="row align-items-center">
-                            <div class="col-2">
-                                <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMzIiIGN5PSIzMiIgcj0iMzIiIGZpbGw9IiMwMDc5ZmYiLz4KPHN2ZyB4PSIxNiIgeT0iMTYiIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJ3aGl0ZSI+CjxwYXRoIGQ9Ik0xMiAzTDEgOWwxMSA2IDkuNS01LjJMMTIgM3ptMCA5TDEgNnYxMGwxMSA2VjEyeiIvPgo8L3N2Zz4KPC9zdmc+" alt="Logo" class="img-fluid" style="max-width: 64px;">
+                <div class="boletim-glass-container" data-aos="fade-up" data-aos-delay="${index * 100}">
+                    <!-- Cabeçalho Glassmorphism -->
+                    <div class="glass-header-section">
+                        <div class="school-info">
+                            <div class="school-logo">
+                                <div class="logo-circle">
+                                    <i class="fas fa-graduation-cap"></i>
+                                </div>
                             </div>
-                            <div class="col-8">
-                                <h4 class="mb-1 text-primary fw-bold">ESCOLA NAZARÉ RODRIGUES</h4>
-                                <p class="mb-1 text-muted">SECRETARIA DE ESTADO DA EDUCAÇÃO</p>
-                                <h5 class="mb-0 text-dark">Boletim Escolar</h5>
+                            <div class="school-details">
+                                <h2 class="school-name">ESCOLA NAZARÉ RODRIGUES</h2>
+                                <p class="school-subtitle">SECRETARIA DE ESTADO DA EDUCAÇÃO</p>
+                                <h3 class="document-title">Boletim Escolar</h3>
                             </div>
-                            <div class="col-2 text-end">
-                                <div class="badge bg-primary fs-6 p-2">
-                                    Ano Letivo<br><strong>${boletimData.ano}</strong>
+                            <div class="year-badge">
+                                <div class="glass-badge">
+                                    <span class="badge-label">Ano Letivo</span>
+                                    <span class="badge-year">${boletimData.ano}</span>
                                 </div>
                             </div>
                         </div>
                     </div>
                     
-                    <!-- Dados do Aluno -->
-                    <div class="aluno-info p-3 bg-light border-bottom">
-                        <div class="row">
-                            <div class="col-md-8">
-                                <table class="table table-borderless table-sm mb-0">
-                                    <tr>
-                                        <td class="fw-bold" style="width: 120px;">Nome do Aluno:</td>
-                                        <td class="text-uppercase fw-bold">${aluno.nome_aluno}</td>
-                                    </tr>
-                                    <tr>
-                                        <td class="fw-bold">Turma:</td>
-                                        <td><strong>${aluno.id_turma}</strong> - ${aluno.serie}</td>
-                                    </tr>
-                                </table>
+                    <!-- Informações do Aluno -->
+                    <div class="student-info-glass">
+                        <div class="student-details">
+                            <div class="info-row">
+                                <span class="info-label">Nome do Aluno:</span>
+                                <span class="info-value">${aluno.nome_aluno}</span>
                             </div>
-                            <div class="col-md-4 text-end">
-                                <div class="badge bg-info fs-6 p-2">
-                                    RA: <strong>${aluno.id_aluno}</strong>
-                                </div>
+                            <div class="info-row">
+                                <span class="info-label">Turma:</span>
+                                <span class="info-value">${aluno.id_turma} - ${aluno.serie}</span>
+                            </div>
+                        </div>
+                        <div class="student-ra">
+                            <div class="ra-badge">
+                                <span class="ra-label">RA</span>
+                                <span class="ra-number">${aluno.id_aluno}</span>
                             </div>
                         </div>
                     </div>
                     
-                    <!-- Tabela de Notas -->
-                    <div class="p-3">
-                        <table class="table table-bordered table-hover mb-0">
-                            <thead class="table-dark">
-                                <tr class="text-center">
-                                    <th rowspan="2" class="align-middle" style="width: 25%;">Disciplina</th>
-                                    <th colspan="4">Bimestres</th>
-                                    <th rowspan="2" class="align-middle" style="width: 12%;">Média Final</th>
-                                    <th rowspan="2" class="align-middle" style="width: 15%;">Situação</th>
+                    <!-- Tabela de Notas Glassmorphism -->
+                    <div class="grades-table-container">
+                        <table class="glass-table">
+                            <thead>
+                                <tr class="table-header-glass">
+                                    <th rowspan="3" class="subject-header">Disciplina</th>
+                                    <th colspan="9" class="bimesters-header">Bimestres</th>
+                                    <th rowspan="3" class="final-grade-header">Média Final</th>
+                                    <th rowspan="3" class="status-header">Situação</th>
                                 </tr>
-                                <tr class="text-center">
-                                    <th style="width: 12%;">1º Bim</th>
-                                    <th style="width: 12%;">2º Bim</th>
-                                    <th style="width: 12%;">3º Bim</th>
-                                    <th style="width: 12%;">4º Bim</th>
+                                <tr class="bimester-labels">
+                                    <th colspan="3" class="bimester-group">1º Bimestre</th>
+                                    <th colspan="3" class="bimester-group">2º Bimestre</th>
+                                    <th colspan="3" class="bimester-group">3º Bimestre</th>
+                                </tr>
+                                <tr class="grade-types">
+                                    <th class="grade-type">Mensal</th>
+                                    <th class="grade-type">Bimestral</th>
+                                    <th class="grade-type">Média</th>
+                                    <th class="grade-type">Mensal</th>
+                                    <th class="grade-type">Bimestral</th>
+                                    <th class="grade-type">Média</th>
+                                    <th class="grade-type">Mensal</th>
+                                    <th class="grade-type">Bimestral</th>
+                                    <th class="grade-type">Média</th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody class="glass-tbody">
             `;
             
             // Ordenar disciplinas alfabeticamente
@@ -1565,30 +1577,45 @@ const NotasModule = {
                 (a.nome_disciplina || '').localeCompare(b.nome_disciplina || '')
             );
             
-            disciplinasOrdenadas.forEach(disciplina => {
-                // Determinar cor da situação
-                let situacaoClass = 'bg-success text-white';
-                let situacaoTexto = disciplina.situacao || 'Pendente';
+            disciplinasOrdenadas.forEach((disciplina, disciplinaIndex) => {
+                // Determinar situação e classe
+                const situacao = disciplina.situacao || 'Pendente';
+                let situacaoClass = 'status-approved';
                 
-                if (situacaoTexto === 'Reprovado') {
-                    situacaoClass = 'bg-danger text-white';
-                } else if (situacaoTexto === 'Recuperação' || situacaoTexto.includes('Recuperação')) {
-                    situacaoClass = 'bg-warning text-dark';
+                if (situacao === 'Reprovado') {
+                    situacaoClass = 'status-failed';
+                } else if (situacao.includes('Recuperação')) {
+                    situacaoClass = 'status-recovery';
                 }
                 
-                // Formatar média final
-                const mediaFinal = disciplina.media_anual ? disciplina.media_anual.toFixed(1) : '-';
+                // Buscar notas específicas desta disciplina por bimestre
+                const notasDisciplina = notasPorBimestre[disciplina.nome_disciplina] || {};
                 
                 html += `
-                    <tr>
-                        <td class="fw-bold">${disciplina.nome_disciplina}</td>
-                        <td class="text-center">${this.formatarNotaBoletim(disciplina.notas_bimestrais['1'])}</td>
-                        <td class="text-center">${this.formatarNotaBoletim(disciplina.notas_bimestrais['2'])}</td>
-                        <td class="text-center">${this.formatarNotaBoletim(disciplina.notas_bimestrais['3'])}</td>
-                        <td class="text-center">${this.formatarNotaBoletim(disciplina.notas_bimestrais['4'])}</td>
-                        <td class="text-center fw-bold ${mediaFinal !== '-' && parseFloat(mediaFinal) >= 6.0 ? 'text-success' : mediaFinal !== '-' && parseFloat(mediaFinal) >= 4.0 ? 'text-warning' : 'text-danger'}">${mediaFinal}</td>
-                        <td class="text-center">
-                            <span class="badge ${situacaoClass} px-3 py-2">${situacaoTexto}</span>
+                    <tr class="grade-row" data-aos="fade-left" data-aos-delay="${(disciplinaIndex * 50) + 200}">
+                        <td class="subject-name">${disciplina.nome_disciplina}</td>
+                        
+                        <!-- 1º Bimestre -->
+                        <td class="grade-cell">${this.formatarNotaGlass(notasDisciplina['1']?.nota_mensal)}</td>
+                        <td class="grade-cell">${this.formatarNotaGlass(notasDisciplina['1']?.nota_bimestral)}</td>
+                        <td class="average-cell">${this.formatarMediaGlass(notasDisciplina['1'])}</td>
+                        
+                        <!-- 2º Bimestre -->
+                        <td class="grade-cell">${this.formatarNotaGlass(notasDisciplina['2']?.nota_mensal)}</td>
+                        <td class="grade-cell">${this.formatarNotaGlass(notasDisciplina['2']?.nota_bimestral)}</td>
+                        <td class="average-cell">${this.formatarMediaGlass(notasDisciplina['2'])}</td>
+                        
+                        <!-- 3º Bimestre -->
+                        <td class="grade-cell">${this.formatarNotaGlass(notasDisciplina['3']?.nota_mensal)}</td>
+                        <td class="grade-cell">${this.formatarNotaGlass(notasDisciplina['3']?.nota_bimestral)}</td>
+                        <td class="average-cell">${this.formatarMediaGlass(notasDisciplina['3'])}</td>
+                        
+                        <!-- Média Final -->
+                        <td class="final-average">${this.formatarMediaFinalGlass(disciplina.media_anual)}</td>
+                        
+                        <!-- Situação -->
+                        <td class="status-cell">
+                            <span class="status-badge ${situacaoClass}">${situacao}</span>
                         </td>
                     </tr>
                 `;
@@ -1599,22 +1626,22 @@ const NotasModule = {
                         </table>
                     </div>
                     
-                    <!-- Legenda -->
-                    <div class="p-3 border-top bg-light">
-                        <div class="row">
-                            <div class="col-md-8">
-                                <h6 class="mb-2"><i class="fas fa-info-circle text-primary me-2"></i>Critérios de Avaliação:</h6>
-                                <div class="d-flex flex-wrap gap-3">
-                                    <span class="badge bg-success px-3 py-2">≥ 6.0 = Aprovado</span>
-                                    <span class="badge bg-warning text-dark px-3 py-2">4.0 - 5.9 = Recuperação</span>
-                                    <span class="badge bg-danger px-3 py-2">< 4.0 = Reprovado</span>
-                                </div>
+                    <!-- Legenda Glassmorphism -->
+                    <div class="legend-glass">
+                        <div class="legend-content">
+                            <div class="legend-title">
+                                <i class="fas fa-info-circle"></i>
+                                Critérios de Avaliação
                             </div>
-                            <div class="col-md-4 text-end">
-                                <small class="text-muted">
-                                    <i class="fas fa-calendar me-1"></i>Gerado em: ${new Date().toLocaleDateString('pt-BR')}
-                                </small>
+                            <div class="legend-badges">
+                                <span class="legend-badge approved">≥ 6.0 = Aprovado</span>
+                                <span class="legend-badge recovery">4.0 - 5.9 = Recuperação</span>
+                                <span class="legend-badge failed">< 4.0 = Reprovado</span>
                             </div>
+                        </div>
+                        <div class="generation-info">
+                            <i class="fas fa-calendar-alt"></i>
+                            Gerado em: ${new Date().toLocaleDateString('pt-BR')}
                         </div>
                     </div>
                 </div>
@@ -1622,17 +1649,17 @@ const NotasModule = {
             
             // Adicionar quebra de página entre alunos (exceto no último)
             if (index < boletimData.boletim.length - 1) {
-                html += '<div style="page-break-after: always;"></div>';
+                html += '<div class="page-break"></div>';
             }
         });
         
         html += `
                     </div>
-                    <div class="modal-footer bg-white border-top">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <div class="modal-footer glass-footer">
+                        <button type="button" class="btn glass-btn secondary" data-bs-dismiss="modal">
                             <i class="fas fa-times me-2"></i>Fechar
                         </button>
-                        <button type="button" class="btn btn-primary" onclick="window.print()">
+                        <button type="button" class="btn glass-btn primary" onclick="window.print()">
                             <i class="fas fa-print me-2"></i>Imprimir Boletim
                         </button>
                     </div>
@@ -1642,12 +1669,17 @@ const NotasModule = {
         
         modal.innerHTML = html;
         
-        // Adicionar estilos específicos para impressão
-        this.adicionarEstilosImpressao();
+        // Adicionar estilos glassmorphism
+        this.adicionarEstilosGlassmorphism();
         
         // Mostrar modal
         const bsModal = new bootstrap.Modal(modal);
         bsModal.show();
+        
+        // Inicializar animações AOS se disponível
+        if (typeof AOS !== 'undefined') {
+            AOS.refresh();
+        }
     },
 
     // Formatar nota para exibição no boletim
@@ -3578,6 +3610,776 @@ const NotasModule = {
             } else if (typeof this.elements.modalNota.hide === 'function') {
                 this.elements.modalNota.hide();
             }
+        }
+    },
+
+    // Organizar notas por bimestre para exibição detalhada
+    organizarNotasPorBimestre: function(aluno) {
+        const notasPorBimestre = {};
+        
+        // Se o aluno já tem disciplinas com notas organizadas
+        if (aluno.disciplinas && Array.isArray(aluno.disciplinas)) {
+            aluno.disciplinas.forEach(disciplina => {
+                const nomeDisciplina = disciplina.nome_disciplina || disciplina.disciplina || 'Disciplina';
+                notasPorBimestre[nomeDisciplina] = {};
+                
+                // Organizar notas por bimestre se existirem
+                if (disciplina.notas_bimestrais) {
+                    for (let bimestre = 1; bimestre <= 4; bimestre++) {
+                        const notaBimestre = disciplina.notas_bimestrais[bimestre];
+                        if (notaBimestre) {
+                            notasPorBimestre[nomeDisciplina][bimestre] = {
+                                nota_mensal: notaBimestre.nota_mensal || null,
+                                nota_bimestral: notaBimestre.nota_bimestral || null,
+                                nota_recuperacao: notaBimestre.recuperacao || null,
+                                media: notaBimestre.media || null
+                            };
+                        }
+                    }
+                }
+                
+                // Se não tem notas_bimestrais, tentar usar estrutura alternativa
+                if (!disciplina.notas_bimestrais && disciplina.notas) {
+                    disciplina.notas.forEach(nota => {
+                        const bimestre = nota.bimestre;
+                        if (bimestre) {
+                            notasPorBimestre[nomeDisciplina][bimestre] = {
+                                nota_mensal: nota.nota_mensal || null,
+                                nota_bimestral: nota.nota_bimestral || null,
+                                nota_recuperacao: nota.recuperacao || null,
+                                media: nota.media || null
+                            };
+                        }
+                    });
+                }
+            });
+        }
+        
+        return notasPorBimestre;
+    },
+
+    // Formatar nota para exibição glassmorphism
+    formatarNotaGlass: function(nota) {
+        if (nota === null || nota === undefined || nota === '') {
+            return '<span class="grade-empty">-</span>';
+        }
+        
+        const notaNum = parseFloat(nota);
+        if (isNaN(notaNum)) {
+            return '<span class="grade-empty">-</span>';
+        }
+        
+        // Determinar classe baseada no valor
+        let classe = 'grade-good';
+        if (notaNum >= 6.0) {
+            classe = 'grade-excellent';
+        } else if (notaNum >= 4.0) {
+            classe = 'grade-warning';
+        } else {
+            classe = 'grade-danger';
+        }
+        
+        return `<span class="grade-value ${classe}">${notaNum.toFixed(1)}</span>`;
+    },
+
+    // Formatar média para exibição glassmorphism
+    formatarMediaGlass: function(notaBimestre) {
+        if (!notaBimestre) {
+            return '<span class="average-empty">-</span>';
+        }
+        
+        const mensal = parseFloat(notaBimestre.nota_mensal) || 0;
+        const bimestral = parseFloat(notaBimestre.nota_bimestral) || 0;
+        
+        if (mensal === 0 && bimestral === 0) {
+            return '<span class="average-empty">-</span>';
+        }
+        
+        let media = 0;
+        if (mensal > 0 && bimestral > 0) {
+            media = (mensal + bimestral) / 2;
+        } else if (mensal > 0) {
+            media = mensal;
+        } else if (bimestral > 0) {
+            media = bimestral;
+        }
+        
+        // Determinar classe baseada no valor
+        let classe = 'average-good';
+        if (media >= 6.0) {
+            classe = 'average-excellent';
+        } else if (media >= 4.0) {
+            classe = 'average-warning';
+        } else {
+            classe = 'average-danger';
+        }
+        
+        return `<span class="average-value ${classe}">${media.toFixed(1)}</span>`;
+    },
+
+    // Formatar média final para exibição glassmorphism
+    formatarMediaFinalGlass: function(mediaFinal) {
+        if (mediaFinal === null || mediaFinal === undefined || mediaFinal === '') {
+            return '<span class="final-empty">-</span>';
+        }
+        
+        const media = parseFloat(mediaFinal);
+        if (isNaN(media)) {
+            return '<span class="final-empty">-</span>';
+        }
+        
+        // Determinar classe baseada no valor
+        let classe = 'final-good';
+        if (media >= 6.0) {
+            classe = 'final-excellent';
+        } else if (media >= 4.0) {
+            classe = 'final-warning';
+        } else {
+            classe = 'final-danger';
+        }
+        
+        return `<span class="final-value ${classe}">${media.toFixed(1)}</span>`;
+    },
+
+    // Adicionar estilos glassmorphism modernos
+    adicionarEstilosGlassmorphism: function() {
+        // Verificar se os estilos já foram adicionados
+        if (document.getElementById('glassmorphism-styles')) {
+            return;
+        }
+        
+        const estilos = document.createElement('style');
+        estilos.id = 'glassmorphism-styles';
+        estilos.textContent = `
+            /* Importar AOS para animações */
+            @import url('https://unpkg.com/aos@2.3.1/dist/aos.css');
+            
+            /* Variáveis CSS para glassmorphism */
+            :root {
+                --glass-bg: rgba(255, 255, 255, 0.25);
+                --glass-border: rgba(255, 255, 255, 0.18);
+                --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+                --glass-backdrop: blur(20px);
+                --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                --success-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+                --warning-gradient: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+                --danger-gradient: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+            }
+            
+            /* Modal glassmorphism */
+            .glass-modal {
+                background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+                backdrop-filter: blur(20px);
+                border: 1px solid rgba(255, 255, 255, 0.18);
+                border-radius: 20px;
+                box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            }
+            
+            .glass-header {
+                background: linear-gradient(135deg, rgba(103, 126, 234, 0.8), rgba(118, 75, 162, 0.8));
+                backdrop-filter: blur(20px);
+                border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+                border-radius: 20px 20px 0 0;
+                padding: 1.5rem 2rem;
+            }
+            
+            .glass-title {
+                color: white;
+                font-weight: 600;
+                font-size: 1.5rem;
+                text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            }
+            
+            .glass-close {
+                filter: brightness(0) invert(1);
+                opacity: 0.8;
+                transition: all 0.3s ease;
+            }
+            
+            .glass-close:hover {
+                opacity: 1;
+                transform: scale(1.1);
+            }
+            
+            .glass-body {
+                background: linear-gradient(135deg, 
+                    rgba(240, 248, 255, 0.9) 0%, 
+                    rgba(230, 240, 250, 0.8) 50%, 
+                    rgba(220, 235, 255, 0.9) 100%);
+                backdrop-filter: blur(20px);
+                padding: 2rem;
+                min-height: 80vh;
+            }
+            
+            /* Container do boletim */
+            .boletim-glass-container {
+                background: rgba(255, 255, 255, 0.95);
+                backdrop-filter: blur(30px);
+                border-radius: 24px;
+                border: 1px solid rgba(255, 255, 255, 0.3);
+                box-shadow: 
+                    0 20px 40px rgba(0, 0, 0, 0.1),
+                    0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+                margin-bottom: 3rem;
+                overflow: hidden;
+                transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+            }
+            
+            .boletim-glass-container:hover {
+                transform: translateY(-5px);
+                box-shadow: 
+                    0 30px 60px rgba(0, 0, 0, 0.15),
+                    0 0 0 1px rgba(255, 255, 255, 0.6) inset;
+            }
+            
+            /* Cabeçalho da escola */
+            .glass-header-section {
+                background: linear-gradient(135deg, 
+                    rgba(103, 126, 234, 0.95) 0%, 
+                    rgba(118, 75, 162, 0.95) 100%);
+                backdrop-filter: blur(20px);
+                padding: 2rem;
+                position: relative;
+                overflow: hidden;
+            }
+            
+            .glass-header-section::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="50" cy="50" r="1" fill="rgba(255,255,255,0.1)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+                opacity: 0.3;
+            }
+            
+            .school-info {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                position: relative;
+                z-index: 1;
+            }
+            
+            .school-logo .logo-circle {
+                width: 80px;
+                height: 80px;
+                background: rgba(255, 255, 255, 0.2);
+                backdrop-filter: blur(10px);
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border: 2px solid rgba(255, 255, 255, 0.3);
+                transition: all 0.3s ease;
+            }
+            
+            .school-logo .logo-circle:hover {
+                transform: rotate(360deg) scale(1.1);
+                background: rgba(255, 255, 255, 0.3);
+            }
+            
+            .school-logo i {
+                font-size: 2rem;
+                color: white;
+                text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            }
+            
+            .school-details {
+                flex: 1;
+                text-align: center;
+                color: white;
+            }
+            
+            .school-name {
+                font-size: 2rem;
+                font-weight: 700;
+                margin: 0;
+                text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+                letter-spacing: 1px;
+            }
+            
+            .school-subtitle {
+                font-size: 1rem;
+                margin: 0.5rem 0;
+                opacity: 0.9;
+                font-weight: 300;
+            }
+            
+            .document-title {
+                font-size: 1.5rem;
+                font-weight: 600;
+                margin: 0.5rem 0 0 0;
+                text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+            }
+            
+            .year-badge .glass-badge {
+                background: rgba(255, 255, 255, 0.2);
+                backdrop-filter: blur(10px);
+                border: 1px solid rgba(255, 255, 255, 0.3);
+                border-radius: 16px;
+                padding: 1rem 1.5rem;
+                text-align: center;
+                transition: all 0.3s ease;
+            }
+            
+            .year-badge .glass-badge:hover {
+                background: rgba(255, 255, 255, 0.3);
+                transform: scale(1.05);
+            }
+            
+            .badge-label {
+                display: block;
+                font-size: 0.9rem;
+                color: rgba(255, 255, 255, 0.9);
+                margin-bottom: 0.25rem;
+            }
+            
+            .badge-year {
+                display: block;
+                font-size: 1.5rem;
+                font-weight: 700;
+                color: white;
+                text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+            }
+            
+            /* Informações do aluno */
+            .student-info-glass {
+                background: linear-gradient(135deg, 
+                    rgba(255, 255, 255, 0.9) 0%, 
+                    rgba(240, 248, 255, 0.8) 100%);
+                backdrop-filter: blur(15px);
+                padding: 1.5rem 2rem;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+            }
+            
+            .info-row {
+                display: flex;
+                align-items: center;
+                margin-bottom: 0.75rem;
+            }
+            
+            .info-row:last-child {
+                margin-bottom: 0;
+            }
+            
+            .info-label {
+                font-weight: 600;
+                color: #4a5568;
+                margin-right: 1rem;
+                min-width: 120px;
+            }
+            
+            .info-value {
+                font-weight: 700;
+                color: #2d3748;
+                font-size: 1.1rem;
+            }
+            
+            .ra-badge {
+                background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+                color: white;
+                padding: 1rem 1.5rem;
+                border-radius: 16px;
+                text-align: center;
+                box-shadow: 0 4px 15px rgba(79, 172, 254, 0.4);
+                transition: all 0.3s ease;
+            }
+            
+            .ra-badge:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 6px 20px rgba(79, 172, 254, 0.6);
+            }
+            
+            .ra-label {
+                display: block;
+                font-size: 0.8rem;
+                opacity: 0.9;
+                margin-bottom: 0.25rem;
+            }
+            
+            .ra-number {
+                display: block;
+                font-size: 1.2rem;
+                font-weight: 700;
+            }
+            
+            /* Tabela glassmorphism */
+            .grades-table-container {
+                padding: 2rem;
+                overflow-x: auto;
+            }
+            
+            .glass-table {
+                width: 100%;
+                border-collapse: separate;
+                border-spacing: 0;
+                background: rgba(255, 255, 255, 0.7);
+                backdrop-filter: blur(15px);
+                border-radius: 20px;
+                overflow: hidden;
+                box-shadow: 
+                    0 10px 30px rgba(0, 0, 0, 0.1),
+                    0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+            }
+            
+            .table-header-glass th {
+                background: linear-gradient(135deg, 
+                    rgba(103, 126, 234, 0.9) 0%, 
+                    rgba(118, 75, 162, 0.9) 100%);
+                color: white;
+                padding: 1rem;
+                font-weight: 600;
+                text-align: center;
+                border: none;
+                position: relative;
+            }
+            
+            .bimester-labels th {
+                background: linear-gradient(135deg, 
+                    rgba(103, 126, 234, 0.8) 0%, 
+                    rgba(118, 75, 162, 0.8) 100%);
+                padding: 0.75rem;
+                font-size: 0.95rem;
+            }
+            
+            .grade-types th {
+                background: linear-gradient(135deg, 
+                    rgba(103, 126, 234, 0.7) 0%, 
+                    rgba(118, 75, 162, 0.7) 100%);
+                padding: 0.5rem;
+                font-size: 0.85rem;
+                font-weight: 500;
+            }
+            
+            .glass-tbody tr {
+                transition: all 0.3s ease;
+            }
+            
+            .glass-tbody tr:hover {
+                background: rgba(103, 126, 234, 0.1);
+                transform: scale(1.01);
+            }
+            
+            .glass-tbody td {
+                padding: 1rem 0.75rem;
+                text-align: center;
+                border: none;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+                transition: all 0.3s ease;
+            }
+            
+            .subject-name {
+                font-weight: 600;
+                color: #2d3748;
+                text-align: left !important;
+                padding-left: 1.5rem !important;
+                background: rgba(255, 255, 255, 0.5);
+            }
+            
+            /* Formatação das notas */
+            .grade-value, .average-value, .final-value {
+                display: inline-block;
+                padding: 0.5rem 1rem;
+                border-radius: 12px;
+                font-weight: 700;
+                font-size: 0.95rem;
+                transition: all 0.3s ease;
+                backdrop-filter: blur(10px);
+            }
+            
+            .grade-excellent, .average-excellent, .final-excellent {
+                background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+                color: white;
+                box-shadow: 0 4px 15px rgba(79, 172, 254, 0.4);
+            }
+            
+            .grade-warning, .average-warning, .final-warning {
+                background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+                color: white;
+                box-shadow: 0 4px 15px rgba(250, 112, 154, 0.4);
+            }
+            
+            .grade-danger, .average-danger, .final-danger {
+                background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+                color: white;
+                box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+            }
+            
+            .grade-empty, .average-empty, .final-empty {
+                color: #a0aec0;
+                font-style: italic;
+                font-weight: 400;
+            }
+            
+            /* Badges de situação */
+            .status-badge {
+                display: inline-block;
+                padding: 0.75rem 1.5rem;
+                border-radius: 20px;
+                font-weight: 600;
+                font-size: 0.9rem;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                transition: all 0.3s ease;
+                backdrop-filter: blur(10px);
+            }
+            
+            .status-approved {
+                background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+                color: white;
+                box-shadow: 0 4px 15px rgba(79, 172, 254, 0.4);
+            }
+            
+            .status-recovery {
+                background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+                color: white;
+                box-shadow: 0 4px 15px rgba(250, 112, 154, 0.4);
+            }
+            
+            .status-failed {
+                background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+                color: white;
+                box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+            }
+            
+            .status-badge:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+            }
+            
+            /* Legenda glassmorphism */
+            .legend-glass {
+                background: linear-gradient(135deg, 
+                    rgba(255, 255, 255, 0.9) 0%, 
+                    rgba(240, 248, 255, 0.8) 100%);
+                backdrop-filter: blur(15px);
+                border-top: 1px solid rgba(255, 255, 255, 0.3);
+                padding: 1.5rem 2rem;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            
+            .legend-title {
+                font-weight: 600;
+                color: #4a5568;
+                margin-bottom: 1rem;
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+            }
+            
+            .legend-badges {
+                display: flex;
+                gap: 1rem;
+                flex-wrap: wrap;
+            }
+            
+            .legend-badge {
+                padding: 0.5rem 1rem;
+                border-radius: 12px;
+                font-weight: 600;
+                font-size: 0.85rem;
+                backdrop-filter: blur(10px);
+                transition: all 0.3s ease;
+            }
+            
+            .legend-badge.approved {
+                background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+                color: white;
+            }
+            
+            .legend-badge.recovery {
+                background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+                color: white;
+            }
+            
+            .legend-badge.failed {
+                background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+                color: white;
+            }
+            
+            .generation-info {
+                color: #718096;
+                font-size: 0.9rem;
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+            }
+            
+            /* Footer glassmorphism */
+            .glass-footer {
+                background: linear-gradient(135deg, 
+                    rgba(255, 255, 255, 0.9) 0%, 
+                    rgba(240, 248, 255, 0.8) 100%);
+                backdrop-filter: blur(20px);
+                border-top: 1px solid rgba(255, 255, 255, 0.3);
+                border-radius: 0 0 20px 20px;
+                padding: 1.5rem 2rem;
+            }
+            
+            .glass-btn {
+                padding: 0.75rem 2rem;
+                border-radius: 16px;
+                font-weight: 600;
+                border: none;
+                transition: all 0.3s ease;
+                backdrop-filter: blur(10px);
+                position: relative;
+                overflow: hidden;
+            }
+            
+            .glass-btn.primary {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            }
+            
+            .glass-btn.secondary {
+                background: rgba(255, 255, 255, 0.7);
+                color: #4a5568;
+                border: 1px solid rgba(255, 255, 255, 0.3);
+            }
+            
+            .glass-btn:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+            }
+            
+            .glass-btn.primary:hover {
+                background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+            }
+            
+            .glass-btn.secondary:hover {
+                background: rgba(255, 255, 255, 0.9);
+            }
+            
+            /* Quebra de página */
+            .page-break {
+                page-break-after: always;
+                height: 0;
+                margin: 0;
+                padding: 0;
+            }
+            
+            /* Animações personalizadas */
+            @keyframes float {
+                0%, 100% { transform: translateY(0px); }
+                50% { transform: translateY(-10px); }
+            }
+            
+            @keyframes glow {
+                0%, 100% { box-shadow: 0 4px 15px rgba(79, 172, 254, 0.4); }
+                50% { box-shadow: 0 6px 25px rgba(79, 172, 254, 0.8); }
+            }
+            
+            .glass-table:hover {
+                animation: glow 2s ease-in-out infinite;
+            }
+            
+            /* Responsividade */
+            @media (max-width: 768px) {
+                .school-info {
+                    flex-direction: column;
+                    gap: 1rem;
+                }
+                
+                .student-info-glass {
+                    flex-direction: column;
+                    gap: 1rem;
+                }
+                
+                .legend-glass {
+                    flex-direction: column;
+                    gap: 1rem;
+                }
+                
+                .glass-table {
+                    font-size: 0.8rem;
+                }
+                
+                .grade-value, .average-value, .final-value {
+                    padding: 0.25rem 0.5rem;
+                    font-size: 0.8rem;
+                }
+            }
+            
+            /* Estilos para impressão */
+            @media print {
+                .glass-header, .glass-footer {
+                    display: none !important;
+                }
+                
+                .glass-body {
+                    background: white !important;
+                    padding: 0 !important;
+                }
+                
+                .boletim-glass-container {
+                    background: white !important;
+                    box-shadow: none !important;
+                    border: 2px solid #000 !important;
+                    page-break-inside: avoid;
+                    margin-bottom: 2cm !important;
+                }
+                
+                .glass-header-section {
+                    background: #667eea !important;
+                    -webkit-print-color-adjust: exact;
+                    print-color-adjust: exact;
+                }
+                
+                .glass-table {
+                    background: white !important;
+                    border: 1px solid #000 !important;
+                }
+                
+                .table-header-glass th,
+                .bimester-labels th,
+                .grade-types th {
+                    background: #667eea !important;
+                    color: white !important;
+                    -webkit-print-color-adjust: exact;
+                    print-color-adjust: exact;
+                    border: 1px solid #000 !important;
+                }
+                
+                .glass-tbody td {
+                    border: 1px solid #000 !important;
+                }
+                
+                .grade-value, .average-value, .final-value,
+                .status-badge, .legend-badge {
+                    -webkit-print-color-adjust: exact;
+                    print-color-adjust: exact;
+                }
+                
+                @page {
+                    size: A4;
+                    margin: 1cm;
+                }
+            }
+        `;
+        
+        document.head.appendChild(estilos);
+        
+        // Carregar AOS para animações se não estiver carregado
+        if (typeof AOS === 'undefined') {
+            const aosScript = document.createElement('script');
+            aosScript.src = 'https://unpkg.com/aos@2.3.1/dist/aos.js';
+            aosScript.onload = function() {
+                AOS.init({
+                    duration: 800,
+                    easing: 'ease-out-cubic',
+                    once: true
+                });
+            };
+            document.head.appendChild(aosScript);
         }
     }
 };
