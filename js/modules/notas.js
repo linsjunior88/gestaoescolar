@@ -1384,7 +1384,11 @@ const NotasModule = {
     // Calcular médias de todos os alunos
     calcularMedias: async function() {
         try {
-            await ConfigModule.fetchApi('/calcular-medias', {
+            // Mostrar loading
+            this.mostrarInfo("Calculando médias... Por favor, aguarde.");
+            
+            // Chamar o endpoint correto
+            await ConfigModule.fetchApi('/api/calcular-medias', {
                 method: 'POST'
             });
             
@@ -1392,9 +1396,170 @@ const NotasModule = {
             
             // Recarregar notas para mostrar as médias atualizadas
             this.filtrarNotas();
+            
+            // Mostrar boletim de médias
+            this.mostrarBoletimMedias();
+            
         } catch (error) {
             console.error("Erro ao calcular médias:", error);
             this.mostrarErro("Não foi possível calcular as médias. Tente novamente mais tarde.");
+        }
+    },
+
+    // Mostrar boletim de médias
+    mostrarBoletimMedias: async function() {
+        try {
+            const anoAtual = new Date().getFullYear();
+            const response = await ConfigModule.fetchApi(`/api/boletim-medias?ano=${anoAtual}`);
+            
+            if (response && response.boletim) {
+                this.exibirBoletimModal(response);
+            }
+        } catch (error) {
+            console.error("Erro ao carregar boletim:", error);
+            this.mostrarErro("Não foi possível carregar o boletim de médias.");
+        }
+    },
+
+    // Exibir modal com boletim de médias
+    exibirBoletimModal: function(dadosBoletim) {
+        // Criar modal se não existir
+        let modal = document.getElementById('modalBoletimMedias');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'modalBoletimMedias';
+            modal.className = 'modal fade';
+            modal.innerHTML = `
+                <div class="modal-dialog modal-xl">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Boletim de Médias - Ano ${dadosBoletim.ano}</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div id="conteudoBoletim"></div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-primary" onclick="NotasModule.imprimirBoletim()">
+                                <i class="fas fa-print"></i> Imprimir
+                            </button>
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        // Gerar conteúdo do boletim
+        const conteudoBoletim = document.getElementById('conteudoBoletim');
+        let html = `
+            <div class="text-center mb-4">
+                <h4>Boletim Escolar - ${dadosBoletim.ano}</h4>
+                <p class="text-muted">Total de alunos: ${dadosBoletim.total_alunos}</p>
+            </div>
+        `;
+
+        dadosBoletim.boletim.forEach(aluno => {
+            html += `
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-user me-2"></i>
+                            ${aluno.nome_aluno} - Turma: ${aluno.serie}
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Disciplina</th>
+                                        <th>1º Bim</th>
+                                        <th>2º Bim</th>
+                                        <th>3º Bim</th>
+                                        <th>4º Bim</th>
+                                        <th>Média Final</th>
+                                        <th>Situação</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+            `;
+
+            aluno.disciplinas.forEach(disciplina => {
+                const situacaoClass = disciplina.situacao === 'Aprovado' ? 'bg-success' : 
+                                     disciplina.situacao === 'Reprovado' ? 'bg-danger' : 'bg-warning';
+                
+                html += `
+                    <tr>
+                        <td><strong>${disciplina.nome_disciplina}</strong></td>
+                        <td>${this.formatarNotaBimestre(disciplina.notas_bimestrais[1])}</td>
+                        <td>${this.formatarNotaBimestre(disciplina.notas_bimestrais[2])}</td>
+                        <td>${this.formatarNotaBimestre(disciplina.notas_bimestrais[3])}</td>
+                        <td>${this.formatarNotaBimestre(disciplina.notas_bimestrais[4])}</td>
+                        <td><strong>${disciplina.media_anual}</strong></td>
+                        <td><span class="badge ${situacaoClass}">${disciplina.situacao}</span></td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        conteudoBoletim.innerHTML = html;
+
+        // Mostrar modal
+        const bootstrapModal = new bootstrap.Modal(modal);
+        bootstrapModal.show();
+    },
+
+    // Formatar nota do bimestre para exibição
+    formatarNotaBimestre: function(notaBimestre) {
+        if (!notaBimestre || notaBimestre.media_bimestral === null) {
+            return '<span class="text-muted">-</span>';
+        }
+        
+        let html = `<strong>${notaBimestre.media_bimestral}</strong>`;
+        
+        if (notaBimestre.recuperacao) {
+            html += `<br><small class="text-info">Rec: ${notaBimestre.recuperacao}</small>`;
+        }
+        
+        return html;
+    },
+
+    // Imprimir boletim
+    imprimirBoletim: function() {
+        const conteudo = document.getElementById('conteudoBoletim');
+        if (conteudo) {
+            const janelaImpressao = window.open('', '_blank');
+            janelaImpressao.document.write(`
+                <html>
+                    <head>
+                        <title>Boletim de Médias</title>
+                        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+                        <style>
+                            @media print {
+                                .card { page-break-inside: avoid; }
+                                .table { font-size: 12px; }
+                            }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="container-fluid">
+                            ${conteudo.innerHTML}
+                        </div>
+                    </body>
+                </html>
+            `);
+            janelaImpressao.document.close();
+            janelaImpressao.print();
         }
     },
     
@@ -2644,6 +2809,51 @@ const NotasModule = {
             // Se não encontrar o elemento, mostrar alerta nativo
             console.warn("Elemento #conteudo-notas não encontrado, usando alert nativo");
             alert(`Erro: ${mensagem}`);
+        }
+    },
+
+    // Mostrar mensagem informativa
+    mostrarInfo: function(mensagem) {
+        console.log("Info:", mensagem);
+        const alertContainer = document.createElement('div');
+        alertContainer.className = 'alert alert-info alert-dismissible fade show';
+        alertContainer.role = 'alert';
+        alertContainer.innerHTML = `
+            <div class="d-flex align-items-center">
+                <i class="fas fa-info-circle me-2" style="font-size: 1.25rem;"></i>
+                <div>${mensagem}</div>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+        `;
+        
+        const conteudoNotas = document.querySelector('#conteudo-notas');
+        if (conteudoNotas) {
+            // Verificar se já existe um alerta informativo e remover
+            const alertasInfoExistentes = conteudoNotas.querySelectorAll('.alert-info');
+            alertasInfoExistentes.forEach(alerta => alerta.remove());
+            
+            // Inserir o novo alerta
+            conteudoNotas.insertBefore(alertContainer, conteudoNotas.firstChild);
+            
+            // Adicionar efeito de destaque
+            setTimeout(() => {
+                alertContainer.classList.add('alerta-destacado');
+            }, 10);
+            
+            // Auto-remover após 5 segundos
+            setTimeout(() => {
+                alertContainer.classList.remove('alerta-destacado');
+                alertContainer.classList.add('fade-out');
+                
+                // Remover após a animação terminar
+                setTimeout(() => {
+                    if (alertContainer.parentNode) {
+                        alertContainer.remove();
+                    }
+                }, 500);
+            }, 5000);
+        } else {
+            console.warn("Elemento #conteudo-notas não encontrado para mostrar mensagem informativa");
         }
     },
     

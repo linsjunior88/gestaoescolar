@@ -4964,6 +4964,195 @@ def resumo_mensal_calendario(
 # Chamar a função para garantir que a tabela do calendário existe
 criar_tabela_calendario()
 
+# Endpoint para calcular médias de todas as notas
+@app.post("/api/calcular-medias", status_code=status.HTTP_200_OK)
+def calcular_medias():
+    """Recalcula as médias finais de todas as notas"""
+    try:
+        # Atualizar todas as médias usando a fórmula correta
+        query = """
+            UPDATE nota
+            SET media = CASE
+                WHEN nota_mensal IS NOT NULL AND nota_bimestral IS NOT NULL THEN
+                    CASE 
+                        WHEN recuperacao IS NOT NULL AND recuperacao > 0 THEN
+                            ROUND(((nota_mensal + nota_bimestral) / 2 + recuperacao) / 2, 1)
+                        ELSE
+                            ROUND((nota_mensal + nota_bimestral) / 2, 1)
+                    END
+                WHEN nota_mensal IS NOT NULL THEN
+                    CASE 
+                        WHEN recuperacao IS NOT NULL AND recuperacao > 0 THEN
+                            ROUND((nota_mensal + recuperacao) / 2, 1)
+                        ELSE
+                            nota_mensal
+                    END
+                WHEN nota_bimestral IS NOT NULL THEN
+                    CASE 
+                        WHEN recuperacao IS NOT NULL AND recuperacao > 0 THEN
+                            ROUND((nota_bimestral + recuperacao) / 2, 1)
+                        ELSE
+                            nota_bimestral
+                    END
+                ELSE
+                    0
+            END
+            WHERE nota_mensal IS NOT NULL OR nota_bimestral IS NOT NULL
+        """
+        
+        result = execute_query(query, fetch=False)
+        return {"message": "Médias recalculadas com sucesso!"}
+        
+    except Exception as e:
+        print(f"ERRO ao calcular médias: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao calcular médias: {str(e)}"
+        )
+
+# Endpoint para gerar boletim de médias
+@app.get("/api/boletim-medias")
+def gerar_boletim_medias(
+    ano: int = Query(..., description="Ano letivo"),
+    turma_id: Optional[str] = Query(None, description="ID da turma (opcional)"),
+    disciplina_id: Optional[str] = Query(None, description="ID da disciplina (opcional)"),
+    aluno_id: Optional[str] = Query(None, description="ID do aluno (opcional)")
+):
+    """Gera boletim com médias bimestrais e situação final dos alunos"""
+    try:
+        # Query base para buscar notas com informações completas
+        base_query = """
+            SELECT 
+                n.id_aluno,
+                a.nome_aluno,
+                n.id_disciplina,
+                d.nome_disciplina,
+                n.id_turma,
+                t.serie,
+                n.bimestre,
+                n.nota_mensal,
+                n.nota_bimestral,
+                n.recuperacao,
+                n.media,
+                n.ano
+            FROM nota n
+            JOIN aluno a ON n.id_aluno = a.id_aluno
+            JOIN disciplina d ON n.id_disciplina = d.id_disciplina
+            JOIN turma t ON n.id_turma = t.id_turma
+            WHERE n.ano = %s
+        """
+        
+        params = [ano]
+        
+        # Adicionar filtros opcionais
+        if turma_id:
+            base_query += " AND n.id_turma = %s"
+            params.append(turma_id)
+        
+        if disciplina_id:
+            base_query += " AND n.id_disciplina = %s"
+            params.append(disciplina_id)
+        
+        if aluno_id:
+            base_query += " AND n.id_aluno = %s"
+            params.append(aluno_id)
+        
+        base_query += " ORDER BY a.nome_aluno, d.nome_disciplina, n.bimestre"
+        
+        notas = execute_query(base_query, params)
+        
+        # Organizar dados por aluno e disciplina
+        boletim = {}
+        
+        for nota in notas:
+            aluno_id = nota['id_aluno']
+            disciplina_id = nota['id_disciplina']
+            
+            # Inicializar estrutura do aluno se não existir
+            if aluno_id not in boletim:
+                boletim[aluno_id] = {
+                    'id_aluno': aluno_id,
+                    'nome_aluno': nota['nome_aluno'],
+                    'id_turma': nota['id_turma'],
+                    'serie': nota['serie'],
+                    'disciplinas': {}
+                }
+            
+            # Inicializar disciplina se não existir
+            if disciplina_id not in boletim[aluno_id]['disciplinas']:
+                boletim[aluno_id]['disciplinas'][disciplina_id] = {
+                    'id_disciplina': disciplina_id,
+                    'nome_disciplina': nota['nome_disciplina'],
+                    'notas_bimestrais': {},
+                    'media_anual': 0,
+                    'situacao': 'Sem notas'
+                }
+            
+            # Adicionar nota do bimestre
+            bimestre = nota['bimestre']
+            boletim[aluno_id]['disciplinas'][disciplina_id]['notas_bimestrais'][bimestre] = {
+                'nota_mensal': nota['nota_mensal'],
+                'nota_bimestral': nota['nota_bimestral'],
+                'recuperacao': nota['recuperacao'],
+                'media_bimestral': nota['media']
+            }
+        
+        # Calcular médias anuais e situações
+        for aluno_id in boletim:
+            for disciplina_id in boletim[aluno_id]['disciplinas']:
+                disciplina = boletim[aluno_id]['disciplinas'][disciplina_id]
+                notas_bimestrais = disciplina['notas_bimestrais']
+                
+                # Calcular média anual (soma das médias bimestrais / 4)
+                medias_validas = []
+                for bim in range(1, 5):  # Bimestres 1 a 4
+                    if bim in notas_bimestrais and notas_bimestrais[bim]['media_bimestral'] is not None:
+                        medias_validas.append(float(notas_bimestrais[bim]['media_bimestral']))
+                
+                if medias_validas:
+                    # Se tem menos de 4 bimestres, calcular com os disponíveis
+                    if len(medias_validas) == 4:
+                        media_anual = sum(medias_validas) / 4
+                    else:
+                        # Estimar média anual com base nos bimestres disponíveis
+                        media_anual = sum(medias_validas) / len(medias_validas)
+                    
+                    disciplina['media_anual'] = round(media_anual, 1)
+                    
+                    # Determinar situação
+                    if media_anual >= 6.0:
+                        disciplina['situacao'] = 'Aprovado'
+                    elif media_anual >= 4.0:
+                        disciplina['situacao'] = 'Recuperação Final'
+                    else:
+                        disciplina['situacao'] = 'Reprovado'
+                else:
+                    disciplina['media_anual'] = 0
+                    disciplina['situacao'] = 'Sem notas'
+        
+        # Converter para lista para facilitar o uso no frontend
+        resultado = []
+        for aluno_id, dados_aluno in boletim.items():
+            disciplinas_lista = []
+            for disciplina_id, dados_disciplina in dados_aluno['disciplinas'].items():
+                disciplinas_lista.append(dados_disciplina)
+            
+            dados_aluno['disciplinas'] = disciplinas_lista
+            resultado.append(dados_aluno)
+        
+        return {
+            'ano': ano,
+            'total_alunos': len(resultado),
+            'boletim': resultado
+        }
+        
+    except Exception as e:
+        print(f"ERRO ao gerar boletim: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao gerar boletim: {str(e)}"
+        )
+
 # Inicialização do servidor (quando executado diretamente)
 if __name__ == "__main__":
     uvicorn.run("simplified_api:app", host="0.0.0.0", port=8000, reload=True) 
