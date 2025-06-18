@@ -1799,16 +1799,16 @@ const NotasModule = {
         
         try {
             // Adicionar estilos glassmorphism
-            console.log("🎨 Pulando estilos glassmorphism temporariamente");
-            // this.adicionarEstilosGlassmorphism();
+            console.log("🎨 Adicionando estilos glassmorphism");
+            this.adicionarEstilosGlassmorphism();
             
             // Adicionar estilos específicos para impressão
-            console.log("🖨️ Pulando estilos de impressão temporariamente");
-            // this.adicionarEstilosImpressao();
+            console.log("🖨️ Adicionando estilos de impressão");
+            this.adicionarEstilosImpressao();
             
             // Carregar CSS dedicado para boletim profissional
-            console.log("📄 Pulando CSS profissional temporariamente");
-            // this.carregarCSSBoletimProfissional();
+            console.log("📄 Carregando CSS profissional");
+            this.carregarCSSBoletimProfissional();
             
         } catch (styleError) {
             console.error("⚠️ Erro ao aplicar estilos:", styleError);
@@ -4382,15 +4382,39 @@ const NotasModule = {
                 body {
                     background: white !important;
                     font-family: Arial, sans-serif !important;
-                    font-size: 12px !important;
-                    line-height: 1.4 !important;
+                    font-size: 11px !important;
+                    line-height: 1.3 !important;
                     margin: 0 !important;
                     padding: 0 !important;
+                    width: 100% !important;
+                    height: 100% !important;
                 }
                 
                 @page {
                     size: A4 landscape !important;
-                    margin: 0.8cm !important;
+                    margin: 0.5cm !important;
+                }
+                
+                /* Modal para impressão */
+                .modal-dialog {
+                    max-width: 100% !important;
+                    width: 100% !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                }
+                
+                .modal-content {
+                    border: none !important;
+                    border-radius: 0 !important;
+                    width: 100% !important;
+                    height: 100% !important;
+                }
+                
+                .modal-body {
+                    padding: 0 !important;
+                    margin: 0 !important;
+                    width: 100% !important;
+                    height: 100% !important;
                 }
                 
                 /* Transformar glassmorphism em layout profissional para impressão */
@@ -4404,7 +4428,8 @@ const NotasModule = {
                     margin: 0 !important;
                     padding: 0 !important;
                     width: 100% !important;
-                    max-width: none !important;
+                    max-width: 100% !important;
+                    height: auto !important;
                 }
                 
                 .glass-header-section {
@@ -4412,8 +4437,10 @@ const NotasModule = {
                     backdrop-filter: none !important;
                     border-bottom: 2px solid #000 !important;
                     border-radius: 0 !important;
-                    padding: 15px !important;
+                    padding: 8px 12px !important;
                     margin: 0 !important;
+                    width: 100% !important;
+                    box-sizing: border-box !important;
                 }
                 
                 .glass-header-section::before {
@@ -4425,26 +4452,27 @@ const NotasModule = {
                     align-items: center !important;
                     justify-content: space-between !important;
                     flex-wrap: nowrap !important;
+                    width: 100% !important;
                 }
                 
                 .school-logo .logo-circle {
-                    width: 50px !important;
-                    height: 50px !important;
+                    width: 40px !important;
+                    height: 40px !important;
                     background: white !important;
                     backdrop-filter: none !important;
                     border: 2px solid #000 !important;
                     border-radius: 50% !important;
-                    margin-right: 15px !important;
+                    margin-right: 10px !important;
                 }
                 
                 .school-logo i {
-                    font-size: 20px !important;
+                    font-size: 16px !important;
                     color: #000 !important;
                     text-shadow: none !important;
                 }
                 
                 .school-name {
-                    font-size: 18px !important;
+                    font-size: 16px !important;
                     font-weight: bold !important;
                     text-shadow: none !important;
                     color: #000 !important;
@@ -4453,18 +4481,18 @@ const NotasModule = {
                 }
                 
                 .school-subtitle {
-                    font-size: 12px !important;
+                    font-size: 10px !important;
                     color: #000 !important;
                     text-transform: uppercase !important;
-                    margin: 2px 0 !important;
+                    margin: 1px 0 !important;
                 }
                 
                 .document-title {
-                    font-size: 14px !important;
+                    font-size: 12px !important;
                     font-weight: bold !important;
                     color: #000 !important;
                     text-shadow: none !important;
-                    margin: 2px 0 !important;
+                    margin: 1px 0 !important;
                 }
                 
                 .year-badge .glass-badge {
@@ -4472,17 +4500,17 @@ const NotasModule = {
                     backdrop-filter: none !important;
                     border: 2px solid #000 !important;
                     border-radius: 0 !important;
-                    padding: 8px 12px !important;
+                    padding: 4px 8px !important;
                 }
                 
                 .badge-label {
-                    font-size: 9px !important;
+                    font-size: 8px !important;
                     color: #000 !important;
-                    margin-bottom: 2px !important;
+                    margin-bottom: 1px !important;
                 }
                 
                 .badge-year {
-                    font-size: 16px !important;
+                    font-size: 14px !important;
                     font-weight: bold !important;
                     color: #000 !important;
                     text-shadow: none !important;
@@ -4492,25 +4520,27 @@ const NotasModule = {
                     background: #f8f9fa !important;
                     backdrop-filter: none !important;
                     border-bottom: 1px solid #000 !important;
-                    padding: 10px 15px !important;
+                    padding: 6px 12px !important;
                     display: block !important;
+                    width: 100% !important;
+                    box-sizing: border-box !important;
                 }
                 
                 .student-details {
                     width: 100% !important;
-                    margin-bottom: 8px !important;
+                    margin-bottom: 4px !important;
                 }
                 
                 .info-row {
                     display: inline-block !important;
-                    margin-right: 30px !important;
+                    margin-right: 25px !important;
                     margin-bottom: 0 !important;
                 }
                 
                 .info-label {
                     font-weight: bold !important;
                     color: #000 !important;
-                    margin-right: 8px !important;
+                    margin-right: 6px !important;
                     min-width: auto !important;
                 }
                 
@@ -4523,18 +4553,19 @@ const NotasModule = {
                 .ra-badge {
                     background: #007bff !important;
                     color: white !important;
-                    border-radius: 4px !important;
-                    padding: 4px 8px !important;
+                    border-radius: 3px !important;
+                    padding: 3px 6px !important;
                     box-shadow: none !important;
                     display: inline-block !important;
                     float: right !important;
-                    margin-top: -25px !important;
+                    margin-top: -20px !important;
                 }
                 
                 .grades-table-container {
                     padding: 0 !important;
                     overflow: visible !important;
                     margin: 0 !important;
+                    width: 100% !important;
                 }
                 
                 .glass-table {
@@ -4544,19 +4575,22 @@ const NotasModule = {
                     border-radius: 0 !important;
                     box-shadow: none !important;
                     border-collapse: collapse !important;
-                    font-size: 9px !important;
+                    font-size: 8px !important;
                     width: 100% !important;
                     margin: 0 !important;
+                    table-layout: fixed !important;
                 }
                 
                 .glass-table th,
                 .glass-table td {
                     border: 1px solid #000 !important;
-                    padding: 4px 2px !important;
+                    padding: 2px 1px !important;
                     background: transparent !important;
                     backdrop-filter: none !important;
                     text-align: center !important;
                     vertical-align: middle !important;
+                    overflow: hidden !important;
+                    word-wrap: break-word !important;
                 }
                 
                 .table-header-glass th,
@@ -4566,7 +4600,7 @@ const NotasModule = {
                     color: #000 !important;
                     font-weight: bold !important;
                     text-shadow: none !important;
-                    font-size: 8px !important;
+                    font-size: 7px !important;
                 }
                 
                 .subject-name {
@@ -4589,6 +4623,9 @@ const NotasModule = {
                     text-shadow: none !important;
                     box-shadow: none !important;
                     font-weight: bold !important;
+                    -webkit-print-color-adjust: exact !important;
+                    print-color-adjust: exact !important;
+                    color-adjust: exact !important;
                 }
                 
                 .nota-recuperacao {
@@ -4601,6 +4638,9 @@ const NotasModule = {
                     text-shadow: none !important;
                     box-shadow: none !important;
                     font-weight: bold !important;
+                    -webkit-print-color-adjust: exact !important;
+                    print-color-adjust: exact !important;
+                    color-adjust: exact !important;
                 }
                 
                 .nota-reprovado {
@@ -4613,6 +4653,18 @@ const NotasModule = {
                     text-shadow: none !important;
                     box-shadow: none !important;
                     font-weight: bold !important;
+                    -webkit-print-color-adjust: exact !important;
+                    print-color-adjust: exact !important;
+                    color-adjust: exact !important;
+                }
+                
+                /* Classes para notas na tabela */
+                .grade-value,
+                .average-value,
+                .final-value {
+                    -webkit-print-color-adjust: exact !important;
+                    print-color-adjust: exact !important;
+                    color-adjust: exact !important;
                 }
                 
                 .status-approved {
@@ -4709,10 +4761,36 @@ const NotasModule = {
                 /* Forçar quebras de página adequadas */
                 .boletim-glass-container {
                     page-break-after: always !important;
+                    page-break-inside: avoid !important;
                 }
                 
                 .boletim-glass-container:last-child {
                     page-break-after: avoid !important;
+                }
+                
+                /* Evitar quebras inadequadas */
+                .glass-table, .grades-table-container {
+                    page-break-inside: avoid !important;
+                }
+                
+                /* Garantir que o rodapé não seja órfão */
+                .legend-glass {
+                    orphans: 3 !important;
+                    widows: 3 !important;
+                }
+                
+                /* Limpar estilos que podem causar problemas na impressão */
+                * {
+                    box-shadow: none !important;
+                    text-shadow: none !important;
+                    backdrop-filter: none !important;
+                    filter: none !important;
+                }
+                
+                /* Garantir que texto não apareça duplicado */
+                .modal-header, .modal-footer, .modal-backdrop {
+                    display: none !important;
+                    visibility: hidden !important;
                 }
             }
         `;
