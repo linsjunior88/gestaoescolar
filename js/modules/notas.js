@@ -68,42 +68,44 @@ const NotasModule = {
     
     // Inicializar módulo
     init: async function() {
-        console.log("Inicializando módulo de notas");
-        
-        // TEMPORARIAMENTE DESABILITADO - estava causando problemas com os filtros
-        // Verificar e reconstruir a estrutura HTML se necessário
-        // const integridadeOk = this.verificarIntegridadeHTML();
-        // if (!integridadeOk) {
-        //     this.reconstruirInterfaceNotas();
-        // }
-        
-        this.cachearElementos();
-        this.adicionarEventListeners();
-        
         try {
-            console.log("Iniciando carregamento de turmas...");
-            await this.carregarTurmas();
-            console.log("Turmas carregadas com sucesso");
+            console.log("🎯 Inicializando módulo de notas...");
             
-            // Definir ano padrão no filtro e no lançamento em massa
-            const anoAtual = new Date().getFullYear();
-            if (this.elements.filtroAno) {
-                this.elements.filtroAno.value = anoAtual;
-            }
-            if (this.elements.massaAno) {
-                this.elements.massaAno.value = anoAtual;
-            }
+            // Reconstruir interface primeiro
+            this.reconstruirInterface();
             
-            // Inicializar cabecalhos de ordenação
-            this.inicializarCabecalhosOrdenacao();
+            // Aguardar um pouco para o DOM se estabilizar
+            await new Promise(resolve => setTimeout(resolve, 100));
             
-            // Adicionar estilos CSS para destaques
+            // Cachear elementos após reconstruir
+            this.cachearElementos();
+            
+            // Adicionar estilos CSS
             this.adicionarEstilosCSS();
             
-            console.log("Módulo de notas inicializado com sucesso");
+            // Adicionar event listeners
+            this.adicionarEventListeners();
+            
+            // Aguardar mais um pouco e revalidar campo frequência se necessário
+            setTimeout(() => {
+                if (!this.elements.inputFrequencia) {
+                    console.warn("🔄 Campo frequência não encontrado na inicialização, revalidando...");
+                    this.revalidarCampoFrequencia();
+                }
+            }, 200);
+            
+            // Carregar dados iniciais
+            await this.carregarTurmas();
+            await this.carregarDisciplinas();
+            
+            // Carregar notas iniciais
+            this.carregarNotas();
+            
+            console.log("✅ Módulo de notas inicializado com sucesso!");
+            
         } catch (error) {
-            console.error("Erro durante a inicialização do módulo de notas:", error);
-            this.mostrarErro("Ocorreu um erro ao inicializar o módulo de notas. Por favor, recarregue a página.");
+            console.error("❌ Erro ao inicializar módulo de notas:", error);
+            this.mostrarErro("Erro ao inicializar o módulo de notas. Recarregue a página.");
         }
     },
     
@@ -395,31 +397,14 @@ const NotasModule = {
                                 <div class="table-responsive">
                                     <table class="table table-striped table-hover" id="tabela-grade-notas">
                                         <thead>
-                                            <tr class="table-header-glass">
-                                                <th rowspan="3" class="subject-header">Disciplina</th>
-                                                <th colspan="12" class="bimesters-header">Bimestres</th>
-                                                <th rowspan="3" class="final-grade-header">Média Final</th>
-                                                <th rowspan="3" class="status-header">Situação</th>
-                                            </tr>
-                                            <tr class="bimester-labels">
-                                                <th colspan="3" class="bimester-group">1º Bimestre</th>
-                                                <th colspan="3" class="bimester-group">2º Bimestre</th>
-                                                <th colspan="3" class="bimester-group">3º Bimestre</th>
-                                                <th colspan="3" class="bimester-group">4º Bimestre</th>
-                                            </tr>
-                                            <tr class="grade-types">
-                                                <th class="grade-type">Mensal</th>
-                                                <th class="grade-type">Bimestral</th>
-                                                <th class="grade-type">Média</th>
-                                                <th class="grade-type">Mensal</th>
-                                                <th class="grade-type">Bimestral</th>
-                                                <th class="grade-type">Média</th>
-                                                <th class="grade-type">Mensal</th>
-                                                <th class="grade-type">Bimestral</th>
-                                                <th class="grade-type">Média</th>
-                                                <th class="grade-type">Mensal</th>
-                                                <th class="grade-type">Bimestral</th>
-                                                <th class="grade-type">Média</th>
+                                            <tr>
+                                                <th style="width: 30px;">#</th>
+                                                <th>Aluno</th>
+                                                <th style="width: 120px;">Nota Mensal</th>
+                                                <th style="width: 120px;">Nota Bimestral</th>
+                                                <th style="width: 120px;">Recuperação</th>
+                                                <th style="width: 120px;">Frequência</th>
+                                                <th style="width: 100px;">Média Final</th>
                                             </tr>
                                         </thead>
                                         <tbody id="grade-notas-corpo">
@@ -573,6 +558,39 @@ const NotasModule = {
             gradeNotas: !!this.elements.gradeNotas,
             gradeNotasWrapper: !!this.elements.gradeNotasWrapper
         });
+        
+        // Log para verificar se o campo frequência foi encontrado
+        console.log("🔍 Verificando campo frequência:");
+        console.log("- Elemento frequência encontrado:", !!this.elements.inputFrequencia);
+        console.log("- Elemento no DOM:", document.getElementById('frequencia'));
+        if (!this.elements.inputFrequencia) {
+            console.warn("⚠️ Campo frequência não foi encontrado no DOM! Verificando se existe...");
+            // Tentar encontrar o elemento com um seletor mais específico
+            const frequenciaAlt = document.querySelector('input[id="frequencia"]');
+            console.log("- Tentativa com querySelector:", frequenciaAlt);
+            const frequenciaName = document.querySelector('input[name="frequencia"]');
+            console.log("- Tentativa com name:", frequenciaName);
+            
+            if (frequenciaAlt) {
+                console.log("✅ Campo frequência encontrado via querySelector alternativo");
+                this.elements.inputFrequencia = frequenciaAlt;
+            } else if (frequenciaName) {
+                console.log("✅ Campo frequência encontrado via name");
+                this.elements.inputFrequencia = frequenciaName;
+            } else {
+                console.error("❌ Campo frequência não encontrado em nenhuma tentativa");
+                console.log("Todos os inputs na página:", 
+                    Array.from(document.querySelectorAll('input')).map(input => ({
+                        id: input.id,
+                        name: input.name,
+                        type: input.type,
+                        placeholder: input.placeholder
+                    }))
+                );
+            }
+        } else {
+            console.log("✅ Campo frequência encontrado com sucesso!");
+        }
     },
     
     // Adicionar event listeners
