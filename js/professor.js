@@ -75,10 +75,20 @@ document.addEventListener('DOMContentLoaded', function() {
         const notaMensal = document.getElementById('nota_mensal');
         const notaBimestral = document.getElementById('nota_bimestral');
         const notaRecuperacao = document.getElementById('recuperacao');
+        const frequencia = document.getElementById('frequencia');
         
         if (notaMensal && notaBimestral && notaRecuperacao) {
             [notaMensal, notaBimestral, notaRecuperacao].forEach(input => {
                 input.addEventListener('input', calcularMediaAutomatica);
+            });
+        }
+        
+        // Event listener específico para frequência (apenas validação)
+        if (frequencia) {
+            frequencia.addEventListener('input', function() {
+                const valor = parseInt(this.value);
+                if (valor < 0) this.value = 0;
+                if (valor > 100) this.value = 100;
             });
         }
         
@@ -923,6 +933,7 @@ function carregarNotasProfessor() {
             <td>${nota.nota_mensal !== null ? nota.nota_mensal.toFixed(1) : '-'}</td>
             <td>${nota.nota_bimestral !== null ? nota.nota_bimestral.toFixed(1) : '-'}</td>
             <td>${nota.recuperacao !== null ? nota.recuperacao.toFixed(1) : '-'}</td>
+            <td>${nota.frequencia !== null ? nota.frequencia : '-'}</td>
             <td><strong>${nota.media !== null ? nota.media.toFixed(1) : '-'}</strong></td>
             <td class="text-center">
                 <button class="btn btn-sm btn-primary editar-nota me-1" data-index="${index}">
@@ -948,6 +959,7 @@ function calcularMediaAutomatica() {
     const notaMensal = document.getElementById('nota_mensal');
     const notaBimestral = document.getElementById('nota_bimestral');
     const notaRecuperacao = document.getElementById('recuperacao');
+    const frequencia = document.getElementById('frequencia');
     const mediaInput = document.getElementById('media');
     
     if (!notaMensal || !notaBimestral || !notaRecuperacao || !mediaInput) return;
@@ -1037,6 +1049,13 @@ function editarNota(nota) {
     notaMensal.value = nota.nota_mensal !== null ? nota.nota_mensal : '';
     notaBimestral.value = nota.nota_bimestral !== null ? nota.nota_bimestral : '';
     notaRecuperacao.value = nota.recuperacao !== null ? nota.recuperacao : '';
+    
+    // Preencher frequência
+    const frequencia = document.getElementById('frequencia');
+    if (frequencia) {
+        frequencia.value = nota.frequencia !== null ? nota.frequencia : '';
+    }
+    
     mediaFinal.value = nota.media !== null ? nota.media : '';
     
     // Mostrar botão de cancelar
@@ -1152,6 +1171,10 @@ function salvarNota(e) {
     const recuperacao = notaRecuperacao.value ? parseFloat(notaRecuperacao.value) : null;
     const media = mediaFinal.value ? parseFloat(mediaFinal.value) : null;
     
+    // Obter frequência
+    const frequencia = document.getElementById('frequencia');
+    const frequenciaValue = frequencia && frequencia.value ? parseInt(frequencia.value) : null;
+    
     // Criar objeto com os dados da nota
     const notaData = {
         ano: parseInt(anoNota.value),
@@ -1162,6 +1185,7 @@ function salvarNota(e) {
         nota_mensal: nota_mensal,
         nota_bimestral: nota_bimestral,
         recuperacao: recuperacao,
+        frequencia: frequenciaValue,
         media: media,
         data_atualizacao: new Date().toISOString()
     };

@@ -67,6 +67,7 @@ function salvarLancamentoEmMassa() {
         const notaMensalInput = linha.querySelector('.nota-mensal');
         const notaBimestralInput = linha.querySelector('.nota-bimestral');
         const notaRecuperacaoInput = linha.querySelector('.nota-recuperacao');
+        const frequenciaInput = linha.querySelector('.frequencia');
         const notaIdInput = linha.querySelector('.nota-id');
         
         // Se não encontrou os inputs necessários, pular
@@ -79,6 +80,7 @@ function salvarLancamentoEmMassa() {
         const notaMensal = notaMensalInput.value.trim();
         const notaBimestral = notaBimestralInput.value.trim();
         const notaRecuperacao = notaRecuperacaoInput ? notaRecuperacaoInput.value.trim() : '';
+        const frequencia = frequenciaInput ? frequenciaInput.value.trim() : '';
         const notaId = notaIdInput ? notaIdInput.value.trim() : '';
         
         // Se não tem nenhuma nota preenchida, pular
@@ -139,7 +141,8 @@ function salvarLancamentoEmMassa() {
             bimestre: parseInt(bimestre),
             nota_mensal: notaMensal ? parseFloat(notaMensal) : null,
             nota_bimestral: notaBimestral ? parseFloat(notaBimestral) : null,
-            recuperacao: notaRecuperacao ? parseFloat(notaRecuperacao) : null
+            recuperacao: notaRecuperacao ? parseFloat(notaRecuperacao) : null,
+            frequencia: frequencia ? parseFloat(frequencia) : null
             // Não enviar média ou status - serão calculados pelo backend
         };
         

@@ -2720,7 +2720,7 @@ function carregarNotas() {
     // Mostrar indicador de carregamento
     notasTabela.innerHTML = `
         <tr class="text-center">
-            <td colspan="10">
+            <td colspan="11">
                 <div class="d-flex justify-content-center align-items-center" style="height: 100px;">
                     <div class="spinner-border text-primary" role="status">
                         <span class="visually-hidden">Carregando notas...</span>
@@ -2772,6 +2772,9 @@ function carregarNotas() {
                     </th>
                     <th class="sortable" data-sort="recuperacao">
                         Recup. <i class="fas fa-sort${estadoOrdenacao.coluna === 'recuperacao' ? (estadoOrdenacao.direcao === 'asc' ? '-up' : '-down') : ''}"></i>
+                    </th>
+                    <th class="sortable" data-sort="frequencia">
+                        Frequência <i class="fas fa-sort${estadoOrdenacao.coluna === 'frequencia' ? (estadoOrdenacao.direcao === 'asc' ? '-up' : '-down') : ''}"></i>
                     </th>
                     <th class="sortable" data-sort="media">
                         Média <i class="fas fa-sort${estadoOrdenacao.coluna === 'media' ? (estadoOrdenacao.direcao === 'asc' ? '-up' : '-down') : ''}"></i>
@@ -2840,6 +2843,10 @@ function carregarNotas() {
                     case 'recuperacao':
                         valorA = parseFloat(a.recuperacao || 0);
                         valorB = parseFloat(b.recuperacao || 0);
+                        break;
+                    case 'frequencia':
+                        valorA = parseInt(a.frequencia || 0);
+                        valorB = parseInt(b.frequencia || 0);
                         break;
                     case 'media':
                         valorA = parseFloat(a.media || 0);
@@ -2970,6 +2977,7 @@ function carregarNotas() {
                         <td>${formatarNota(notaMensal)}</td>
                         <td>${formatarNota(notaBimestral)}</td>
                         <td>${formatarNota(recuperacao)}</td>
+                        <td>${nota.frequencia !== null && nota.frequencia !== undefined ? nota.frequencia : '-'}</td>
                         <td><strong>${formatarNota(media)}</strong></td>
                         <td><span class="badge ${statusClass}">${status || 'N/A'}</span></td>
                         <td>
@@ -3078,7 +3086,7 @@ function carregarNotas() {
             if (!notas || notas.length === 0) {
                 notasTabela.innerHTML = `
                     <tr class="text-center">
-                        <td colspan="10">
+                        <td colspan="11">
                             <div class="alert alert-warning" role="alert">
                                 <h4 class="alert-heading">Nenhuma nota encontrada</h4>
                                 <p>Não foram encontradas notas com os filtros selecionados.</p>
@@ -3161,7 +3169,7 @@ function carregarNotas() {
                 if (notasTabela) {
             notasTabela.innerHTML = `
                 <tr class="text-center">
-                    <td colspan="10">
+                    <td colspan="11">
                         <div class="alert alert-danger" role="alert">
                             <h4 class="alert-heading">Erro ao carregar notas</h4>
                                     <p>${error.message || 'Ocorreu um erro ao tentar carregar as notas.'}</p>
@@ -3274,6 +3282,7 @@ function editarNota(id) {
                 const inputNotaMensal = document.getElementById('nota_mensal');
                 const inputNotaBimestral = document.getElementById('nota_bimestral');
                 const inputRecuperacao = document.getElementById('recuperacao');
+                const inputFrequencia = document.getElementById('frequencia');
                 const inputMedia = document.getElementById('media');
                 
                 // Preencher o campo de ano
@@ -3410,6 +3419,10 @@ function editarNota(id) {
                     inputRecuperacao.value = nota.recuperacao;
                 }
                 
+                if (inputFrequencia && nota.frequencia !== undefined) {
+                    inputFrequencia.value = nota.frequencia;
+                }
+                
                 if (inputMedia && nota.media !== undefined) {
                     inputMedia.value = nota.media;
                 }
@@ -3457,12 +3470,13 @@ function handleFormSubmit(event) {
     const notaMensal = document.getElementById('nota_mensal').value;
     const notaBimestral = document.getElementById('nota_bimestral').value;
     const recuperacao = document.getElementById('recuperacao').value;
+    const frequencia = document.getElementById('frequencia').value;
     const media = document.getElementById('media').value;
     
     // Log dos valores obtidos
     console.log('Valores do formulário:', {
         ano, bimestre, turma, disciplina, aluno,
-        notaMensal, notaBimestral, recuperacao, media
+        notaMensal, notaBimestral, recuperacao, frequencia, media
     });
     
     // Validar dados obrigatórios
@@ -3487,6 +3501,7 @@ function handleFormSubmit(event) {
     const notaMensalNum = notaMensal ? parseFloat(notaMensal) : null;
     const notaBimestralNum = notaBimestral ? parseFloat(notaBimestral) : null;
     const recuperacaoNum = recuperacao ? parseFloat(recuperacao) : null;
+    const frequenciaNum = frequencia ? parseFloat(frequencia) : null;
     
     // Calcular média final apenas se tiver ambas as notas (mensal e bimestral)
     let mediaFinal = null;
@@ -3512,6 +3527,7 @@ function handleFormSubmit(event) {
         nota_mensal: notaMensalNum,
         nota_bimestral: notaBimestralNum,
         recuperacao: recuperacaoNum,
+        frequencia: frequenciaNum,
         media: mediaFinal
     };
     
@@ -3866,19 +3882,20 @@ function exibirFichaAluno(idAluno) {
                                         <h5 class="border-bottom pb-2 mb-3">Notas do Aluno</h5>
                                         <div class="table-responsive">
                                             <table class="table table-bordered table-sm">
-                                                <thead class="table-light">
+                                                <thead>
                                                     <tr>
-                                                        <th>Disciplina</th>
-                                                        <th>Bimestre</th>
-                                                        <th>Nota Mensal</th>
-                                                        <th>Nota Bimestral</th>
-                                                        <th>Recuperação</th>
-                                                        <th>Média</th>
+                                                        <th>Aluno</th>
+                                                        <th style="width: 100px">Mensal</th>
+                                                        <th style="width: 100px">Bimestral</th>
+                                                        <th style="width: 100px">Recuperação</th>
+                                                        <th style="width: 80px">Frequência</th>
+                                                        <th style="width: 80px">Média</th>
+                                                        <th style="width: 120px">Status</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody id="notas-aluno-tbody">
                                                     <tr>
-                                                        <td colspan="6" class="text-center">
+                                                        <td colspan="7" class="text-center py-4">
                                                             <div class="spinner-border text-primary spinner-border-sm" role="status">
                                                                 <span class="visually-hidden">Carregando notas...</span>
                                                             </div>
@@ -4015,7 +4032,7 @@ function carregarNotasAluno(idAluno) {
     // Exibir indicador de carregamento
     tbody.innerHTML = `
         <tr>
-            <td colspan="6" class="text-center">
+            <td colspan="7" class="text-center py-4">
                 <div class="spinner-border text-primary spinner-border-sm" role="status">
                     <span class="visually-hidden">Carregando notas...</span>
                 </div>
@@ -4039,7 +4056,7 @@ function carregarNotasAluno(idAluno) {
             // Exibir mensagem amigável de erro, mas permitir que o modal continue funcionando
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="6" class="text-center text-danger">
+                    <td colspan="7" class="text-center text-danger">
                         <div class="alert alert-warning" role="alert">
                             <i class="fas fa-exclamation-triangle me-2"></i>
                             Não foi possível carregar as notas deste aluno no momento.
@@ -4100,7 +4117,7 @@ function carregarNotasAluno(idAluno) {
                 if (!notas || notas.length === 0) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="6" class="text-center">Nenhuma nota registrada para este aluno.</td>
+                        <td colspan="7" class="text-center">Nenhuma nota registrada para este aluno.</td>
                     </tr>
                 `;
                 return;
@@ -4134,6 +4151,7 @@ function carregarNotasAluno(idAluno) {
                         <td>${extrairNota(nota, 'nota_mensal', 'mensal')}</td>
                         <td>${extrairNota(nota, 'nota_bimestral', 'bimestral')}</td>
                         <td>${extrairNota(nota, 'recuperacao', 'rec')}</td>
+                        <td>${extrairNota(nota, 'frequencia', 'freq')}</td>
                         <td><strong>${extrairNota(nota, 'media', 'nota_media', 'valor_media')}</strong></td>
                 `;
                 
@@ -4175,7 +4193,7 @@ function carregarNotasAluno(idAluno) {
                 const row = spinner.closest('tr');
                 if (row) {
                     row.innerHTML = `
-                        <td colspan="6" class="text-center text-warning">
+                        <td colspan="7" class="text-center text-warning">
                             <div class="alert alert-warning" role="alert">
                                 <i class="fas fa-clock me-2"></i>
                                 A operação está demorando mais que o esperado.
@@ -4227,7 +4245,7 @@ function preencherTabelaNotas(notas) {
     if (!notas || notas.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                <td colspan="6" class="text-center">Nenhuma nota registrada para este aluno.</td>
+                <td colspan="7" class="text-center">Nenhuma nota registrada para este aluno.</td>
                 </tr>
             `;
         return;
@@ -4261,6 +4279,7 @@ function preencherTabelaNotas(notas) {
             <td>${extrairNota(nota, 'nota_mensal', 'mensal')}</td>
             <td>${extrairNota(nota, 'nota_bimestral', 'bimestral')}</td>
             <td>${extrairNota(nota, 'recuperacao', 'rec')}</td>
+            <td>${extrairNota(nota, 'frequencia', 'freq')}</td>
             <td><strong>${extrairNota(nota, 'media', 'nota_media', 'valor_media')}</strong></td>
         `;
         
@@ -4529,6 +4548,7 @@ function abrirModoLancamentoEmMassa() {
                         const notaMensal = nota ? (nota.nota_mensal !== null ? nota.nota_mensal : '') : '';
                         const notaBimestral = nota ? (nota.nota_bimestral !== null ? nota.nota_bimestral : '') : '';
                         const notaRecuperacao = nota ? (nota.recuperacao !== null ? nota.recuperacao : '') : '';
+                        const frequencia = nota ? (nota.frequencia !== null ? nota.frequencia : '') : '';
                         
                         // Calcular média e status
                         let media = '';
@@ -4595,6 +4615,10 @@ function abrirModoLancamentoEmMassa() {
                                 <td>
                                 <input type="number" class="form-control nota-recuperacao" min="0" max="10" step="0.1" value="${notaRecuperacao}"
                                        onchange="atualizarMediaEStatus('${aluno.id_aluno}')">
+                                </td>
+                                <td>
+                                <input type="number" class="form-control frequencia" min="0" max="100" step="1" value="${frequencia}"
+                                       placeholder="Nº faltas">
                                 </td>
                                 <td>
                                 <span class="media">${media}</span>
