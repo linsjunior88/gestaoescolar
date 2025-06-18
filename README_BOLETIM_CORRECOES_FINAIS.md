@@ -74,9 +74,10 @@
   }
   ```
 
-### ✅ 7. Nome da Escola e Turno
+### ✅ 7. Nome da Escola e Turno - ATUALIZADO
 - **Problema**: Faltava identificação da escola e informação do turno
-- **Solução**: Adicionados campos:
+- **Problema adicional**: Nome da escola muito pequeno e turno não buscado corretamente
+- **Solução**: Adicionados campos com busca inteligente:
   ```html
   <div class="info-row school-name-row">
       <span class="info-label">Escola:</span>
@@ -84,12 +85,17 @@
   </div>
   <div class="info-row">
       <span class="info-label">Turno:</span>
-      <span class="info-value">${aluno.turno || aluno.turno_turma || 'Não informado'}</span>
+      <span class="info-value">${turno}</span>
   </div>
   ```
-- **Estilos especiais** para destacar o nome da escola:
-  - **Tela**: Gradiente azul com efeito glassmorphism
-  - **Impressão**: Fundo azul claro com borda lateral azul
+- **Busca inteligente do turno**: Criada função `buscarDadosTurma()` que:
+  - Busca dados completos da turma pela API `/turmas/${turmaId}`
+  - Usa cache para não repetir buscas da mesma turma
+  - Pega o turno correto dos dados da turma (MANHÃ, TARDE, NOITE)
+  - Fallback para dados do aluno se a busca falhar
+- **Estilos aprimorados** para destacar o nome da escola:
+  - **Tela**: Gradiente azul com fonte 1.4rem (mesmo tamanho do nome do aluno)
+  - **Impressão**: Fundo azul claro com fonte 14px e borda lateral azul mais grossa
 
 ## Resultado Final
 
@@ -99,8 +105,8 @@
 ✅ **Grade da tabela visível**
 ✅ **Layout landscape sem espaços excessivos**
 ✅ **Sem elementos soltos ou resquícios**
-✅ **Nome da escola "EMEF Nazaré Rodrigues" destacado**
-✅ **Campo turno adicionado junto com a turma**
+✅ **Nome da escola "EMEF Nazaré Rodrigues" destacado e em tamanho adequado**
+✅ **Turno buscado corretamente dos dados da turma (MANHÃ/TARDE/NOITE)**
 
 ## Arquivos Modificados
 

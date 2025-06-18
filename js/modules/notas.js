@@ -1581,9 +1581,27 @@ const NotasModule = {
         
         try {
             // Para cada aluno, criar um boletim individual
-            boletimData.boletim.forEach((aluno, index) => {
+            const cacheTurmas = {}; // Cache para não buscar a mesma turma múltiplas vezes
+            
+            for (let index = 0; index < boletimData.boletim.length; index++) {
+                const aluno = boletimData.boletim[index];
                 console.log(`👨‍🎓 Processando aluno ${index + 1}/${boletimData.boletim.length}:`, aluno.nome_aluno);
                 
+                // Buscar dados da turma se não estiver no cache
+                let dadosTurma = null;
+                if (aluno.id_turma && !cacheTurmas[aluno.id_turma]) {
+                    dadosTurma = await this.buscarDadosTurma(aluno.id_turma);
+                    if (dadosTurma) {
+                        cacheTurmas[aluno.id_turma] = dadosTurma;
+                    }
+                } else if (aluno.id_turma) {
+                    dadosTurma = cacheTurmas[aluno.id_turma];
+                }
+                
+                // Obter turno dos dados da turma
+                const turno = dadosTurma ? (dadosTurma.turno || 'Não informado') : (aluno.turno || aluno.turno_turma || 'Não informado');
+                
+                // Buscar todas as notas do aluno para organizar por bimestre
                 // Buscar todas as notas do aluno para organizar por bimestre
                 const notasPorBimestre = this.organizarNotasPorBimestre(aluno);
                 
@@ -1628,7 +1646,7 @@ const NotasModule = {
                                 </div>
                                 <div class="info-row">
                                     <span class="info-label">Turno:</span>
-                                    <span class="info-value">${aluno.turno || aluno.turno_turma || 'Não informado'}</span>
+                                    <span class="info-value">${turno}</span>
                                 </div>
                             </div>
                             <div class="student-ra">
@@ -1774,7 +1792,7 @@ const NotasModule = {
                 if (index < boletimData.boletim.length - 1) {
                     html += '<div class="page-break"></div>';
                 }
-            });
+            }
             
             console.log("✅ HTML do boletim gerado com sucesso");
             
@@ -4125,7 +4143,7 @@ const NotasModule = {
             .school-name-row .info-value {
                 color: #1976d2 !important;
                 font-weight: 700;
-                font-size: 1.1rem;
+                font-size: 1.4rem;
                 text-transform: uppercase;
                 text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
             }
@@ -4143,11 +4161,13 @@ const NotasModule = {
             /* Estilo específico para o nome da escola na impressão */
             .school-name-row {
                 background: #e3f2fd !important;
-                padding: 4px 8px !important;
-                margin-bottom: 4px !important;
-                border-left: 3px solid #1976d2 !important;
+                padding: 6px 10px !important;
+                margin-bottom: 6px !important;
+                border-left: 4px solid #1976d2 !important;
                 border-radius: 0 !important;
                 box-shadow: none !important;
+                display: block !important;
+                width: 100% !important;
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
                 color-adjust: exact !important;
@@ -4156,14 +4176,15 @@ const NotasModule = {
             .school-name-row .info-label {
                 color: #1976d2 !important;
                 font-weight: bold !important;
-                font-size: 9px !important;
+                font-size: 12px !important;
+                margin-right: 8px !important;
             }
             
             .school-name-row .info-value {
                 color: #1976d2 !important;
                 font-weight: bold !important;
                 text-transform: uppercase !important;
-                font-size: 9px !important;
+                font-size: 14px !important;
             }
             
             .ra-badge:hover {
@@ -4188,32 +4209,6 @@ const NotasModule = {
             .grades-table-container {
                 padding: 2rem;
                 overflow-x: auto;
-            }
-            
-            /* Estilo específico para o nome da escola na impressão */
-            .school-name-row {
-                background: #e3f2fd !important;
-                padding: 4px 8px !important;
-                margin-bottom: 4px !important;
-                border-left: 3px solid #1976d2 !important;
-                border-radius: 0 !important;
-                box-shadow: none !important;
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-                color-adjust: exact !important;
-            }
-            
-            .school-name-row .info-label {
-                color: #1976d2 !important;
-                font-weight: bold !important;
-                font-size: 9px !important;
-            }
-            
-            .school-name-row .info-value {
-                color: #1976d2 !important;
-                font-weight: bold !important;
-                text-transform: uppercase !important;
-                font-size: 9px !important;
             }
             
             .glass-table {
@@ -5116,6 +5111,19 @@ const NotasModule = {
             console.log("✅ Teste do boletim concluído");
         } catch (error) {
             console.error("❌ Erro no teste do boletim:", error);
+        }
+    },
+
+    // Buscar dados da turma para obter o turno
+    buscarDadosTurma: async function(turmaId) {
+        try {
+            console.log(`🔍 Buscando dados da turma: ${turmaId}`);
+            const turmaData = await ConfigModule.fetchApi(`/turmas/${turmaId}`);
+            console.log(`✅ Dados da turma ${turmaId}:`, turmaData);
+            return turmaData;
+        } catch (error) {
+            console.error(`❌ Erro ao buscar dados da turma ${turmaId}:`, error);
+            return null;
         }
     }
 };
