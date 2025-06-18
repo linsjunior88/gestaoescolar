@@ -1757,58 +1757,71 @@ const NotasModule = {
                     );
                     
                     disciplinasOrdenadas.forEach((disciplina, disciplinaIndex) => {
-                        console.log(`📖 Processando disciplina: ${disciplina.nome_disciplina}`);
-                        
-                        // Determinar situação e classe
-                        const situacao = disciplina.situacao || 'Pendente';
-                        let situacaoClass = 'status-approved';
-                        
-                        if (situacao === 'Reprovado') {
-                            situacaoClass = 'status-failed';
-                        } else if (situacao.includes('Recuperação')) {
-                            situacaoClass = 'status-recovery';
+                        try {
+                            console.log(`📖 Processando disciplina: ${disciplina.nome_disciplina}`);
+                            
+                            // Determinar situação e classe
+                            const situacao = disciplina.situacao || 'Pendente';
+                            let situacaoClass = 'status-approved';
+                            
+                            if (situacao === 'Reprovado') {
+                                situacaoClass = 'status-failed';
+                            } else if (situacao.includes('Recuperação')) {
+                                situacaoClass = 'status-recovery';
+                            }
+                            
+                            // Buscar notas específicas desta disciplina por bimestre
+                            const notasDisciplina = notasPorBimestre[disciplina.nome_disciplina] || {};
+                            
+                            html += `
+                                <tr class="grade-row">
+                                    <td class="subject-name">${disciplina.nome_disciplina || 'Disciplina não informada'}</td>
+                                    
+                                    <!-- 1º Bimestre -->
+                                    <td class="grade-cell">${this.formatarNotaGlass(notasDisciplina['1']?.nota_mensal)}</td>
+                                    <td class="grade-cell">${this.formatarNotaGlass(notasDisciplina['1']?.nota_bimestral)}</td>
+                                    <td class="frequency-cell">${this.formatarFrequenciaGlass(notasDisciplina['1']?.frequencia)}</td>
+                                    <td class="average-cell">${this.formatarMediaGlass(notasDisciplina['1'])}</td>
+                                    
+                                    <!-- 2º Bimestre -->
+                                    <td class="grade-cell">${this.formatarNotaGlass(notasDisciplina['2']?.nota_mensal)}</td>
+                                    <td class="grade-cell">${this.formatarNotaGlass(notasDisciplina['2']?.nota_bimestral)}</td>
+                                    <td class="frequency-cell">${this.formatarFrequenciaGlass(notasDisciplina['2']?.frequencia)}</td>
+                                    <td class="average-cell">${this.formatarMediaGlass(notasDisciplina['2'])}</td>
+                                    
+                                    <!-- 3º Bimestre -->
+                                    <td class="grade-cell">${this.formatarNotaGlass(notasDisciplina['3']?.nota_mensal)}</td>
+                                    <td class="grade-cell">${this.formatarNotaGlass(notasDisciplina['3']?.nota_bimestral)}</td>
+                                    <td class="frequency-cell">${this.formatarFrequenciaGlass(notasDisciplina['3']?.frequencia)}</td>
+                                    <td class="average-cell">${this.formatarMediaGlass(notasDisciplina['3'])}</td>
+                                    
+                                    <!-- 4º Bimestre -->
+                                    <td class="grade-cell">${this.formatarNotaGlass(notasDisciplina['4']?.nota_mensal)}</td>
+                                    <td class="grade-cell">${this.formatarNotaGlass(notasDisciplina['4']?.nota_bimestral)}</td>
+                                    <td class="frequency-cell">${this.formatarFrequenciaGlass(notasDisciplina['4']?.frequencia)}</td>
+                                    <td class="average-cell">${this.formatarMediaGlass(notasDisciplina['4'])}</td>
+                                    
+                                    <!-- Média Final -->
+                                    <td class="final-average">${this.formatarMediaFinalGlass(disciplina.media_anual)}</td>
+                                    
+                                    <!-- Situação -->
+                                    <td class="status-cell">
+                                        <span class="status-badge ${situacaoClass}">${situacao}</span>
+                                    </td>
+                                </tr>
+                            `;
+                        } catch (disciplinaError) {
+                            console.error(`❌ Erro ao processar disciplina ${disciplina.nome_disciplina}:`, disciplinaError);
+                            html += `
+                                <tr class="grade-row">
+                                    <td class="subject-name">${disciplina.nome_disciplina || 'Disciplina não informada'}</td>
+                                    <td colspan="17" class="text-center text-danger">
+                                        <i class="fas fa-exclamation-triangle me-2"></i>
+                                        Erro ao carregar dados desta disciplina
+                                    </td>
+                                </tr>
+                            `;
                         }
-                        
-                        // Buscar notas específicas desta disciplina por bimestre
-                        const notasDisciplina = notasPorBimestre[disciplina.nome_disciplina] || {};
-                        
-                        html += `
-                            <tr class="grade-row">
-                                <td class="subject-name">${disciplina.nome_disciplina || 'Disciplina não informada'}</td>
-                                
-                                <!-- 1º Bimestre -->
-                                <td class="grade-cell">${this.formatarNotaGlass(notasDisciplina['1']?.nota_mensal)}</td>
-                                <td class="grade-cell">${this.formatarNotaGlass(notasDisciplina['1']?.nota_bimestral)}</td>
-                                <td class="frequency-cell">${this.formatarFrequenciaGlass(notasDisciplina['1']?.frequencia)}</td>
-                                <td class="average-cell">${this.formatarMediaGlass(notasDisciplina['1'])}</td>
-                                
-                                <!-- 2º Bimestre -->
-                                <td class="grade-cell">${this.formatarNotaGlass(notasDisciplina['2']?.nota_mensal)}</td>
-                                <td class="grade-cell">${this.formatarNotaGlass(notasDisciplina['2']?.nota_bimestral)}</td>
-                                <td class="frequency-cell">${this.formatarFrequenciaGlass(notasDisciplina['2']?.frequencia)}</td>
-                                <td class="average-cell">${this.formatarMediaGlass(notasDisciplina['2'])}</td>
-                                
-                                <!-- 3º Bimestre -->
-                                <td class="grade-cell">${this.formatarNotaGlass(notasDisciplina['3']?.nota_mensal)}</td>
-                                <td class="grade-cell">${this.formatarNotaGlass(notasDisciplina['3']?.nota_bimestral)}</td>
-                                <td class="frequency-cell">${this.formatarFrequenciaGlass(notasDisciplina['3']?.frequencia)}</td>
-                                <td class="average-cell">${this.formatarMediaGlass(notasDisciplina['3'])}</td>
-                                
-                                <!-- 4º Bimestre -->
-                                <td class="grade-cell">${this.formatarNotaGlass(notasDisciplina['4']?.nota_mensal)}</td>
-                                <td class="grade-cell">${this.formatarNotaGlass(notasDisciplina['4']?.nota_bimestral)}</td>
-                                <td class="frequency-cell">${this.formatarFrequenciaGlass(notasDisciplina['4']?.frequencia)}</td>
-                                <td class="average-cell">${this.formatarMediaGlass(notasDisciplina['4'])}</td>
-                                
-                                <!-- Média Final -->
-                                <td class="final-average">${this.formatarMediaFinalGlass(disciplina.media_anual)}</td>
-                                
-                                <!-- Situação -->
-                                <td class="status-cell">
-                                    <span class="status-badge ${situacaoClass}">${situacao}</span>
-                                </td>
-                            </tr>
-                        `;
                     });
                 }
                 
@@ -3995,38 +4008,43 @@ const NotasModule = {
 
     // Formatar média para exibição glassmorphism
     formatarMediaGlass: function(notaBimestre) {
-        if (!notaBimestre) {
+        try {
+            if (!notaBimestre) {
+                return '<span class="average-empty">-</span>';
+            }
+            
+            const mensal = parseFloat(notaBimestre.nota_mensal) || 0;
+            const bimestral = parseFloat(notaBimestre.nota_bimestral) || 0;
+            
+            if (mensal === 0 && bimestral === 0) {
+                return '<span class="average-empty">-</span>';
+            }
+            
+            let media = 0;
+            if (mensal > 0 && bimestral > 0) {
+                media = (mensal + bimestral) / 2;
+            } else if (mensal > 0) {
+                media = mensal;
+            } else if (bimestral > 0) {
+                media = bimestral;
+            }
+            
+            // Sistema de cores baseado no valor da média
+            let classeMedia = '';
+            
+            if (media >= 6.0) {
+                classeMedia = 'nota-aprovado';
+            } else if (media >= 4.0) {
+                classeMedia = 'nota-recuperacao';
+            } else {
+                classeMedia = 'nota-reprovado';
+            }
+            
+            return `<span class="average-value ${classeMedia}">${media.toFixed(1)}</span>`;
+        } catch (error) {
+            console.error("Erro ao formatar média:", error);
             return '<span class="average-empty">-</span>';
         }
-        
-        const mensal = parseFloat(notaBimestre.nota_mensal) || 0;
-        const bimestral = parseFloat(notaBimestral.nota_bimestral) || 0;
-        
-        if (mensal === 0 && bimestral === 0) {
-            return '<span class="average-empty">-</span>';
-        }
-        
-        let media = 0;
-        if (mensal > 0 && bimestral > 0) {
-            media = (mensal + bimestral) / 2;
-        } else if (mensal > 0) {
-            media = mensal;
-        } else if (bimestral > 0) {
-            media = bimestral;
-        }
-        
-        // Sistema de cores baseado no valor da média
-        let classeMedia = '';
-        
-        if (media >= 6.0) {
-            classeMedia = 'nota-aprovado';
-        } else if (media >= 4.0) {
-            classeMedia = 'nota-recuperacao';
-        } else {
-            classeMedia = 'nota-reprovado';
-        }
-        
-        return `<span class="average-value ${classeMedia}">${media.toFixed(1)}</span>`;
     },
 
     // Formatar média final para exibição glassmorphism
