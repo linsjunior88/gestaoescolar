@@ -1614,6 +1614,10 @@ const NotasModule = {
                         <!-- Informações do Aluno -->
                         <div class="student-info-glass">
                             <div class="student-details">
+                                <div class="info-row school-name-row">
+                                    <span class="info-label">Escola:</span>
+                                    <span class="info-value">EMEF Nazaré Rodrigues</span>
+                                </div>
                                 <div class="info-row">
                                     <span class="info-label">Nome do Aluno:</span>
                                     <span class="info-value">${aluno.nome_aluno || 'Nome não informado'}</span>
@@ -1621,6 +1625,10 @@ const NotasModule = {
                                 <div class="info-row">
                                     <span class="info-label">Turma:</span>
                                     <span class="info-value">${aluno.id_turma || 'N/A'} - ${aluno.serie || 'Série não informada'}</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="info-label">Turno:</span>
+                                    <span class="info-value">${aluno.turno || aluno.turno_turma || 'Não informado'}</span>
                                 </div>
                             </div>
                             <div class="student-ra">
@@ -4088,6 +4096,40 @@ const NotasModule = {
                 font-size: 1.1rem;
             }
             
+            /* Estilo específico para o nome da escola */
+            .school-name-row {
+                background: linear-gradient(135deg, 
+                    rgba(25, 118, 210, 0.15) 0%, 
+                    rgba(25, 118, 210, 0.08) 100%);
+                backdrop-filter: blur(10px);
+                padding: 1rem 1.5rem;
+                margin-bottom: 1rem;
+                border-left: 4px solid #1976d2;
+                border-radius: 12px;
+                box-shadow: 0 2px 8px rgba(25, 118, 210, 0.2);
+                transition: all 0.3s ease;
+            }
+            
+            .school-name-row:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 4px 15px rgba(25, 118, 210, 0.3);
+            }
+            
+            .school-name-row .info-label {
+                color: #1976d2 !important;
+                font-weight: 600;
+                font-size: 0.9rem;
+                text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
+            }
+            
+            .school-name-row .info-value {
+                color: #1976d2 !important;
+                font-weight: 700;
+                font-size: 1.1rem;
+                text-transform: uppercase;
+                text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
+            }
+            
             .ra-badge {
                 background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
                 color: white;
@@ -4096,6 +4138,32 @@ const NotasModule = {
                 text-align: center;
                 box-shadow: 0 4px 15px rgba(79, 172, 254, 0.4);
                 transition: all 0.3s ease;
+            }
+            
+            /* Estilo específico para o nome da escola na impressão */
+            .school-name-row {
+                background: #e3f2fd !important;
+                padding: 4px 8px !important;
+                margin-bottom: 4px !important;
+                border-left: 3px solid #1976d2 !important;
+                border-radius: 0 !important;
+                box-shadow: none !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color-adjust: exact !important;
+            }
+            
+            .school-name-row .info-label {
+                color: #1976d2 !important;
+                font-weight: bold !important;
+                font-size: 9px !important;
+            }
+            
+            .school-name-row .info-value {
+                color: #1976d2 !important;
+                font-weight: bold !important;
+                text-transform: uppercase !important;
+                font-size: 9px !important;
             }
             
             .ra-badge:hover {
@@ -4120,6 +4188,32 @@ const NotasModule = {
             .grades-table-container {
                 padding: 2rem;
                 overflow-x: auto;
+            }
+            
+            /* Estilo específico para o nome da escola na impressão */
+            .school-name-row {
+                background: #e3f2fd !important;
+                padding: 4px 8px !important;
+                margin-bottom: 4px !important;
+                border-left: 3px solid #1976d2 !important;
+                border-radius: 0 !important;
+                box-shadow: none !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color-adjust: exact !important;
+            }
+            
+            .school-name-row .info-label {
+                color: #1976d2 !important;
+                font-weight: bold !important;
+                font-size: 9px !important;
+            }
+            
+            .school-name-row .info-value {
+                color: #1976d2 !important;
+                font-weight: bold !important;
+                text-transform: uppercase !important;
+                font-size: 9px !important;
             }
             
             .glass-table {

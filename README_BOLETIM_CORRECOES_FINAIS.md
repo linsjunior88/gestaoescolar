@@ -7,6 +7,7 @@
 3. ❌ **Espaço enorme ao lado direito**
 4. ❌ **Resquícios manchados na visualização**
 5. ❌ **Nome solto na segunda página**
+6. ❌ **Falta nome da escola e campo turno**
 
 ## Soluções Implementadas
 
@@ -73,6 +74,23 @@
   }
   ```
 
+### ✅ 7. Nome da Escola e Turno
+- **Problema**: Faltava identificação da escola e informação do turno
+- **Solução**: Adicionados campos:
+  ```html
+  <div class="info-row school-name-row">
+      <span class="info-label">Escola:</span>
+      <span class="info-value">EMEF Nazaré Rodrigues</span>
+  </div>
+  <div class="info-row">
+      <span class="info-label">Turno:</span>
+      <span class="info-value">${aluno.turno || aluno.turno_turma || 'Não informado'}</span>
+  </div>
+  ```
+- **Estilos especiais** para destacar o nome da escola:
+  - **Tela**: Gradiente azul com efeito glassmorphism
+  - **Impressão**: Fundo azul claro com borda lateral azul
+
 ## Resultado Final
 
 ✅ **Boletim com glassmorphism na tela**
@@ -81,16 +99,24 @@
 ✅ **Grade da tabela visível**
 ✅ **Layout landscape sem espaços excessivos**
 ✅ **Sem elementos soltos ou resquícios**
+✅ **Nome da escola "EMEF Nazaré Rodrigues" destacado**
+✅ **Campo turno adicionado junto com a turma**
 
 ## Arquivos Modificados
 
-- `js/modules/notas.js` - Reativação e melhoria dos estilos
+- `js/modules/notas.js` - Reativação e melhoria dos estilos + nome da escola e turno
 
 ## Teste
 
 1. Acesse o sistema de gestão escolar
 2. Gere um boletim individual
 3. Visualize na tela (deve ter efeito glassmorphism)
-4. Faça preview de impressão (deve ter layout profissional)
-5. Verifique se as cores das notas aparecem
-6. Confirme que não há elementos soltos na segunda página 
+4. Verifique se aparece "Escola: EMEF Nazaré Rodrigues" destacado em azul
+5. Confirme se o campo "Turno" aparece abaixo da turma
+6. Faça preview de impressão - deve aparecer profissional com:
+   - ✅ Cores das notas visíveis
+   - ✅ Grade da tabela presente  
+   - ✅ Layout landscape sem espaços extras
+   - ✅ Sem elementos soltos na segunda página
+   - ✅ Nome da escola com destaque azul claro
+   - ✅ Turno claramente identificado 
