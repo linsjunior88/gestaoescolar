@@ -42,6 +42,7 @@ const NotasModule = {
         inputNotaMensal: null,
         inputNotaBimestral: null,
         inputNotaRecuperacao: null,
+        inputFrequencia: null, // Campo para frequência (número de faltas)
         inputMediaFinal: null,
         btnSalvarNota: null,
         btnCancelarNota: null,
@@ -239,6 +240,7 @@ const NotasModule = {
                                     <th data-ordenavel data-coluna="nota_mensal">Mensal</th>
                                     <th data-ordenavel data-coluna="nota_bimestral">Bimestral</th>
                                     <th data-ordenavel data-coluna="nota_recuperacao">Recuperação</th>
+                                    <th data-ordenavel data-coluna="frequencia">Frequência</th>
                                     <th data-ordenavel data-coluna="media_final">Média Final</th>
                                     <th>Ações</th>
                                 </tr>
@@ -246,7 +248,7 @@ const NotasModule = {
                             <tbody id="lista-notas">
                                 <!-- Dados serão carregados dinamicamente -->
                                 <tr class="text-center">
-                                    <td colspan="11">Use os filtros acima para buscar notas</td>
+                                    <td colspan="12">Use os filtros acima para buscar notas</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -319,6 +321,10 @@ const NotasModule = {
                                         <input type="number" class="form-control" id="nota-recuperacao" min="0" max="10" step="0.1">
                                     </div>
                                 </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Frequência</label>
+                                <input type="number" class="form-control" id="frequencia" min="0" max="100" step="1">
                             </div>
                             <div class="mb-3">
                                 <label class="form-label">Média Final</label>
@@ -479,6 +485,7 @@ const NotasModule = {
         this.elements.inputNotaMensal = document.getElementById('nota-mensal');
         this.elements.inputNotaBimestral = document.getElementById('nota-bimestral');
         this.elements.inputNotaRecuperacao = document.getElementById('nota-recuperacao');
+        this.elements.inputFrequencia = document.getElementById('frequencia');
         this.elements.inputMediaFinal = document.getElementById('media-final');
         
         // Botões principais
@@ -1365,6 +1372,7 @@ const NotasModule = {
                     <td>${notaMensal !== null ? notaMensal.toFixed(1) : '-'}</td>
                     <td>${notaBimestral !== null ? notaBimestral.toFixed(1) : '-'}</td>
                     <td>${notaRecuperacao !== null && !isNaN(notaRecuperacao) ? notaRecuperacao.toFixed(1) : '-'}</td>
+                    <td>${nota.frequencia || '-'}</td>
                     <td>${typeof mediaFinal === 'number' && !isNaN(mediaFinal) ? mediaFinal.toFixed(1) : '-'}</td>
                     <td>
                         <button class="btn btn-sm btn-primary editar-nota" data-id="${nota.id}">
@@ -2162,6 +2170,13 @@ const NotasModule = {
                     console.log("Campo de recuperação deixado em branco");
                 }
                 
+                // Preencher o campo de frequência se existir valor
+                if (this.elements.inputFrequencia) {
+                    const frequencia = nota.frequencia !== undefined && nota.frequencia !== null ? nota.frequencia : '';
+                    this.elements.inputFrequencia.value = frequencia;
+                    console.log(`Campo de frequência preenchido com: ${frequencia}`);
+                }
+                
                 // Calcular e mostrar a média
                 this.calcularMediaForm();
                 
@@ -2884,6 +2899,7 @@ const NotasModule = {
                         <th width="15%" class="text-center">Nota Mensal</th>
                         <th width="15%" class="text-center">Nota Bimestral</th>
                         <th width="15%" class="text-center">Recuperação</th>
+                        <th width="15%" class="text-center">Frequência</th>
                         <th width="15%" class="text-center">Média Final</th>
                     </tr>
                 `;
@@ -2918,6 +2934,9 @@ const NotasModule = {
                     const notaBimestral = notaExistente ? (notaExistente.nota_bimestral || notaExistente.bimestral || '') : '';
                     // Nota recuperação
                     const notaRecuperacao = notaExistente ? (notaExistente.nota_recuperacao || notaExistente.recuperacao || notaExistente.rec || '') : '';
+                    
+                    // Frequência
+                    const frequencia = notaExistente ? (notaExistente.frequencia || '') : '';
                     
                     // Calcular média ou usar a média já fornecida
                     let mediaFinal = '';
@@ -2968,6 +2987,9 @@ const NotasModule = {
                         </td>
                         <td>
                             <input type="number" class="form-control form-control-sm nota-recuperacao" min="0" max="10" step="0.1" placeholder="0.0 a 10.0" value="${notaRecuperacao}">
+                        </td>
+                        <td>
+                            <input type="number" class="form-control form-control-sm frequencia" min="0" max="100" step="1" placeholder="0 a 100" value="${frequencia}">
                         </td>
                         <td>
                             <input type="text" class="form-control form-control-sm media-final bg-light" readonly value="${mediaExibicao}">
@@ -3047,6 +3069,7 @@ const NotasModule = {
         const notaMensalInput = row.querySelector('.nota-mensal');
         const notaBimestralInput = row.querySelector('.nota-bimestral');
         const notaRecuperacaoInput = row.querySelector('.nota-recuperacao');
+        const frequenciaInput = row.querySelector('.frequencia');
         const mediaFinalInput = row.querySelector('.media-final');
         
         if (!notaMensalInput || !notaBimestralInput || !mediaFinalInput) {
@@ -3057,9 +3080,10 @@ const NotasModule = {
         const notaMensal = notaMensalInput.value.trim();
         const notaBimestral = notaBimestralInput.value.trim();
         const notaRecuperacao = notaRecuperacaoInput ? notaRecuperacaoInput.value.trim() : '';
+        const frequencia = frequenciaInput ? frequenciaInput.value.trim() : '';
         
         // Usar a função calcularMediaAluno para manter consistência no cálculo
-        const mediaFinal = this.calcularMediaAluno(notaMensal, notaBimestral, notaRecuperacao);
+        const mediaFinal = this.calcularMediaAluno(notaMensal, notaBimestral, notaRecuperacao, frequencia);
         
         // Atualizar campo de média se houver um valor calculado
         if (mediaFinal !== null) {
@@ -3386,11 +3410,12 @@ const NotasModule = {
                 nota_bimestral: notaBimestral ? parseFloat(notaBimestral) : null,
                 nota_recuperacao: notaRecuperacao ? parseFloat(notaRecuperacao) : null,
                 recuperacao: notaRecuperacao ? parseFloat(notaRecuperacao) : null,
-                rec: notaRecuperacao ? parseFloat(notaRecuperacao) : null // Adicionar mais um campo alternativo
+                rec: notaRecuperacao ? parseFloat(notaRecuperacao) : null, // Adicionar mais um campo alternativo
+                frequencia: this.elements.inputFrequencia && this.elements.inputFrequencia.value ? parseInt(this.elements.inputFrequencia.value) : null
             };
             
             // Calcular média final
-            const media = this.calcularMediaAluno(notaMensal, notaBimestral, notaRecuperacao);
+            const media = this.calcularMediaAluno(notaMensal, notaBimestral, notaRecuperacao, this.elements.inputFrequencia ? this.elements.inputFrequencia.value : null);
             if (media !== null) {
                 notaDados.media_final = media;
                 notaDados.media = media; // Para compatibilidade
@@ -3565,11 +3590,12 @@ const NotasModule = {
                 const notaMensal = linha.querySelector('.nota-mensal').value.trim();
                 const notaBimestral = linha.querySelector('.nota-bimestral').value.trim();
                 const notaRecuperacao = linha.querySelector('.nota-recuperacao').value.trim();
+                const frequencia = linha.querySelector('.frequencia').value.trim();
                 const mediaFinal = linha.querySelector('.media-final').value.trim();
                 
-                // Verificar se há pelo menos uma nota informada
-                if (!notaMensal && !notaBimestral && !notaRecuperacao) {
-                    // Se não tiver nenhuma nota, não tentar salvar
+                // Verificar se há pelo menos uma nota ou frequência informada
+                if (!notaMensal && !notaBimestral && !notaRecuperacao && !frequencia) {
+                    // Se não tiver nenhuma nota nem frequência, não tentar salvar
                     continue;
                 }
                 
@@ -3584,6 +3610,7 @@ const NotasModule = {
                     nota_bimestral: notaBimestral ? parseFloat(notaBimestral) : null,
                     nota_recuperacao: notaRecuperacao ? parseFloat(notaRecuperacao) : null,
                     recuperacao: notaRecuperacao ? parseFloat(notaRecuperacao) : null, // Campo alternativo para recuperação
+                    frequencia: frequencia ? parseInt(frequencia) : null,
                     media_final: mediaFinal ? parseFloat(mediaFinal) : null,
                     media: mediaFinal ? parseFloat(mediaFinal) : null // Campo alternativo para média
                 };
@@ -3701,16 +3728,17 @@ const NotasModule = {
     },
     
     // Calcular média para um aluno
-    calcularMediaAluno: function(notaMensal, notaBimestral, notaRecuperacao) {
-        console.log("Calculando média para:", { notaMensal, notaBimestral, notaRecuperacao });
+    calcularMediaAluno: function(notaMensal, notaBimestral, notaRecuperacao, frequencia) {
+        console.log("Calculando média para:", { notaMensal, notaBimestral, notaRecuperacao, frequencia });
         
         // Converter para números e tratar valores vazios
         const nMensal = notaMensal && notaMensal.trim() !== '' ? parseFloat(notaMensal) : null;
         const nBimestral = notaBimestral && notaBimestral.trim() !== '' ? parseFloat(notaBimestral) : null;
         const nRecuperacao = notaRecuperacao && notaRecuperacao.trim() !== '' ? parseFloat(notaRecuperacao) : null;
+        const nFrequencia = frequencia && frequencia.trim() !== '' ? parseFloat(frequencia) : null;
         
         // Se não houver nenhuma nota, retornar null
-        if (nMensal === null && nBimestral === null && nRecuperacao === null) {
+        if (nMensal === null && nBimestral === null && nRecuperacao === null && nFrequencia === null) {
             return null;
         }
         
@@ -5197,6 +5225,72 @@ const NotasModule = {
         }).finally(() => {
             this.buscandoTurmas.delete(turmaId);
         });
+    },
+
+    // Validar dados antes de salvar uma nota
+    validarDadosNota: function() {
+        console.log("Validando dados da nota...");
+        
+        // Validar campos obrigatórios
+        if (!this.elements.selectTurma || !this.elements.selectTurma.value) {
+            this.mostrarErro("Selecione uma turma");
+            return false;
+        }
+        
+        if (!this.elements.selectDisciplina || !this.elements.selectDisciplina.value) {
+            this.mostrarErro("Selecione uma disciplina");
+            return false;
+        }
+        
+        if (!this.elements.selectAluno || !this.elements.selectAluno.value) {
+            this.mostrarErro("Selecione um aluno");
+            return false;
+        }
+        
+        if (!this.elements.selectBimestre || !this.elements.selectBimestre.value) {
+            this.mostrarErro("Selecione o bimestre");
+            return false;
+        }
+        
+        if (!this.elements.inputAno || !this.elements.inputAno.value) {
+            this.mostrarErro("Informe o ano");
+            return false;
+        }
+        
+        // Validar pelo menos uma informação (nota ou frequência)
+        const notaMensal = this.elements.inputNotaMensal ? this.elements.inputNotaMensal.value.trim() : '';
+        const notaBimestral = this.elements.inputNotaBimestral ? this.elements.inputNotaBimestral.value.trim() : '';
+        const notaRecuperacao = this.elements.inputNotaRecuperacao ? this.elements.inputNotaRecuperacao.value.trim() : '';
+        const frequencia = this.elements.inputFrequencia ? this.elements.inputFrequencia.value.trim() : '';
+        
+        if (!notaMensal && !notaBimestral && !notaRecuperacao && !frequencia) {
+            this.mostrarErro("Informe pelo menos uma nota ou a frequência");
+            return false;
+        }
+        
+        // Validar faixa de valores das notas (0 a 10)
+        if (notaMensal && (parseFloat(notaMensal) < 0 || parseFloat(notaMensal) > 10)) {
+            this.mostrarErro("A nota mensal deve estar entre 0 e 10");
+            return false;
+        }
+        
+        if (notaBimestral && (parseFloat(notaBimestral) < 0 || parseFloat(notaBimestral) > 10)) {
+            this.mostrarErro("A nota bimestral deve estar entre 0 e 10");
+            return false;
+        }
+        
+        if (notaRecuperacao && (parseFloat(notaRecuperacao) < 0 || parseFloat(notaRecuperacao) > 10)) {
+            this.mostrarErro("A nota de recuperação deve estar entre 0 e 10");
+            return false;
+        }
+        
+        // Validar frequência (0 a 100 - número de faltas)
+        if (frequencia && (parseInt(frequencia) < 0 || parseInt(frequencia) > 100)) {
+            this.mostrarErro("A frequência deve estar entre 0 e 100");
+            return false;
+        }
+        
+        return true;
     }
 };
 

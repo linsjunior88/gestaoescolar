@@ -255,6 +255,7 @@ class NotaBase(BaseModel):
     nota_bimestral: Optional[float] = None
     recuperacao: Optional[float] = None
     media: Optional[float] = None
+    frequencia: Optional[int] = None  # Número de faltas no bimestre
     professor_id: Optional[str] = None  # Adicionar campo opcional para o professor_id
 
 class NotaCreate(NotaBase):
@@ -2593,20 +2594,20 @@ def create_nota(nota: NotaCreate):
             
             cursor.execute("""
                 UPDATE nota 
-                SET nota_mensal = %s, nota_bimestral = %s, recuperacao = %s, media = %s
+                SET nota_mensal = %s, nota_bimestral = %s, recuperacao = %s, media = %s, frequencia = %s
                 WHERE id = %s
-            """, (nota.nota_mensal, nota.nota_bimestral, nota.recuperacao, media, nota_id))
+            """, (nota.nota_mensal, nota.nota_bimestral, nota.recuperacao, media, nota.frequencia, nota_id))
             
         else:
             print(f"INSERINDO nova nota: Aluno={nota.id_aluno}, Disciplina={nota.id_disciplina}, Turma={nota.id_turma}")
             
             cursor.execute("""
                 INSERT INTO nota (id_aluno, id_disciplina, id_turma, ano, bimestre, 
-                                nota_mensal, nota_bimestral, recuperacao, media)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                nota_mensal, nota_bimestral, recuperacao, media, frequencia)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING id
             """, (nota.id_aluno, nota.id_disciplina, nota.id_turma, nota.ano, nota.bimestre,
-                nota.nota_mensal, nota.nota_bimestral, nota.recuperacao, media))
+                nota.nota_mensal, nota.nota_bimestral, nota.recuperacao, media, nota.frequencia))
             
             nota_id = cursor.fetchone()[0]
         
@@ -2617,7 +2618,7 @@ def create_nota(nota: NotaCreate):
         # Buscar nota salva para confirmar
         cursor.execute("""
             SELECT id, id_aluno, id_disciplina, id_turma, ano, bimestre, 
-                   nota_mensal, nota_bimestral, recuperacao, media
+                   nota_mensal, nota_bimestral, recuperacao, media, frequencia
             FROM nota WHERE id = %s
         """, (nota_id,))
         
@@ -2635,7 +2636,8 @@ def create_nota(nota: NotaCreate):
             "nota_mensal": nota_data[6],
             "nota_bimestral": nota_data[7],
             "recuperacao": nota_data[8],
-            "media": nota_data[9]
+            "media": nota_data[9],
+            "frequencia": nota_data[10]
         }
         
     except Exception as e:
@@ -2661,7 +2663,7 @@ def read_notas():
     try:
         cursor.execute("""
             SELECT n.id, n.id_aluno, n.id_disciplina, n.id_turma, 
-                   n.ano, n.bimestre, n.nota_mensal, n.nota_bimestral, n.recuperacao, n.media
+                   n.ano, n.bimestre, n.nota_mensal, n.nota_bimestral, n.recuperacao, n.media, n.frequencia
             FROM nota n
             ORDER BY n.ano DESC, n.bimestre, n.id_turma, n.id_disciplina, n.id_aluno
         """)
@@ -2681,7 +2683,8 @@ def read_notas():
                 "nota_mensal": nota[6],
                 "nota_bimestral": nota[7],
                 "recuperacao": nota[8],
-                "media": nota[9]
+                "media": nota[9],
+                "frequencia": nota[10]
             })
         
         return notas
@@ -2729,7 +2732,8 @@ def read_notas_completo(
                 n.nota_mensal, 
                 n.nota_bimestral, 
                 n.recuperacao, 
-                n.media
+                n.media, 
+                n.frequencia
             FROM 
                 nota n
                 INNER JOIN aluno a ON n.id_aluno = a.id_aluno
@@ -2809,7 +2813,8 @@ def read_notas_completo(
                 "nota_mensal": nota[10],
                 "nota_bimestral": nota[11],
                 "recuperacao": nota[12],
-                "media": nota[13]
+                "media": nota[13],
+                "frequencia": nota[14]
             })
         
         return notas
@@ -2832,7 +2837,7 @@ def read_nota(nota_id: int):
     try:
         cursor.execute("""
             SELECT id, id_aluno, id_disciplina, id_turma, 
-                   ano, bimestre, nota_mensal, nota_bimestral, recuperacao, media
+                   ano, bimestre, nota_mensal, nota_bimestral, recuperacao, media, frequencia
             FROM nota
             WHERE id = %s
         """, (nota_id,))
@@ -2853,7 +2858,8 @@ def read_nota(nota_id: int):
             "nota_mensal": nota_data[6],
             "nota_bimestral": nota_data[7],
             "recuperacao": nota_data[8],
-            "media": nota_data[9]
+            "media": nota_data[9],
+            "frequencia": nota_data[10]
         }
     except Exception as e:
         conn.close()
@@ -2920,11 +2926,11 @@ def update_nota(nota_id: int, nota: NotaUpdate, request: Request):
         cursor.execute("""
             UPDATE nota
             SET id_aluno = %s, id_disciplina = %s, id_turma = %s, ano = %s, bimestre = %s,
-                nota_mensal = %s, nota_bimestral = %s, recuperacao = %s, media = %s
+                nota_mensal = %s, nota_bimestral = %s, recuperacao = %s, media = %s, frequencia = %s
             WHERE id = %s
             RETURNING id
         """, (nota.id_aluno, nota.id_disciplina, nota.id_turma, nota.ano, nota.bimestre,
-              nota.nota_mensal, nota.nota_bimestral, nota.recuperacao, media, nota_id))
+              nota.nota_mensal, nota.nota_bimestral, nota.recuperacao, media, nota.frequencia, nota_id))
         
         nota_id = cursor.fetchone()[0]
         conn.commit()
@@ -2932,7 +2938,7 @@ def update_nota(nota_id: int, nota: NotaUpdate, request: Request):
         # Buscar a nota atualizada
         cursor.execute("""
             SELECT id, id_aluno, id_disciplina, id_turma, ano, bimestre, 
-                   nota_mensal, nota_bimestral, recuperacao, media
+                   nota_mensal, nota_bimestral, recuperacao, media, frequencia
             FROM nota
             WHERE id = %s
         """, (nota_id,))
@@ -2950,7 +2956,8 @@ def update_nota(nota_id: int, nota: NotaUpdate, request: Request):
             "nota_mensal": nota_data[6],
             "nota_bimestral": nota_data[7],
             "recuperacao": nota_data[8],
-            "media": nota_data[9]
+            "media": nota_data[9],
+            "frequencia": nota_data[10]
         }
     except Exception as e:
         conn.rollback()
@@ -2991,7 +2998,7 @@ def read_notas_by_turma(turma_id: str):
         cursor.execute("""
             SELECT n.id, n.id_aluno, a.nome_aluno, n.id_disciplina, d.nome_disciplina, 
                    n.id_turma, t.serie, n.ano, n.bimestre, 
-                   n.nota_mensal, n.nota_bimestral, n.recuperacao, n.media
+                   n.nota_mensal, n.nota_bimestral, n.recuperacao, n.media, n.frequencia
             FROM nota n
             JOIN aluno a ON n.id_aluno = a.id_aluno
             JOIN disciplina d ON n.id_disciplina = d.id_disciplina
@@ -3018,7 +3025,8 @@ def read_notas_by_turma(turma_id: str):
                 "nota_mensal": nota[9],
                 "nota_bimestral": nota[10],
                 "recuperacao": nota[11],
-                "media": nota[12]
+                "media": nota[12],
+                "frequencia": nota[13]
             })
         
         return notas
@@ -3036,7 +3044,7 @@ def read_notas_by_aluno(aluno_id: str):
         cursor.execute("""
             SELECT n.id, n.id_aluno, a.nome_aluno, n.id_disciplina, d.nome_disciplina, 
                    n.id_turma, t.serie, n.ano, n.bimestre, 
-                   n.nota_mensal, n.nota_bimestral, n.recuperacao, n.media
+                   n.nota_mensal, n.nota_bimestral, n.recuperacao, n.media, n.frequencia
             FROM nota n
             JOIN aluno a ON n.id_aluno = a.id_aluno
             JOIN disciplina d ON n.id_disciplina = d.id_disciplina
@@ -3063,7 +3071,8 @@ def read_notas_by_aluno(aluno_id: str):
                 "nota_mensal": nota[9],
                 "nota_bimestral": nota[10],
                 "recuperacao": nota[11],
-                "media": nota[12]
+                "media": nota[12],
+                "frequencia": nota[13]
             })
         
         return notas
@@ -3081,7 +3090,7 @@ def read_notas_by_disciplina(disciplina_id: str):
         cursor.execute("""
             SELECT n.id, n.id_aluno, a.nome_aluno, n.id_disciplina, d.nome_disciplina, 
                    n.id_turma, t.serie, n.ano, n.bimestre, 
-                   n.nota_mensal, n.nota_bimestral, n.recuperacao, n.media
+                   n.nota_mensal, n.nota_bimestral, n.recuperacao, n.media, n.frequencia
             FROM nota n
             JOIN aluno a ON n.id_aluno = a.id_aluno
             JOIN disciplina d ON n.id_disciplina = d.id_disciplina
@@ -3108,7 +3117,8 @@ def read_notas_by_disciplina(disciplina_id: str):
                 "nota_mensal": nota[9],
                 "nota_bimestral": nota[10],
                 "recuperacao": nota[11],
-                "media": nota[12]
+                "media": nota[12],
+                "frequencia": nota[13]
             })
         
         return notas
@@ -3132,7 +3142,7 @@ def read_notas_by_filter(
         
         query = """
         SELECT n.id, n.id_aluno, n.id_disciplina, n.id_turma, n.ano, n.bimestre, 
-               n.nota_mensal, n.nota_bimestral, n.recuperacao, n.media,
+               n.nota_mensal, n.nota_bimestral, n.recuperacao, n.media, n.frequencia,
                a.nome_aluno, d.nome_disciplina, t.serie, t.turno
         FROM nota n
         JOIN aluno a ON n.id_aluno = a.id_aluno
@@ -3428,7 +3438,7 @@ def read_notas_professor(
         # Construir a consulta base
         query = """
         SELECT n.id, n.id_aluno, n.id_disciplina, n.id_turma, n.ano, n.bimestre, 
-               n.nota_mensal, n.nota_bimestral, n.recuperacao, n.media,
+               n.nota_mensal, n.nota_bimestral, n.recuperacao, n.media, n.frequencia,
                a.nome_aluno, d.nome_disciplina, t.serie, t.turno
         FROM nota n
         JOIN aluno a ON n.id_aluno = a.id_aluno
@@ -3527,7 +3537,7 @@ def read_notas_by_professor(
         # Construir a consulta base
         query = """
         SELECT n.id, n.id_aluno, n.id_disciplina, n.id_turma, n.ano, n.bimestre, 
-               n.nota_mensal, n.nota_bimestral, n.recuperacao, n.media,
+               n.nota_mensal, n.nota_bimestral, n.recuperacao, n.media, n.frequencia,
                a.nome_aluno, d.nome_disciplina, t.serie, t.turno
         FROM nota n
         JOIN aluno a ON n.id_aluno = a.id_aluno
@@ -5156,3 +5166,64 @@ def gerar_boletim_medias(
 # Inicialização do servidor (quando executado diretamente)
 if __name__ == "__main__":
     uvicorn.run("simplified_api:app", host="0.0.0.0", port=8000, reload=True) 
+
+@app.post("/api/schema/adicionar_frequencia", status_code=status.HTTP_200_OK)
+def adicionar_campo_frequencia():
+    """
+    Adiciona o campo 'frequencia' à tabela 'nota' caso ainda não exista.
+    Este campo armazenará o número de faltas do aluno no bimestre.
+    """
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Verificar se o campo já existe
+        cursor.execute("""
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name = 'nota' AND column_name = 'frequencia'
+        """)
+        
+        campo_existe = cursor.fetchone()
+        
+        if not campo_existe:
+            # Adicionar o campo frequencia
+            cursor.execute("""
+                ALTER TABLE nota 
+                ADD COLUMN frequencia INTEGER DEFAULT 0
+            """)
+            
+            print("✅ Campo 'frequencia' adicionado à tabela 'nota' com sucesso!")
+            
+            # Atualizar registros existentes com valor padrão 0
+            cursor.execute("""
+                UPDATE nota 
+                SET frequencia = 0 
+                WHERE frequencia IS NULL
+            """)
+            
+            conn.commit()
+            
+            return {
+                "message": "Campo 'frequencia' adicionado com sucesso à tabela 'nota'",
+                "status": "success",
+                "details": "Todos os registros existentes foram atualizados com valor padrão 0"
+            }
+        else:
+            return {
+                "message": "Campo 'frequencia' já existe na tabela 'nota'",
+                "status": "already_exists"
+            }
+            
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        print(f"❌ Erro ao adicionar campo 'frequencia': {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao atualizar estrutura do banco: {str(e)}"
+        )
+    finally:
+        if conn:
+            conn.close()
