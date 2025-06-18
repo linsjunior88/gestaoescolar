@@ -175,6 +175,67 @@
                     </div>
                 </div>
                 
+                <!-- Calendário Acadêmico -->
+                <div class="row mt-4">
+                    <div class="col-md-8">
+                        <div class="card shadow mb-4">
+                            <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                                <h6 class="m-0 font-weight-bold text-primary">
+                                    <i class="fas fa-calendar-alt me-2"></i>Calendário Acadêmico
+                                </h6>
+                            </div>
+                            <div class="card-body p-2">
+                                <div id="calendario-escolar-professor"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card shadow mb-4">
+                            <div class="card-header py-3">
+                                <h6 class="m-0 font-weight-bold text-primary">Estatísticas do Mês</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="stat-item mb-3">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="text-muted">Total de Eventos</span>
+                                        <span class="badge bg-primary" id="total-eventos-mes-professor">0</span>
+                                    </div>
+                                </div>
+                                <div class="stat-item mb-3">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="text-muted">Feriados</span>
+                                        <span class="badge bg-danger" id="total-feriados-mes-professor">0</span>
+                                    </div>
+                                </div>
+                                <div class="stat-item mb-3">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="text-muted">Eventos Escolares</span>
+                                        <span class="badge bg-success" id="total-eventos-escolares-mes-professor">0</span>
+                                    </div>
+                                </div>
+                                <div class="stat-item mb-3">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="text-muted">Reuniões</span>
+                                        <span class="badge bg-warning" id="total-reunioes-mes-professor">0</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Próximos Eventos -->
+                        <div class="card shadow">
+                            <div class="card-header py-3">
+                                <h6 class="m-0 font-weight-bold text-primary">Próximos Eventos</h6>
+                            </div>
+                            <div class="card-body">
+                                <div id="lista-proximos-eventos-professor">
+                                    <!-- Será preenchido via JavaScript -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
                 <div class="row mt-4">
                     <!-- Minhas Turmas e Disciplinas -->
                     <div class="col-md-8 mb-4">
@@ -247,67 +308,6 @@
                             <div class="card-body">
                                 <div class="timeline" id="logs-atividades">
                                     <p class="text-center text-muted">Carregando atividades recentes...</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Calendário Acadêmico -->
-                <div class="row">
-                    <div class="col-md-8">
-                        <div class="card shadow mb-4">
-                            <div class="card-header py-3 d-flex justify-content-between align-items-center">
-                                <h6 class="m-0 font-weight-bold text-primary">
-                                    <i class="fas fa-calendar-alt me-2"></i>Calendário Acadêmico
-                                </h6>
-                            </div>
-                            <div class="card-body p-2">
-                                <div id="calendario-escolar-professor"></div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="card shadow mb-4">
-                            <div class="card-header py-3">
-                                <h6 class="m-0 font-weight-bold text-primary">Estatísticas do Mês</h6>
-                            </div>
-                            <div class="card-body">
-                                <div class="stat-item mb-3">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <span class="text-muted">Total de Eventos</span>
-                                        <span class="badge bg-primary" id="total-eventos-mes-professor">0</span>
-                                    </div>
-                                </div>
-                                <div class="stat-item mb-3">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <span class="text-muted">Feriados</span>
-                                        <span class="badge bg-danger" id="total-feriados-mes-professor">0</span>
-                                    </div>
-                                </div>
-                                <div class="stat-item mb-3">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <span class="text-muted">Eventos Escolares</span>
-                                        <span class="badge bg-success" id="total-eventos-escolares-mes-professor">0</span>
-                                    </div>
-                                </div>
-                                <div class="stat-item mb-3">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <span class="text-muted">Reuniões</span>
-                                        <span class="badge bg-warning" id="total-reunioes-mes-professor">0</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Próximos Eventos -->
-                        <div class="card shadow">
-                            <div class="card-header py-3">
-                                <h6 class="m-0 font-weight-bold text-primary">Próximos Eventos</h6>
-                            </div>
-                            <div class="card-body">
-                                <div id="lista-proximos-eventos-professor">
-                                    <!-- Será preenchido via JavaScript -->
                                 </div>
                             </div>
                         </div>
