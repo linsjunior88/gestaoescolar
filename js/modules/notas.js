@@ -229,9 +229,14 @@ const NotasModule = {
             <div class="card shadow mb-4">
                 <div class="card-header py-3 d-flex justify-content-between align-items-center">
                     <h6 class="m-0 font-weight-bold text-primary">Notas Cadastradas</h6>
-                    <button id="btn-nova-nota" class="btn btn-primary">
-                        <i class="fas fa-plus me-1"></i> Nova Nota
-                    </button>
+                    <div>
+                        <button id="btn-nova-nota" class="btn btn-primary me-2">
+                            <i class="fas fa-plus me-1"></i> Nova Nota
+                        </button>
+                        <button id="btn-calcular-medias" class="btn btn-success">
+                            <i class="fas fa-calculator me-1"></i> Calcular Médias
+                        </button>
+                    </div>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
