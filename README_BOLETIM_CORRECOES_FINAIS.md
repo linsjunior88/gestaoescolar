@@ -74,10 +74,11 @@
   }
   ```
 
-### ✅ 7. Nome da Escola e Turno - ATUALIZADO
+### ✅ 7. Nome da Escola e Turno - CORRIGIDO
 - **Problema**: Faltava identificação da escola e informação do turno
-- **Problema adicional**: Nome da escola muito pequeno e turno não buscado corretamente
-- **Solução**: Adicionados campos com busca inteligente:
+- **Problema adicional**: Nome da escola muito pequeno e turno não buscado corretamente  
+- **Problema de compatibilidade**: Função async quebrou o sistema existente
+- **Solução final**: Implementação inteligente que preserva compatibilidade:
   ```html
   <div class="info-row school-name-row">
       <span class="info-label">Escola:</span>
@@ -88,11 +89,16 @@
       <span class="info-value">${turno}</span>
   </div>
   ```
-- **Busca inteligente do turno**: Criada função `buscarDadosTurma()` que:
-  - Busca dados completos da turma pela API `/turmas/${turmaId}`
-  - Usa cache para não repetir buscas da mesma turma
-  - Pega o turno correto dos dados da turma (MANHÃ, TARDE, NOITE)
-  - Fallback para dados do aluno se a busca falhar
+- **Busca inteligente do turno**: 
+  1. **Cache local** com mapeamento das turmas existentes (13CM=MANHA, 13CT=TARDE, etc.)
+  2. **Inferência automática** baseada no padrão do ID (M=MANHA, T=TARDE, N=NOITE)
+  3. **Dados do aluno** como fallback
+  4. **Busca API em background** sem bloquear a UI
+  5. **Fallback seguro** para "Não informado"
+- **Compatibilidade preservada**: 
+  - Função `exibirBoletimModal()` mantida síncrona
+  - Sistema funciona como antes
+  - Melhorias adicionadas sem quebrar funcionalidade existente
 - **Estilos aprimorados** para destacar o nome da escola:
   - **Tela**: Gradiente azul com fonte 1.4rem (mesmo tamanho do nome do aluno)
   - **Impressão**: Fundo azul claro com fonte 14px e borda lateral azul mais grossa

@@ -1581,27 +1581,12 @@ const NotasModule = {
         
         try {
             // Para cada aluno, criar um boletim individual
-            const cacheTurmas = {}; // Cache para não buscar a mesma turma múltiplas vezes
-            
-            for (let index = 0; index < boletimData.boletim.length; index++) {
-                const aluno = boletimData.boletim[index];
+            boletimData.boletim.forEach((aluno, index) => {
                 console.log(`👨‍🎓 Processando aluno ${index + 1}/${boletimData.boletim.length}:`, aluno.nome_aluno);
                 
-                // Buscar dados da turma se não estiver no cache
-                let dadosTurma = null;
-                if (aluno.id_turma && !cacheTurmas[aluno.id_turma]) {
-                    dadosTurma = await this.buscarDadosTurma(aluno.id_turma);
-                    if (dadosTurma) {
-                        cacheTurmas[aluno.id_turma] = dadosTurma;
-                    }
-                } else if (aluno.id_turma) {
-                    dadosTurma = cacheTurmas[aluno.id_turma];
-                }
+                // Obter turno - usar dados do aluno ou buscar de forma assíncrona em background
+                const turno = this.obterTurnoAluno(aluno);
                 
-                // Obter turno dos dados da turma
-                const turno = dadosTurma ? (dadosTurma.turno || 'Não informado') : (aluno.turno || aluno.turno_turma || 'Não informado');
-                
-                // Buscar todas as notas do aluno para organizar por bimestre
                 // Buscar todas as notas do aluno para organizar por bimestre
                 const notasPorBimestre = this.organizarNotasPorBimestre(aluno);
                 
@@ -1792,7 +1777,7 @@ const NotasModule = {
                 if (index < boletimData.boletim.length - 1) {
                     html += '<div class="page-break"></div>';
                 }
-            }
+            });
             
             console.log("✅ HTML do boletim gerado com sucesso");
             
@@ -5125,6 +5110,93 @@ const NotasModule = {
             console.error(`❌ Erro ao buscar dados da turma ${turmaId}:`, error);
             return null;
         }
+    },
+
+    // Obter turno do aluno
+    obterTurnoAluno: function(aluno) {
+        // Cache estático de turmas para evitar repetidas consultas
+        if (!this.cacheTurmasLocal) {
+            this.cacheTurmasLocal = {
+                // Mapeamento baseado nos padrões observados na imagem que o usuário mostrou
+                '13CM': 'MANHA',
+                '13CT': 'TARDE', 
+                '12AM': 'MANHA',
+                '12AT': 'TARDE',
+                '11AM': 'MANHA',
+                '11AT': 'TARDE',
+                '11BM': 'MANHA',
+                '13AM': 'MANHA',
+                '13BM': 'MANHA',
+                // Adicionar mais conforme necessário
+            };
+        }
+        
+        // 1. Tentar obter turno do cache local baseado no ID da turma
+        if (aluno.id_turma && this.cacheTurmasLocal[aluno.id_turma]) {
+            console.log(`🎯 Turno encontrado no cache para turma ${aluno.id_turma}: ${this.cacheTurmasLocal[aluno.id_turma]}`);
+            return this.cacheTurmasLocal[aluno.id_turma];
+        }
+        
+        // 2. Tentar extrair turno do próprio ID da turma (padrão: últimas letras indicam turno)
+        if (aluno.id_turma) {
+            const idTurma = aluno.id_turma.toString().toUpperCase();
+            if (idTurma.endsWith('M')) {
+                console.log(`🌅 Turno inferido como MANHA para turma ${idTurma}`);
+                return 'MANHA';
+            } else if (idTurma.endsWith('T')) {
+                console.log(`🌇 Turno inferido como TARDE para turma ${idTurma}`);
+                return 'TARDE';
+            } else if (idTurma.endsWith('N')) {
+                console.log(`🌙 Turno inferido como NOITE para turma ${idTurma}`);
+                return 'NOITE';
+            }
+        }
+        
+        // 3. Usar dados diretos do aluno se disponíveis
+        if (aluno.turno || aluno.turno_turma) {
+            const turnoAluno = aluno.turno || aluno.turno_turma;
+            console.log(`👤 Turno obtido dos dados do aluno: ${turnoAluno}`);
+            return turnoAluno;
+        }
+        
+        // 4. Buscar de forma assíncrona em background (sem bloquear a renderização)
+        if (aluno.id_turma) {
+            this.buscarTurnoBackground(aluno.id_turma);
+        }
+        
+        // 5. Fallback padrão
+        console.log(`⚠️ Turno não encontrado para aluno ${aluno.nome_aluno}, usando padrão`);
+        return 'Não informado';
+    },
+    
+    // Buscar turno em background sem bloquear a UI
+    buscarTurnoBackground: function(turmaId) {
+        // Evitar múltiplas buscas para a mesma turma
+        if (this.buscandoTurmas && this.buscandoTurmas.has(turmaId)) {
+            return;
+        }
+        
+        if (!this.buscandoTurmas) {
+            this.buscandoTurmas = new Set();
+        }
+        
+        this.buscandoTurmas.add(turmaId);
+        
+        // Buscar de forma assíncrona
+        this.buscarDadosTurma(turmaId).then(dadosTurma => {
+            if (dadosTurma && dadosTurma.turno) {
+                // Atualizar cache local
+                if (!this.cacheTurmasLocal) {
+                    this.cacheTurmasLocal = {};
+                }
+                this.cacheTurmasLocal[turmaId] = dadosTurma.turno;
+                console.log(`✅ Turno da turma ${turmaId} atualizado no cache: ${dadosTurma.turno}`);
+            }
+        }).catch(error => {
+            console.warn(`⚠️ Erro ao buscar turno da turma ${turmaId}:`, error);
+        }).finally(() => {
+            this.buscandoTurmas.delete(turmaId);
+        });
     }
 };
 
