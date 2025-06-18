@@ -5043,6 +5043,7 @@ def gerar_boletim_medias(
                 n.nota_mensal,
                 n.nota_bimestral,
                 n.recuperacao,
+                n.frequencia,
                 n.media,
                 n.ano
             FROM nota n
@@ -5104,6 +5105,7 @@ def gerar_boletim_medias(
                 'nota_mensal': nota['nota_mensal'],
                 'nota_bimestral': nota['nota_bimestral'],
                 'recuperacao': nota['recuperacao'],
+                'frequencia': nota['frequencia'],
                 'media_bimestral': nota['media']
             }
         

@@ -406,15 +406,36 @@ const NotasModule = {
                             <div id="grade-notas-wrapper" class="d-none">
                                 <div class="table-responsive">
                                     <table class="table table-striped table-hover" id="tabela-grade-notas">
-                                        <thead>
-                                            <tr>
-                                                <th style="width: 30px;">#</th>
-                                                <th>Aluno</th>
-                                                <th style="width: 120px;">Nota Mensal</th>
-                                                <th style="width: 120px;">Nota Bimestral</th>
-                                                <th style="width: 120px;">Recuperação</th>
-                                                <th style="width: 120px;">Frequência</th>
-                                                <th style="width: 100px;">Média Final</th>
+                                        <thead class="glass-thead">
+                                            <tr class="table-header-glass">
+                                                <th rowspan="3" class="subject-header">Disciplina</th>
+                                                <th colspan="16" class="bimesters-header">Bimestres</th>
+                                                <th rowspan="3" class="final-grade-header">Média Final</th>
+                                                <th rowspan="3" class="status-header">Situação</th>
+                                            </tr>
+                                            <tr class="bimester-labels">
+                                                <th colspan="4" class="bimester-group">1º Bimestre</th>
+                                                <th colspan="4" class="bimester-group">2º Bimestre</th>
+                                                <th colspan="4" class="bimester-group">3º Bimestre</th>
+                                                <th colspan="4" class="bimester-group">4º Bimestre</th>
+                                            </tr>
+                                            <tr class="grade-types">
+                                                <th class="grade-type">Mensal</th>
+                                                <th class="grade-type">Bimestral</th>
+                                                <th class="grade-type">Frequência</th>
+                                                <th class="grade-type">Média</th>
+                                                <th class="grade-type">Mensal</th>
+                                                <th class="grade-type">Bimestral</th>
+                                                <th class="grade-type">Frequência</th>
+                                                <th class="grade-type">Média</th>
+                                                <th class="grade-type">Mensal</th>
+                                                <th class="grade-type">Bimestral</th>
+                                                <th class="grade-type">Frequência</th>
+                                                <th class="grade-type">Média</th>
+                                                <th class="grade-type">Mensal</th>
+                                                <th class="grade-type">Bimestral</th>
+                                                <th class="grade-type">Frequência</th>
+                                                <th class="grade-type">Média</th>
                                             </tr>
                                         </thead>
                                         <tbody id="grade-notas-corpo">
@@ -1697,15 +1718,19 @@ const NotasModule = {
                                     <tr class="grade-types">
                                         <th class="grade-type">Mensal</th>
                                         <th class="grade-type">Bimestral</th>
+                                        <th class="grade-type">Frequência</th>
                                         <th class="grade-type">Média</th>
                                         <th class="grade-type">Mensal</th>
                                         <th class="grade-type">Bimestral</th>
+                                        <th class="grade-type">Frequência</th>
                                         <th class="grade-type">Média</th>
                                         <th class="grade-type">Mensal</th>
                                         <th class="grade-type">Bimestral</th>
+                                        <th class="grade-type">Frequência</th>
                                         <th class="grade-type">Média</th>
                                         <th class="grade-type">Mensal</th>
                                         <th class="grade-type">Bimestral</th>
+                                        <th class="grade-type">Frequência</th>
                                         <th class="grade-type">Média</th>
                                     </tr>
                                 </thead>
@@ -1754,21 +1779,25 @@ const NotasModule = {
                                 <!-- 1º Bimestre -->
                                 <td class="grade-cell">${this.formatarNotaGlass(notasDisciplina['1']?.nota_mensal)}</td>
                                 <td class="grade-cell">${this.formatarNotaGlass(notasDisciplina['1']?.nota_bimestral)}</td>
+                                <td class="frequency-cell">${this.formatarFrequenciaGlass(notasDisciplina['1']?.frequencia)}</td>
                                 <td class="average-cell">${this.formatarMediaGlass(notasDisciplina['1'])}</td>
                                 
                                 <!-- 2º Bimestre -->
                                 <td class="grade-cell">${this.formatarNotaGlass(notasDisciplina['2']?.nota_mensal)}</td>
                                 <td class="grade-cell">${this.formatarNotaGlass(notasDisciplina['2']?.nota_bimestral)}</td>
+                                <td class="frequency-cell">${this.formatarFrequenciaGlass(notasDisciplina['2']?.frequencia)}</td>
                                 <td class="average-cell">${this.formatarMediaGlass(notasDisciplina['2'])}</td>
                                 
                                 <!-- 3º Bimestre -->
                                 <td class="grade-cell">${this.formatarNotaGlass(notasDisciplina['3']?.nota_mensal)}</td>
                                 <td class="grade-cell">${this.formatarNotaGlass(notasDisciplina['3']?.nota_bimestral)}</td>
+                                <td class="frequency-cell">${this.formatarFrequenciaGlass(notasDisciplina['3']?.frequencia)}</td>
                                 <td class="average-cell">${this.formatarMediaGlass(notasDisciplina['3'])}</td>
                                 
                                 <!-- 4º Bimestre -->
                                 <td class="grade-cell">${this.formatarNotaGlass(notasDisciplina['4']?.nota_mensal)}</td>
                                 <td class="grade-cell">${this.formatarNotaGlass(notasDisciplina['4']?.nota_bimestral)}</td>
+                                <td class="frequency-cell">${this.formatarFrequenciaGlass(notasDisciplina['4']?.frequencia)}</td>
                                 <td class="average-cell">${this.formatarMediaGlass(notasDisciplina['4'])}</td>
                                 
                                 <!-- Média Final -->
@@ -3906,6 +3935,7 @@ const NotasModule = {
                                 nota_mensal: notaBimestre.nota_mensal || null,
                                 nota_bimestral: notaBimestre.nota_bimestral || null,
                                 nota_recuperacao: notaBimestre.recuperacao || null,
+                                frequencia: notaBimestre.frequencia || null,
                                 media: notaBimestre.media || null
                             };
                         }
@@ -3923,6 +3953,7 @@ const NotasModule = {
                                 nota_mensal: nota.nota_mensal || null,
                                 nota_bimestral: nota.nota_bimestral || null,
                                 nota_recuperacao: nota.recuperacao || null,
+                                frequencia: nota.frequencia || null,
                                 media: nota.media || null
                             };
                         }
@@ -3969,7 +4000,7 @@ const NotasModule = {
         }
         
         const mensal = parseFloat(notaBimestre.nota_mensal) || 0;
-        const bimestral = parseFloat(notaBimestral.nota_bimestral) || 0;
+        const bimestral = parseFloat(notaBimestre.nota_bimestral) || 0;
         
         if (mensal === 0 && bimestral === 0) {
             return '<span class="average-empty">-</span>';
@@ -5384,6 +5415,56 @@ const NotasModule = {
         
         console.error("❌ Campo frequência não foi encontrado em nenhuma estratégia!");
         return false;
+    },
+
+    // Formatar frequência para exibição glassmorphism
+    formatarFrequenciaGlass: function(frequencia) {
+        if (frequencia === null || frequencia === undefined || frequencia === '') {
+            return '<span class="frequency-empty">-</span>';
+        }
+        
+        const frequenciaNum = parseInt(frequencia);
+        if (isNaN(frequenciaNum)) {
+            return '<span class="frequency-empty">-</span>';
+        }
+        
+        // Sistema de cores baseado no número de faltas
+        let classeFrequencia = '';
+        
+        if (frequenciaNum <= 5) {
+            classeFrequencia = 'frequency-good'; // Verde - poucas faltas
+        } else if (frequenciaNum <= 15) {
+            classeFrequencia = 'frequency-warning'; // Amarelo - faltas moderadas
+        } else {
+            classeFrequencia = 'frequency-danger'; // Vermelho - muitas faltas
+        }
+        
+        return `<span class="frequency-value ${classeFrequencia}">${frequenciaNum}</span>`;
+    },
+
+    // Formatar média final para exibição glassmorphism
+    formatarMediaFinalGlass: function(mediaFinal) {
+        if (mediaFinal === null || mediaFinal === undefined || mediaFinal === '') {
+            return '<span class="final-empty">-</span>';
+        }
+        
+        const media = parseFloat(mediaFinal);
+        if (isNaN(media)) {
+            return '<span class="final-empty">-</span>';
+        }
+        
+        // Sistema de cores baseado no valor da média final
+        let classeMedia = '';
+        
+        if (media >= 6.0) {
+            classeMedia = 'nota-aprovado';
+        } else if (media >= 4.0) {
+            classeMedia = 'nota-recuperacao';
+        } else {
+            classeMedia = 'nota-reprovado';
+        }
+        
+        return `<span class="final-value ${classeMedia}">${media.toFixed(1)}</span>`;
     },
 
 // ... existing code ...
