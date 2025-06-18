@@ -154,8 +154,17 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                     return response.json();
                 })
-                .then(professor => {
-                    console.log('Professor autenticado:', professor);
+                .then(data => {
+                    console.log('Resposta completa da API:', data);
+                    
+                    // A API retorna { message: "...", professor: {...} }
+                    const professor = data.professor || data;
+                    console.log('Dados do professor extraídos:', professor);
+                    
+                    // Verificar se temos os dados do professor
+                    if (!professor || !professor.id_professor) {
+                        throw new Error('Dados do professor inválidos na resposta da API');
+                    }
                     
                     // Armazenar dados do professor na sessão
                     sessionStorage.setItem('userProfile', 'professor');
@@ -163,8 +172,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     sessionStorage.setItem('professorNome', professor.nome_professor);
                     sessionStorage.setItem('professorEmail', professor.email_professor);
                     
-                    // Salvar também as disciplinas do professor (já vêm no objeto retornado pela API)
+                    // Salvar também as disciplinas do professor
                     sessionStorage.setItem('professorDisciplinas', JSON.stringify(professor.disciplinas || []));
+                    
+                    console.log('Dados salvos na sessão:');
+                    console.log('- professorId:', professor.id_professor);
+                    console.log('- professorNome:', professor.nome_professor);
+                    console.log('- professorEmail:', professor.email_professor);
+                    console.log('- disciplinas:', professor.disciplinas);
                     
                     // Redirecionar para o dashboard do professor
                     window.location.href = profileData[selectedProfile].redirectURL;

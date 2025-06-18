@@ -212,6 +212,52 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log("Todas as chaves da sessão:", Object.keys(sessionStorage));
     console.log("=== FIM DEBUG SESSÃO ===");
     
+    // Aguardar dados da sessão estarem disponíveis (para evitar problemas de timing)
+    function aguardarDadosSessao() {
+        return new Promise((resolve, reject) => {
+            let tentativas = 0;
+            const maxTentativas = 10;
+            
+            function verificar() {
+                const professorIdSessao = sessionStorage.getItem('professorId');
+                const userProfile = sessionStorage.getItem('userProfile');
+                
+                console.log(`Tentativa ${tentativas + 1}: professorId=${professorIdSessao}, userProfile=${userProfile}`);
+                
+                if (userProfile === 'professor' && professorIdSessao && professorIdSessao !== 'undefined') {
+                    console.log('Dados da sessão encontrados!');
+                    resolve();
+                } else if (tentativas >= maxTentativas) {
+                    console.error('Timeout ao aguardar dados da sessão');
+                    reject(new Error('Dados da sessão não encontrados após múltiplas tentativas'));
+                } else {
+                    tentativas++;
+                    setTimeout(verificar, 100); // Aguardar 100ms antes da próxima tentativa
+                }
+            }
+            
+            verificar();
+        });
+    }
+    
+    // Aguardar dados da sessão antes de continuar
+    aguardarDadosSessao()
+        .then(() => {
+            console.log('Dados da sessão confirmados, iniciando dashboard...');
+            inicializarDashboard();
+        })
+        .catch(error => {
+            console.error('Erro ao aguardar dados da sessão:', error);
+            alert('Erro ao carregar dados da sessão. Redirecionando para login...');
+            sessionStorage.clear();
+            window.location.href = 'index.html';
+        });
+});
+
+// Função separada para inicialização do dashboard
+function inicializarDashboard() {
+    console.log('Inicializando dashboard...');
+    
     // Configurar sistema de emergência para fechar modais travados
     configurarFechamentoEmergenciaModal();
     
@@ -306,7 +352,7 @@ document.addEventListener('DOMContentLoaded', function() {
     window.handleFormSubmit = handleFormSubmit;
     window.abrirModoLancamentoEmMassa = abrirModoLancamentoEmMassa;
     window.novaNota = novaNota;
-});
+}
 
 // Função para inicializar os links do menu
 function initLinks() {
