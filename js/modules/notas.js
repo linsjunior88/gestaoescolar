@@ -2061,6 +2061,8 @@ const NotasModule = {
     
     // Criar nova nota
     novaNota: function() {
+        console.log("🆕 Iniciando criação de nova nota...");
+        
         this.state.modoEdicao = false;
         this.state.notaSelecionada = null;
         
@@ -2090,9 +2092,25 @@ const NotasModule = {
             this.elements.inputAno.value = new Date().getFullYear();
         }
         
+        // Verificar e revalidar campo frequência
+        if (!this.elements.inputFrequencia) {
+            console.warn("⚠️ Campo frequência não encontrado, tentando revalidar...");
+            this.revalidarCampoFrequencia();
+        }
+        
+        // Limpar campo frequência
+        if (this.elements.inputFrequencia) {
+            this.elements.inputFrequencia.value = '';
+            console.log("✅ Campo frequência limpo e pronto para uso");
+        } else {
+            console.error("❌ Campo frequência ainda não foi encontrado após revalidação!");
+        }
+        
         if (this.elements.selectTurma) {
             this.elements.selectTurma.focus();
         }
+        
+        console.log("🆕 Nova nota inicializada com sucesso");
     },
     
     // Editar nota existente
@@ -3923,7 +3941,7 @@ const NotasModule = {
         }
         
         const mensal = parseFloat(notaBimestre.nota_mensal) || 0;
-        const bimestral = parseFloat(notaBimestre.nota_bimestral) || 0;
+        const bimestral = parseFloat(notaBimestral.nota_bimestral) || 0;
         
         if (mensal === 0 && bimestral === 0) {
             return '<span class="average-empty">-</span>';
@@ -5291,7 +5309,56 @@ const NotasModule = {
         }
         
         return true;
-    }
+    },
+
+    // Função para re-cachear especificamente o campo de frequência
+    revalidarCampoFrequencia: function() {
+        console.log("🔄 Re-validando campo frequência...");
+        
+        // Tentar várias estratégias para encontrar o campo
+        let frequenciaElement = null;
+        
+        // Estratégia 1: getElementById
+        frequenciaElement = document.getElementById('frequencia');
+        if (frequenciaElement) {
+            console.log("✅ Campo frequência encontrado via getElementById");
+            this.elements.inputFrequencia = frequenciaElement;
+            return true;
+        }
+        
+        // Estratégia 2: querySelector por ID
+        frequenciaElement = document.querySelector('#frequencia');
+        if (frequenciaElement) {
+            console.log("✅ Campo frequência encontrado via querySelector #frequencia");
+            this.elements.inputFrequencia = frequenciaElement;
+            return true;
+        }
+        
+        // Estratégia 3: querySelector por atributo
+        frequenciaElement = document.querySelector('input[id="frequencia"]');
+        if (frequenciaElement) {
+            console.log("✅ Campo frequência encontrado via querySelector input[id='frequencia']");
+            this.elements.inputFrequencia = frequenciaElement;
+            return true;
+        }
+        
+        // Estratégia 4: Buscar por label relacionado
+        const labelFrequencia = document.querySelector('label[for="frequencia"]');
+        if (labelFrequencia) {
+            console.log("📋 Label encontrado, procurando input relacionado...");
+            const inputRelacionado = labelFrequencia.parentElement.querySelector('input');
+            if (inputRelacionado) {
+                console.log("✅ Campo frequência encontrado via label relacionado");
+                this.elements.inputFrequencia = inputRelacionado;
+                return true;
+            }
+        }
+        
+        console.error("❌ Campo frequência não foi encontrado em nenhuma estratégia!");
+        return false;
+    },
+
+// ... existing code ...
 };
 
 // Exportar módulo

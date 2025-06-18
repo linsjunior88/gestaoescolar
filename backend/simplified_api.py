@@ -5171,49 +5171,57 @@ if __name__ == "__main__":
 def adicionar_campo_frequencia():
     """
     Adiciona o campo 'frequencia' à tabela 'nota' caso ainda não exista.
-    Este campo armazenará o número de faltas do aluno no bimestre.
+    Endpoint melhorado para maior robustez.
     """
-    conn = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
         
         # Verificar se o campo já existe
         cursor.execute("""
-            SELECT column_name 
+            SELECT COUNT(*) 
             FROM information_schema.columns 
             WHERE table_name = 'nota' AND column_name = 'frequencia'
         """)
-        
-        campo_existe = cursor.fetchone()
+        campo_existe = cursor.fetchone()[0] > 0
         
         if not campo_existe:
-            # Adicionar o campo frequencia
+            print("🔧 Campo 'frequencia' não encontrado. Adicionando...")
+            
+            # Adicionar o campo frequencia com IF NOT EXISTS para segurança extra
             cursor.execute("""
                 ALTER TABLE nota 
-                ADD COLUMN frequencia INTEGER DEFAULT 0
+                ADD COLUMN IF NOT EXISTS frequencia INTEGER DEFAULT 0
             """)
-            
             print("✅ Campo 'frequencia' adicionado à tabela 'nota' com sucesso!")
             
-            # Atualizar registros existentes com valor padrão 0
+            # Atualizar registros existentes para ter valor padrão 0
             cursor.execute("""
                 UPDATE nota 
                 SET frequencia = 0 
                 WHERE frequencia IS NULL
             """)
+            print("🔄 Registros existentes atualizados com frequencia = 0")
             
             conn.commit()
             
             return {
-                "message": "Campo 'frequencia' adicionado com sucesso à tabela 'nota'",
                 "status": "success",
-                "details": "Todos os registros existentes foram atualizados com valor padrão 0"
+                "message": "Campo 'frequencia' adicionado com sucesso à tabela 'nota'",
+                "details": {
+                    "campo_criado": True,
+                    "registros_atualizados": True
+                }
             }
         else:
+            print("ℹ️ Campo 'frequencia' já existe na tabela 'nota'")
             return {
+                "status": "info", 
                 "message": "Campo 'frequencia' já existe na tabela 'nota'",
-                "status": "already_exists"
+                "details": {
+                    "campo_criado": False,
+                    "registros_atualizados": False
+                }
             }
             
     except Exception as e:
@@ -5221,9 +5229,11 @@ def adicionar_campo_frequencia():
             conn.rollback()
         print(f"❌ Erro ao adicionar campo 'frequencia': {str(e)}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erro ao atualizar estrutura do banco: {str(e)}"
+            status_code=500,
+            detail=f"Erro ao adicionar campo frequencia: {str(e)}"
         )
     finally:
+        if cursor:
+            cursor.close()
         if conn:
             conn.close()
