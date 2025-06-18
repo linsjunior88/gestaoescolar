@@ -1705,15 +1705,15 @@ const NotasModule = {
                                 <thead>
                                     <tr class="table-header-glass">
                                         <th rowspan="3" class="subject-header">Disciplina</th>
-                                        <th colspan="12" class="bimesters-header">Bimestres</th>
+                                        <th colspan="16" class="bimesters-header">Bimestres</th>
                                         <th rowspan="3" class="final-grade-header">Média Final</th>
                                         <th rowspan="3" class="status-header">Situação</th>
                                     </tr>
                                     <tr class="bimester-labels">
-                                        <th colspan="3" class="bimester-group">1º Bimestre</th>
-                                        <th colspan="3" class="bimester-group">2º Bimestre</th>
-                                        <th colspan="3" class="bimester-group">3º Bimestre</th>
-                                        <th colspan="3" class="bimester-group">4º Bimestre</th>
+                                        <th colspan="4" class="bimester-group">1º Bimestre</th>
+                                        <th colspan="4" class="bimester-group">2º Bimestre</th>
+                                        <th colspan="4" class="bimester-group">3º Bimestre</th>
+                                        <th colspan="4" class="bimester-group">4º Bimestre</th>
                                     </tr>
                                     <tr class="grade-types">
                                         <th class="grade-type">Mensal</th>
@@ -4000,7 +4000,7 @@ const NotasModule = {
         }
         
         const mensal = parseFloat(notaBimestre.nota_mensal) || 0;
-        const bimestral = parseFloat(notaBimestre.nota_bimestral) || 0;
+        const bimestral = parseFloat(notaBimestral.nota_bimestral) || 0;
         
         if (mensal === 0 && bimestral === 0) {
             return '<span class="average-empty">-</span>';
@@ -4312,6 +4312,36 @@ const NotasModule = {
                 box-shadow: 
                     0 10px 30px rgba(0, 0, 0, 0.1),
                     0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+                table-layout: fixed; /* Força alinhamento fixo das colunas */
+            }
+            
+            /* Definir larguras específicas para cada tipo de coluna */
+            .subject-header {
+                width: 12% !important;
+                min-width: 120px !important;
+            }
+            
+            .bimesters-header {
+                width: 64% !important; /* 16% x 4 bimestres */
+            }
+            
+            .bimester-group {
+                width: 16% !important; /* 4% x 4 colunas por bimestre */
+            }
+            
+            .grade-type {
+                width: 4% !important;
+                min-width: 45px !important;
+            }
+            
+            .final-grade-header {
+                width: 8% !important;
+                min-width: 80px !important;
+            }
+            
+            .status-header {
+                width: 16% !important;
+                min-width: 100px !important;
             }
             
             .table-header-glass th {
@@ -4325,6 +4355,7 @@ const NotasModule = {
                 border: none;
                 position: relative;
                 text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
+                vertical-align: middle;
             }
             
             .bimester-labels th {
@@ -4334,6 +4365,9 @@ const NotasModule = {
                 padding: 0.75rem;
                 font-size: 0.95rem;
                 color: #4a5568;
+                text-align: center;
+                vertical-align: middle;
+                font-weight: 600;
             }
             
             .grade-types th {
@@ -4344,6 +4378,8 @@ const NotasModule = {
                 font-size: 0.85rem;
                 font-weight: 500;
                 color: #4a5568;
+                text-align: center;
+                vertical-align: middle;
             }
             
             .glass-tbody tr:hover {
@@ -4357,6 +4393,8 @@ const NotasModule = {
                 border: none;
                 border-bottom: 1px solid rgba(255, 255, 255, 0.2);
                 transition: all 0.3s ease;
+                vertical-align: middle;
+                width: inherit; /* Herda a largura definida no cabeçalho */
             }
             
             .subject-name {
@@ -4365,6 +4403,26 @@ const NotasModule = {
                 text-align: left !important;
                 padding-left: 1.5rem !important;
                 background: rgba(255, 255, 255, 0.1);
+                width: 12% !important;
+            }
+            
+            /* Células de notas */
+            .grade-cell, .frequency-cell, .average-cell {
+                width: 4% !important;
+                min-width: 45px !important;
+                text-align: center !important;
+            }
+            
+            .final-average {
+                width: 8% !important;
+                min-width: 80px !important;
+                text-align: center !important;
+            }
+            
+            .status-cell {
+                width: 16% !important;
+                min-width: 100px !important;
+                text-align: center !important;
             }
             
             /* Cores das notas com gradientes suaves para tela */
@@ -4413,6 +4471,42 @@ const NotasModule = {
                 box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
             }
             
+            /* Cores específicas para frequência */
+            .frequency-good {
+                background: linear-gradient(135deg, 
+                    rgba(34, 197, 94, 0.9) 0%, 
+                    rgba(22, 163, 74, 0.8) 100%) !important;
+                color: white !important;
+                border-radius: 6px;
+                padding: 0.3rem 0.5rem;
+                font-weight: 600;
+            }
+            
+            .frequency-warning {
+                background: linear-gradient(135deg, 
+                    rgba(251, 191, 36, 0.9) 0%, 
+                    rgba(245, 158, 11, 0.8) 100%) !important;
+                color: #451a03 !important;
+                border-radius: 6px;
+                padding: 0.3rem 0.5rem;
+                font-weight: 600;
+            }
+            
+            .frequency-danger {
+                background: linear-gradient(135deg, 
+                    rgba(239, 68, 68, 0.9) 0%, 
+                    rgba(220, 38, 38, 0.8) 100%) !important;
+                color: white !important;
+                border-radius: 6px;
+                padding: 0.3rem 0.5rem;
+                font-weight: 600;
+            }
+            
+            .frequency-empty {
+                color: #9ca3af;
+                font-style: italic;
+            }
+            
             /* Legenda glassmorphism com gradientes atualizados */
             .legend-glass {
                 background: linear-gradient(135deg, 
@@ -4425,66 +4519,6 @@ const NotasModule = {
                 align-items: center;
                 border-top: 1px solid rgba(255, 255, 255, 0.2);
                 border-radius: 0 0 24px 24px;
-            }
-            
-            .legend-content {
-                display: flex;
-                align-items: center;
-                gap: 2rem;
-            }
-            
-            .legend-title {
-                display: flex;
-                align-items: center;
-                gap: 0.5rem;
-                font-weight: 600;
-                color: #2d3748;
-                font-size: 1rem;
-            }
-            
-            .legend-badges {
-                display: flex;
-                gap: 1rem;
-            }
-            
-            .legend-badge {
-                padding: 0.75rem 1rem;
-                border-radius: 12px;
-                font-weight: 600;
-                font-size: 0.85rem;
-                backdrop-filter: blur(10px);
-                transition: all 0.3s ease;
-                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            }
-            
-            .legend-badge.approved {
-                background: linear-gradient(135deg, 
-                    rgba(34, 197, 94, 0.9) 0%, 
-                    rgba(22, 163, 74, 0.8) 50%, 
-                    rgba(21, 128, 61, 0.7) 100%);
-                color: white;
-                border: 1px solid rgba(34, 197, 94, 0.6);
-                text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-            }
-            
-            .legend-badge.recovery {
-                background: linear-gradient(135deg, 
-                    rgba(251, 191, 36, 0.9) 0%, 
-                    rgba(245, 158, 11, 0.8) 50%, 
-                    rgba(217, 119, 6, 0.7) 100%);
-                color: #451a03;
-                border: 1px solid rgba(251, 191, 36, 0.6);
-                text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
-            }
-            
-            .legend-badge.failed {
-                background: linear-gradient(135deg, 
-                    rgba(239, 68, 68, 0.9) 0%, 
-                    rgba(220, 38, 38, 0.8) 50%, 
-                    rgba(185, 28, 28, 0.7) 100%);
-                color: white;
-                border: 1px solid rgba(239, 68, 68, 0.6);
-                text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
             }
             
             .legend-badge:hover {
@@ -4542,7 +4576,12 @@ const NotasModule = {
                     rgba(185, 28, 28, 0.7) 100%) !important;
                 color: white !important;
                 border: 1px solid rgba(239, 68, 68, 0.6) !important;
+                backdrop-filter: blur(10px);
+                border-radius: 8px;
+                padding: 0.5rem;
+                font-weight: 600;
                 text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+                box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
             }
             
             .status-badge:hover {
@@ -4772,6 +4811,44 @@ const NotasModule = {
                     word-wrap: break-word !important;
                 }
                 
+                /* Larguras específicas para impressão */
+                .subject-header,
+                .subject-name {
+                    width: 12% !important;
+                    min-width: 80px !important;
+                    text-align: left !important;
+                    padding-left: 4px !important;
+                }
+                
+                .bimesters-header {
+                    width: 64% !important;
+                }
+                
+                .bimester-group {
+                    width: 16% !important;
+                }
+                
+                .grade-type,
+                .grade-cell,
+                .frequency-cell,
+                .average-cell {
+                    width: 4% !important;
+                    min-width: 20px !important;
+                    font-size: 7px !important;
+                }
+                
+                .final-grade-header,
+                .final-average {
+                    width: 8% !important;
+                    min-width: 40px !important;
+                }
+                
+                .status-header,
+                .status-cell {
+                    width: 16% !important;
+                    min-width: 60px !important;
+                }
+                
                 .table-header-glass th,
                 .bimester-labels th,
                 .grade-types th {
@@ -4780,6 +4857,8 @@ const NotasModule = {
                     font-weight: bold !important;
                     text-shadow: none !important;
                     font-size: 7px !important;
+                    text-align: center !important;
+                    vertical-align: middle !important;
                 }
                 
                 .subject-name {
@@ -4787,39 +4866,31 @@ const NotasModule = {
                     text-align: left !important;
                     font-weight: bold !important;
                     color: #000 !important;
-                    padding-left: 8px !important;
-                    width: 100px !important;
+                    padding-left: 4px !important;
+                    width: 12% !important;
                 }
                 
-                /* Cores das notas sólidas para impressão */
+                /* Cores das notas sólidas para impressão com alinhamento */
                 .nota-aprovado {
                     background: #22c55e !important;
                     color: white !important;
                     border: 1px solid #16a34a !important;
                     border-radius: 3px !important;
-                    padding: 2px 4px !important;
-                    backdrop-filter: none !important;
-                    text-shadow: none !important;
-                    box-shadow: none !important;
+                    padding: 1px 2px !important;
                     font-weight: bold !important;
-                    -webkit-print-color-adjust: exact !important;
-                    print-color-adjust: exact !important;
-                    color-adjust: exact !important;
+                    text-align: center !important;
+                    font-size: 7px !important;
                 }
                 
                 .nota-recuperacao {
-                    background: #eab308 !important;
+                    background: #fbbf24 !important;
                     color: #451a03 !important;
-                    border: 1px solid #ca8a04 !important;
+                    border: 1px solid #f59e0b !important;
                     border-radius: 3px !important;
-                    padding: 2px 4px !important;
-                    backdrop-filter: none !important;
-                    text-shadow: none !important;
-                    box-shadow: none !important;
+                    padding: 1px 2px !important;
                     font-weight: bold !important;
-                    -webkit-print-color-adjust: exact !important;
-                    print-color-adjust: exact !important;
-                    color-adjust: exact !important;
+                    text-align: center !important;
+                    font-size: 7px !important;
                 }
                 
                 .nota-reprovado {
@@ -4827,59 +4898,38 @@ const NotasModule = {
                     color: white !important;
                     border: 1px solid #dc2626 !important;
                     border-radius: 3px !important;
-                    padding: 2px 4px !important;
-                    backdrop-filter: none !important;
-                    text-shadow: none !important;
-                    box-shadow: none !important;
+                    padding: 1px 2px !important;
                     font-weight: bold !important;
-                    -webkit-print-color-adjust: exact !important;
-                    print-color-adjust: exact !important;
-                    color-adjust: exact !important;
+                    text-align: center !important;
+                    font-size: 7px !important;
                 }
                 
-                /* Classes para notas na tabela */
-                .grade-value,
-                .average-value,
-                .final-value {
-                    -webkit-print-color-adjust: exact !important;
-                    print-color-adjust: exact !important;
-                    color-adjust: exact !important;
-                }
-                
-                .status-approved {
+                /* Cores para frequência na impressão */
+                .frequency-good {
                     background: #22c55e !important;
                     color: white !important;
-                    border: 1px solid #16a34a !important;
-                    border-radius: 3px !important;
-                    backdrop-filter: none !important;
-                    text-shadow: none !important;
-                    box-shadow: none !important;
-                    padding: 2px 6px !important;
-                    font-size: 8px !important;
+                    border-radius: 2px !important;
+                    padding: 1px !important;
+                    font-weight: bold !important;
+                    font-size: 7px !important;
                 }
                 
-                .status-recovery {
-                    background: #eab308 !important;
+                .frequency-warning {
+                    background: #fbbf24 !important;
                     color: #451a03 !important;
-                    border: 1px solid #ca8a04 !important;
-                    border-radius: 3px !important;
-                    backdrop-filter: none !important;
-                    text-shadow: none !important;
-                    box-shadow: none !important;
-                    padding: 2px 6px !important;
-                    font-size: 8px !important;
+                    border-radius: 2px !important;
+                    padding: 1px !important;
+                    font-weight: bold !important;
+                    font-size: 7px !important;
                 }
                 
-                .status-failed {
+                .frequency-danger {
                     background: #ef4444 !important;
                     color: white !important;
-                    border: 1px solid #dc2626 !important;
-                    border-radius: 3px !important;
-                    backdrop-filter: none !important;
-                    text-shadow: none !important;
-                    box-shadow: none !important;
-                    padding: 2px 6px !important;
-                    font-size: 8px !important;
+                    border-radius: 2px !important;
+                    padding: 1px !important;
+                    font-weight: bold !important;
+                    font-size: 7px !important;
                 }
                 
                 .legend-glass {
