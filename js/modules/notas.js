@@ -72,7 +72,7 @@ const NotasModule = {
             console.log("🎯 Inicializando módulo de notas...");
             
             // Reconstruir interface primeiro
-            this.reconstruirInterface();
+            this.reconstruirInterfaceNotas();
             
             // Aguardar um pouco para o DOM se estabilizar
             await new Promise(resolve => setTimeout(resolve, 100));
@@ -96,10 +96,15 @@ const NotasModule = {
             
             // Carregar dados iniciais
             await this.carregarTurmas();
-            await this.carregarDisciplinas();
             
-            // Carregar notas iniciais
-            this.carregarNotas();
+            // Definir ano padrão no filtro e no lançamento em massa
+            const anoAtual = new Date().getFullYear();
+            if (this.elements.filtroAno) {
+                this.elements.filtroAno.value = anoAtual;
+            }
+            if (this.elements.massaAno) {
+                this.elements.massaAno.value = anoAtual;
+            }
             
             console.log("✅ Módulo de notas inicializado com sucesso!");
             
