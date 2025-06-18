@@ -1003,7 +1003,18 @@ function initDashboard() {
                     .then(resultados => {
                         resultados.forEach(({ disciplina, turmas }) => {
                             const totalAlunos = turmas.reduce((total, turma) => total + turma.alunos, 0);
-                            const turmasStr = turmas.map(t => t.id_turma).join(', ') || '-';
+                            
+                            // Melhorar a exibição das turmas com nomes mais legíveis
+                            const turmasInfo = turmas.map(t => {
+                                // Tentar obter nome da turma de diferentes formas
+                                let nomeTurma = t.nome_turma || t.serie;
+                                if (t.turno) {
+                                    nomeTurma += ` - ${t.turno}`;
+                                }
+                                return nomeTurma || t.id_turma;
+                            });
+                            
+                            const turmasStr = turmasInfo.join(', ') || '-';
                             
                             html += `
                                 <tr>

@@ -10,6 +10,12 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- FullCalendar -->
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/locales/pt-br.js"></script>
+    <!-- CSS do Calendário -->
+    <link rel="stylesheet" href="css/calendario.css">
     <!-- CSS Personalizado - Mobile First -->
     <link rel="stylesheet" href="css/professor-mobile.css">
     <!-- Garantir que o Bootstrap JS seja carregado no head para resolver problemas com dropdowns -->
@@ -241,6 +247,67 @@
                             <div class="card-body">
                                 <div class="timeline" id="logs-atividades">
                                     <p class="text-center text-muted">Carregando atividades recentes...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Calendário Acadêmico -->
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="card shadow mb-4">
+                            <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                                <h6 class="m-0 font-weight-bold text-primary">
+                                    <i class="fas fa-calendar-alt me-2"></i>Calendário Acadêmico
+                                </h6>
+                            </div>
+                            <div class="card-body p-2">
+                                <div id="calendario-escolar-professor"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card shadow mb-4">
+                            <div class="card-header py-3">
+                                <h6 class="m-0 font-weight-bold text-primary">Estatísticas do Mês</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="stat-item mb-3">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="text-muted">Total de Eventos</span>
+                                        <span class="badge bg-primary" id="total-eventos-mes-professor">0</span>
+                                    </div>
+                                </div>
+                                <div class="stat-item mb-3">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="text-muted">Feriados</span>
+                                        <span class="badge bg-danger" id="total-feriados-mes-professor">0</span>
+                                    </div>
+                                </div>
+                                <div class="stat-item mb-3">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="text-muted">Eventos Escolares</span>
+                                        <span class="badge bg-success" id="total-eventos-escolares-mes-professor">0</span>
+                                    </div>
+                                </div>
+                                <div class="stat-item mb-3">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="text-muted">Reuniões</span>
+                                        <span class="badge bg-warning" id="total-reunioes-mes-professor">0</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Próximos Eventos -->
+                        <div class="card shadow">
+                            <div class="card-header py-3">
+                                <h6 class="m-0 font-weight-bold text-primary">Próximos Eventos</h6>
+                            </div>
+                            <div class="card-body">
+                                <div id="lista-proximos-eventos-professor">
+                                    <!-- Será preenchido via JavaScript -->
                                 </div>
                             </div>
                         </div>
@@ -542,6 +609,7 @@
     
     <!-- Scripts -->
     <script src="js/config.js"></script>
+    <script src="js/calendario-professor.js"></script>
     <script src="js/notas-inicializacao.js"></script>
     <script src="js/professor-dashboard-novo.js?v=5"></script>
     <script src="js/salvar-lancamento.js"></script>
