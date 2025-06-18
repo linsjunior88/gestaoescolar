@@ -202,6 +202,16 @@ window.configurarBotaoGerarPDF = configurarBotaoGerarPDF;
 document.addEventListener('DOMContentLoaded', function() {
     console.log("#### PROFESSOR DASHBOARD MOBILE FIRST v1 ####");
     
+    // Debug inicial dos dados da sessão
+    console.log("=== DEBUG SESSÃO DO PROFESSOR ===");
+    console.log("userProfile:", sessionStorage.getItem('userProfile'));
+    console.log("professorId:", sessionStorage.getItem('professorId'));
+    console.log("professorNome:", sessionStorage.getItem('professorNome'));
+    console.log("professorEmail:", sessionStorage.getItem('professorEmail'));
+    console.log("professorDisciplinas:", sessionStorage.getItem('professorDisciplinas'));
+    console.log("Todas as chaves da sessão:", Object.keys(sessionStorage));
+    console.log("=== FIM DEBUG SESSÃO ===");
+    
     // Configurar sistema de emergência para fechar modais travados
     configurarFechamentoEmergenciaModal();
     
@@ -218,6 +228,17 @@ document.addEventListener('DOMContentLoaded', function() {
     professorId = sessionStorage.getItem('professorId');
     professorNome = sessionStorage.getItem('professorNome');
     
+    // Verificação adicional para dados válidos
+    if (!professorId || professorId === 'undefined' || professorId === 'null') {
+        console.error('Dados da sessão inválidos - professorId:', professorId);
+        alert('Dados da sessão inválidos. Por favor, faça login novamente.');
+        sessionStorage.clear();
+        window.location.href = 'index.html';
+        return;
+    }
+    
+    console.log('Professor autenticado:', { professorId, professorNome });
+    
     try {
         const disciplinasJson = sessionStorage.getItem('professorDisciplinas');
         professorDisciplinas = disciplinasJson ? JSON.parse(disciplinasJson) : [];
@@ -226,9 +247,11 @@ document.addEventListener('DOMContentLoaded', function() {
         professorDisciplinas = [];
     }
     
-    // Verificar se temos o ID do professor
+    // Verificar se temos o ID do professor (validação redundante por segurança)
     if (!professorId) {
+        console.error('ID do professor ainda está vazio após validação');
         alert('Erro ao carregar dados do professor. Por favor, faça login novamente.');
+        sessionStorage.clear();
         window.location.href = 'index.html';
         return;
     }
@@ -485,7 +508,7 @@ function initDashboard() {
     fetch(CONFIG.getApiUrl(`/professores/${professorId}/estatisticas`))
         .then(response => {
             if (!response.ok) {
-                throw new Error(`Erro na requisição: ${response.status}`);
+                throw new Error(`Erro na requisição: ${response.status} - ${response.statusText}`);
             }
             return response.json();
         })
@@ -510,25 +533,40 @@ function initDashboard() {
             carregarLogsAtividades();
         })
         .catch(error => {
-            console.error('Erro ao carregar estatísticas:', error);
+            console.error('Erro ao carregar estatísticas do professor:', error);
             
-            // Mostrar mensagem de erro
+            // Verificar se o erro é por ID inválido
+            if (error.message.includes('404')) {
+                console.error('Professor não encontrado na API. Verificando dados da sessão...');
+                
+                // Verificar novamente dados da sessão
+                const sessionProfessorId = sessionStorage.getItem('professorId');
+                if (!sessionProfessorId || sessionProfessorId === 'undefined') {
+                    alert('Dados da sessão corrompidos. Por favor, faça login novamente.');
+                    sessionStorage.clear();
+                    window.location.href = 'index.html';
+                    return;
+                }
+            }
+            
+            // Mostrar estatísticas padrão em caso de erro
+            if (totalTurmasEl) totalTurmasEl.textContent = '-';
+            if (totalDisciplinasEl) totalDisciplinasEl.textContent = '-';
+            if (totalAlunosEl) totalAlunosEl.textContent = '-';
+            if (totalNotasEl) totalNotasEl.textContent = '-';
+            
+            // Remover indicador de carregamento
             if (estatisticasLoadingEl) {
                 estatisticasLoadingEl.innerHTML = `
                     <div class="alert alert-warning" role="alert">
                         <i class="fas fa-exclamation-triangle"></i> 
-                        Não foi possível carregar as estatísticas. 
-                        <button class="btn btn-sm btn-outline-secondary ms-2" onclick="initDashboard()">
-                            <i class="fas fa-sync-alt"></i> Tentar novamente
-                        </button>
+                        Erro ao carregar estatísticas. Tentando continuar...
                     </div>
                 `;
             }
             
-            // Mesmo com erro nas estatísticas, tentar carregar a lista de turmas e disciplinas
+            // Tentar carregar outros componentes mesmo com erro nas estatísticas
             carregarTurmasDisciplinas();
-            
-            // E também carregar logs de atividades
             carregarLogsAtividades();
         });
     
@@ -696,15 +734,51 @@ function initDashboard() {
         const perfilEmailEl = document.getElementById('perfil-email');
         const perfilDisciplinasEl = document.getElementById('perfil-disciplinas');
         
+        // Verificar se temos o ID do professor válido
+        if (!professorId || professorId === 'undefined' || professorId === 'null') {
+            console.error('ID do professor não encontrado ou inválido:', professorId);
+            
+            // Preencher com dados de erro
+            if (perfilIdEl) perfilIdEl.textContent = 'Erro: ID não encontrado';
+            if (perfilNomeEl) perfilNomeEl.textContent = 'Erro ao carregar';
+            if (perfilEmailEl) perfilEmailEl.textContent = 'Erro ao carregar';
+            if (perfilDisciplinasEl) perfilDisciplinasEl.textContent = 'Erro ao carregar';
+            
+            // Tentar recarregar dados da sessão
+            const sessionProfessorId = sessionStorage.getItem('professorId');
+            const sessionProfessorNome = sessionStorage.getItem('professorNome');
+            const sessionProfessorEmail = sessionStorage.getItem('professorEmail');
+            
+            if (sessionProfessorId && sessionProfessorId !== 'undefined') {
+                console.log('Tentando usar dados da sessão...');
+                professorId = sessionProfessorId;
+                professorNome = sessionProfessorNome;
+                
+                if (perfilIdEl) perfilIdEl.textContent = sessionProfessorId || '-';
+                if (perfilNomeEl) perfilNomeEl.textContent = sessionProfessorNome || '-';
+                if (perfilEmailEl) perfilEmailEl.textContent = sessionProfessorEmail || '-';
+                
+                // Tentar carregar disciplinas
+                carregarDisciplinasPerfil();
+            } else {
+                console.error('Dados da sessão também estão inválidos. Redirecionando para login...');
+                alert('Sessão expirada. Por favor, faça login novamente.');
+                window.location.href = 'index.html';
+            }
+            return;
+        }
+        
         // Preencher os dados que já temos da sessão
         if (perfilIdEl) perfilIdEl.textContent = professorId || '-';
         if (perfilNomeEl) perfilNomeEl.textContent = professorNome || '-';
+        
+        console.log(`Carregando perfil do professor ID: ${professorId}`);
         
         // Buscar detalhes do professor
         fetch(CONFIG.getApiUrl(`/professores/${professorId}`))
             .then(response => {
                 if (!response.ok) {
-                    throw new Error(`Erro na requisição: ${response.status}`);
+                    throw new Error(`Erro na requisição: ${response.status} - ${response.statusText}`);
                 }
                 return response.json();
             })
@@ -716,37 +790,79 @@ function initDashboard() {
                 if (perfilNomeEl) perfilNomeEl.textContent = professor.nome_professor || professorNome || '-';
                 if (perfilEmailEl) perfilEmailEl.textContent = professor.email_professor || '-';
                 
-                // Buscar disciplinas para exibir no perfil
-                fetch(CONFIG.getApiUrl(`/professores/${professorId}/disciplinas`))
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error(`Erro na requisição: ${response.status}`);
-                        }
-                        return response.json();
-                    })
-                    .then(disciplinas => {
-                        // Preencher as disciplinas
-                        if (perfilDisciplinasEl) {
-                            if (disciplinas.length > 0) {
-                                const disciplinasStr = disciplinas.map(d => 
-                                    decodificarTexto(d.nome_disciplina) || d.id_disciplina
-                                ).join(', ');
-                                perfilDisciplinasEl.textContent = disciplinasStr;
-                            } else {
-                                perfilDisciplinasEl.textContent = 'Nenhuma disciplina atribuída';
-                            }
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Erro ao carregar disciplinas para o perfil:', error);
-                        if (perfilDisciplinasEl) {
-                            perfilDisciplinasEl.textContent = 'Erro ao carregar disciplinas';
-                        }
-                    });
+                // Carregar disciplinas
+                carregarDisciplinasPerfil();
             })
             .catch(error => {
                 console.error('Erro ao carregar dados do professor para o perfil:', error);
-                // Manter os dados da sessão já preenchidos
+                
+                // Tentar usar dados da sessão como fallback
+                const sessionEmail = sessionStorage.getItem('professorEmail');
+                if (sessionEmail) {
+                    if (perfilEmailEl) perfilEmailEl.textContent = sessionEmail;
+                }
+                
+                // Carregar disciplinas mesmo com erro nos dados básicos
+                carregarDisciplinasPerfil();
+            });
+    }
+    
+    // Função separada para carregar disciplinas do perfil
+    function carregarDisciplinasPerfil() {
+        const perfilDisciplinasEl = document.getElementById('perfil-disciplinas');
+        
+        if (!perfilDisciplinasEl) return;
+        
+        // Verificar se temos ID válido
+        if (!professorId || professorId === 'undefined' || professorId === 'null') {
+            perfilDisciplinasEl.textContent = 'ID do professor inválido';
+            return;
+        }
+        
+        // Mostrar indicador de carregamento
+        perfilDisciplinasEl.textContent = 'Carregando...';
+        
+        // Buscar disciplinas para exibir no perfil
+        fetch(CONFIG.getApiUrl(`/professores/${professorId}/disciplinas`))
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Erro na requisição: ${response.status} - ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then(disciplinas => {
+                console.log('Disciplinas do professor para perfil:', disciplinas);
+                
+                // Preencher as disciplinas
+                if (disciplinas && disciplinas.length > 0) {
+                    const disciplinasStr = disciplinas.map(d => 
+                        decodificarTexto(d.nome_disciplina) || d.id_disciplina
+                    ).join(', ');
+                    perfilDisciplinasEl.textContent = disciplinasStr;
+                } else {
+                    perfilDisciplinasEl.textContent = 'Nenhuma disciplina atribuída';
+                }
+            })
+            .catch(error => {
+                console.error('Erro ao carregar disciplinas para o perfil:', error);
+                
+                // Tentar usar dados da sessão como fallback
+                try {
+                    const disciplinasSession = sessionStorage.getItem('professorDisciplinas');
+                    if (disciplinasSession && disciplinasSession !== 'undefined') {
+                        const disciplinas = JSON.parse(disciplinasSession);
+                        if (disciplinas && disciplinas.length > 0) {
+                            perfilDisciplinasEl.textContent = disciplinas.join(', ');
+                        } else {
+                            perfilDisciplinasEl.textContent = 'Nenhuma disciplina encontrada';
+                        }
+                    } else {
+                        perfilDisciplinasEl.textContent = 'Erro ao carregar disciplinas';
+                    }
+                } catch (e) {
+                    console.error('Erro ao usar dados da sessão:', e);
+                    perfilDisciplinasEl.textContent = 'Erro ao carregar disciplinas';
+                }
             });
     }
     
