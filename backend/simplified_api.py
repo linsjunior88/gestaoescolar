@@ -47,11 +47,8 @@ app = FastAPI(
 # Configuração de CORS para permitir acesso do frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-    "https://gestao-escolar-frontend-n9aq.onrender.com",
-    "https://emefnazarerodrigues.86dynamics.com.br"
-    ],  # Ajuste para os domínios específicos em produção
-    allow_credentials=True,
+    allow_origins=["*"],  # Permitir todas as origens temporariamente para debug
+    allow_credentials=False,  # Desabilitar credentials quando allow_origins é "*"
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -4466,13 +4463,18 @@ criar_tabela_vinculos()
 def criar_tabela_calendario():
     """Cria a tabela calendario_escolar se ela não existir."""
     try:
+        import logging
+        logging.basicConfig(level=logging.INFO)
+        logger = logging.getLogger(__name__)
+        
         logger.info("Verificando se a tabela calendario_escolar existe...")
         conn = get_db_connection()
         cursor = conn.cursor()
         
         # Verificar se a tabela já existe
         cursor.execute("SELECT to_regclass('public.calendario_escolar');")
-        table_exists = cursor.fetchone()[0]
+        result = cursor.fetchone()
+        table_exists = result[0] if result else None
         
         if table_exists:
             logger.info("A tabela calendario_escolar já existe.")
@@ -4545,7 +4547,10 @@ def criar_tabela_calendario():
         logger.info("Processo de verificação e criação da tabela calendario_escolar concluído!")
         
     except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
         logger.error(f"Erro ao criar tabela calendario_escolar: {e}")
+        print(f"Erro ao criar tabela calendario_escolar: {e}")  # Fallback para print
 
 # ==============================================================
 # Endpoints para Calendário Escolar
