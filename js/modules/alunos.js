@@ -59,6 +59,7 @@ const AlunosModule = {
         this.elements.selectSexoAluno = document.getElementById('sexo-aluno');
         this.elements.inputDataNasc = document.getElementById('data-nasc');
         this.elements.inputMaeAluno = document.getElementById('mae-aluno');
+        this.elements.inputCodigoInep = document.getElementById('codigo-inep-aluno');
         this.elements.selectTurma = document.getElementById('turma-aluno');
         this.elements.btnSalvarAluno = document.getElementById('btn-salvar-aluno');
         this.elements.btnCancelarAluno = document.getElementById('btn-cancelar-aluno');
@@ -366,7 +367,7 @@ const AlunosModule = {
         this.elements.listaAlunos.innerHTML = '';
         
         if (this.state.alunos.length === 0) {
-            this.elements.listaAlunos.innerHTML = '<tr><td colspan="7" class="text-center">Nenhum aluno encontrado. Use os filtros acima para buscar alunos.</td></tr>';
+            this.elements.listaAlunos.innerHTML = '<tr><td colspan="8" class="text-center">Nenhum aluno encontrado. Use os filtros acima para buscar alunos.</td></tr>';
             return;
         }
         
@@ -411,6 +412,7 @@ const AlunosModule = {
                 <td>${turma.id_turma !== 'N/A' ? turma.id_turma : (turma.serie || 'N/A')}</td>
                 <td>${aluno.id_aluno || aluno.id || 'N/A'}</td>
                 <td>${aluno.nome_aluno || aluno.nome || 'N/A'}</td>
+                <td>${aluno.codigo_inep || 'N/A'}</td>
                 <td>${aluno.sexo === 'M' ? 'Masculino' : (aluno.sexo === 'F' ? 'Feminino' : 'N/A')}</td>
                 <td>${dataNascFormatada}</td>
                 <td>${aluno.mae || 'N/A'}</td>
@@ -501,6 +503,7 @@ const AlunosModule = {
                 }
                 
                 this.elements.inputMaeAluno.value = aluno.mae || '';
+                this.elements.inputCodigoInep.value = aluno.codigo_inep || '';
                 // Usar id_turma em vez de turma_id para corresponder ao esperado pela API
                 this.elements.selectTurma.value = aluno.id_turma || aluno.turma_id || '';
                 this.elements.inputNomeAluno.focus();
@@ -546,6 +549,7 @@ const AlunosModule = {
                 sexo: this.elements.selectSexoAluno.value,
                 data_nasc: dataNasc, // Formato YYYY-MM-DD é aceito pela API
                 mae: this.elements.inputMaeAluno.value,
+                codigo_inep: this.elements.inputCodigoInep.value || null,
                 id_turma: turmaId // Usar id_turma em vez de turma_id como esperado pela API
             };
             

@@ -74,6 +74,7 @@ const ProfessoresModule = {
         this.elements.inputNomeProfessor = document.getElementById('nome-professor');
         this.elements.inputEmailProfessor = document.getElementById('email-professor');
         this.elements.inputSenhaProfessor = document.getElementById('senha-professor');
+        this.elements.inputCpfProfessor = document.getElementById('cpf-professor');
         this.elements.selectDisciplinas = document.getElementById('disciplinas-professor');
         this.elements.vinculosContainer = document.getElementById('vinculos-professor-container');
         this.elements.tabelaVinculos = document.getElementById('tabela-vinculos-professor');
@@ -460,7 +461,7 @@ const ProfessoresModule = {
         if (!this.state.professores || this.state.professores.length === 0) {
             this.elements.listaProfessores.innerHTML = `
                 <tr>
-                    <td colspan="5" class="text-center">Nenhum professor cadastrado</td>
+                    <td colspan="6" class="text-center">Nenhum professor cadastrado</td>
                 </tr>
             `;
             return;
@@ -481,6 +482,7 @@ const ProfessoresModule = {
                     <td>${professor.id_professor || professor.id || ''}</td>
                     <td>${professor.nome_professor || professor.nome || ''}</td>
                     <td>${professor.email_professor || professor.email || ''}</td>
+                    <td>${professor.cpf || 'N/A'}</td>
                     <td>
                         <span class="badge bg-info">${disciplinasIds.length} disciplina(s)</span>
                         <button type="button" class="btn btn-sm btn-outline-info ms-2 btn-ver-vinculos" data-id="${professor.id_professor || professor.id}">
@@ -840,6 +842,7 @@ const ProfessoresModule = {
             const professorDados = {
                 nome_professor: this.elements.inputNomeProfessor.value,
                 email_professor: this.elements.inputEmailProfessor.value,
+                cpf: this.elements.inputCpfProfessor.value || null,
                 disciplinas: disciplinasSelecionadas
             };
             
@@ -1074,6 +1077,7 @@ const ProfessoresModule = {
                 
                 this.elements.inputNomeProfessor.value = professor.nome_professor || professor.nome || '';
                 this.elements.inputEmailProfessor.value = professor.email_professor || professor.email || '';
+                this.elements.inputCpfProfessor.value = professor.cpf || '';
                 
                 // Campo de senha não é obrigatório na edição
                 if (this.elements.inputSenhaProfessor) {
