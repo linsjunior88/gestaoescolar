@@ -188,6 +188,7 @@ class Professor(BaseModel):
     email_professor: Optional[str] = None
     senha_professor: Optional[str] = None
     ativo: Optional[bool] = True  # Campo ativo adicionado
+    cpf: Optional[str] = None  # CPF do professor - 11 dígitos
     disciplinas: Optional[List[str]] = []
     mensagens: Optional[List[str]] = []
 
@@ -205,6 +206,7 @@ class ProfessorUpdate(BaseModel):
     email_professor: Optional[str] = None
     senha_professor: Optional[str] = None
     ativo: Optional[bool] = None  # Campo ativo adicionado
+    cpf: Optional[str] = None  # CPF do professor - 11 dígitos
     disciplinas: Optional[List[str]] = None
 
 # Modelo para vincular professor e disciplina
@@ -223,6 +225,7 @@ class AlunoBase(BaseModel):
     email: Optional[str] = None
     mae: Optional[str] = None
     id_turma: str
+    codigo_inep: Optional[str] = None  # Código INEP do aluno - 12 dígitos
 
 class AlunoCreate(AlunoBase):
     pass
@@ -237,6 +240,7 @@ class AlunoUpdate(BaseModel):
     email: Optional[str] = None
     mae: Optional[str] = None
     id_turma: Optional[str] = None
+    codigo_inep: Optional[str] = None  # Código INEP do aluno - 12 dígitos
 
 class Aluno(AlunoBase):
     id: Optional[int] = None
@@ -328,6 +332,86 @@ class EventoCalendario(EventoCalendarioBase):
     criado_por: str
     data_criacao: Optional[datetime] = None
     ativo: Optional[bool] = True
+    
+    class Config:
+        from_attributes = True
+
+# Modelos para Escola
+class EscolaBase(BaseModel):
+    codigo_inep: str  # Código INEP da escola - 8 dígitos
+    cnpj: Optional[str] = None  # CNPJ da escola - 14 dígitos
+    razao_social: str
+    nome_fantasia: Optional[str] = None
+    logo: Optional[str] = None
+    
+    # Endereço
+    cep: Optional[str] = None
+    logradouro: Optional[str] = None
+    numero: Optional[str] = None
+    complemento: Optional[str] = None
+    bairro: Optional[str] = None
+    cidade: Optional[str] = None
+    uf: Optional[str] = None
+    
+    # Contatos
+    telefone_principal: Optional[str] = None
+    telefone_secundario: Optional[str] = None
+    email_principal: Optional[str] = None
+    
+    # Classificação MEC/INEP
+    dependencia_administrativa: Optional[str] = "Municipal"
+    situacao_funcionamento: Optional[str] = "Em Atividade"
+    localizacao: str  # Urbana ou Rural
+    ato_autorizacao: Optional[str] = None
+    
+    # Gestor
+    gestor_nome: Optional[str] = None
+    gestor_cpf: Optional[str] = None
+    gestor_email: Optional[str] = None
+
+class EscolaCreate(EscolaBase):
+    pass
+
+class EscolaUpdate(BaseModel):
+    codigo_inep: Optional[str] = None
+    cnpj: Optional[str] = None
+    razao_social: Optional[str] = None
+    nome_fantasia: Optional[str] = None
+    logo: Optional[str] = None
+    
+    # Endereço
+    cep: Optional[str] = None
+    logradouro: Optional[str] = None
+    numero: Optional[str] = None
+    complemento: Optional[str] = None
+    bairro: Optional[str] = None
+    cidade: Optional[str] = None
+    uf: Optional[str] = None
+    
+    # Contatos
+    telefone_principal: Optional[str] = None
+    telefone_secundario: Optional[str] = None
+    email_principal: Optional[str] = None
+    
+    # Classificação MEC/INEP
+    dependencia_administrativa: Optional[str] = None
+    situacao_funcionamento: Optional[str] = None
+    localizacao: Optional[str] = None
+    ato_autorizacao: Optional[str] = None
+    
+    # Gestor
+    gestor_nome: Optional[str] = None
+    gestor_cpf: Optional[str] = None
+    gestor_email: Optional[str] = None
+    
+    # Controle
+    ativo: Optional[bool] = None
+
+class Escola(EscolaBase):
+    id_escola: int
+    ativo: Optional[bool] = True
+    data_cadastro: Optional[datetime] = None
+    data_atualizacao: Optional[datetime] = None
     
     class Config:
         from_attributes = True
@@ -912,7 +996,7 @@ def read_professores_filtro(
         # Construir query com filtro opcional
         if ativo is not None:
             query = """
-            SELECT p.id, p.id_professor, p.nome_professor, p.email_professor, p.ativo
+            SELECT p.id, p.id_professor, p.nome_professor, p.email_professor, p.ativo, p.cpf
             FROM professor p
             WHERE p.ativo = %s
             ORDER BY p.nome_professor
@@ -920,7 +1004,7 @@ def read_professores_filtro(
             params = (ativo,)
         else:
             query = """
-            SELECT p.id, p.id_professor, p.nome_professor, p.email_professor, p.ativo
+            SELECT p.id, p.id_professor, p.nome_professor, p.email_professor, p.ativo, p.cpf
             FROM professor p
             ORDER BY p.nome_professor
             """
@@ -958,6 +1042,7 @@ def read_professores_filtro(
                 "email_professor": row["email_professor"],
                 "senha_professor": None,  # Definir como None por padrão
                 "ativo": row["ativo"],
+                "cpf": row["cpf"],  # Adicionar campo CPF
                 "disciplinas": disciplinas
             }
             professores.append(professor)
@@ -978,9 +1063,9 @@ def read_professores():
     """Busca todos os professores cadastrados."""
     print("=== INICIANDO BUSCA DE TODOS OS PROFESSORES ===")
     try:
-        # Consulta direta incluindo campo ativo
+        # Consulta direta incluindo campo ativo e cpf
         query = """
-        SELECT p.id, p.id_professor, p.nome_professor, p.email_professor, p.ativo
+        SELECT p.id, p.id_professor, p.nome_professor, p.email_professor, p.ativo, p.cpf
         FROM professor p
         ORDER BY p.nome_professor
         """
@@ -1016,6 +1101,7 @@ def read_professores():
                 "email_professor": row["email_professor"],
                 "senha_professor": None,  # Definir como None por padrão
                 "ativo": row["ativo"],  # Adicionar campo ativo
+                "cpf": row["cpf"],  # Adicionar campo CPF
                 "disciplinas": disciplinas
             }
             professores.append(professor)
@@ -1036,9 +1122,9 @@ def read_professor(professor_id: str = Path(..., description="ID ou código do p
     """Busca um professor específico pelo ID ou código."""
     print(f"=== INICIANDO BUSCA DO PROFESSOR {professor_id} ===")
     try:
-        # Consulta direta incluindo campo ativo
+        # Consulta direta incluindo campo ativo e cpf
         query = """
-        SELECT p.id, p.id_professor, p.nome_professor, p.email_professor, p.ativo
+        SELECT p.id, p.id_professor, p.nome_professor, p.email_professor, p.ativo, p.cpf
         FROM professor p
         WHERE p.id_professor = %s
         """
@@ -1072,6 +1158,7 @@ def read_professor(professor_id: str = Path(..., description="ID ou código do p
             "email_professor": result["email_professor"],
             "senha_professor": None,  # Definir como None por padrão
             "ativo": result["ativo"],  # Adicionar campo ativo
+            "cpf": result["cpf"],  # Adicionar campo CPF
             "disciplinas": disciplinas
         }
         
@@ -1106,16 +1193,17 @@ def create_professor(professor: ProfessorCreate):
         
         # Inserir o novo professor
         query = """
-        INSERT INTO professor (id_professor, nome_professor, email_professor, senha, ativo)
-        VALUES (%s, %s, %s, %s, %s)
-        RETURNING id, id_professor, nome_professor, email_professor, ativo
+        INSERT INTO professor (id_professor, nome_professor, email_professor, senha, ativo, cpf)
+        VALUES (%s, %s, %s, %s, %s, %s)
+        RETURNING id, id_professor, nome_professor, email_professor, ativo, cpf
         """
         params = (
             professor.id_professor,
             professor.nome_professor,
             professor.email_professor,
             professor.senha_professor,
-            professor.ativo
+            professor.ativo,
+            professor.cpf
         )
         
         print(f"Executando query de inserção: {query}")
@@ -1583,6 +1671,8 @@ def update_professor(
             updates["senha"] = professor.senha_professor
         if professor.ativo is not None:
             updates["ativo"] = professor.ativo  # Adicionar suporte ao campo ativo
+        if professor.cpf is not None:
+            updates["cpf"] = professor.cpf  # Adicionar suporte ao campo CPF
         
         print(f"Campos a atualizar: {updates}")
         
@@ -1592,7 +1682,7 @@ def update_professor(
         
         # Construir a query de atualização
         set_clause = ", ".join(f"{field} = %s" for field in updates.keys())
-        query = f"UPDATE professor SET {set_clause} WHERE id = %s RETURNING id, id_professor, nome_professor, email_professor, ativo"
+        query = f"UPDATE professor SET {set_clause} WHERE id = %s RETURNING id, id_professor, nome_professor, email_professor, ativo, cpf"
         
         # Montar os parâmetros na ordem correta
         params = list(updates.values())
@@ -2159,7 +2249,7 @@ def read_alunos():
     try:
         query = """
         SELECT a.id, a.id_aluno, a.nome_aluno, a.data_nasc, a.sexo,
-               a.endereco, a.telefone, a.email, a.mae, a.id_turma
+               a.endereco, a.telefone, a.email, a.mae, a.id_turma, a.codigo_inep
         FROM aluno a
         ORDER BY a.nome_aluno
         """
@@ -2186,7 +2276,8 @@ def read_alunos():
                 "telefone": row["telefone"],
                 "email": row["email"],
                 "mae": row["mae"],
-                "id_turma": row["id_turma"]
+                "id_turma": row["id_turma"],
+                "codigo_inep": row["codigo_inep"]
             }
             alunos.append(aluno)
         
@@ -2208,7 +2299,7 @@ def read_aluno(aluno_id: str = Path(..., description="ID ou código do aluno")):
     try:
         query = """
         SELECT a.id, a.id_aluno, a.nome_aluno, a.data_nasc, a.sexo,
-               a.endereco, a.telefone, a.email, a.mae, a.id_turma
+               a.endereco, a.telefone, a.email, a.mae, a.id_turma, a.codigo_inep
         FROM aluno a
         WHERE a.id_aluno = %s
         """
@@ -2232,7 +2323,8 @@ def read_aluno(aluno_id: str = Path(..., description="ID ou código do aluno")):
             "telefone": result["telefone"],
             "email": result["email"],
             "mae": result["mae"],
-            "id_turma": result["id_turma"]
+            "id_turma": result["id_turma"],
+            "codigo_inep": result["codigo_inep"]
         }
         
         print(f"Retornando dados do aluno {aluno_id}")
@@ -2278,10 +2370,10 @@ def create_aluno(aluno: AlunoCreate):
         # Inserir o novo aluno
         insert_query = """
         INSERT INTO aluno (id_aluno, nome_aluno, data_nasc, sexo, endereco, telefone, 
-                           email, mae, id_turma)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                           email, mae, id_turma, codigo_inep)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         RETURNING id, id_aluno, nome_aluno, data_nasc, sexo, endereco, telefone, 
-                 email, mae, id_turma
+                 email, mae, id_turma, codigo_inep
         """
         
         params = (
@@ -2293,7 +2385,8 @@ def create_aluno(aluno: AlunoCreate):
             aluno.telefone,
             aluno.email,
             aluno.mae,
-            aluno.id_turma
+            aluno.id_turma,
+            aluno.codigo_inep
         )
         
         print(f"Executando inserção: {insert_query} com parâmetros: {params}")
@@ -2316,7 +2409,8 @@ def create_aluno(aluno: AlunoCreate):
             "telefone": result["telefone"],
             "email": result["email"],
             "mae": result["mae"],
-            "id_turma": result["id_turma"]
+            "id_turma": result["id_turma"],
+            "codigo_inep": result["codigo_inep"]
         }
         
         print(f"Aluno criado com sucesso: {aluno_criado}")
@@ -2380,6 +2474,8 @@ def update_aluno(
                 )
             
             updates["id_turma"] = aluno.id_turma
+        if aluno.codigo_inep is not None:
+            updates["codigo_inep"] = aluno.codigo_inep
         
         print(f"Campos a atualizar: {updates}")
         
@@ -2394,7 +2490,7 @@ def update_aluno(
         SET {set_clause}
         WHERE id = %s
         RETURNING id, id_aluno, nome_aluno, data_nasc, sexo, endereco, telefone, 
-                  email, mae, id_turma
+                  email, mae, id_turma, codigo_inep
         """
         
         # Montar os parâmetros na ordem correta
@@ -2421,7 +2517,8 @@ def update_aluno(
             "telefone": result["telefone"],
             "email": result["email"],
             "mae": result["mae"],
-            "id_turma": result["id_turma"]
+            "id_turma": result["id_turma"],
+            "codigo_inep": result["codigo_inep"]
         }
         
         print(f"Aluno atualizado: {aluno_atualizado}")
@@ -5163,6 +5260,587 @@ def gerar_boletim_medias(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Erro ao gerar boletim: {str(e)}"
+        )
+
+# ==============================================================
+# ENDPOINTS PARA ESCOLAS
+# ==============================================================
+
+@app.get("/api/escolas/", response_model=List[Escola])
+def read_escolas():
+    """
+    Lista todas as escolas cadastradas.
+    """
+    try:
+        query = """
+            SELECT id_escola, codigo_inep, cnpj, razao_social, nome_fantasia, logo,
+                   cep, logradouro, numero, complemento, bairro, cidade, uf,
+                   telefone_principal, telefone_secundario, email_principal,
+                   dependencia_administrativa, situacao_funcionamento, localizacao, ato_autorizacao,
+                   gestor_nome, gestor_cpf, gestor_email,
+                   ativo, data_cadastro, data_atualizacao
+            FROM escolas
+            ORDER BY razao_social
+        """
+        
+        escolas = execute_query(query)
+        
+        if not escolas:
+            return []
+        
+        return [
+            {
+                "id_escola": escola["id_escola"],
+                "codigo_inep": escola["codigo_inep"],
+                "cnpj": escola["cnpj"],
+                "razao_social": escola["razao_social"],
+                "nome_fantasia": escola["nome_fantasia"],
+                "logo": escola["logo"],
+                "cep": escola["cep"],
+                "logradouro": escola["logradouro"],
+                "numero": escola["numero"],
+                "complemento": escola["complemento"],
+                "bairro": escola["bairro"],
+                "cidade": escola["cidade"],
+                "uf": escola["uf"],
+                "telefone_principal": escola["telefone_principal"],
+                "telefone_secundario": escola["telefone_secundario"],
+                "email_principal": escola["email_principal"],
+                "dependencia_administrativa": escola["dependencia_administrativa"],
+                "situacao_funcionamento": escola["situacao_funcionamento"],
+                "localizacao": escola["localizacao"],
+                "ato_autorizacao": escola["ato_autorizacao"],
+                "gestor_nome": escola["gestor_nome"],
+                "gestor_cpf": escola["gestor_cpf"],
+                "gestor_email": escola["gestor_email"],
+                "ativo": escola["ativo"],
+                "data_cadastro": escola["data_cadastro"],
+                "data_atualizacao": escola["data_atualizacao"]
+            }
+            for escola in escolas
+        ]
+        
+    except Exception as e:
+        print(f"Erro ao buscar escolas: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao buscar escolas: {str(e)}"
+        )
+
+@app.get("/api/escolas/{escola_id}", response_model=Escola)
+def read_escola(escola_id: int = Path(..., description="ID da escola")):
+    """
+    Busca uma escola específica por ID.
+    """
+    try:
+        query = """
+            SELECT id_escola, codigo_inep, cnpj, razao_social, nome_fantasia, logo,
+                   cep, logradouro, numero, complemento, bairro, cidade, uf,
+                   telefone_principal, telefone_secundario, email_principal,
+                   dependencia_administrativa, situacao_funcionamento, localizacao, ato_autorizacao,
+                   gestor_nome, gestor_cpf, gestor_email,
+                   ativo, data_cadastro, data_atualizacao
+            FROM escolas
+            WHERE id_escola = %s
+        """
+        
+        escola = execute_query(query, (escola_id,), fetch_one=True)
+        
+        if not escola:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Escola com ID {escola_id} não encontrada"
+            )
+        
+        return {
+            "id_escola": escola["id_escola"],
+            "codigo_inep": escola["codigo_inep"],
+            "cnpj": escola["cnpj"],
+            "razao_social": escola["razao_social"],
+            "nome_fantasia": escola["nome_fantasia"],
+            "logo": escola["logo"],
+            "cep": escola["cep"],
+            "logradouro": escola["logradouro"],
+            "numero": escola["numero"],
+            "complemento": escola["complemento"],
+            "bairro": escola["bairro"],
+            "cidade": escola["cidade"],
+            "uf": escola["uf"],
+            "telefone_principal": escola["telefone_principal"],
+            "telefone_secundario": escola["telefone_secundario"],
+            "email_principal": escola["email_principal"],
+            "dependencia_administrativa": escola["dependencia_administrativa"],
+            "situacao_funcionamento": escola["situacao_funcionamento"],
+            "localizacao": escola["localizacao"],
+            "ato_autorizacao": escola["ato_autorizacao"],
+            "gestor_nome": escola["gestor_nome"],
+            "gestor_cpf": escola["gestor_cpf"],
+            "gestor_email": escola["gestor_email"],
+            "ativo": escola["ativo"],
+            "data_cadastro": escola["data_cadastro"],
+            "data_atualizacao": escola["data_atualizacao"]
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Erro ao buscar escola: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao buscar escola: {str(e)}"
+        )
+
+@app.post("/api/escolas/", response_model=Escola, status_code=status.HTTP_201_CREATED)
+def create_escola(escola: EscolaCreate):
+    """
+    Cria uma nova escola.
+    """
+    try:
+        # Verificar se já existe escola com o mesmo código INEP
+        check_query = "SELECT id_escola FROM escolas WHERE codigo_inep = %s"
+        existing = execute_query(check_query, (escola.codigo_inep,), fetch_one=True)
+        
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Já existe uma escola com o código INEP {escola.codigo_inep}"
+            )
+        
+        # Inserir nova escola
+        insert_query = """
+            INSERT INTO escolas (
+                codigo_inep, cnpj, razao_social, nome_fantasia, logo,
+                cep, logradouro, numero, complemento, bairro, cidade, uf,
+                telefone_principal, telefone_secundario, email_principal,
+                dependencia_administrativa, situacao_funcionamento, localizacao, ato_autorizacao,
+                gestor_nome, gestor_cpf, gestor_email,
+                data_cadastro, data_atualizacao
+            ) VALUES (
+                %s, %s, %s, %s, %s,
+                %s, %s, %s, %s, %s, %s, %s,
+                %s, %s, %s,
+                %s, %s, %s, %s,
+                %s, %s, %s,
+                CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+            ) RETURNING id_escola, data_cadastro, data_atualizacao
+        """
+        
+        params = (
+            escola.codigo_inep, escola.cnpj, escola.razao_social, escola.nome_fantasia, escola.logo,
+            escola.cep, escola.logradouro, escola.numero, escola.complemento, escola.bairro, escola.cidade, escola.uf,
+            escola.telefone_principal, escola.telefone_secundario, escola.email_principal,
+            escola.dependencia_administrativa, escola.situacao_funcionamento, escola.localizacao, escola.ato_autorizacao,
+            escola.gestor_nome, escola.gestor_cpf, escola.gestor_email
+        )
+        
+        result = execute_query(insert_query, params, fetch_one=True)
+        
+        return {
+            "id_escola": result["id_escola"],
+            "codigo_inep": escola.codigo_inep,
+            "cnpj": escola.cnpj,
+            "razao_social": escola.razao_social,
+            "nome_fantasia": escola.nome_fantasia,
+            "logo": escola.logo,
+            "cep": escola.cep,
+            "logradouro": escola.logradouro,
+            "numero": escola.numero,
+            "complemento": escola.complemento,
+            "bairro": escola.bairro,
+            "cidade": escola.cidade,
+            "uf": escola.uf,
+            "telefone_principal": escola.telefone_principal,
+            "telefone_secundario": escola.telefone_secundario,
+            "email_principal": escola.email_principal,
+            "dependencia_administrativa": escola.dependencia_administrativa,
+            "situacao_funcionamento": escola.situacao_funcionamento,
+            "localizacao": escola.localizacao,
+            "ato_autorizacao": escola.ato_autorizacao,
+            "gestor_nome": escola.gestor_nome,
+            "gestor_cpf": escola.gestor_cpf,
+            "gestor_email": escola.gestor_email,
+            "ativo": True,
+            "data_cadastro": result["data_cadastro"],
+            "data_atualizacao": result["data_atualizacao"]
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Erro ao criar escola: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao criar escola: {str(e)}"
+        )
+
+@app.put("/api/escolas/{escola_id}", response_model=Escola)
+def update_escola(
+    escola_id: int = Path(..., description="ID da escola"),
+    escola: EscolaUpdate = Body(...)
+):
+    """
+    Atualiza uma escola existente.
+    """
+    try:
+        # Verificar se a escola existe
+        check_query = "SELECT id_escola FROM escolas WHERE id_escola = %s"
+        existing = execute_query(check_query, (escola_id,), fetch_one=True)
+        
+        if not existing:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Escola com ID {escola_id} não encontrada"
+            )
+        
+        # Verificar se código INEP não está sendo usado por outra escola
+        if escola.codigo_inep:
+            inep_check_query = "SELECT id_escola FROM escolas WHERE codigo_inep = %s AND id_escola != %s"
+            inep_existing = execute_query(inep_check_query, (escola.codigo_inep, escola_id), fetch_one=True)
+            
+            if inep_existing:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=f"Código INEP {escola.codigo_inep} já está sendo usado por outra escola"
+                )
+        
+        # Construir query de atualização dinamicamente
+        update_fields = []
+        params = []
+        
+        if escola.codigo_inep is not None:
+            update_fields.append("codigo_inep = %s")
+            params.append(escola.codigo_inep)
+        if escola.cnpj is not None:
+            update_fields.append("cnpj = %s")
+            params.append(escola.cnpj)
+        if escola.razao_social is not None:
+            update_fields.append("razao_social = %s")
+            params.append(escola.razao_social)
+        if escola.nome_fantasia is not None:
+            update_fields.append("nome_fantasia = %s")
+            params.append(escola.nome_fantasia)
+        if escola.logo is not None:
+            update_fields.append("logo = %s")
+            params.append(escola.logo)
+        if escola.cep is not None:
+            update_fields.append("cep = %s")
+            params.append(escola.cep)
+        if escola.logradouro is not None:
+            update_fields.append("logradouro = %s")
+            params.append(escola.logradouro)
+        if escola.numero is not None:
+            update_fields.append("numero = %s")
+            params.append(escola.numero)
+        if escola.complemento is not None:
+            update_fields.append("complemento = %s")
+            params.append(escola.complemento)
+        if escola.bairro is not None:
+            update_fields.append("bairro = %s")
+            params.append(escola.bairro)
+        if escola.cidade is not None:
+            update_fields.append("cidade = %s")
+            params.append(escola.cidade)
+        if escola.uf is not None:
+            update_fields.append("uf = %s")
+            params.append(escola.uf)
+        if escola.telefone_principal is not None:
+            update_fields.append("telefone_principal = %s")
+            params.append(escola.telefone_principal)
+        if escola.telefone_secundario is not None:
+            update_fields.append("telefone_secundario = %s")
+            params.append(escola.telefone_secundario)
+        if escola.email_principal is not None:
+            update_fields.append("email_principal = %s")
+            params.append(escola.email_principal)
+        if escola.dependencia_administrativa is not None:
+            update_fields.append("dependencia_administrativa = %s")
+            params.append(escola.dependencia_administrativa)
+        if escola.situacao_funcionamento is not None:
+            update_fields.append("situacao_funcionamento = %s")
+            params.append(escola.situacao_funcionamento)
+        if escola.localizacao is not None:
+            update_fields.append("localizacao = %s")
+            params.append(escola.localizacao)
+        if escola.ato_autorizacao is not None:
+            update_fields.append("ato_autorizacao = %s")
+            params.append(escola.ato_autorizacao)
+        if escola.gestor_nome is not None:
+            update_fields.append("gestor_nome = %s")
+            params.append(escola.gestor_nome)
+        if escola.gestor_cpf is not None:
+            update_fields.append("gestor_cpf = %s")
+            params.append(escola.gestor_cpf)
+        if escola.gestor_email is not None:
+            update_fields.append("gestor_email = %s")
+            params.append(escola.gestor_email)
+        if escola.ativo is not None:
+            update_fields.append("ativo = %s")
+            params.append(escola.ativo)
+        
+        if not update_fields:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Nenhum campo válido fornecido para atualização"
+            )
+        
+        # Sempre atualizar data_atualizacao
+        update_fields.append("data_atualizacao = CURRENT_TIMESTAMP")
+        params.append(escola_id)
+        
+        update_query = f"""
+            UPDATE escolas 
+            SET {', '.join(update_fields)}
+            WHERE id_escola = %s
+            RETURNING id_escola, codigo_inep, cnpj, razao_social, nome_fantasia, logo,
+                      cep, logradouro, numero, complemento, bairro, cidade, uf,
+                      telefone_principal, telefone_secundario, email_principal,
+                      dependencia_administrativa, situacao_funcionamento, localizacao, ato_autorizacao,
+                      gestor_nome, gestor_cpf, gestor_email,
+                      ativo, data_cadastro, data_atualizacao
+        """
+        
+        result = execute_query(update_query, params, fetch_one=True)
+        
+        return {
+            "id_escola": result["id_escola"],
+            "codigo_inep": result["codigo_inep"],
+            "cnpj": result["cnpj"],
+            "razao_social": result["razao_social"],
+            "nome_fantasia": result["nome_fantasia"],
+            "logo": result["logo"],
+            "cep": result["cep"],
+            "logradouro": result["logradouro"],
+            "numero": result["numero"],
+            "complemento": result["complemento"],
+            "bairro": result["bairro"],
+            "cidade": result["cidade"],
+            "uf": result["uf"],
+            "telefone_principal": result["telefone_principal"],
+            "telefone_secundario": result["telefone_secundario"],
+            "email_principal": result["email_principal"],
+            "dependencia_administrativa": result["dependencia_administrativa"],
+            "situacao_funcionamento": result["situacao_funcionamento"],
+            "localizacao": result["localizacao"],
+            "ato_autorizacao": result["ato_autorizacao"],
+            "gestor_nome": result["gestor_nome"],
+            "gestor_cpf": result["gestor_cpf"],
+            "gestor_email": result["gestor_email"],
+            "ativo": result["ativo"],
+            "data_cadastro": result["data_cadastro"],
+            "data_atualizacao": result["data_atualizacao"]
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Erro ao atualizar escola: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao atualizar escola: {str(e)}"
+        )
+
+@app.delete("/api/escolas/{escola_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_escola(escola_id: int = Path(..., description="ID da escola")):
+    """
+    Exclui uma escola.
+    """
+    try:
+        # Verificar se a escola existe
+        check_query = "SELECT id_escola FROM escolas WHERE id_escola = %s"
+        existing = execute_query(check_query, (escola_id,), fetch_one=True)
+        
+        if not existing:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Escola com ID {escola_id} não encontrada"
+            )
+        
+        # Excluir escola
+        delete_query = "DELETE FROM escolas WHERE id_escola = %s"
+        execute_query(delete_query, (escola_id,), fetch=False)
+        
+        return None
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Erro ao excluir escola: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao excluir escola: {str(e)}"
+        )
+
+@app.patch("/api/escolas/{escola_id}/status", response_model=Escola)
+def toggle_escola_status(
+    escola_id: int = Path(..., description="ID da escola"),
+    ativo: bool = Body(..., embed=True, description="Status ativo da escola")
+):
+    """
+    Altera o status ativo/inativo de uma escola.
+    """
+    try:
+        # Verificar se a escola existe
+        check_query = "SELECT id_escola FROM escolas WHERE id_escola = %s"
+        existing = execute_query(check_query, (escola_id,), fetch_one=True)
+        
+        if not existing:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Escola com ID {escola_id} não encontrada"
+            )
+        
+        # Atualizar status
+        update_query = """
+            UPDATE escolas 
+            SET ativo = %s, data_atualizacao = CURRENT_TIMESTAMP
+            WHERE id_escola = %s
+            RETURNING id_escola, codigo_inep, cnpj, razao_social, nome_fantasia, logo,
+                      cep, logradouro, numero, complemento, bairro, cidade, uf,
+                      telefone_principal, telefone_secundario, email_principal,
+                      dependencia_administrativa, situacao_funcionamento, localizacao, ato_autorizacao,
+                      gestor_nome, gestor_cpf, gestor_email,
+                      ativo, data_cadastro, data_atualizacao
+        """
+        
+        result = execute_query(update_query, (ativo, escola_id), fetch_one=True)
+        
+        return {
+            "id_escola": result["id_escola"],
+            "codigo_inep": result["codigo_inep"],
+            "cnpj": result["cnpj"],
+            "razao_social": result["razao_social"],
+            "nome_fantasia": result["nome_fantasia"],
+            "logo": result["logo"],
+            "cep": result["cep"],
+            "logradouro": result["logradouro"],
+            "numero": result["numero"],
+            "complemento": result["complemento"],
+            "bairro": result["bairro"],
+            "cidade": result["cidade"],
+            "uf": result["uf"],
+            "telefone_principal": result["telefone_principal"],
+            "telefone_secundario": result["telefone_secundario"],
+            "email_principal": result["email_principal"],
+            "dependencia_administrativa": result["dependencia_administrativa"],
+            "situacao_funcionamento": result["situacao_funcionamento"],
+            "localizacao": result["localizacao"],
+            "ato_autorizacao": result["ato_autorizacao"],
+            "gestor_nome": result["gestor_nome"],
+            "gestor_cpf": result["gestor_cpf"],
+            "gestor_email": result["gestor_email"],
+            "ativo": result["ativo"],
+            "data_cadastro": result["data_cadastro"],
+            "data_atualizacao": result["data_atualizacao"]
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Erro ao alterar status da escola: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao alterar status da escola: {str(e)}"
+        )
+
+@app.get("/api/escolas/filtro/", response_model=List[Escola])
+def read_escolas_filtro(
+    ativo: Optional[bool] = Query(None, description="Filtrar por status ativo (true/false)"),
+    codigo_inep: Optional[str] = Query(None, description="Filtrar por código INEP"),
+    cidade: Optional[str] = Query(None, description="Filtrar por cidade"),
+    uf: Optional[str] = Query(None, description="Filtrar por UF"),
+    dependencia_administrativa: Optional[str] = Query(None, description="Filtrar por dependência administrativa"),
+    situacao_funcionamento: Optional[str] = Query(None, description="Filtrar por situação de funcionamento"),
+    localizacao: Optional[str] = Query(None, description="Filtrar por localização (Urbana/Rural)")
+):
+    """
+    Lista escolas com filtros opcionais.
+    """
+    try:
+        base_query = """
+            SELECT id_escola, codigo_inep, cnpj, razao_social, nome_fantasia, logo,
+                   cep, logradouro, numero, complemento, bairro, cidade, uf,
+                   telefone_principal, telefone_secundario, email_principal,
+                   dependencia_administrativa, situacao_funcionamento, localizacao, ato_autorizacao,
+                   gestor_nome, gestor_cpf, gestor_email,
+                   ativo, data_cadastro, data_atualizacao
+            FROM escolas
+            WHERE 1=1
+        """
+        
+        params = []
+        
+        if ativo is not None:
+            base_query += " AND ativo = %s"
+            params.append(ativo)
+        
+        if codigo_inep:
+            base_query += " AND codigo_inep ILIKE %s"
+            params.append(f"%{codigo_inep}%")
+        
+        if cidade:
+            base_query += " AND cidade ILIKE %s"
+            params.append(f"%{cidade}%")
+        
+        if uf:
+            base_query += " AND uf ILIKE %s"
+            params.append(f"%{uf}%")
+        
+        if dependencia_administrativa:
+            base_query += " AND dependencia_administrativa ILIKE %s"
+            params.append(f"%{dependencia_administrativa}%")
+        
+        if situacao_funcionamento:
+            base_query += " AND situacao_funcionamento ILIKE %s"
+            params.append(f"%{situacao_funcionamento}%")
+        
+        if localizacao:
+            base_query += " AND localizacao ILIKE %s"
+            params.append(f"%{localizacao}%")
+        
+        base_query += " ORDER BY razao_social"
+        
+        escolas = execute_query(base_query, params if params else None)
+        
+        if not escolas:
+            return []
+        
+        return [
+            {
+                "id_escola": escola["id_escola"],
+                "codigo_inep": escola["codigo_inep"],
+                "cnpj": escola["cnpj"],
+                "razao_social": escola["razao_social"],
+                "nome_fantasia": escola["nome_fantasia"],
+                "logo": escola["logo"],
+                "cep": escola["cep"],
+                "logradouro": escola["logradouro"],
+                "numero": escola["numero"],
+                "complemento": escola["complemento"],
+                "bairro": escola["bairro"],
+                "cidade": escola["cidade"],
+                "uf": escola["uf"],
+                "telefone_principal": escola["telefone_principal"],
+                "telefone_secundario": escola["telefone_secundario"],
+                "email_principal": escola["email_principal"],
+                "dependencia_administrativa": escola["dependencia_administrativa"],
+                "situacao_funcionamento": escola["situacao_funcionamento"],
+                "localizacao": escola["localizacao"],
+                "ato_autorizacao": escola["ato_autorizacao"],
+                "gestor_nome": escola["gestor_nome"],
+                "gestor_cpf": escola["gestor_cpf"],
+                "gestor_email": escola["gestor_email"],
+                "ativo": escola["ativo"],
+                "data_cadastro": escola["data_cadastro"],
+                "data_atualizacao": escola["data_atualizacao"]
+            }
+            for escola in escolas
+        ]
+        
+    except Exception as e:
+        print(f"Erro ao buscar escolas com filtro: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao buscar escolas com filtro: {str(e)}"
         )
 
 # Inicialização do servidor (quando executado diretamente)
