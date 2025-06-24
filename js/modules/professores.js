@@ -236,12 +236,24 @@ const ProfessoresModule = {
                 // Verificar se o professor já possui vínculos com essa disciplina e turmas
                 let turmasVinculadas = [];
                 if (this.state.modoEdicao && this.state.professorSelecionado) {
-                    const idProfessor = this.state.professorSelecionado.id_professor || this.state.professorSelecionado.id;
+                    const idProfessor = String(this.state.professorSelecionado.id_professor || this.state.professorSelecionado.id);
                     // Verificar em cache de vínculos
-                    if (this.state.vinculos.length > 0) {
+                    if (this.state.vinculos && this.state.vinculos.length > 0) {
+                        console.log("Verificando vínculos para disciplina", disciplinaId, "e professor", idProfessor);
+                        console.log("Vínculos disponíveis:", this.state.vinculos);
+                        
                         turmasVinculadas = this.state.vinculos
-                            .filter(v => v.id_professor === idProfessor && v.id_disciplina === disciplinaId)
-                            .map(v => v.id_turma);
+                            .filter(v => {
+                                const vIdProfessor = String(v.id_professor || v.professor);
+                                const vIdDisciplina = String(v.id_disciplina || v.disciplina);
+                                const match = vIdProfessor === idProfessor && vIdDisciplina === disciplinaId;
+                                
+                                console.log(`Vínculo: prof=${vIdProfessor}, disc=${vIdDisciplina}, turma=${v.id_turma || v.turma}, match=${match}`);
+                                return match;
+                            })
+                            .map(v => String(v.id_turma || v.turma));
+                            
+                        console.log("Turmas vinculadas para disciplina", disciplinaId, ":", turmasVinculadas);
                     }
                 }
                 
@@ -254,7 +266,10 @@ const ProfessoresModule = {
                         
                         turnosTurmas[turno].forEach(turma => {
                             // Verificar se esta turma já está vinculada
-                            const isChecked = turmasVinculadas.includes(turma.id_turma) ? 'checked' : '';
+                            const turmaIdStr = String(turma.id_turma);
+                            const isChecked = turmasVinculadas.includes(turmaIdStr) ? 'checked' : '';
+                            
+                            console.log(`Turma ${turmaIdStr}: vinculada=${turmasVinculadas.includes(turmaIdStr)}, checked=${isChecked}`);
                             
                             html += '<div class="col-md-4 mb-1">';
                             html += `<div class="form-check">
@@ -329,6 +344,16 @@ const ProfessoresModule = {
             // Tentar buscar diretamente da tabela professor_disciplina_turma
             try {
                 console.log("Tentando buscar da tabela professor_disciplina_turma");
+                
+                // Primeiro tentar o endpoint específico que funciona
+                const vinculosEspecifico = await ConfigModule.fetchApi(`/buscar_vinculos_professor_completo/${idProfessor}`);
+                
+                if (Array.isArray(vinculosEspecifico) && vinculosEspecifico.length > 0) {
+                    console.log("Vínculos encontrados via endpoint específico:", vinculosEspecifico);
+                    return vinculosEspecifico;
+                }
+                
+                // Se não funcionou, tentar o endpoint geral
                 const vinculosDireta = await ConfigModule.fetchApi(`/professor_disciplina_turma?professor_id=${idProfessor}`);
                 
                 if (Array.isArray(vinculosDireta) && vinculosDireta.length > 0) {

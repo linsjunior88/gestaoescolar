@@ -12,6 +12,7 @@ import DisciplinasModule from './modules/disciplinas.js';
 import ProfessoresModule from './modules/professores.js';
 import AlunosModule from './modules/alunos.js';
 import NotasModule from './modules/notas.js';
+import EscolasModule from './modules/escolas.js';
 import { CalendarioEscolar } from './calendario.js';
 
 // Objeto principal da aplicação
@@ -24,7 +25,8 @@ const App = {
         disciplinas: DisciplinasModule,
         professores: ProfessoresModule,
         alunos: AlunosModule,
-        notas: NotasModule
+        notas: NotasModule,
+        escolas: EscolasModule
     },
     
     // Instância do calendário
@@ -130,7 +132,8 @@ const App = {
             'disciplinas-link': document.getElementById('disciplinas-link'),
             'professores-link': document.getElementById('professores-link'),
             'alunos-link': document.getElementById('alunos-link'),
-            'notas-link': document.getElementById('notas-link')
+            'notas-link': document.getElementById('notas-link'),
+            'escolas-link': document.getElementById('escolas-link')
         };
         
         this.conteudos = {
@@ -139,7 +142,8 @@ const App = {
             'disciplinas-link': document.getElementById('conteudo-disciplinas'),
             'professores-link': document.getElementById('conteudo-professores'),
             'alunos-link': document.getElementById('conteudo-alunos'),
-            'notas-link': document.getElementById('conteudo-notas')
+            'notas-link': document.getElementById('conteudo-notas'),
+            'escolas-link': document.getElementById('conteudo-escolas')
         };
         
         // Adicionar eventos de clique para alternar entre as seções
@@ -164,7 +168,8 @@ const App = {
             'disciplinas-link': 'disciplinas',
             'professores-link': 'professores',
             'alunos-link': 'alunos',
-            'notas-link': 'notas'
+            'notas-link': 'notas',
+            'escolas-link': 'escolas'
         };
         this.state.currentSection = moduleMap[linkId] || 'dashboard';
         
@@ -203,7 +208,8 @@ const App = {
             'disciplinas-link': 'disciplinas',
             'professores-link': 'professores',
             'alunos-link': 'alunos',
-            'notas-link': 'notas'
+            'notas-link': 'notas',
+            'escolas-link': 'escolas'
         };
         
         const moduleName = moduleMap[linkId];
