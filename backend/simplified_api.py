@@ -5278,6 +5278,7 @@ def read_escolas():
     """
     Lista todas as escolas cadastradas.
     """
+    print("=== INICIANDO BUSCA DE ESCOLAS ===")
     try:
         query = """
             SELECT id_escola, codigo_inep, cnpj, razao_social, nome_fantasia, logo,
@@ -5290,12 +5291,17 @@ def read_escolas():
             ORDER BY razao_social
         """
         
+        print(f"Executando query: {query}")
         escolas = execute_query(query)
+        print(f"Resultado da query: {escolas}")
+        print(f"Tipo do resultado: {type(escolas)}")
+        print(f"Número de escolas encontradas: {len(escolas) if escolas else 0}")
         
         if not escolas:
+            print("Nenhuma escola encontrada, retornando lista vazia")
             return []
         
-        return [
+        resultado = [
             {
                 "id_escola": escola["id_escola"],
                 "codigo_inep": escola["codigo_inep"],
@@ -5327,8 +5333,14 @@ def read_escolas():
             for escola in escolas
         ]
         
+        print(f"Resultado formatado: {resultado}")
+        print(f"Retornando {len(resultado)} escolas")
+        print("=== FINALIZANDO BUSCA DE ESCOLAS ===")
+        return resultado
+        
     except Exception as e:
-        print(f"Erro ao buscar escolas: {e}")
+        print(f"ERRO ao buscar escolas: {e}")
+        print(f"Stack trace: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Erro ao buscar escolas: {str(e)}"

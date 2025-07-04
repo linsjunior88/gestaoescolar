@@ -64,15 +64,26 @@ const EscolasModule = {
 
         try {
             console.log("Carregando escolas...");
+            console.log("URL da API:", ConfigModule.API_BASE_URL + '/api/escolas');
+            
             const escolas = await ConfigModule.fetchApi('/api/escolas');
+            
+            console.log("Resposta da API de escolas:", escolas);
+            console.log("Tipo da resposta:", typeof escolas);
+            console.log("É array?", Array.isArray(escolas));
             
             this.state.escolas = escolas || [];
             console.log(`${this.state.escolas.length} escola(s) carregada(s)`);
             
+            if (this.state.escolas.length > 0) {
+                console.log("Primeira escola:", this.state.escolas[0]);
+            }
+            
             this.renderizarEscolas();
             
         } catch (error) {
-            console.error("Erro ao carregar escolas:", error);
+            console.error("Erro detalhado ao carregar escolas:", error);
+            console.error("Stack trace:", error.stack);
             this.mostrarErro("Não foi possível carregar as escolas.");
         } finally {
             this.state.carregandoEscolas = false;
@@ -160,8 +171,24 @@ const EscolasModule = {
     // Mostrar erro
     mostrarErro: function(mensagem) {
         console.error("Erro no módulo de escolas:", mensagem);
-        // TODO: Implementar sistema de notificações
-        alert(`Erro: ${mensagem}`);
+        
+        // Exibir erro na interface
+        if (this.elements.listaEscolas) {
+            this.elements.listaEscolas.innerHTML = `
+                <tr>
+                    <td colspan="8" class="text-center text-danger">
+                        <strong>Erro:</strong> ${mensagem}
+                        <br><br>
+                        <button class="btn btn-primary btn-sm" onclick="EscolasModule.carregarEscolas()">
+                            Tentar Novamente
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }
+        
+        // Também mostrar um alert para debug
+        console.log(`Erro: ${mensagem}`);
     }
 };
 
