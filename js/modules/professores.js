@@ -177,14 +177,26 @@ const ProfessoresModule = {
             const option = document.createElement('option');
             option.value = disciplina.id_disciplina;
             
-            // Buscar quantas turmas estão vinculadas a esta disciplina
-            const disciplinaTurmas = this.state.disciplinasTurmas.find(dt => dt.disciplina === disciplina.id_disciplina);
-            const numTurmas = disciplinaTurmas && disciplinaTurmas.turmas ? disciplinaTurmas.turmas.length : 0;
-            
             // Verificar qual propriedade contém o nome da disciplina
             const nomeDisciplina = disciplina.nome_disciplina || disciplina.nome || disciplina.id_disciplina;
             
-            option.textContent = `${nomeDisciplina} (${numTurmas} turmas)`;
+            // Se estivermos editando um professor, mostrar quantas turmas ele tem vinculadas nesta disciplina
+            let numTurmasVinculadas = 0;
+            if (this.state.modoEdicao && this.state.vinculos && this.state.vinculos.length > 0) {
+                // Contar turmas vinculadas para esta disciplina específica
+                numTurmasVinculadas = this.state.vinculos.filter(vinculo => {
+                    const vIdDisciplina = String(vinculo.id_disciplina || vinculo.disciplina);
+                    return vIdDisciplina === String(disciplina.id_disciplina);
+                }).length;
+                
+                console.log(`Disciplina ${nomeDisciplina}: ${numTurmasVinculadas} turmas vinculadas para este professor`);
+            } else {
+                // Para novo professor, mostrar total de turmas disponíveis no sistema
+                numTurmasVinculadas = this.state.turmas ? this.state.turmas.length : 0;
+                console.log(`Novo professor - Disciplina ${nomeDisciplina}: ${numTurmasVinculadas} turmas disponíveis`);
+            }
+            
+            option.textContent = `${nomeDisciplina} (${numTurmasVinculadas} turmas)`;
             this.elements.selectDisciplinas.appendChild(option);
             
             console.log(`Disciplina adicionada: ${nomeDisciplina} (ID: ${disciplina.id_disciplina})`);
@@ -338,6 +350,7 @@ const ProfessoresModule = {
                 const disciplinaId = e.target.dataset.disciplina;
                 const checkboxes = this.elements.vinculosContainer.querySelectorAll(`.checkbox-turma[data-disciplina="${disciplinaId}"]`);
                 checkboxes.forEach(cb => cb.checked = true);
+                this.atualizarContadorTurmasSelect();
             });
         });
         
@@ -346,8 +359,20 @@ const ProfessoresModule = {
                 const disciplinaId = e.target.dataset.disciplina;
                 const checkboxes = this.elements.vinculosContainer.querySelectorAll(`.checkbox-turma[data-disciplina="${disciplinaId}"]`);
                 checkboxes.forEach(cb => cb.checked = false);
+                this.atualizarContadorTurmasSelect();
             });
         });
+        
+        // Adicionar listeners para checkboxes individuais para atualizar contador
+        const checkboxes = this.elements.vinculosContainer.querySelectorAll('.checkbox-turma');
+        checkboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', () => {
+                this.atualizarContadorTurmasSelect();
+            });
+        });
+        
+        // Atualizar contador inicial
+        this.atualizarContadorTurmasSelect();
     },
     
     // Traduzir turno para formato legível
@@ -358,6 +383,32 @@ const ProfessoresModule = {
             'noite': 'Noite'
         };
         return turnos[turno] || turno;
+    },
+    
+    // Atualizar contador de turmas no select de disciplinas
+    atualizarContadorTurmasSelect: function() {
+        if (!this.elements.selectDisciplinas) return;
+        
+        console.log("Atualizando contador de turmas no select...");
+        
+        // Para cada opção no select, atualizar o contador
+        Array.from(this.elements.selectDisciplinas.options).forEach(option => {
+            const disciplinaId = option.value;
+            const disciplina = this.state.disciplinas.find(d => d.id_disciplina === disciplinaId);
+            
+            if (disciplina) {
+                const nomeDisciplina = disciplina.nome_disciplina || disciplina.nome || disciplina.id_disciplina;
+                
+                // Contar quantas turmas estão marcadas para esta disciplina
+                const checkboxesMarcados = this.elements.vinculosContainer.querySelectorAll(`.checkbox-turma[data-disciplina="${disciplinaId}"]:checked`);
+                const numTurmasMarcadas = checkboxesMarcados.length;
+                
+                // Atualizar o texto da opção
+                option.textContent = `${nomeDisciplina} (${numTurmasMarcadas} turmas)`;
+                
+                console.log(`Disciplina ${nomeDisciplina}: ${numTurmasMarcadas} turmas marcadas`);
+            }
+        });
     },
     
     // Carregar vínculos de um professor (disciplinas e turmas)
@@ -742,6 +793,9 @@ const ProfessoresModule = {
             this.elements.formProfessor.classList.remove('d-none');
             this.elements.formProfessor.reset();
             
+            // Repopular o select de disciplinas para mostrar a contagem correta (turmas disponíveis)
+            this.popularSelectDisciplinas();
+            
             // Limpar seleções anteriores no select de disciplinas
             if (this.elements.selectDisciplinas) {
                 Array.from(this.elements.selectDisciplinas.options).forEach(option => {
@@ -1122,6 +1176,9 @@ const ProfessoresModule = {
             
             this.state.modoEdicao = true;
             this.state.professorSelecionado = professor;
+            
+            // Repopular o select de disciplinas para mostrar a contagem correta de turmas vinculadas
+            this.popularSelectDisciplinas();
             
             if (this.elements.formProfessor) {
                 this.elements.formProfessor.classList.remove('d-none');
