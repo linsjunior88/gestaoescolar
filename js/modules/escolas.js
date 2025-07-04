@@ -20,7 +20,17 @@ const EscolasModule = {
         btnNovaEscola: null,
         listaEscolas: null,
         formEscola: null,
-        // Campos do formulário serão adicionados conforme necessário
+        // Campos do formulário
+        inputCodigoInep: null,
+        inputCnpj: null,
+        inputRazaoSocial: null,
+        inputNomeFantasia: null,
+        inputEmail: null,
+        inputTelefone: null,
+        inputCidade: null,
+        selectUf: null,
+        btnSalvarEscola: null,
+        btnCancelarEscola: null
     },
 
     // Inicializar módulo
@@ -39,12 +49,32 @@ const EscolasModule = {
 
     // Inicializar elementos DOM
     initElements: function() {
+        // Elementos principais
         this.elements.btnNovaEscola = document.getElementById('btn-nova-escola');
         this.elements.listaEscolas = document.getElementById('lista-escolas');
+        this.elements.formEscola = document.getElementById('form-escola');
+        
+        // Campos do formulário
+        this.elements.inputCodigoInep = document.getElementById('codigo-inep-escola');
+        this.elements.inputCnpj = document.getElementById('cnpj-escola');
+        this.elements.inputRazaoSocial = document.getElementById('razao-social-escola');
+        this.elements.inputNomeFantasia = document.getElementById('nome-fantasia-escola');
+        this.elements.inputEmail = document.getElementById('email-escola');
+        this.elements.inputTelefone = document.getElementById('telefone-escola');
+        this.elements.inputCidade = document.getElementById('cidade-escola');
+        this.elements.selectUf = document.getElementById('uf-escola');
+        this.elements.btnSalvarEscola = document.getElementById('btn-salvar-escola');
+        this.elements.btnCancelarEscola = document.getElementById('btn-cancelar-escola');
         
         console.log("Elementos DOM identificados:", {
             btnNovaEscola: !!this.elements.btnNovaEscola,
-            listaEscolas: !!this.elements.listaEscolas
+            listaEscolas: !!this.elements.listaEscolas,
+            formEscola: !!this.elements.formEscola,
+            camposFormulario: {
+                inputCodigoInep: !!this.elements.inputCodigoInep,
+                inputRazaoSocial: !!this.elements.inputRazaoSocial,
+                btnSalvarEscola: !!this.elements.btnSalvarEscola
+            }
         });
     },
 
@@ -52,6 +82,14 @@ const EscolasModule = {
     configurarEventos: function() {
         if (this.elements.btnNovaEscola) {
             this.elements.btnNovaEscola.addEventListener('click', () => this.novaEscola());
+        }
+        
+        if (this.elements.formEscola) {
+            this.elements.formEscola.addEventListener('submit', (e) => this.salvarEscola(e));
+        }
+        
+        if (this.elements.btnCancelarEscola) {
+            this.elements.btnCancelarEscola.addEventListener('click', () => this.cancelarEdicao());
         }
     },
 
@@ -102,7 +140,7 @@ const EscolasModule = {
         if (!this.state.escolas || this.state.escolas.length === 0) {
             this.elements.listaEscolas.innerHTML = `
                 <tr>
-                    <td colspan="8" class="text-center">Nenhuma escola cadastrada</td>
+                    <td colspan="7" class="text-center">Nenhuma escola cadastrada</td>
                 </tr>
             `;
             return;
@@ -116,12 +154,11 @@ const EscolasModule = {
                 
             html += `
                 <tr>
-                    <td>${escola.id_escola || ''}</td>
-                    <td>${escola.codigo_inep || ''}</td>
-                    <td>${escola.razao_social || ''}</td>
-                    <td>${escola.nome_fantasia || ''}</td>
-                    <td>${escola.cidade || ''}</td>
-                    <td>${escola.uf || ''}</td>
+                    <td>${escola.codigo_inep || 'N/A'}</td>
+                    <td>${escola.nome_fantasia || 'N/A'}</td>
+                    <td>${escola.razao_social || 'N/A'}</td>
+                    <td>${escola.cnpj || 'N/A'}</td>
+                    <td>${escola.cidade || 'N/A'}</td>
                     <td>${statusBadge}</td>
                     <td>
                         <button type="button" class="btn btn-sm btn-primary btn-editar" data-id="${escola.id_escola}">
@@ -150,15 +187,129 @@ const EscolasModule = {
     // Nova escola
     novaEscola: function() {
         console.log("Iniciando cadastro de nova escola...");
-        // TODO: Implementar formulário de nova escola
-        alert("Funcionalidade de nova escola será implementada em breve!");
+        
+        this.state.modoEdicao = false;
+        this.state.escolaSelecionada = null;
+        
+        // Limpar formulário
+        if (this.elements.formEscola) {
+            this.elements.formEscola.reset();
+            this.elements.formEscola.classList.remove('d-none');
+        }
+        
+        // Focar no primeiro campo
+        if (this.elements.inputCodigoInep) {
+            this.elements.inputCodigoInep.focus();
+        }
+    },
+
+    // Salvar escola (criar ou editar)
+    salvarEscola: async function(e) {
+        e.preventDefault();
+        
+        console.log("Salvando escola...");
+        
+        // Coletar dados do formulário
+        const dadosEscola = {
+            codigo_inep: this.elements.inputCodigoInep?.value || '',
+            cnpj: this.elements.inputCnpj?.value || '',
+            razao_social: this.elements.inputRazaoSocial?.value || '',
+            nome_fantasia: this.elements.inputNomeFantasia?.value || '',
+            email_principal: this.elements.inputEmail?.value || '',
+            telefone_principal: this.elements.inputTelefone?.value || '',
+            cidade: this.elements.inputCidade?.value || '',
+            uf: this.elements.selectUf?.value || '',
+            localizacao: 'Urbana' // Valor padrão
+        };
+        
+        console.log("Dados da escola:", dadosEscola);
+        
+        // Validar campos obrigatórios
+        if (!dadosEscola.codigo_inep || !dadosEscola.razao_social) {
+            alert("Por favor, preencha os campos obrigatórios: Código INEP e Razão Social.");
+            return;
+        }
+        
+        try {
+            let resultado;
+            
+            if (this.state.modoEdicao && this.state.escolaSelecionada) {
+                // Editar escola existente
+                console.log(`Editando escola ID: ${this.state.escolaSelecionada.id_escola}`);
+                resultado = await ConfigModule.fetchApi(`/escolas/${this.state.escolaSelecionada.id_escola}`, {
+                    method: 'PUT',
+                    body: JSON.stringify(dadosEscola)
+                });
+            } else {
+                // Criar nova escola
+                console.log("Criando nova escola");
+                resultado = await ConfigModule.fetchApi('/escolas/', {
+                    method: 'POST',
+                    body: JSON.stringify(dadosEscola)
+                });
+            }
+            
+            console.log("Escola salva com sucesso:", resultado);
+            
+            // Fechar formulário e recarregar lista
+            this.cancelarEdicao();
+            await this.carregarEscolas();
+            
+            alert(this.state.modoEdicao ? "Escola atualizada com sucesso!" : "Escola cadastrada com sucesso!");
+            
+        } catch (error) {
+            console.error("Erro ao salvar escola:", error);
+            alert("Erro ao salvar escola: " + error.message);
+        }
     },
 
     // Editar escola
-    editarEscola: function(id) {
+    editarEscola: async function(id) {
         console.log(`Editando escola ${id}...`);
-        // TODO: Implementar edição de escola
-        alert(`Edição da escola ${id} será implementada em breve!`);
+        
+        try {
+            // Buscar dados da escola
+            const escola = await ConfigModule.fetchApi(`/escolas/${id}`);
+            
+            console.log("Dados da escola carregados:", escola);
+            
+            // Definir modo de edição
+            this.state.modoEdicao = true;
+            this.state.escolaSelecionada = escola;
+            
+            // Preencher formulário
+            if (this.elements.inputCodigoInep) this.elements.inputCodigoInep.value = escola.codigo_inep || '';
+            if (this.elements.inputCnpj) this.elements.inputCnpj.value = escola.cnpj || '';
+            if (this.elements.inputRazaoSocial) this.elements.inputRazaoSocial.value = escola.razao_social || '';
+            if (this.elements.inputNomeFantasia) this.elements.inputNomeFantasia.value = escola.nome_fantasia || '';
+            if (this.elements.inputEmail) this.elements.inputEmail.value = escola.email_principal || '';
+            if (this.elements.inputTelefone) this.elements.inputTelefone.value = escola.telefone_principal || '';
+            if (this.elements.inputCidade) this.elements.inputCidade.value = escola.cidade || '';
+            if (this.elements.selectUf) this.elements.selectUf.value = escola.uf || '';
+            
+            // Mostrar formulário
+            if (this.elements.formEscola) {
+                this.elements.formEscola.classList.remove('d-none');
+            }
+            
+        } catch (error) {
+            console.error("Erro ao carregar escola para edição:", error);
+            alert("Erro ao carregar dados da escola: " + error.message);
+        }
+    },
+
+    // Cancelar edição
+    cancelarEdicao: function() {
+        console.log("Cancelando edição...");
+        
+        this.state.modoEdicao = false;
+        this.state.escolaSelecionada = null;
+        
+        // Ocultar formulário
+        if (this.elements.formEscola) {
+            this.elements.formEscola.classList.add('d-none');
+            this.elements.formEscola.reset();
+        }
     },
 
     // Excluir escola
@@ -178,7 +329,7 @@ const EscolasModule = {
         if (this.elements.listaEscolas) {
             this.elements.listaEscolas.innerHTML = `
                 <tr>
-                    <td colspan="8" class="text-center text-danger">
+                    <td colspan="7" class="text-center text-danger">
                         <strong>Erro:</strong> ${mensagem}
                         <br><br>
                         <button class="btn btn-primary btn-sm" onclick="window.App.modules.escolas.carregarEscolas()">
