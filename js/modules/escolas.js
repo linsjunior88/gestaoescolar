@@ -66,9 +66,9 @@ const EscolasModule = {
 
         try {
             console.log("Carregando escolas...");
-            console.log("URL da API:", ConfigModule.API_BASE_URL + '/api/escolas');
+            console.log("URL da API:", ConfigModule.API_BASE_URL + '/api/escolas/');
             
-            const escolas = await ConfigModule.fetchApi('/api/escolas');
+            const escolas = await ConfigModule.fetchApi('/api/escolas/');
             
             console.log("Resposta da API de escolas:", escolas);
             console.log("Tipo da resposta:", typeof escolas);
