@@ -492,7 +492,7 @@ def read_alunos_turma(turma_id: str = Path(..., description="ID ou código da tu
         # Buscar alunos da turma diretamente da tabela aluno
         query_alunos = """
         SELECT a.id, a.id_aluno, a.nome_aluno, a.data_nasc, a.sexo,
-               a.endereco, a.telefone, a.email, a.mae, a.id_turma
+               a.endereco, a.telefone, a.email, a.mae, a.id_turma, a.codigo_inep
         FROM aluno a
         WHERE a.id_turma = %s
         ORDER BY a.nome_aluno
@@ -523,7 +523,8 @@ def read_alunos_turma(turma_id: str = Path(..., description="ID ou código da tu
                 "telefone": row["telefone"],
                 "email": row["email"],
                 "mae": row["mae"],
-                "id_turma": row["id_turma"]
+                "id_turma": row["id_turma"],
+                "codigo_inep": row["codigo_inep"]
             }
             alunos.append(aluno)
         
@@ -2585,7 +2586,7 @@ def read_alunos_by_turma(turma_id: str = Path(..., description="ID ou código da
         # Buscar alunos da turma
         query = """
         SELECT a.id, a.id_aluno, a.nome_aluno, a.data_nasc, a.sexo,
-               a.endereco, a.telefone, a.email, a.mae, a.id_turma
+               a.endereco, a.telefone, a.email, a.mae, a.id_turma, a.codigo_inep
         FROM aluno a
         WHERE a.id_turma = %s
         ORDER BY a.nome_aluno
@@ -2613,7 +2614,8 @@ def read_alunos_by_turma(turma_id: str = Path(..., description="ID ou código da
                 "telefone": row["telefone"],
                 "email": row["email"],
                 "mae": row["mae"],
-                "id_turma": row["id_turma"]
+                "id_turma": row["id_turma"],
+                "codigo_inep": row["codigo_inep"]
             }
             alunos.append(aluno)
         
