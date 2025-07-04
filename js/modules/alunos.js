@@ -266,6 +266,19 @@ const AlunosModule = {
             
             const alunos = await ConfigModule.fetchApi(endpoint);
             this.state.alunos = alunos;
+            
+            // Log detalhado para debug do código INEP
+            console.log("=== DEBUG ALUNOS CARREGADOS ===");
+            console.log("Total de alunos:", alunos.length);
+            alunos.forEach((aluno, index) => {
+                console.log(`Aluno ${index + 1}:`, {
+                    id: aluno.id_aluno || aluno.id,
+                    nome: aluno.nome_aluno || aluno.nome,
+                    codigo_inep: aluno.codigo_inep,
+                    campos_disponiveis: Object.keys(aluno)
+                });
+            });
+            
             this.renderizarAlunos();
             console.log("Alunos filtrados carregados com sucesso:", alunos);
         } catch (error) {
@@ -407,6 +420,13 @@ const AlunosModule = {
                 }
             }
             
+            // Log para debug do código INEP
+            console.log(`Renderizando aluno ${aluno.id_aluno || aluno.id}:`, {
+                nome: aluno.nome_aluno || aluno.nome,
+                codigo_inep: aluno.codigo_inep,
+                codigo_inep_type: typeof aluno.codigo_inep
+            });
+            
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td>${turma.id_turma !== 'N/A' ? turma.id_turma : (turma.serie || 'N/A')}</td>
@@ -503,7 +523,16 @@ const AlunosModule = {
                 }
                 
                 this.elements.inputMaeAluno.value = aluno.mae || '';
+                
+                // Log para debug do código INEP
+                console.log("=== DEBUG EDITANDO ALUNO ===");
+                console.log("Dados do aluno:", aluno);
+                console.log("Código INEP:", aluno.codigo_inep);
+                console.log("Tipo do código INEP:", typeof aluno.codigo_inep);
+                
                 this.elements.inputCodigoInep.value = aluno.codigo_inep || '';
+                console.log("Valor definido no input:", this.elements.inputCodigoInep.value);
+                
                 // Usar id_turma em vez de turma_id para corresponder ao esperado pela API
                 this.elements.selectTurma.value = aluno.id_turma || aluno.turma_id || '';
                 this.elements.inputNomeAluno.focus();
