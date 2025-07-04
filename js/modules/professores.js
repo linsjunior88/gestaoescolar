@@ -76,7 +76,7 @@ const ProfessoresModule = {
         this.elements.inputSenhaProfessor = document.getElementById('senha-professor');
         this.elements.inputCpfProfessor = document.getElementById('cpf-professor');
         this.elements.selectDisciplinas = document.getElementById('disciplinas-professor');
-        this.elements.vinculosContainer = document.getElementById('vinculos-professor-container');
+        this.elements.vinculosContainer = document.getElementById('vinculos-container');
         this.elements.tabelaVinculos = document.getElementById('tabela-vinculos-professor');
         this.elements.btnSalvarProfessor = document.getElementById('btn-salvar-professor');
         this.elements.btnCancelarProfessor = document.getElementById('btn-cancelar-professor');
@@ -107,8 +107,12 @@ const ProfessoresModule = {
         // Adicionar listener para seleção de disciplinas para mostrar as turmas vinculadas
         if (this.elements.selectDisciplinas) {
             this.elements.selectDisciplinas.addEventListener('change', () => {
+                console.log("=== EVENT CHANGE DISPARADO no select de disciplinas ===");
                 this.atualizarTurmasVinculadas();
             });
+            console.log("Event listener adicionado ao select de disciplinas");
+        } else {
+            console.error("Select de disciplinas não encontrado para adicionar event listener");
         }
         
         // Adicionar tecla ESC para fechar modais
@@ -157,7 +161,13 @@ const ProfessoresModule = {
     
     // Popular select de disciplinas
     popularSelectDisciplinas: function() {
-        if (!this.elements.selectDisciplinas) return;
+        console.log("=== POPULANDO SELECT DE DISCIPLINAS ===");
+        if (!this.elements.selectDisciplinas) {
+            console.error("Select de disciplinas não encontrado");
+            return;
+        }
+        
+        console.log("Disciplinas disponíveis:", this.state.disciplinas.length);
         
         // Limpar select
         this.elements.selectDisciplinas.innerHTML = '';
@@ -176,21 +186,38 @@ const ProfessoresModule = {
             
             option.textContent = `${nomeDisciplina} (${numTurmas} turmas)`;
             this.elements.selectDisciplinas.appendChild(option);
+            
+            console.log(`Disciplina adicionada: ${nomeDisciplina} (ID: ${disciplina.id_disciplina})`);
         });
+        
+        console.log("Select de disciplinas populado com", this.elements.selectDisciplinas.options.length, "opções");
     },
     
     // Atualizar visualização das turmas vinculadas à disciplina selecionada
     atualizarTurmasVinculadas: function() {
-        console.log("Atualizando turmas vinculadas...");
+        console.log("=== INICIANDO atualizarTurmasVinculadas ===");
         console.log("Container:", this.elements.vinculosContainer);
+        console.log("Select disciplinas:", this.elements.selectDisciplinas);
         
         if (!this.elements.vinculosContainer) {
-            console.error("Container de vínculos não encontrado");
+            console.error("Container de vínculos não encontrado - ID: vinculos-container");
+            // Tentar encontrar o elemento novamente
+            this.elements.vinculosContainer = document.getElementById('vinculos-container');
+            if (!this.elements.vinculosContainer) {
+                console.error("Ainda não foi possível encontrar o container de vínculos");
+                return;
+            }
+        }
+        
+        if (!this.elements.selectDisciplinas) {
+            console.error("Select de disciplinas não encontrado");
             return;
         }
         
         const disciplinasSelecionadas = Array.from(this.elements.selectDisciplinas.selectedOptions).map(opt => opt.value);
         console.log("Disciplinas selecionadas:", disciplinasSelecionadas);
+        console.log("Total disciplinas disponíveis:", this.state.disciplinas.length);
+        console.log("Total turmas disponíveis:", this.state.turmas.length);
         
         if (disciplinasSelecionadas.length === 0) {
             this.elements.vinculosContainer.innerHTML = '<p class="text-muted">Nenhuma disciplina selecionada</p>';
@@ -706,6 +733,7 @@ const ProfessoresModule = {
     
     // Iniciar cadastro de novo professor
     novoProfessor: function() {
+        console.log("=== INICIANDO NOVO PROFESSOR ===");
         this.state.modoEdicao = false;
         this.state.professorSelecionado = null;
         this.state.vinculos = [];
@@ -719,11 +747,15 @@ const ProfessoresModule = {
                 Array.from(this.elements.selectDisciplinas.options).forEach(option => {
                     option.selected = false;
                 });
+                console.log("Disciplinas desmarcadas para novo professor");
             }
             
             // Limpar container de turmas vinculadas
             if (this.elements.vinculosContainer) {
                 this.elements.vinculosContainer.innerHTML = '<p class="text-muted">Selecione pelo menos uma disciplina para vincular turmas.</p>';
+                console.log("Container de vínculos limpo para novo professor");
+            } else {
+                console.error("Container de vínculos não encontrado em novoProfessor");
             }
             
             // Habilitar campo de ID do professor para novos registros
@@ -1113,7 +1145,9 @@ const ProfessoresModule = {
                 
                 // Selecionar disciplinas do professor
                 if (professor.disciplinas && Array.isArray(professor.disciplinas) && this.elements.selectDisciplinas) {
+                    console.log("=== SELECIONANDO DISCIPLINAS DO PROFESSOR ===");
                     console.log("Disciplinas do professor:", professor.disciplinas);
+                    console.log("Opções disponíveis no select:", Array.from(this.elements.selectDisciplinas.options).map(opt => ({ value: opt.value, text: opt.text })));
                     
                     // Limpar seleções anteriores
                     Array.from(this.elements.selectDisciplinas.options).forEach(option => {
@@ -1129,15 +1163,21 @@ const ProfessoresModule = {
                         
                         if (option) {
                             option.selected = true;
-                            console.log(`Disciplina ${disciplinaId} selecionada`);
+                            console.log(`✓ Disciplina ${disciplinaId} selecionada no select`);
                         } else {
-                            console.warn(`Disciplina ${disciplinaId} não encontrada no select`);
+                            console.warn(`✗ Disciplina ${disciplinaId} não encontrada no select`);
                         }
                     });
                     
+                    console.log("Disciplinas selecionadas após aplicar:", Array.from(this.elements.selectDisciplinas.selectedOptions).map(opt => opt.value));
+                    
                     // Atualizar visualização de turmas de forma explícita
-                    console.log("Atualizando turmas vinculadas após selecionar disciplinas");
+                    console.log("Chamando atualizarTurmasVinculadas após selecionar disciplinas");
                     setTimeout(() => this.atualizarTurmasVinculadas(), 100);
+                } else {
+                    console.warn("Professor não tem disciplinas ou select não encontrado");
+                    console.log("professor.disciplinas:", professor.disciplinas);
+                    console.log("this.elements.selectDisciplinas:", this.elements.selectDisciplinas);
                 }
                 
                 this.elements.inputNomeProfessor.focus();
