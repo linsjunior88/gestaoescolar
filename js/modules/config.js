@@ -21,6 +21,11 @@ const ConfigModule = {
     // Detectar ambiente de produção automaticamente
     isProd: window.location.hostname !== 'localhost' && !window.location.hostname.includes('127.0.0.1'),
     
+    // Getter para API_BASE_URL para compatibilidade
+    get API_BASE_URL() {
+        return this.state.apiUrl;
+    },
+    
     // Inicializar o módulo
     init: function() {
         console.log("Módulo de configuração inicializado");

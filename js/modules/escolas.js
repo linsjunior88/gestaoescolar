@@ -179,7 +179,7 @@ const EscolasModule = {
                     <td colspan="8" class="text-center text-danger">
                         <strong>Erro:</strong> ${mensagem}
                         <br><br>
-                        <button class="btn btn-primary btn-sm" onclick="EscolasModule.carregarEscolas()">
+                        <button class="btn btn-primary btn-sm" onclick="window.App.modules.escolas.carregarEscolas()">
                             Tentar Novamente
                         </button>
                     </td>
@@ -193,4 +193,9 @@ const EscolasModule = {
 };
 
 // Exportar módulo
-export default EscolasModule; 
+export default EscolasModule;
+
+// Adicionar ao window para debug
+if (typeof window !== 'undefined') {
+    window.EscolasModule = EscolasModule;
+} 
