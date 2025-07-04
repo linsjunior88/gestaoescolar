@@ -64,7 +64,7 @@ const EscolasModule = {
 
         try {
             console.log("Carregando escolas...");
-            const escolas = await ConfigModule.fetchApi('/escolas');
+            const escolas = await ConfigModule.fetchApi('/api/escolas');
             
             this.state.escolas = escolas || [];
             console.log(`${this.state.escolas.length} escola(s) carregada(s)`);
