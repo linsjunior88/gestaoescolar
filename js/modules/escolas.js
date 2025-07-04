@@ -27,7 +27,7 @@ const EscolasModule = {
         inputNomeFantasia: null,
         inputEmail: null,
         inputTelefone: null,
-        inputCidade: null,
+        selectCidade: null,
         selectUf: null,
         btnSalvarEscola: null,
         btnCancelarEscola: null
@@ -61,7 +61,7 @@ const EscolasModule = {
         this.elements.inputNomeFantasia = document.getElementById('nome-fantasia-escola');
         this.elements.inputEmail = document.getElementById('email-escola');
         this.elements.inputTelefone = document.getElementById('telefone-escola');
-        this.elements.inputCidade = document.getElementById('cidade-escola');
+        this.elements.selectCidade = document.getElementById('cidade-escola');
         this.elements.selectUf = document.getElementById('uf-escola');
         this.elements.btnSalvarEscola = document.getElementById('btn-salvar-escola');
         this.elements.btnCancelarEscola = document.getElementById('btn-cancelar-escola');
@@ -90,6 +90,11 @@ const EscolasModule = {
         
         if (this.elements.btnCancelarEscola) {
             this.elements.btnCancelarEscola.addEventListener('click', () => this.cancelarEdicao());
+        }
+        
+        // Evento para carregar cidades quando UF for selecionada
+        if (this.elements.selectUf) {
+            this.elements.selectUf.addEventListener('change', (e) => this.carregarCidades(e.target.value));
         }
     },
 
@@ -127,6 +132,62 @@ const EscolasModule = {
             this.mostrarErro("Não foi possível carregar as escolas.");
         } finally {
             this.state.carregandoEscolas = false;
+        }
+    },
+
+    // Carregar cidades de uma UF usando API do IBGE
+    carregarCidades: async function(uf) {
+        if (!uf || !this.elements.selectCidade) {
+            return;
+        }
+
+        console.log(`Carregando cidades para UF: ${uf}`);
+
+        try {
+            // Desabilitar select e mostrar carregando
+            this.elements.selectCidade.disabled = true;
+            this.elements.selectCidade.innerHTML = '<option value="">Carregando cidades...</option>';
+
+            // Buscar cidades da UF na API do IBGE
+            const response = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${uf}/municipios`);
+            
+            if (!response.ok) {
+                throw new Error(`Erro ${response.status}: ${response.statusText}`);
+            }
+
+            const cidades = await response.json();
+            
+            console.log(`${cidades.length} cidades carregadas para ${uf}`);
+
+            // Limpar select e adicionar opção padrão
+            this.elements.selectCidade.innerHTML = '<option value="">Selecione a cidade</option>';
+
+            // Ordenar cidades por nome
+            cidades.sort((a, b) => a.nome.localeCompare(b.nome));
+
+            // Adicionar cidades ao select
+            cidades.forEach(cidade => {
+                const option = document.createElement('option');
+                option.value = cidade.nome;
+                option.textContent = cidade.nome;
+                this.elements.selectCidade.appendChild(option);
+            });
+
+            // Habilitar select
+            this.elements.selectCidade.disabled = false;
+
+        } catch (error) {
+            console.error("Erro ao carregar cidades:", error);
+            
+            // Em caso de erro, permitir entrada manual
+            this.elements.selectCidade.innerHTML = `
+                <option value="">Erro ao carregar cidades</option>
+                <option value="manual">Digite manualmente</option>
+            `;
+            this.elements.selectCidade.disabled = false;
+            
+            // Mostrar mensagem de erro
+            alert("Não foi possível carregar as cidades. Você pode digitar manualmente se necessário.");
         }
     },
 
@@ -197,6 +258,12 @@ const EscolasModule = {
             this.elements.formEscola.classList.remove('d-none');
         }
         
+        // Resetar select de cidades
+        if (this.elements.selectCidade) {
+            this.elements.selectCidade.innerHTML = '<option value="">Selecione primeiro o Estado</option>';
+            this.elements.selectCidade.disabled = true;
+        }
+        
         // Focar no primeiro campo
         if (this.elements.inputCodigoInep) {
             this.elements.inputCodigoInep.focus();
@@ -217,7 +284,7 @@ const EscolasModule = {
             nome_fantasia: this.elements.inputNomeFantasia?.value || '',
             email_principal: this.elements.inputEmail?.value || '',
             telefone_principal: this.elements.inputTelefone?.value || '',
-            cidade: this.elements.inputCidade?.value || '',
+            cidade: this.elements.selectCidade?.value || '',
             uf: this.elements.selectUf?.value || '',
             localizacao: 'Urbana' // Valor padrão
         };
@@ -284,7 +351,13 @@ const EscolasModule = {
             if (this.elements.inputNomeFantasia) this.elements.inputNomeFantasia.value = escola.nome_fantasia || '';
             if (this.elements.inputEmail) this.elements.inputEmail.value = escola.email_principal || '';
             if (this.elements.inputTelefone) this.elements.inputTelefone.value = escola.telefone_principal || '';
-            if (this.elements.inputCidade) this.elements.inputCidade.value = escola.cidade || '';
+            // Carregar cidades da UF primeiro, depois selecionar a cidade
+            if (escola.uf) {
+                await this.carregarCidades(escola.uf);
+                if (this.elements.selectCidade && escola.cidade) {
+                    this.elements.selectCidade.value = escola.cidade;
+                }
+            }
             if (this.elements.selectUf) this.elements.selectUf.value = escola.uf || '';
             
             // Mostrar formulário
@@ -309,6 +382,12 @@ const EscolasModule = {
         if (this.elements.formEscola) {
             this.elements.formEscola.classList.add('d-none');
             this.elements.formEscola.reset();
+        }
+        
+        // Resetar select de cidades
+        if (this.elements.selectCidade) {
+            this.elements.selectCidade.innerHTML = '<option value="">Selecione primeiro o Estado</option>';
+            this.elements.selectCidade.disabled = true;
         }
     },
 
