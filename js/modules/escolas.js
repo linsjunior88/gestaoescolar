@@ -3,6 +3,8 @@
  * Sistema de Gestão Escolar EMEF Nazaré Rodrigues
  */
 
+import ConfigModule from './config.js';
+
 // Módulo para gerenciar escolas
 const EscolasModule = {
     // Estado do módulo
