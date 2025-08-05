@@ -565,6 +565,7 @@ async function gerarPDFNotas() {
             { header: 'Aluno', dataKey: 'aluno' },
             { header: 'Disciplina', dataKey: 'disciplina' },
             { header: 'Turma', dataKey: 'turma' },
+            { header: 'Frequência', dataKey: 'frequencia' },
             { header: 'Bimestre', dataKey: 'bimestre' },
             { header: 'N. Mensal', dataKey: 'mensal' },       // Espaço adicionado após o "N."
             { header: 'N. Bimestral', dataKey: 'bimestral' }, // Espaço adicionado após o "N."
@@ -647,7 +648,7 @@ async function gerarPDFNotas() {
                 let mediaIdentificada = false;
                 
                 // Reiniciar todos os índices
-                let alunoIndex, disciplinaIndex, turmaIndex, bimestreIndex, 
+                let alunoIndex, disciplinaIndex, turmaIndex, frequenciaIndex, bimestreIndex, 
                     mensalIndex, bimestralIndex, recuperacaoIndex, mediaIndex, statusIndex;
                 
                 // Baseado no exemplo do console:
@@ -717,8 +718,16 @@ async function gerarPDFNotas() {
                         continue;
                     }
                     
-                    // Identificar média (geralmente valor numérico após recuperação)
-                    if (typeof recuperacaoIndex !== 'undefined' && typeof mediaIndex === 'undefined' && 
+                    // Identificar frequência (valor numérico ou traço, após recuperação)
+                    if (typeof recuperacaoIndex !== 'undefined' && typeof frequenciaIndex === 'undefined' && 
+                        (/^\d+(\.\d+)?$/.test(valor) || valor === '-')) {
+                        frequenciaIndex = i;
+                        console.log(`DEBUG - Identificada frequência: "${valor}" no índice ${i}`);
+                        continue;
+                    }
+                    
+                    // Identificar média (geralmente valor numérico após frequência)
+                    if (typeof frequenciaIndex !== 'undefined' && typeof mediaIndex === 'undefined' && 
                         /^\d+(\.\d+)?$/.test(valor)) {
                         mediaIndex = i;
                         console.log(`DEBUG - Identificada média: "${valor}" no índice ${i}`);
@@ -769,6 +778,8 @@ async function gerarPDFNotas() {
                     ? colunasTabela[bimestralIndex].textContent.trim() : '';
                 const recuperacao = typeof recuperacaoIndex !== 'undefined' && colunasTabela[recuperacaoIndex] 
                     ? colunasTabela[recuperacaoIndex].textContent.trim() : '';
+                const frequencia = typeof frequenciaIndex !== 'undefined' && colunasTabela[frequenciaIndex] 
+                    ? colunasTabela[frequenciaIndex].textContent.trim() : '';
                 
                 // CORRIGIDO: Separar corretamente média e status
                 let media = '';
@@ -964,6 +975,7 @@ async function gerarPDFNotas() {
                     aluno,
                     disciplina, 
                     turma,
+                    frequencia,
                     bimestre,
                     mensal,
                     bimestral,
@@ -978,6 +990,7 @@ async function gerarPDFNotas() {
                     aluno,
                     disciplina,
                     turma,
+                    frequencia,
                     bimestre,
                     mensal,
                     bimestral,
@@ -1051,16 +1064,17 @@ async function gerarPDFNotas() {
             },
             // AJUSTE FINAL DE LARGURAS - Redistribuir o espaço para evitar o erro "units width could not fit page"
             columnStyles: {
-                idaluno: { cellWidth: 16, halign: 'center' },        // ID do aluno (matrícula)
-                aluno: { cellWidth: 62, halign: 'left' },           // Nome do aluno - reduzido para acomodar
-                disciplina: { cellWidth: 20, halign: 'center' },     // Disciplina - centralizando
-                turma: { cellWidth: 15, halign: 'center' },          // Turma
-                bimestre: { cellWidth: 15, halign: 'center' },       // Bimestre 
-                mensal: { cellWidth: 16, halign: 'center' },         // N. Mensal 
-                bimestral: { cellWidth: 20, halign: 'center' },      // N. Bimestral 
-                recuperacao: { cellWidth: 16, halign: 'center' },    // Recuperação
-                media: { cellWidth: 15, halign: 'center' },          // Média
-                status: { cellWidth: 25, halign: 'center' }          // Status
+                idaluno: { cellWidth: 14, halign: 'center' },        // ID do aluno (matrícula)
+                aluno: { cellWidth: 55, halign: 'left' },           // Nome do aluno 
+                disciplina: { cellWidth: 18, halign: 'center' },     // Disciplina
+                turma: { cellWidth: 14, halign: 'center' },          // Turma
+                frequencia: { cellWidth: 18, halign: 'center' },     // Frequência - nova coluna
+                bimestre: { cellWidth: 14, halign: 'center' },       // Bimestre 
+                mensal: { cellWidth: 22, halign: 'center' },         // N. Mensal - expandido
+                bimestral: { cellWidth: 25, halign: 'center' },      // N. Bimestral - expandido
+                recuperacao: { cellWidth: 15, halign: 'center' },    // Recuperação
+                media: { cellWidth: 14, halign: 'center' },          // Média
+                status: { cellWidth: 22, halign: 'center' }          // Status
             },
             // Ajustar o tamanho da fonte para textos longos
             willDrawCell: function(data) {
