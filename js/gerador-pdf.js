@@ -1065,7 +1065,7 @@ async function gerarPDFNotas() {
             // AJUSTE FINAL DE LARGURAS - Redistribuir o espaço para evitar o erro "units width could not fit page"
             columnStyles: {
                 idaluno: { cellWidth: 16, halign: 'center' },        // ID do aluno (matrícula)
-                aluno: { cellWidth: 80, halign: 'left' },           // Nome do aluno - expandido significativamente
+                aluno: { cellWidth: 70, halign: 'left' },           // Nome do aluno - ajustado para o tamanho ideal
                 disciplina: { cellWidth: 26, halign: 'center' },     // Disciplina - expandida
                 turma: { cellWidth: 15, halign: 'center' },          // Turma
                 frequencia: { cellWidth: 24, halign: 'center' },     // Frequência - expandida
