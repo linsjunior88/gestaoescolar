@@ -4429,13 +4429,14 @@ function abrirModoLancamentoEmMassa() {
                     <th style="width: 100px">Mensal</th>
                     <th style="width: 100px">Bimestral</th>
                     <th style="width: 100px">Recuperação</th>
+                    <th style="width: 80px">Frequência</th>
                     <th style="width: 80px">Média</th>
                     <th style="width: 120px">Status</th>
                 </tr>
             </thead>
             <tbody>
                 <tr>
-                    <td colspan="6" class="text-center py-4">
+                    <td colspan="7" class="text-center py-4">
                         <div class="spinner-border text-primary" role="status">
                             <span class="visually-hidden">Carregando alunos...</span>
                         </div>
@@ -4703,7 +4704,7 @@ function abrirModoLancamentoEmMassa() {
             if (tbody) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="6" class="text-center">
+                        <td colspan="7" class="text-center">
                             <div class="alert alert-danger m-0">
                                 <i class="fas fa-exclamation-circle"></i> 
                                 Erro ao carregar dados: ${error.message}
